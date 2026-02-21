@@ -58,9 +58,9 @@ export default function Register() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Ionicons name="cube-outline" size={64} color="#007AFF" />
+          <Ionicons name="settings-outline" size={64} color="#007AFF" />
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join our engineering platform</Text>
+          <Text style={styles.subtitle}>Join our conveyor platform</Text>
         </View>
 
         <View style={styles.form}>
