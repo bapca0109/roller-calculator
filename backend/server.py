@@ -114,6 +114,8 @@ class QuoteProduct(BaseModel):
     quantity: int
     unit_price: float
     specifications: Optional[Dict[str, Any]] = None
+    calculated_discount: float = 0.0  # Quantity discount applied
+    custom_premium: float = 0.0  # Premium for custom specs
 
 class QuoteStatus:
     PENDING = "pending"
@@ -126,6 +128,10 @@ class Quote(BaseModel):
     customer_name: str
     customer_email: str
     products: List[QuoteProduct]
+    subtotal: float
+    total_discount: float = 0.0
+    shipping_cost: float = 0.0
+    delivery_location: Optional[str] = None
     total_price: float
     status: str = QuoteStatus.PENDING
     notes: Optional[str] = None
