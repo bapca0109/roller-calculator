@@ -143,11 +143,13 @@ class QuoteInDB(Quote):
 
 class QuoteCreate(BaseModel):
     products: List[QuoteProduct]
+    delivery_location: Optional[str] = None
     notes: Optional[str] = None
 
 class QuoteUpdate(BaseModel):
     status: str
     notes: Optional[str] = None
+    shipping_cost: Optional[float] = None
 
 # ============= HELPER FUNCTIONS =============
 
