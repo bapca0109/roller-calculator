@@ -371,14 +371,42 @@ async def create_quote(
     quote: QuoteCreate,
     current_user: dict = Depends(get_current_user)
 ):
+    # Calculate pricing with discounts and premiums
+    subtotal = 0.0
+    total_discount = 0.0
+    
+    processed_products = []
+    for item in quote.products:
+        # Calculate base line total
+        line_total = item.quantity * item.unit_price
+        
+        # Apply quantity discount (example: 5% for 10+, 10% for 50+, 15% for 100+)
+        discount = 0.0
+        if item.quantity >= 100:
+            discount = line_total * 0.15
+        elif item.quantity >= 50:
+            discount = line_total * 0.10
+        elif item.quantity >= 10:
+            discount = line_total * 0.05
+        
+        item.calculated_discount = discount
+        total_discount += discount
+        subtotal += line_total
+        
+        processed_products.append(item.dict())
+    
     # Calculate total price
-    total_price = sum(item.quantity * item.unit_price for item in quote.products)
+    total_price = subtotal - total_discount + (quote.delivery_location and 0 or 0)  # Shipping calculated later by admin
     
     quote_dict = {
         "customer_id": current_user["id"],
         "customer_name": current_user["name"],
         "customer_email": current_user["email"],
-        "products": [p.dict() for p in quote.products],
+        "products": processed_products,
+        "subtotal": subtotal,
+        "total_discount": total_discount,
+        "shipping_cost": 0.0,
+        "delivery_location": quote.delivery_location,
         "total_price": total_price,
         "status": QuoteStatus.PENDING,
         "notes": quote.notes,
