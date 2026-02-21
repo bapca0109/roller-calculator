@@ -45,8 +45,8 @@ export default function Login() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Ionicons name="cube-outline" size={64} color="#007AFF" />
-          <Text style={styles.title}>Engineering Products</Text>
+          <Ionicons name="settings-outline" size={64} color="#007AFF" />
+          <Text style={styles.title}>Conveyor Roller Calculator</Text>
           <Text style={styles.subtitle}>Sign in to your account</Text>
         </View>
 
