@@ -100,7 +100,7 @@ export default function ProductsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Products</Text>
+        <Text style={styles.title}>Conveyor Rollers</Text>
         {user?.role === 'admin' && (
           <TouchableOpacity
             style={styles.addButton}
