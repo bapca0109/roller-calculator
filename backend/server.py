@@ -103,8 +103,9 @@ class ProductCreate(BaseModel):
     sku: str
     description: str
     category: str
-    specifications: ProductSpecs
+    specifications: RollerSpecs
     base_price: float
+    pricing_factors: Optional[PricingFactors] = None
     image: Optional[str] = None
 
 class QuoteProduct(BaseModel):
