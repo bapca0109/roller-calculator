@@ -290,7 +290,8 @@ async def create_product(
     
     result = await db.products.insert_one(product_dict)
     product_dict["id"] = str(result.inserted_id)
-    del product_dict["_id"] if "_id" in product_dict else None
+    if "_id" in product_dict:
+        del product_dict["_id"]
     
     return ProductInDB(**product_dict)
 
