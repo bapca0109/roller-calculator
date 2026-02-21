@@ -503,6 +503,75 @@ async def get_stats(current_user: dict = Depends(require_role([UserRole.ADMIN, U
         "approved_quotes": approved_quotes
     }
 
+# ============= PRICING CALCULATOR =============
+
+class PriceCalculationRequest(BaseModel):
+    product_id: str
+    quantity: int
+    delivery_location: Optional[str] = None
+
+class PriceCalculationResponse(BaseModel):
+    product_name: str
+    quantity: int
+    unit_price: float
+    subtotal: float
+    quantity_discount: float
+    discount_percent: float
+    shipping_estimate: float
+    total_price: float
+
+@api_router.post("/calculate-price", response_model=PriceCalculationResponse)
+async def calculate_price(
+    request: PriceCalculationRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        product = await db.products.find_one({"_id": ObjectId(request.product_id)})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid product ID")
+    
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Calculate base price
+    unit_price = product["base_price"]
+    
+    # Apply manual adjustment if exists
+    if product.get("pricing_factors") and product["pricing_factors"].get("manual_adjustment"):
+        unit_price += product["pricing_factors"]["manual_adjustment"]
+    
+    subtotal = unit_price * request.quantity
+    
+    # Calculate quantity discount
+    discount_percent = 0.0
+    if request.quantity >= 100:
+        discount_percent = 15.0
+    elif request.quantity >= 50:
+        discount_percent = 10.0
+    elif request.quantity >= 10:
+        discount_percent = 5.0
+    
+    quantity_discount = subtotal * (discount_percent / 100)
+    
+    # Estimate shipping (placeholder - would be calculated based on location)
+    shipping_estimate = 0.0
+    if request.delivery_location:
+        # Simple shipping estimation
+        shipping_estimate = 50.0  # Base shipping
+    
+    total_price = subtotal - quantity_discount + shipping_estimate
+    
+    return PriceCalculationResponse(
+        product_name=product["name"],
+        quantity=request.quantity,
+        unit_price=unit_price,
+        subtotal=subtotal,
+        quantity_discount=quantity_discount,
+        discount_percent=discount_percent,
+        shipping_estimate=shipping_estimate,
+        total_price=total_price
+    )
+
 # Include the router in the main app
 app.include_router(api_router)
 
