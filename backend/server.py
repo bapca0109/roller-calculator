@@ -66,19 +66,32 @@ class Token(BaseModel):
     token_type: str
     user: Dict[str, Any]
 
-class ProductSpecs(BaseModel):
-    dimensions: Optional[str] = None  # e.g., "10x20x30 cm"
-    weight: Optional[str] = None  # e.g., "5.5 kg"
-    material: Optional[str] = None
-    technical_specs: Optional[Dict[str, Any]] = None
+class RollerSpecs(BaseModel):
+    diameter: float  # mm
+    length: float  # mm
+    shaft_diameter: float  # mm
+    material: str  # Steel, Stainless Steel, HDPE, etc.
+    bearing_type: str
+    load_capacity: float  # kg
+    surface_type: str  # Smooth, Grooved, Rubber-lagged
+    application_type: str  # Carrying, Return, Impact, Self-aligning, Tapered, Guide
+    rpm: Optional[float] = None
+    temperature_rating: Optional[float] = None  # °C
+
+class PricingFactors(BaseModel):
+    base_formula_price: float
+    quantity_discount_percent: float = 0.0
+    custom_spec_premium: float = 0.0
+    manual_adjustment: float = 0.0  # Can be positive or negative
 
 class Product(BaseModel):
     name: str
     sku: str
     description: str
-    category: str
-    specifications: ProductSpecs
+    category: str  # Standard, Special, Material Variant
+    specifications: RollerSpecs
     base_price: float
+    pricing_factors: Optional[PricingFactors] = None
     image: Optional[str] = None  # base64 image
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
