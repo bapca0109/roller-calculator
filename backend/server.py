@@ -573,6 +573,113 @@ async def calculate_price(
         total_price=total_price
     )
 
+# ============= ROLLER CONFIGURATION ENDPOINTS =============
+
+@api_router.get("/roller-standards")
+async def get_roller_standards(current_user: dict = Depends(get_current_user)):
+    """Get all IS standard options for roller configuration"""
+    return {
+        "pipe_diameters": rs.PIPE_DIAMETERS,
+        "shaft_diameters": rs.SHAFT_DIAMETERS,
+        "bearing_options": rs.BEARING_OPTIONS,
+        "roller_lengths_by_belt_width": rs.ROLLER_LENGTHS
+    }
+
+@api_router.get("/compatible-bearings/{shaft_dia}")
+async def get_compatible_bearings(shaft_dia: int, current_user: dict = Depends(get_current_user)):
+    """Get compatible bearings for a shaft diameter"""
+    bearings = rs.BEARING_OPTIONS.get(shaft_dia, [])
+    if not bearings:
+        raise HTTPException(status_code=404, detail=f"No bearings found for shaft diameter {shaft_dia}mm")
+    return {"shaft_diameter": shaft_dia, "bearings": bearings}
+
+@api_router.get("/compatible-housing/{pipe_dia}/{bearing}")
+async def get_compatible_housing(
+    pipe_dia: float,
+    bearing: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get compatible housing for pipe diameter and bearing"""
+    housing = rs.get_housing_for_pipe_and_bearing(pipe_dia, bearing)
+    if not housing:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No compatible housing found for pipe {pipe_dia}mm and bearing {bearing}"
+        )
+    return {
+        "pipe_diameter": pipe_dia,
+        "bearing": bearing,
+        "housing": housing
+    }
+
+class DetailedCostRequest(BaseModel):
+    pipe_diameter: float
+    pipe_length: float  # mm
+    shaft_diameter: int
+    bearing_number: str
+    belt_width: Optional[int] = None
+
+class DetailedCostResponse(BaseModel):
+    configuration: Dict[str, Any]
+    cost_breakdown: Dict[str, float]
+    pricing: Dict[str, float]
+
+@api_router.post("/calculate-detailed-cost", response_model=DetailedCostResponse)
+async def calculate_detailed_cost(
+    request: DetailedCostRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Calculate detailed cost breakdown using IS standards and exact formula"""
+    
+    # Validate inputs
+    if request.pipe_diameter not in rs.PIPE_DIAMETERS:
+        raise HTTPException(status_code=400, detail=f"Invalid pipe diameter. Must be one of {rs.PIPE_DIAMETERS}")
+    
+    if request.shaft_diameter not in rs.SHAFT_DIAMETERS:
+        raise HTTPException(status_code=400, detail=f"Invalid shaft diameter. Must be one of {rs.SHAFT_DIAMETERS}")
+    
+    if request.bearing_number not in rs.BEARING_OPTIONS.get(request.shaft_diameter, []):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid bearing for shaft {request.shaft_diameter}mm. Must be one of {rs.BEARING_OPTIONS.get(request.shaft_diameter, [])}"
+        )
+    
+    # Get housing
+    housing = rs.get_housing_for_pipe_and_bearing(request.pipe_diameter, request.bearing_number)
+    if not housing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No compatible housing for pipe {request.pipe_diameter}mm and bearing {request.bearing_number}"
+        )
+    
+    # Calculate shaft length
+    shaft_length = rs.calculate_shaft_length(request.pipe_length)
+    
+    # Calculate raw material costs
+    cost_breakdown = rs.calculate_raw_material_cost(
+        request.pipe_diameter,
+        request.pipe_length,
+        request.shaft_diameter,
+        request.bearing_number
+    )
+    
+    # Calculate final pricing
+    pricing = rs.calculate_final_price(cost_breakdown["total_raw_material"])
+    
+    return DetailedCostResponse(
+        configuration={
+            "pipe_diameter_mm": request.pipe_diameter,
+            "pipe_length_mm": request.pipe_length,
+            "shaft_diameter_mm": request.shaft_diameter,
+            "shaft_length_mm": shaft_length,
+            "bearing": request.bearing_number,
+            "housing": housing,
+            "belt_width_mm": request.belt_width
+        },
+        cost_breakdown=cost_breakdown,
+        pricing=pricing
+    )
+
 # Include the router in the main app
 app.include_router(api_router)
 
