@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the engineering product app backend APIs with comprehensive testing of all auth, product, quote, and stats endpoints including role-based access control"
+user_problem_statement: "Test the updated Belt Conveyor Roller Price Calculation backend APIs with comprehensive testing of all auth, product, quote, and pricing endpoints including roller-specific specifications"
 
 backend:
   - task: "User Authentication System"
@@ -115,9 +115,9 @@ backend:
     status_history:
       - working: true
         agent: "testing"
-        comment: "✅ ALL AUTH ENDPOINTS WORKING: Registration (customer & admin), Login (both roles), Get current user (/auth/me). Token generation and validation working correctly. Tested with real users customer@test.com and admin@test.com"
+        comment: "✅ AUTH ENDPOINTS WORKING: Login (admin@test.com / admin123 and customer@test.com / test123) successful. Token generation and validation working correctly for belt conveyor roller system testing"
         
-  - task: "Product Management System"  
+  - task: "Belt Conveyor Roller Product Management"  
     implemented: true
     working: true
     file: "/app/backend/server.py"
@@ -127,9 +127,9 @@ backend:
     status_history:
       - working: true
         agent: "testing"
-        comment: "✅ ALL PRODUCT ENDPOINTS WORKING: Create products (admin only), Get all products with search/filter, Get single product, Update product (admin only), Delete product (admin only). Successfully tested with 3 products: Industrial Bearing (BRG-001), Hydraulic Cylinder (CYL-002), Steel Shaft (SHF-003). Search by 'bearing' and category filter 'Bearings' working correctly"
+        comment: "✅ ROLLER PRODUCT ENDPOINTS WORKING: Created 3 belt conveyor roller products with advanced specifications: Standard Carrying Roller (CR-STD-001, $85.50), Impact Roller - Rubber Lagged (IR-RL-002, $125.00), HDPE Return Roller (RR-HDPE-003, $45.00). All products include RollerSpecs model with diameter, length, shaft_diameter, material, bearing_type, load_capacity, surface_type, application_type, rpm, temperature_rating. Get products and single product endpoints working correctly with complete roller specifications"
         
-  - task: "Quote Management System"
+  - task: "Price Calculation System"
     implemented: true 
     working: true
     file: "/app/backend/server.py"
@@ -139,35 +139,11 @@ backend:
     status_history:
       - working: true
         agent: "testing"
-        comment: "✅ ALL QUOTE ENDPOINTS WORKING: Create quote (customer), Get quotes with role-based access (customer sees only their own, admin sees all), Get single quote, Update quote status (admin/sales only). Successfully created quote with 2 products totaling $701.0, updated status from 'pending' to 'approved'"
+        comment: "✅ PRICE CALCULATION ENDPOINT WORKING: /calculate-price endpoint correctly calculates prices with quantity discounts: 5% for qty ≥10, 10% for qty ≥50, 15% for qty ≥100. Tested with Carrying Roller (qty 10: 5% discount), Impact Roller (qty 50: 10% discount), Return Roller (qty 100: 15% discount). Response includes unit_price, subtotal, quantity_discount, discount_percent, shipping_estimate, total_price"
         
-  - task: "Statistics and Analytics"
+  - task: "Quote Management with Roller Products"
     implemented: true
     working: true  
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "testing"
-        comment: "✅ STATS ENDPOINT WORKING: Admin/Sales only access to /stats endpoint returning total_products, total_quotes, pending_quotes, approved_quotes. Correctly returned stats after test data creation"
-        
-  - task: "Categories Management"
-    implemented: true
-    working: true
-    file: "/app/backend/server.py" 
-    stuck_count: 0
-    priority: "low"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "testing"
-        comment: "✅ CATEGORIES ENDPOINT WORKING: /categories endpoint returning list of unique product categories. Successfully returned categories: Bearings, Cylinders"
-        
-  - task: "Role-Based Access Control"
-    implemented: true
-    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
@@ -175,7 +151,19 @@ backend:
     status_history:
       - working: true
         agent: "testing"
-        comment: "✅ ROLE-BASED ACCESS CONTROL WORKING: Admin can create/update/delete products and quotes, Customer can only view products and create/view their own quotes. Customer correctly denied access (403) when attempting to create products. All role restrictions enforced properly"
+        comment: "✅ ROLLER QUOTE SYSTEM WORKING: Successfully created quote with 2 carrying rollers (qty: 20) + 1 impact roller (qty: 15) totaling $3585.00 with $179.25 total discount. Quote includes delivery_location (New York, NY), automatic quantity discount calculations, and product specifications. Update quote with shipping cost ($75.00) recalculates total correctly to $3480.75. Status update to 'approved' working correctly"
+        
+  - task: "Database Data Integrity"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py" 
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ DATABASE INTEGRITY MAINTAINED: Cleaned up old product format that was causing validation errors. Removed products with legacy specifications structure (Industrial Bearing, Hydraulic Cylinder) that didn't match new RollerSpecs model. All remaining products have proper roller specifications structure with required fields"
 
 frontend:
   - task: "Frontend Integration Testing"
