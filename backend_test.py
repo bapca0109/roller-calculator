@@ -44,13 +44,13 @@ def make_request(method, endpoint, data=None, headers=None, params=None):
     url = f"{BASE_URL}{endpoint}"
     try:
         if method.upper() == 'GET':
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(url, headers=headers, params=params, timeout=30)
         elif method.upper() == 'POST':
-            response = requests.post(url, json=data, headers=headers)
+            response = requests.post(url, json=data, headers=headers, timeout=30)
         elif method.upper() == 'PUT':
-            response = requests.put(url, json=data, headers=headers)
+            response = requests.put(url, json=data, headers=headers, timeout=30)
         elif method.upper() == 'DELETE':
-            response = requests.delete(url, headers=headers)
+            response = requests.delete(url, headers=headers, timeout=30)
         else:
             raise ValueError(f"Unsupported HTTP method: {method}")
         
