@@ -629,6 +629,8 @@ class DetailedCostResponse(BaseModel):
     configuration: Dict[str, Any]
     cost_breakdown: Dict[str, float]
     pricing: Dict[str, float]
+    freight: Optional[Dict[str, Any]] = None  # Freight details if pincode provided
+    grand_total: float  # Final price including freight (per roller × quantity)
 
 @api_router.post("/calculate-detailed-cost", response_model=DetailedCostResponse)
 async def calculate_detailed_cost(
