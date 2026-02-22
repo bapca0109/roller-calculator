@@ -722,6 +722,17 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 6,
   },
+  noOptionsContainer: {
+    backgroundColor: '#FFF3E0',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+  },
+  noOptionsText: {
+    fontSize: 14,
+    color: '#E65100',
+    textAlign: 'center',
+  },
   toggleContainer: {
     flexDirection: 'row',
     gap: 12,
