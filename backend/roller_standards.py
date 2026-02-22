@@ -618,6 +618,47 @@ def get_freight_rate_per_kg(distance_km):
             return rate
     return 9.0  # Default to highest rate if distance exceeds all ranges
 
+
+def get_belt_widths_for_length(roller_length, roller_type="carrying"):
+    """
+    Get belt width(s) that correspond to a roller length
+    Returns list of belt widths (mm)
+    """
+    belt_widths = []
+    
+    if roller_type == "return":
+        lengths_map = RETURN_ROLLER_LENGTHS
+    else:
+        lengths_map = ROLLER_LENGTHS
+    
+    for belt_width, lengths in lengths_map.items():
+        if roller_length in lengths:
+            belt_widths.append(belt_width)
+    
+    return belt_widths
+
+
+def get_all_lengths_with_belt_widths(roller_type="carrying"):
+    """
+    Get all roller lengths with their corresponding belt widths
+    Returns dict: {length: [belt_widths]}
+    """
+    result = {}
+    
+    if roller_type == "return":
+        lengths_map = RETURN_ROLLER_LENGTHS
+    else:
+        lengths_map = ROLLER_LENGTHS
+    
+    for belt_width, lengths in lengths_map.items():
+        for length in lengths:
+            if length not in result:
+                result[length] = []
+            result[length].append(belt_width)
+    
+    return result
+
+
 def calculate_roller_weight(pipe_dia, pipe_length_mm, shaft_dia, pipe_type, rubber_dia=None):
     """
     Calculate total roller weight in kg
