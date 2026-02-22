@@ -24,7 +24,8 @@ export default function TabsLayout() {
         options={{
           title: 'Rollers',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />\n          ),
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
