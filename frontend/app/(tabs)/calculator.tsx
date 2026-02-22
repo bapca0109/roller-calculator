@@ -232,6 +232,11 @@ export default function CalculatorScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
+          <Image 
+            source={require('../../assets/images/convero-logo.png')} 
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
           <Text style={styles.headerTitle}>Roller Calculator</Text>
           <Text style={styles.headerSubtitle}>Configure your conveyor roller</Text>
         </View>
