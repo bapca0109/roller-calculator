@@ -878,6 +878,93 @@ async def download_raw_materials_public():
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
+# ============= SEARCH ROUTES =============
+
+@api_router.get("/search/product-code")
+async def search_by_product_code(
+    query: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Search quotes by product code.
+    Searches in both the product_id field and the product code stored in products array.
+    Supports partial matching (case-insensitive).
+    """
+    if not query or len(query) < 2:
+        raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
+    
+    # Build search query - case insensitive regex search
+    search_regex = {"$regex": query.upper(), "$options": "i"}
+    
+    # Search in quotes collection
+    pipeline = [
+        {
+            "$match": {
+                "$or": [
+                    {"products.product_id": search_regex},
+                    {"products.product_name": search_regex},
+                ]
+            }
+        },
+        {"$sort": {"created_at": -1}},
+        {"$limit": 50}
+    ]
+    
+    # If user is a customer, only show their own quotes
+    if current_user["role"] == UserRole.CUSTOMER:
+        pipeline.insert(0, {"$match": {"customer_id": current_user["id"]}})
+    
+    quotes = await db.quotes.aggregate(pipeline).to_list(50)
+    
+    results = []
+    for quote in quotes:
+        quote_id = str(quote["_id"])
+        quote_number = f"QT-{quote_id[-6:].upper()}"
+        
+        # Extract matching products from each quote
+        for product in quote.get("products", []):
+            product_id = product.get("product_id", "")
+            product_name = product.get("product_name", "")
+            
+            # Check if this product matches the search
+            if query.upper() in product_id.upper() or query.upper() in product_name.upper():
+                specs = product.get("specifications", {})
+                
+                # Determine roller type from product name
+                roller_type = "carrying"
+                if "impact" in product_name.lower():
+                    roller_type = "impact"
+                
+                result = {
+                    "id": quote_id,
+                    "product_code": product_id,
+                    "roller_type": roller_type,
+                    "configuration": {
+                        "pipe_diameter_mm": specs.get("pipe_diameter", 0),
+                        "pipe_length_mm": specs.get("pipe_length", 0),
+                        "pipe_type": specs.get("pipe_type", "B"),
+                        "shaft_diameter_mm": specs.get("shaft_diameter", 0),
+                        "bearing": specs.get("bearing", ""),
+                        "bearing_make": specs.get("bearing_make", "china"),
+                        "housing": specs.get("housing", ""),
+                        "rubber_diameter_mm": specs.get("rubber_diameter"),
+                        "quantity": product.get("quantity", 1)
+                    },
+                    "pricing": {
+                        "unit_price": product.get("unit_price", 0),
+                        "order_value": product.get("unit_price", 0) * product.get("quantity", 1),
+                        "discount_percent": 0,
+                        "final_price": quote.get("total_price", 0)
+                    },
+                    "grand_total": quote.get("total_price", 0),
+                    "customer_name": quote.get("customer_name", ""),
+                    "created_at": quote.get("created_at", datetime.utcnow()).isoformat(),
+                    "quote_number": quote_number
+                }
+                results.append(result)
+    
+    return {"results": results, "count": len(results), "query": query.upper()}
+
 # Include the router in the main app
 app.include_router(api_router)
 
