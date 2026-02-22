@@ -778,6 +778,7 @@ export default function CalculatorScreen() {
               </View>
               <Text style={styles.grandTotalHint}>
                 ({result.configuration.quantity} roller{result.configuration.quantity > 1 ? 's' : ''}
+                {result.gst ? ' + GST' : ''}
                 {result.freight ? ' + freight' : ''})
               </Text>
             </View>
