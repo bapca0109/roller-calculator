@@ -847,6 +847,23 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
+  saveQuoteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    marginTop: 16,
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 10,
+    borderWidth: 2,
+    borderColor: '#FF6B00',
+  },
+  saveQuoteButtonText: {
+    color: '#FF6B00',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   resultsContainer: {
     marginTop: 24,
     paddingHorizontal: 16,
