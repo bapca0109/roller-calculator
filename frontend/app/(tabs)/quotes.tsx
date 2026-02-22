@@ -10,10 +10,13 @@ import {
   Alert,
   Modal,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 interface QuoteProduct {
   product_id: string;
