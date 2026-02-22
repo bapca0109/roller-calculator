@@ -995,6 +995,74 @@ export default function CalculatorScreen() {
         </TouchableOpacity>
       )}
 
+      {/* Customer Picker Modal */}
+      {showCustomerPicker && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.customerPickerModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Customer</Text>
+              <TouchableOpacity onPress={() => setShowCustomerPicker(false)}>
+                <Ionicons name="close" size={28} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.customerPickerScroll}>
+              {customers.length === 0 ? (
+                <View style={styles.noCustomersMessage}>
+                  <Ionicons name="people-outline" size={48} color="#ccc" />
+                  <Text style={styles.noCustomersText}>No customers yet</Text>
+                  <Text style={styles.noCustomersSubtext}>Add customers in the Customers tab</Text>
+                </View>
+              ) : (
+                customers.map((customer) => (
+                  <TouchableOpacity
+                    key={customer.id}
+                    style={[
+                      styles.customerPickerItem,
+                      selectedCustomer?.id === customer.id && styles.customerPickerItemSelected
+                    ]}
+                    onPress={() => {
+                      setSelectedCustomer(customer);
+                      setShowCustomerPicker(false);
+                    }}
+                  >
+                    <View style={styles.customerPickerItemInfo}>
+                      <Text style={styles.customerPickerItemName}>{customer.name}</Text>
+                      {customer.company && (
+                        <Text style={styles.customerPickerItemCompany}>{customer.company}</Text>
+                      )}
+                      {customer.city && (
+                        <Text style={styles.customerPickerItemLocation}>
+                          {customer.city}{customer.state ? `, ${customer.state}` : ''}
+                        </Text>
+                      )}
+                      {customer.gst_number && (
+                        <Text style={styles.customerPickerItemGst}>GST: {customer.gst_number}</Text>
+                      )}
+                    </View>
+                    {selectedCustomer?.id === customer.id && (
+                      <Ionicons name="checkmark-circle" size={24} color="#960018" />
+                    )}
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+
+            <View style={styles.customerPickerFooter}>
+              <TouchableOpacity
+                style={styles.clearCustomerBtn}
+                onPress={() => {
+                  setSelectedCustomer(null);
+                  setShowCustomerPicker(false);
+                }}
+              >
+                <Text style={styles.clearCustomerBtnText}>Clear Selection</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Quote Builder Modal */}
       {showQuoteBuilder && (
         <View style={styles.modalOverlay}>
