@@ -48,13 +48,6 @@ export default function SearchScreen() {
   const [hasSearched, setHasSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
-  // Load recent searches on focus
-  useFocusEffect(
-    useCallback(() => {
-      // Could persist to AsyncStorage for real app
-    }, [])
-  );
-
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       Alert.alert('Enter Search Term', 'Please enter a product code to search');
