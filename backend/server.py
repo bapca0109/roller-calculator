@@ -618,6 +618,7 @@ class DetailedCostRequest(BaseModel):
     shaft_diameter: int
     bearing_number: str
     bearing_make: Optional[str] = "china"  # china, skf, fag, timken
+    pipe_type: Optional[str] = "B"  # A (Light), B (Medium), C (Heavy)
     rubber_diameter: Optional[float] = None  # For impact rollers with rubber lagging
     belt_width: Optional[int] = None
 
