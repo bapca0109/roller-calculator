@@ -157,8 +157,12 @@ export default function SearchScreen() {
           <Pressable 
             style={styles.configButton}
             onPress={() => {
-              if (Platform.OS === 'web') {
-                window.location.href = '/calculator';
+              // For web, trigger the Calculator tab click
+              if (Platform.OS === 'web' && typeof document !== 'undefined') {
+                const tabs = document.querySelectorAll('[role="tab"]');
+                if (tabs && tabs.length > 0) {
+                  (tabs[0] as HTMLElement).click();
+                }
               } else {
                 router.push('/(tabs)/calculator');
               }
