@@ -8,31 +8,48 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Modal,
+  ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 
+interface QuoteProduct {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  specifications?: any;
+  calculated_discount?: number;
+}
+
 interface Quote {
   id: string;
   customer_name: string;
+  customer_email: string;
+  products: QuoteProduct[];
+  subtotal: number;
+  total_discount: number;
+  packing_charges?: number;
+  shipping_cost: number;
+  delivery_location?: string;
   total_price: number;
   status: string;
+  notes?: string;
+  cost_breakdown?: any;
+  pricing_details?: any;
+  freight_details?: any;
   created_at: string;
-  products: Array<{
-    product_name: string;
-    quantity: number;
-    unit_price: number;
-  }>;
+  updated_at: string;
 }
 
 export default function QuotesScreen() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const { user } = useAuth();
-  const router = useRouter();
 
   useEffect(() => {
     fetchQuotes();
@@ -43,6 +60,7 @@ export default function QuotesScreen() {
       const response = await api.get('/quotes');
       setQuotes(response.data);
     } catch (error: any) {
+      console.error('Error fetching quotes:', error);
       Alert.alert('Error', 'Failed to load quotes');
     } finally {
       setLoading(false);
@@ -56,7 +74,7 @@ export default function QuotesScreen() {
   }, []);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'approved':
         return '#34C759';
       case 'rejected':
@@ -68,8 +86,8 @@ export default function QuotesScreen() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
+  const getStatusIcon = (status: string): any => {
+    switch (status?.toLowerCase()) {
       case 'approved':
         return 'checkmark-circle';
       case 'rejected':
@@ -81,33 +99,52 @@ export default function QuotesScreen() {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
   const renderQuote = ({ item }: { item: Quote }) => (
     <TouchableOpacity
       style={styles.quoteCard}
-      onPress={() => router.push(`/quotes/${item.id}`)}
+      onPress={() => setSelectedQuote(item)}
     >
       <View style={styles.quoteHeader}>
         <View style={styles.quoteInfo}>
-          <Text style={styles.customerName}>{item.customer_name}</Text>
-          <Text style={styles.quoteDate}>
-            {new Date(item.created_at).toLocaleDateString()}
-          </Text>
+          <Text style={styles.quoteId}>Quote #{item.id.slice(-6).toUpperCase()}</Text>
+          <Text style={styles.quoteDate}>{formatDate(item.created_at)}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status)}20` }]}>
           <Ionicons name={getStatusIcon(item.status)} size={16} color={getStatusColor(item.status)} />
           <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+            {item.status?.charAt(0).toUpperCase() + item.status?.slice(1)}
           </Text>
         </View>
       </View>
 
-      <Text style={styles.productsCount}>
-        {item.products.length} product{item.products.length !== 1 ? 's' : ''}
-      </Text>
+      <View style={styles.productsList}>
+        {item.products.slice(0, 2).map((product, index) => (
+          <Text key={index} style={styles.productItem} numberOfLines={1}>
+            • {product.product_name || product.product_id} (Qty: {product.quantity})
+          </Text>
+        ))}
+        {item.products.length > 2 && (
+          <Text style={styles.moreProducts}>+{item.products.length - 2} more items</Text>
+        )}
+      </View>
 
       <View style={styles.quoteFooter}>
-        <Text style={styles.totalLabel}>Total Amount</Text>
-        <Text style={styles.totalPrice}>${item.total_price.toFixed(2)}</Text>
+        <Text style={styles.totalLabel}>{item.products.length} item{item.products.length !== 1 ? 's' : ''}</Text>
+        <Text style={styles.totalPrice}>Rs. {item.total_price?.toFixed(2) || '0.00'}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -115,7 +152,8 @@ export default function QuotesScreen() {
   if (loading && !refreshing) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#FF6B00" />
+        <Text style={styles.loadingText}>Loading quotes...</Text>
       </View>
     );
   }
@@ -123,15 +161,10 @@ export default function QuotesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Quotes</Text>
-        {user?.role === 'customer' && (
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => router.push('/quotes/create')}
-          >
-            <Ionicons name="add" size={24} color="#fff" />
-          </TouchableOpacity>
-        )}
+        <Text style={styles.title}>My Quotes</Text>
+        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
+          <Ionicons name="refresh" size={24} color="#FF6B00" />
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -140,23 +173,134 @@ export default function QuotesScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B00" />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="document-text-outline" size={64} color="#ccc" />
             <Text style={styles.emptyText}>No quotes yet</Text>
-            {user?.role === 'customer' && (
-              <TouchableOpacity
-                style={styles.emptyButton}
-                onPress={() => router.push('/quotes/create')}
-              >
-                <Text style={styles.emptyButtonText}>Create First Quote</Text>
-              </TouchableOpacity>
-            )}
+            <Text style={styles.emptySubtext}>
+              Go to Calculator tab to create your first quote
+            </Text>
           </View>
         }
       />
+
+      {/* Quote Detail Modal */}
+      <Modal
+        visible={!!selectedQuote}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setSelectedQuote(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                Quote #{selectedQuote?.id.slice(-6).toUpperCase()}
+              </Text>
+              <TouchableOpacity onPress={() => setSelectedQuote(null)}>
+                <Ionicons name="close" size={28} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalScroll}>
+              {selectedQuote && (
+                <>
+                  {/* Status */}
+                  <View style={styles.detailSection}>
+                    <View style={[styles.statusBadgeLarge, { backgroundColor: `${getStatusColor(selectedQuote.status)}20` }]}>
+                      <Ionicons name={getStatusIcon(selectedQuote.status)} size={20} color={getStatusColor(selectedQuote.status)} />
+                      <Text style={[styles.statusTextLarge, { color: getStatusColor(selectedQuote.status) }]}>
+                        {selectedQuote.status?.toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Products */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Products</Text>
+                    {selectedQuote.products.map((product, index) => (
+                      <View key={index} style={styles.productCard}>
+                        <Text style={styles.productName}>{product.product_name || product.product_id}</Text>
+                        <View style={styles.productDetails}>
+                          <Text style={styles.productQty}>Qty: {product.quantity}</Text>
+                          <Text style={styles.productPrice}>Rs. {(product.unit_price * product.quantity).toFixed(2)}</Text>
+                        </View>
+                        {product.specifications && (
+                          <View style={styles.specsContainer}>
+                            {product.specifications.pipe_diameter && (
+                              <Text style={styles.specText}>Pipe: {product.specifications.pipe_diameter}mm</Text>
+                            )}
+                            {product.specifications.shaft_diameter && (
+                              <Text style={styles.specText}>Shaft: {product.specifications.shaft_diameter}mm</Text>
+                            )}
+                            {product.specifications.bearing && (
+                              <Text style={styles.specText}>Bearing: {product.specifications.bearing}</Text>
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Pricing Summary */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Pricing Summary</Text>
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>Subtotal</Text>
+                      <Text style={styles.pricingValue}>Rs. {selectedQuote.subtotal?.toFixed(2)}</Text>
+                    </View>
+                    {selectedQuote.total_discount > 0 && (
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabelGreen}>Discount</Text>
+                        <Text style={styles.pricingValueGreen}>- Rs. {selectedQuote.total_discount?.toFixed(2)}</Text>
+                      </View>
+                    )}
+                    {selectedQuote.packing_charges && selectedQuote.packing_charges > 0 && (
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabel}>Packing</Text>
+                        <Text style={styles.pricingValue}>Rs. {selectedQuote.packing_charges?.toFixed(2)}</Text>
+                      </View>
+                    )}
+                    {selectedQuote.shipping_cost > 0 && (
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabel}>Freight</Text>
+                        <Text style={styles.pricingValue}>Rs. {selectedQuote.shipping_cost?.toFixed(2)}</Text>
+                      </View>
+                    )}
+                    <View style={[styles.pricingRow, styles.totalRow]}>
+                      <Text style={styles.totalLabel2}>TOTAL</Text>
+                      <Text style={styles.totalValue}>Rs. {selectedQuote.total_price?.toFixed(2)}</Text>
+                    </View>
+                  </View>
+
+                  {/* Delivery */}
+                  {selectedQuote.delivery_location && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.sectionTitle}>Delivery</Text>
+                      <Text style={styles.deliveryText}>Pincode: {selectedQuote.delivery_location}</Text>
+                    </View>
+                  )}
+
+                  {/* Notes */}
+                  {selectedQuote.notes && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.sectionTitle}>Notes</Text>
+                      <Text style={styles.notesText}>{selectedQuote.notes}</Text>
+                    </View>
+                  )}
+
+                  {/* Date */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.dateText}>Created: {formatDate(selectedQuote.created_at)}</Text>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -164,38 +308,41 @@ export default function QuotesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: '#F5F5F5',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: '#F5F5F5',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
     paddingTop: 60,
-    paddingBottom: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
   },
   title: {
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#000',
   },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+  refreshButton: {
+    padding: 8,
   },
   listContainer: {
     padding: 16,
+    paddingBottom: 100,
   },
   quoteCard: {
     backgroundColor: '#fff',
@@ -204,9 +351,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   quoteHeader: {
     flexDirection: 'row',
@@ -216,34 +363,41 @@ const styles = StyleSheet.create({
   },
   quoteInfo: {
     flex: 1,
-    marginRight: 12,
   },
-  customerName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
+  quoteId: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FF6B00',
   },
   quoteDate: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: '#666',
+    marginTop: 4,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 20,
     gap: 4,
   },
   statusText: {
     fontSize: 12,
     fontWeight: '600',
   },
-  productsCount: {
-    fontSize: 14,
-    color: '#8E8E93',
+  productsList: {
     marginBottom: 12,
+  },
+  productItem: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 4,
+  },
+  moreProducts: {
+    fontSize: 13,
+    color: '#666',
+    fontStyle: 'italic',
   },
   quoteFooter: {
     flexDirection: 'row',
@@ -251,37 +405,174 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
+    borderTopColor: '#EEE',
   },
   totalLabel: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: '#666',
   },
   totalPrice: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#007AFF',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FF6B00',
   },
   emptyContainer: {
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
-    paddingVertical: 64,
+    alignItems: 'center',
+    paddingTop: 100,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  emptyButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  emptyButtonText: {
-    color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
+    color: '#666',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FF6B00',
+  },
+  modalScroll: {
+    padding: 16,
+  },
+  detailSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 12,
+  },
+  statusBadgeLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 8,
+  },
+  statusTextLarge: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  productCard: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  productName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+  },
+  productDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  productQty: {
+    fontSize: 14,
+    color: '#666',
+  },
+  productPrice: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FF6B00',
+  },
+  specsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+    gap: 8,
+  },
+  specText: {
+    fontSize: 12,
+    color: '#666',
+    backgroundColor: '#E0E0E0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  pricingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  pricingLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  pricingValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  pricingLabelGreen: {
+    fontSize: 14,
+    color: '#4CAF50',
+  },
+  pricingValueGreen: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4CAF50',
+  },
+  totalRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#EEE',
+    marginTop: 8,
+    paddingTop: 12,
+  },
+  totalLabel2: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+  },
+  totalValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FF6B00',
+  },
+  deliveryText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  notesText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  dateText: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
   },
 });
