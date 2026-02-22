@@ -475,11 +475,14 @@ def generate_product_code(roller_type, shaft_dia, pipe_dia, pipe_length, pipe_ty
     """
     Generate product code/SKU for conveyor rollers
     
-    Format for Standard Rollers: [TYPE][SHAFT] [PIPE] [LENGTH][THICKNESS] [SERIES][MAKE]
-    Example: CR20 89 1000A 62S
+    Format for Carrying Rollers: [TYPE][SHAFT] [PIPE] [LENGTH][THICKNESS] [SERIES][MAKE]
+    Example: CR20 89 1000A 62S (uppercase pipe type and make)
     
-    Format for Impact Rollers: [TYPE][SHAFT] [PIPE/RUBBER] [LENGTH][THICKNESS] [SERIES][MAKE]
-    Example: IR20 89/140 1190A 62S
+    Format for Return Rollers: [TYPE][SHAFT] [PIPE] [LENGTH][THICKNESS] [SERIES][MAKE]
+    Example: RR25 114 750B 62C (uppercase pipe type and make)
+    
+    Format for Impact Rollers: [TYPE][SHAFT] [PIPE/RUBBER] [LENGTH][thickness] [series][make]
+    Example: IR20 76/114 200b 62s (lowercase pipe type and make for impact)
     """
     # Roller type
     type_code = ROLLER_TYPE_CODES.get(roller_type.lower(), "CR")
@@ -498,14 +501,15 @@ def generate_product_code(roller_type, shaft_dia, pipe_dia, pipe_length, pipe_ty
     # Length in mm
     length_code = str(int(pipe_length))
     
-    # Pipe thickness type
-    thickness_code = pipe_type.upper()
-    
-    # Bearing series
-    series_code = BEARING_SERIES_MAP.get(bearing_number, "62")
-    
-    # Bearing make
-    make_code = BEARING_MAKE_CODES.get(bearing_make.lower(), "C")
+    # Pipe thickness type and bearing make - lowercase for impact rollers
+    if roller_type.lower() == "impact":
+        thickness_code = pipe_type.lower()
+        make_code = BEARING_MAKE_CODES.get(bearing_make.lower(), "c").lower()
+        series_code = BEARING_SERIES_MAP.get(bearing_number, "62").lower()
+    else:
+        thickness_code = pipe_type.upper()
+        make_code = BEARING_MAKE_CODES.get(bearing_make.lower(), "C").upper()
+        series_code = BEARING_SERIES_MAP.get(bearing_number, "62")
     
     # Combine all parts - space between pipe dia and length for better searching
     product_code = f"{type_code}{shaft_code} {pipe_code} {length_code}{thickness_code} {series_code}{make_code}"
