@@ -637,6 +637,22 @@ export default function CalculatorScreen() {
                 {result.freight ? ' + freight' : ''})
               </Text>
             </View>
+
+            {/* Save Quote Button */}
+            <TouchableOpacity
+              style={styles.saveQuoteButton}
+              onPress={saveQuote}
+              disabled={savingQuote}
+            >
+              {savingQuote ? (
+                <ActivityIndicator color="#FF6B00" />
+              ) : (
+                <>
+                  <Ionicons name="save-outline" size={24} color="#FF6B00" />
+                  <Text style={styles.saveQuoteButtonText}>Save as Quote</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         )}
 
