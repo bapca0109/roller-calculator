@@ -1389,15 +1389,46 @@ class GSTVerifyRequest(BaseModel):
 
 @api_router.get("/gst/captcha")
 async def get_gst_captcha(current_user: dict = Depends(get_current_user)):
-    """Get captcha image for GST verification"""
+    """Get captcha image for GST verification (fallback method)"""
     result = gst.get_captcha()
     if not result.get("success"):
+        # If captcha is blocked, return a helpful message
+        if result.get("blocked"):
+            raise HTTPException(
+                status_code=503, 
+                detail="GST portal blocked the request. Please use the direct GSTIN lookup feature instead."
+            )
         raise HTTPException(status_code=500, detail=result.get("error", "Failed to fetch captcha"))
     return result
 
+@api_router.get("/gst/lookup/{gstin}")
+async def lookup_gstin_direct(gstin: str, current_user: dict = Depends(get_current_user)):
+    """
+    Direct GSTIN lookup without captcha using Appyflow API
+    This is the primary method - no captcha required
+    """
+    # Validate GSTIN format first
+    if not gst.validate_gstin_format(gstin):
+        raise HTTPException(status_code=400, detail="Invalid GSTIN format. Must be 15 characters like 27AAACE8661R1Z5")
+    
+    # Try Appyflow API first (no captcha)
+    result = gst.verify_gstin_appyflow(gstin)
+    
+    if result.get("success"):
+        return result
+    
+    # If Appyflow fails, let user know they need to configure API key or use manual entry
+    if result.get("needs_captcha"):
+        raise HTTPException(
+            status_code=503, 
+            detail="GST lookup service unavailable. Please enter customer details manually or configure APPYFLOW_GST_KEY."
+        )
+    
+    raise HTTPException(status_code=400, detail=result.get("error", "Lookup failed"))
+
 @api_router.post("/gst/verify")
 async def verify_gst(request: GSTVerifyRequest, current_user: dict = Depends(get_current_user)):
-    """Verify GSTIN and get taxpayer details"""
+    """Verify GSTIN and get taxpayer details (captcha method - fallback)"""
     # Validate GSTIN format first
     if not gst.validate_gstin_format(request.gstin):
         raise HTTPException(status_code=400, detail="Invalid GSTIN format. Must be 15 characters like 27AAACE8661R1Z5")
