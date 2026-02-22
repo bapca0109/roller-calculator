@@ -1216,15 +1216,33 @@ async def search_product_catalog(
                                 search_text = f"{product_code} {product_code_no_make} {all_length_codes_with_type} {all_length_codes_without_type} {all_length_codes_series_only} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
                                 
                                 if query in search_text:
-                                    # Calculate base price for 1000mm length
+                                    # Build length details with belt width and weight
+                                    length_details = []
+                                    for length in standard_lengths:
+                                        belt_widths = rs.get_belt_widths_for_length(length, roller_type)
+                                        try:
+                                            weight = rs.calculate_roller_weight(pipe_dia, length, shaft_dia, pipe_type, None)
+                                        except:
+                                            weight = 0
+                                        length_details.append({
+                                            "length_mm": length,
+                                            "belt_widths": belt_widths,
+                                            "weight_kg": weight,
+                                            "product_code": f"{type_code}{shaft_dia} {pipe_display} {length}{pipe_type} {series}{make_code}"
+                                        })
+                                    
+                                    # Calculate base price and weight for first available length
+                                    base_length = standard_lengths[0] if standard_lengths else 380
                                     try:
                                         cost = rs.calculate_raw_material_cost(
-                                            pipe_dia, 1000, shaft_dia, bearing, make, None, pipe_type
+                                            pipe_dia, base_length, shaft_dia, bearing, make, None, pipe_type
                                         )
                                         pricing = rs.calculate_final_price(cost["total_raw_material"], "none", 1)
                                         base_price = pricing["unit_price"]
+                                        base_weight = rs.calculate_roller_weight(pipe_dia, base_length, shaft_dia, pipe_type, None)
                                     except:
                                         base_price = 0
+                                        base_weight = 0
                                     
                                     result = {
                                         "product_code": f"{type_code}{shaft_dia} {pipe_display} {series}{make_code}",
@@ -1238,7 +1256,9 @@ async def search_product_catalog(
                                         "bearing_series": series,
                                         "housing": housing,
                                         "base_price": round(base_price, 2),
+                                        "base_weight_kg": round(base_weight, 2),
                                         "available_lengths": standard_lengths,
+                                        "length_details": length_details,
                                         "description": f"{roller_type.title()} Roller - {shaft_dia}mm shaft, {pipe_dia}mm pipe, {bearing} ({make.upper()})",
                                         "exact_match": False
                                     }
