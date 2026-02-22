@@ -1278,13 +1278,6 @@ export default function CalculatorScreen() {
                   </View>
                 </View>
               )}
-                          style={styles.captchaImage}
-                          resizeMode="contain"
-                        />
-                        <TouchableOpacity style={styles.refreshCaptchaBtn} onPress={fetchGstCaptcha}>
-                          <Ionicons name="refresh" size={20} color="#960018" />
-                        </TouchableOpacity>
-                      </View>
 
               {gstinInput.length > 0 && gstinInput.length < 15 && (
                 <Text style={styles.gstHintText}>
