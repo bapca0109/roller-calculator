@@ -1137,6 +1137,13 @@ export default function CalculatorScreen() {
 
             <View style={styles.customerPickerFooter}>
               <TouchableOpacity
+                style={styles.fetchFromGstBtn}
+                onPress={openGstLookupFromCalculator}
+              >
+                <Ionicons name="search" size={18} color="#fff" />
+                <Text style={styles.fetchFromGstBtnText}>Fetch from GSTIN</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.clearCustomerBtn}
                 onPress={() => {
                   setSelectedCustomer(null);
@@ -1146,6 +1153,86 @@ export default function CalculatorScreen() {
                 <Text style={styles.clearCustomerBtnText}>Clear Selection</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      )}
+
+      {/* GST Lookup Modal */}
+      {showGstLookup && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.gstLookupModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Fetch Customer from GSTIN</Text>
+              <TouchableOpacity onPress={() => setShowGstLookup(false)}>
+                <Ionicons name="close" size={28} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.gstLookupContent}>
+              <View style={styles.gstInfoBox}>
+                <Ionicons name="information-circle-outline" size={18} color="#960018" />
+                <Text style={styles.gstInfoText}>
+                  Enter GSTIN to auto-fetch and save customer details
+                </Text>
+              </View>
+
+              <Text style={styles.gstInputLabel}>GSTIN (15 characters)</Text>
+              <TextInput
+                style={styles.gstInput}
+                value={gstinInput}
+                onChangeText={(text) => setGstinInput(text.toUpperCase())}
+                placeholder="e.g., 27AAACE8661R1Z5"
+                maxLength={15}
+                autoCapitalize="characters"
+              />
+
+              {gstLoading ? (
+                <View style={styles.captchaLoadingContainer}>
+                  <ActivityIndicator size="small" color="#960018" />
+                  <Text style={styles.captchaLoadingText}>Loading captcha...</Text>
+                </View>
+              ) : captchaData?.captcha_image ? (
+                <View style={styles.captchaSection}>
+                  <Text style={styles.gstInputLabel}>Enter Captcha</Text>
+                  <View style={styles.captchaRow}>
+                    <Image
+                      source={{ uri: captchaData.captcha_image }}
+                      style={styles.captchaImage}
+                      resizeMode="contain"
+                    />
+                    <TouchableOpacity style={styles.refreshCaptchaBtn} onPress={fetchGstCaptcha}>
+                      <Ionicons name="refresh" size={20} color="#960018" />
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    style={styles.gstInput}
+                    value={captchaInput}
+                    onChangeText={setCaptchaInput}
+                    placeholder="Enter captcha shown above"
+                    autoCapitalize="characters"
+                  />
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.loadCaptchaBtn} onPress={fetchGstCaptcha}>
+                  <Text style={styles.loadCaptchaBtnText}>Load Captcha</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={[styles.verifyGstBtn, (!gstinInput || !captchaInput || gstVerifying) && styles.verifyGstBtnDisabled]}
+                onPress={verifyGstinFromCalculator}
+                disabled={!gstinInput || !captchaInput || gstVerifying}
+              >
+                {gstVerifying ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                    <Text style={styles.verifyGstBtnText}>Verify & Create Customer</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       )}
