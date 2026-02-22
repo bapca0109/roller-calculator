@@ -643,4 +643,57 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
+  returnTag: {
+    backgroundColor: '#FF9800',
+  },
+  expandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    gap: 6,
+  },
+  expandButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#960018',
+  },
+  lengthDetailsContainer: {
+    marginTop: 8,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  lengthTableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#960018',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  lengthTableHeaderText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 11,
+  },
+  lengthTableRow: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  lengthTableRowAlt: {
+    backgroundColor: '#F0F0F0',
+  },
+  lengthTableCell: {
+    fontSize: 12,
+    color: '#333',
+  },
+  lengthCodeCell: {
+    fontWeight: '500',
+    color: '#1A1A2E',
+  },
 });
