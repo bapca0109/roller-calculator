@@ -759,7 +759,7 @@ async def calculate_detailed_cost(
 async def export_raw_materials(
     current_user: dict = Depends(get_current_user)
 ):
-    """Export raw material pricing data to Excel file"""
+    """Export raw material pricing data to Excel file (authenticated)"""
     # Generate fresh Excel file
     import subprocess
     result = subprocess.run(
@@ -776,6 +776,28 @@ async def export_raw_materials(
     return FileResponse(
         path=str(file_path),
         filename="raw_materials_pricing.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@api_router.get("/download/raw-materials-pricing")
+async def download_raw_materials_public():
+    """Public download link for raw material pricing Excel file"""
+    # Generate fresh Excel file
+    import subprocess
+    result = subprocess.run(
+        ["python", "export_raw_materials.py"],
+        cwd=str(ROOT_DIR),
+        capture_output=True,
+        text=True
+    )
+    
+    file_path = ROOT_DIR / "raw_materials_pricing.xlsx"
+    if not file_path.exists():
+        raise HTTPException(status_code=500, detail="Failed to generate Excel file")
+    
+    return FileResponse(
+        path=str(file_path),
+        filename="Conveyor_Roller_Raw_Materials_Pricing.xlsx",
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
