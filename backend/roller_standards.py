@@ -128,15 +128,38 @@ SHAFT_WEIGHT_PER_METER = {
 PIPE_COST_PER_KG = 67  # INR per kg - UNIFORM for all diameters
 SHAFT_COST_PER_KG = 62  # INR per kg
 
-# Seal Set Costs (INR per set) - ACTUAL PRICES
+# Seal Set Costs (INR per set) - BEARING-SPECIFIC - ACTUAL PRICES
 SEAL_COSTS = {
-    20: 13,
-    25: 18,
-    30: 24,
-    35: 40,
-    40: 50,
-    45: 100,
-    50: 130
+    # 20mm shaft bearings
+    "6204": 13,
+    "6304": 18,
+    "420204": 13,  # Same as 6204
+    
+    # 25mm shaft bearings
+    "6205": 18,
+    "6305": 25,
+    "420205": 18,  # Same as 6205
+    
+    # 30mm shaft bearings
+    "6206": 25,
+    "6306": 40,
+    "420206": 25,  # Same as 6206
+    
+    # 35mm shaft bearings
+    "6207": 40,
+    "6307": 50,
+    
+    # 40mm shaft bearings
+    "6208": 50,
+    "6308": 90,
+    
+    # 45mm shaft bearings
+    "6209": 90,
+    "6309": 120,
+    
+    # 50mm shaft bearings
+    "6210": 120,
+    "6310": 140
 }
 
 # Cost Calculation Constants - AS PER YOUR FORMULA
