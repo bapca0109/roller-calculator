@@ -368,22 +368,30 @@ export default function CalculatorScreen() {
           </View>
         </View>
 
-        {/* Impact Roller Options */}
-        {rollerType === 'impact' && availableRubberDiameters.length > 0 && (
+        {/* Impact Roller Options - Always show when Impact is selected */}
+        {rollerType === 'impact' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Rubber Lagging</Text>
             <Text style={styles.label}>Rubber Diameter</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={rubberDiameter}
-                onValueChange={(value) => setRubberDiameter(value)}
-                style={styles.picker}
-              >
-                {availableRubberDiameters.map((dia) => (
-                  <Picker.Item key={dia} label={`${dia} mm`} value={dia} />
-                ))}
-              </Picker>
-            </View>
+            {availableRubberDiameters.length > 0 ? (
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={rubberDiameter}
+                  onValueChange={(value) => setRubberDiameter(value)}
+                  style={styles.picker}
+                >
+                  {availableRubberDiameters.map((dia) => (
+                    <Picker.Item key={dia} label={`${dia} mm`} value={dia} />
+                  ))}
+                </Picker>
+              </View>
+            ) : (
+              <View style={styles.noOptionsContainer}>
+                <Text style={styles.noOptionsText}>
+                  No rubber options available for {pipeDiameter}mm pipe
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
