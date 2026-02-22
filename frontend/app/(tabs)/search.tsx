@@ -551,20 +551,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FF6B00',
   },
-  configButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  configButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FF6B00',
-  },
   noResults: {
     flex: 1,
     justifyContent: 'center',
