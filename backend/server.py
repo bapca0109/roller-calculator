@@ -693,6 +693,47 @@ async def calculate_detailed_cost(
         request.rubber_diameter
     )
     
+    # Calculate quantity
+    quantity = request.quantity or 1
+    
+    # Calculate total for all rollers (before freight)
+    total_price_all_rollers = pricing["final_price"] * quantity
+    
+    # Initialize freight data
+    freight_data = None
+    total_freight_charges = 0.0
+    
+    # Calculate freight if destination pincode is provided
+    if request.freight_pincode:
+        # Calculate weight of single roller
+        single_roller_weight = rs.calculate_roller_weight(
+            request.pipe_diameter,
+            request.pipe_length,
+            request.shaft_diameter,
+            request.pipe_type or "B",
+            request.rubber_diameter
+        )
+        
+        # Calculate total weight for all rollers
+        total_weight = single_roller_weight * quantity
+        
+        # Calculate freight charges
+        freight_calc = rs.calculate_freight_charges(total_weight, request.freight_pincode)
+        
+        freight_data = {
+            "destination_pincode": request.freight_pincode,
+            "dispatch_pincode": rs.DISPATCH_PINCODE,
+            "distance_km": freight_calc["distance_km"],
+            "single_roller_weight_kg": single_roller_weight,
+            "total_weight_kg": round(total_weight, 2),
+            "freight_rate_per_kg": freight_calc["freight_rate_per_kg"],
+            "freight_charges": freight_calc["freight_charges"]
+        }
+        total_freight_charges = freight_calc["freight_charges"]
+    
+    # Calculate grand total (product price × quantity + freight)
+    grand_total = total_price_all_rollers + total_freight_charges
+    
     return DetailedCostResponse(
         configuration={
             "product_code": product_code,
@@ -706,10 +747,13 @@ async def calculate_detailed_cost(
             "bearing_make": request.bearing_make or "china",
             "housing": housing,
             "belt_width_mm": request.belt_width,
-            "rubber_diameter_mm": request.rubber_diameter
+            "rubber_diameter_mm": request.rubber_diameter,
+            "quantity": quantity
         },
         cost_breakdown=cost_breakdown,
-        pricing=pricing
+        pricing=pricing,
+        freight=freight_data,
+        grand_total=round(grand_total, 2)
     )
 
 # Include the router in the main app
