@@ -350,10 +350,13 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
     
     # Rubber lagging cost (optional, for impact rollers)
     rubber_cost = 0
+    locking_ring_cost = 0
     if rubber_dia:
         rubber_cost = calculate_rubber_cost(pipe_dia, rubber_dia, pipe_length_mm)
+        # Add locking ring cost for impact rollers
+        locking_ring_cost = LOCKING_RING_COSTS.get(int(pipe_dia), 0)
     
-    total_raw_material = pipe_cost + shaft_cost + bearing_cost + housing_cost + seal_cost + circlip_cost + rubber_cost
+    total_raw_material = pipe_cost + shaft_cost + bearing_cost + housing_cost + seal_cost + circlip_cost + rubber_cost + locking_ring_cost
     
     result = {
         "pipe_cost": round(pipe_cost, 2),
@@ -367,6 +370,7 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
     
     if rubber_dia:
         result["rubber_cost"] = round(rubber_cost, 2)
+        result["locking_ring_cost"] = round(locking_ring_cost, 2)
         number_of_rings = pipe_length_mm / RUBBER_RING_THICKNESS
         result["rubber_rings"] = round(number_of_rings, 1)
     
