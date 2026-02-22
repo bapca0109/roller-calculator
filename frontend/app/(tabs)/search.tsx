@@ -204,7 +204,7 @@ export default function SearchScreen() {
       {!hasSearched && (
         <View style={styles.tipsContainer}>
           <View style={styles.tipCard}>
-            <Ionicons name="bulb-outline" size={24} color="#FF6B00" />
+            <Ionicons name="bulb-outline" size={24} color="#960018" />
             <View style={styles.tipContent}>
               <Text style={styles.tipTitle}>Search Tips</Text>
               <Text style={styles.tipText}>
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   header: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#960018',
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 20,
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   searchButton: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#960018',
     width: 52,
     height: 52,
     borderRadius: 12,
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterTag: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#960018',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
   productCode: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FF6B00',
+    color: '#960018',
     letterSpacing: 0.5,
   },
   typeTag: {
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   priceValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#960018',
   },
   noResults: {
     flex: 1,

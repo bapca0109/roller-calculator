@@ -144,22 +144,22 @@ export default function QuotesScreen() {
         <meta charset="UTF-8">
         <style>
           body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #FF6B00; padding-bottom: 20px; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #960018; padding-bottom: 20px; }
           .logo { font-size: 28px; font-weight: bold; color: #000; }
-          .logo span { color: #FF6B00; }
+          .logo span { color: #960018; }
           .company-name { font-size: 12px; color: #666; margin-top: 5px; }
-          .quote-title { font-size: 24px; color: #FF6B00; margin-top: 15px; }
+          .quote-title { font-size: 24px; color: #960018; margin-top: 15px; }
           .quote-info { display: flex; justify-content: space-between; margin-bottom: 20px; }
           .info-box { background: #f5f5f5; padding: 15px; border-radius: 8px; width: 48%; }
           .info-label { font-size: 12px; color: #666; }
           .info-value { font-size: 14px; font-weight: bold; margin-top: 5px; }
           table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th { background: #FF6B00; color: white; padding: 12px; text-align: left; }
+          th { background: #960018; color: white; padding: 12px; text-align: left; }
           .summary { margin-top: 30px; }
           .summary-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
           .summary-label { color: #666; }
           .summary-value { font-weight: bold; }
-          .total-row { background: #FF6B00; color: white; padding: 15px; border-radius: 8px; margin-top: 10px; }
+          .total-row { background: #960018; color: white; padding: 15px; border-radius: 8px; margin-top: 10px; }
           .total-row .summary-label, .total-row .summary-value { color: white; }
           .total-row .summary-value { font-size: 20px; }
           .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px; }
@@ -179,7 +179,7 @@ export default function QuotesScreen() {
         <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
           <div class="info-box" style="width: 48%;">
             <div class="info-label">Quote Number</div>
-            <div class="info-value" style="color: #FF6B00;">#${quote.id.slice(-6).toUpperCase()}</div>
+            <div class="info-value" style="color: #960018;">#${quote.id.slice(-6).toUpperCase()}</div>
             <div class="info-label" style="margin-top: 10px;">Date</div>
             <div class="info-value">${formatDate(quote.created_at)}</div>
           </div>
@@ -193,7 +193,7 @@ export default function QuotesScreen() {
           </div>
         </div>
 
-        <h3 style="color: #333; border-bottom: 2px solid #FF6B00; padding-bottom: 10px;">Products</h3>
+        <h3 style="color: #333; border-bottom: 2px solid #960018; padding-bottom: 10px;">Products</h3>
         <table>
           <thead>
             <tr>
@@ -210,7 +210,7 @@ export default function QuotesScreen() {
         </table>
 
         <div class="summary">
-          <h3 style="color: #333; border-bottom: 2px solid #FF6B00; padding-bottom: 10px;">Summary</h3>
+          <h3 style="color: #333; border-bottom: 2px solid #960018; padding-bottom: 10px;">Summary</h3>
           <div class="summary-row">
             <span class="summary-label">Subtotal</span>
             <span class="summary-value">Rs. ${quote.subtotal?.toFixed(2)}</span>
@@ -346,7 +346,7 @@ export default function QuotesScreen() {
   if (loading && !refreshing) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#FF6B00" />
+        <ActivityIndicator size="large" color="#960018" />
         <Text style={styles.loadingText}>Loading quotes...</Text>
       </View>
     );
@@ -357,7 +357,7 @@ export default function QuotesScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>My Quotes</Text>
         <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-          <Ionicons name="refresh" size={24} color="#FF6B00" />
+          <Ionicons name="refresh" size={24} color="#960018" />
         </TouchableOpacity>
       </View>
 
@@ -367,7 +367,7 @@ export default function QuotesScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B00" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#960018" />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
   quoteId: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#960018',
   },
   quoteDate: {
     fontSize: 12,
@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
   totalPrice: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#960018',
   },
   emptyContainer: {
     flex: 1,
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#960018',
   },
   modalScroll: {
     padding: 16,
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#FF6B00',
+    color: '#960018',
   },
   specsContainer: {
     flexDirection: 'row',
@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#960018',
   },
   deliveryText: {
     fontSize: 14,
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#960018',
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 20,

@@ -128,7 +128,7 @@ export default function AdminScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF6B00" />
+        <ActivityIndicator size="large" color="#960018" />
         <Text style={styles.loadingText}>Loading prices...</Text>
       </View>
     );
@@ -173,7 +173,7 @@ export default function AdminScreen() {
           onPress={() => startEdit(editKey, value)}
         >
           <Text style={styles.priceValue}>Rs. {value.toFixed(2)}</Text>
-          <Ionicons name="pencil" size={16} color="#FF6B00" />
+          <Ionicons name="pencil" size={16} color="#960018" />
         </TouchableOpacity>
       )}
     </View>
@@ -347,7 +347,7 @@ export default function AdminScreen() {
 
       {saving && (
         <View style={styles.savingOverlay}>
-          <ActivityIndicator size="large" color="#FF6B00" />
+          <ActivityIndicator size="large" color="#960018" />
           <Text style={styles.savingText}>Saving...</Text>
         </View>
       )}
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   header: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#960018',
     paddingTop: 60,
     paddingBottom: 20,
     paddingHorizontal: 20,
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   categoryTabActive: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#960018',
   },
   categoryTabText: {
     fontSize: 13,
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
   bearingTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FF6B00',
+    color: '#960018',
     marginBottom: 8,
   },
   priceRow: {
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 36,
     borderWidth: 1,
-    borderColor: '#FF6B00',
+    borderColor: '#960018',
     borderRadius: 6,
     paddingHorizontal: 10,
     fontSize: 14,

@@ -401,7 +401,7 @@ export default function CalculatorScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF6B00" />
+        <ActivityIndicator size="large" color="#960018" />
         <Text style={styles.loadingText}>Loading standards...</Text>
       </View>
     );
@@ -906,10 +906,10 @@ export default function CalculatorScreen() {
                 disabled={savingQuote}
               >
                 {savingQuote ? (
-                  <ActivityIndicator color="#FF6B00" />
+                  <ActivityIndicator color="#960018" />
                 ) : (
                   <>
-                    <Ionicons name="save-outline" size={24} color="#FF6B00" />
+                    <Ionicons name="save-outline" size={24} color="#960018" />
                     <Text style={styles.saveQuoteButtonText}>Save Single</Text>
                   </>
                 )}
@@ -1010,7 +1010,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#960018',
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 20,
@@ -1123,7 +1123,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   toggleButtonActive: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#960018',
   },
   toggleText: {
     fontSize: 16,
@@ -1137,13 +1137,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#960018',
     marginHorizontal: 16,
     marginTop: 24,
     paddingVertical: 16,
     borderRadius: 12,
     gap: 10,
-    shadowColor: '#FF6B00',
+    shadowColor: '#960018',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1168,10 +1168,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
     borderWidth: 2,
-    borderColor: '#FF6B00',
+    borderColor: '#960018',
   },
   saveQuoteButtonText: {
-    color: '#FF6B00',
+    color: '#960018',
     fontSize: 14,
     fontWeight: '700',
   },
@@ -1199,7 +1199,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 80,
     right: 16,
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#960018',
     borderRadius: 30,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -1222,7 +1222,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   badgeCountText: {
-    color: '#FF6B00',
+    color: '#960018',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1277,7 +1277,7 @@ const styles = StyleSheet.create({
   quoteItemCode: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#960018',
   },
   quoteItemDesc: {
     fontSize: 14,
@@ -1316,10 +1316,10 @@ const styles = StyleSheet.create({
   modalTotalValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#960018',
   },
   saveAllButton: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#960018',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -1348,7 +1348,7 @@ const styles = StyleSheet.create({
   productCode: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FF6B00',
+    color: '#960018',
     letterSpacing: 1,
   },
   resultCard: {
@@ -1426,10 +1426,10 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#960018',
   },
   grandTotalCard: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#960018',
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
