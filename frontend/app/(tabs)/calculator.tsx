@@ -193,13 +193,80 @@ export default function CalculatorScreen() {
     }
   };
 
-  const calculateCost = async () => {
-    if (!pipeLength || parseInt(pipeLength) <= 0) {
-      Alert.alert('Error', 'Please enter a valid pipe length');
-      return;
+  // Validation functions
+  const validatePipeLength = (value: string) => {
+    if (!value || value.trim() === '') {
+      return 'Pipe length is required';
     }
-    if (!quantity || parseInt(quantity) <= 0) {
-      Alert.alert('Error', 'Please enter a valid quantity');
+    const num = parseInt(value);
+    if (isNaN(num) || num <= 0) {
+      return 'Enter a valid length (greater than 0)';
+    }
+    if (num < 100) {
+      return 'Minimum length is 100mm';
+    }
+    if (num > 3000) {
+      return 'Maximum length is 3000mm';
+    }
+    return '';
+  };
+
+  const validateQuantity = (value: string) => {
+    if (!value || value.trim() === '') {
+      return 'Quantity is required';
+    }
+    const num = parseInt(value);
+    if (isNaN(num) || num <= 0) {
+      return 'Enter a valid quantity (greater than 0)';
+    }
+    if (num > 100000) {
+      return 'Maximum quantity is 100,000';
+    }
+    return '';
+  };
+
+  const validatePincode = (value: string) => {
+    if (!value || value.trim() === '') {
+      return ''; // Pincode is optional
+    }
+    if (!/^\d{6}$/.test(value)) {
+      return 'Enter valid 6-digit pincode';
+    }
+    return '';
+  };
+
+  const handlePipeLengthChange = (value: string) => {
+    setPipeLength(value);
+    const error = validatePipeLength(value);
+    setErrors(prev => ({ ...prev, pipeLength: error }));
+  };
+
+  const handleQuantityChange = (value: string) => {
+    setQuantity(value);
+    const error = validateQuantity(value);
+    setErrors(prev => ({ ...prev, quantity: error }));
+  };
+
+  const handlePincodeChange = (value: string) => {
+    setFreightPincode(value);
+    const error = validatePincode(value);
+    setErrors(prev => ({ ...prev, freightPincode: error }));
+  };
+
+  const calculateCost = async () => {
+    // Validate all fields
+    const pipeLengthError = validatePipeLength(pipeLength);
+    const quantityError = validateQuantity(quantity);
+    const pincodeError = validatePincode(freightPincode);
+
+    setErrors({
+      pipeLength: pipeLengthError,
+      quantity: quantityError,
+      freightPincode: pincodeError,
+    });
+
+    // If any errors, don't proceed
+    if (pipeLengthError || quantityError || pincodeError) {
       return;
     }
 
