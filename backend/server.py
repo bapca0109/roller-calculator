@@ -765,6 +765,31 @@ async def calculate_detailed_cost(
             detail=f"No compatible housing for pipe {request.pipe_diameter}mm and bearing {request.bearing_number}"
         )
     
+    # Validate rubber diameter for impact rollers
+    if request.rubber_diameter:
+        pipe_code = rs.get_pipe_code(request.pipe_diameter)
+        valid_rubber_options = rs.RUBBER_LAGGING_OPTIONS.get(pipe_code, [])
+        
+        if not valid_rubber_options:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No rubber ring options available for pipe {request.pipe_diameter}mm"
+            )
+        
+        if int(request.rubber_diameter) not in valid_rubber_options:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid rubber ring diameter {int(request.rubber_diameter)}mm for pipe {pipe_code}mm. Valid options: {valid_rubber_options}"
+            )
+        
+        # Also verify rubber ring cost exists
+        rubber_key = f"{pipe_code}/{int(request.rubber_diameter)}"
+        if rubber_key not in rs.RUBBER_RING_COSTS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No pricing available for rubber ring combination {rubber_key}. Valid options for {pipe_code}mm pipe: {valid_rubber_options}"
+            )
+    
     # Calculate shaft length
     shaft_length = rs.calculate_shaft_length(request.pipe_length)
     
