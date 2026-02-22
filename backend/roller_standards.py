@@ -333,6 +333,18 @@ PACKING_CHARGES = {
     "wooden_box": 0.08,  # 8% for wooden box packing
 }
 
+# Freight Charges Configuration
+DISPATCH_PINCODE = "382433"  # Gujarat - Dispatch location
+
+# Freight rates per kg based on distance from dispatch location
+FREIGHT_RATES_PER_KG = {
+    (0, 300): 2.0,       # 0-300 km: ₹2/kg
+    (300, 600): 4.0,     # 300-600 km: ₹4/kg
+    (600, 1000): 5.0,    # 600-1000 km: ₹5/kg
+    (1000, 1500): 7.0,   # 1000-1500 km: ₹7/kg
+    (1500, 9999): 9.0    # 1500+ km: ₹9/kg
+}
+
 def calculate_shaft_length(pipe_length_mm):
     """Calculate shaft length: pipe length + 70mm (35mm on each side)"""
     return pipe_length_mm + 70
