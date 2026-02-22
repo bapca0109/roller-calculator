@@ -1055,10 +1055,12 @@ async def search_product_catalog(
                             product_code = f"{type_code}{shaft_dia} {round(pipe_dia)} {series}{make_code}"
                             
                             # Build search text with ALL IS-8598 standard lengths
-                            all_length_codes = " ".join([f"{type_code}{shaft_dia} {round(pipe_dia)} {length}{pipe_type} {series}{make_code}" for length in standard_lengths])
+                            # Include both with pipe type (315A) and without (315 62F) for flexible matching
+                            all_length_codes_with_type = " ".join([f"{type_code}{shaft_dia} {round(pipe_dia)} {length}{pipe_type} {series}{make_code}" for length in standard_lengths])
+                            all_length_codes_without_type = " ".join([f"{type_code}{shaft_dia} {round(pipe_dia)} {length} {series}{make_code}" for length in standard_lengths])
                             
                             # Check if query matches this product
-                            search_text = f"{product_code} {all_length_codes} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
+                            search_text = f"{product_code} {all_length_codes_with_type} {all_length_codes_without_type} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
                             
                             if query in search_text:
                                 # Calculate base price for 1000mm length
