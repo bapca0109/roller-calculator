@@ -111,10 +111,8 @@ export default function SearchScreen() {
   };
 
   const renderResultItem = ({ item }: { item: ProductResult }) => (
-    <TouchableOpacity 
+    <View 
       style={[styles.resultCard, item.exact_match && styles.exactMatchCard]} 
-      onPress={navigateToCalculator}
-      activeOpacity={0.8}
       data-testid={`product-${item.product_code}`}
     >
       <View style={styles.resultHeader}>
