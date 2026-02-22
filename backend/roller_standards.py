@@ -442,25 +442,40 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
     
     return result
 
-def calculate_final_price(raw_material_cost):
+def calculate_final_price(raw_material_cost, packing_type="none"):
     """
     Calculate final price using your formula:
-    Total = Raw Material × 1.32 × 1.60 = Raw Material × 2.112
+    Total = Raw Material × 1.32 × 1.60
+    Then add packing charges based on customer selection
     
     Where:
     - 1.32 = Raw Material + 32% Layout cost
     - 1.60 = 60% Profit on (Raw Material + Layout)
+    
+    Packing charges (applied AFTER product price):
+    - pallet: 4% of product price
+    - wooden_box: 8% of product price
+    - none: 0%
     """
     layout_cost = raw_material_cost * LAYOUT_MARKUP
     subtotal_with_layout = raw_material_cost + layout_cost
     profit = subtotal_with_layout * PROFIT_MARKUP
-    final_price = subtotal_with_layout + profit
+    product_price = subtotal_with_layout + profit
+    
+    # Calculate packing charges (percentage of product price)
+    packing_percent = PACKING_CHARGES.get(packing_type, 0.0)
+    packing_charges = product_price * packing_percent
+    
+    final_price = product_price + packing_charges
     
     return {
         "raw_material_cost": round(raw_material_cost, 2),
         "layout_cost": round(layout_cost, 2),
         "subtotal_with_layout": round(subtotal_with_layout, 2),
         "profit": round(profit, 2),
+        "product_price": round(product_price, 2),
+        "packing_type": packing_type,
+        "packing_charges": round(packing_charges, 2),
         "final_price": round(final_price, 2),
-        "multiplier": 2.112  # For reference
+        "multiplier": 2.112  # For reference (1.32 × 1.60)
     }
