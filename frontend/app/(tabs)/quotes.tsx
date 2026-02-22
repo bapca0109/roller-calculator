@@ -52,6 +52,7 @@ export default function QuotesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
