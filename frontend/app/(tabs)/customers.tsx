@@ -170,13 +170,71 @@ export default function CustomersScreen() {
     setModalVisible(true);
   };
 
+  // State for existing customer found by GSTIN
+  const [existingGstCustomer, setExistingGstCustomer] = useState<Customer | null>(null);
+  const [searchingGstin, setSearchingGstin] = useState(false);
+
   // GST Lookup functions
   const openGstLookup = () => {
     setGstinInput('');
     setCaptchaData(null);
     setCaptchaInput('');
+    setExistingGstCustomer(null);
     setGstModalVisible(true);
-    fetchCaptcha();
+  };
+
+  // Quick search by GSTIN - check database first
+  const searchGstinInDatabase = async (gstin: string) => {
+    if (gstin.length !== 15) {
+      setExistingGstCustomer(null);
+      return;
+    }
+    
+    setSearchingGstin(true);
+    try {
+      const response = await api.get(`/customers/search/gstin/${gstin.toUpperCase()}`);
+      if (response.data.found) {
+        setExistingGstCustomer(response.data.customer);
+      } else {
+        setExistingGstCustomer(null);
+      }
+    } catch (error) {
+      setExistingGstCustomer(null);
+    } finally {
+      setSearchingGstin(false);
+    }
+  };
+
+  // Handle GSTIN input change with search
+  const handleGstinInputChange = (text: string) => {
+    const upperText = text.toUpperCase();
+    setGstinInput(upperText);
+    if (upperText.length === 15) {
+      searchGstinInDatabase(upperText);
+    } else {
+      setExistingGstCustomer(null);
+    }
+  };
+
+  // Open existing customer for editing
+  const editExistingGstCustomer = () => {
+    if (existingGstCustomer) {
+      setEditingCustomer(existingGstCustomer);
+      setFormData({
+        name: existingGstCustomer.name,
+        company: existingGstCustomer.company || '',
+        email: existingGstCustomer.email || '',
+        phone: existingGstCustomer.phone || '',
+        address: existingGstCustomer.address || '',
+        city: existingGstCustomer.city || '',
+        state: existingGstCustomer.state || '',
+        pincode: existingGstCustomer.pincode || '',
+        gst_number: existingGstCustomer.gst_number || '',
+        notes: existingGstCustomer.notes || '',
+      });
+      setGstModalVisible(false);
+      setModalVisible(true);
+    }
   };
 
   const fetchCaptcha = async () => {
