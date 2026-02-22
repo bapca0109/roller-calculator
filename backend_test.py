@@ -9,7 +9,7 @@ import json
 from typing import Dict, Any
 
 # Backend URL configuration
-BASE_URL = "https://conveyor-pricer.preview.emergentagent.com/api"
+BASE_URL = "http://localhost:8001/api"
 
 class FreightCalculationTester:
     def __init__(self):
