@@ -747,8 +747,8 @@ async def calculate_detailed_cost(
         request.pipe_type or "B"
     )
     
-    # Generate product code
-    roller_type = "impact" if request.rubber_diameter else "carrying"  # Default to carrying, user can specify
+    # Generate product code - use roller_type from request, fallback to impact if rubber_diameter present
+    roller_type = request.roller_type or ("impact" if request.rubber_diameter else "carrying")
     product_code = rs.generate_product_code(
         roller_type,
         request.shaft_diameter,
