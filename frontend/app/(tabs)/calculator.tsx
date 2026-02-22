@@ -129,6 +129,11 @@ export default function CalculatorScreen() {
   const [savingQuote, setSavingQuote] = useState(false);
   const [quoteItems, setQuoteItems] = useState<CostResult[]>([]);
   const [showQuoteBuilder, setShowQuoteBuilder] = useState(false);
+  
+  // Customer selection state
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
 
   // Form state
   const [rollerType, setRollerType] = useState<'carrying' | 'impact' | 'return'>('carrying');
