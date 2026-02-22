@@ -10,7 +10,7 @@ import sys
 from typing import Dict, Any
 
 # Backend URL - using the configured URL from frontend
-BACKEND_URL = "https://cost-calculator-77.preview.emergentagent.com/api"
+BACKEND_URL = "https://conveyor-pricer.preview.emergentagent.com/api"
 
 # Test credentials
 ADMIN_EMAIL = "admin@test.com"
