@@ -594,12 +594,15 @@ export default function CalculatorScreen() {
 
           <Text style={styles.label}>Quantity</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.quantity ? styles.inputError : null]}
             value={quantity}
-            onChangeText={setQuantity}
+            onChangeText={handleQuantityChange}
             keyboardType="numeric"
             placeholder="Number of rollers"
           />
+          {errors.quantity ? (
+            <Text style={styles.errorText}>{errors.quantity}</Text>
+          ) : null}
 
           <Text style={styles.label}>Packing Type</Text>
           <View style={styles.pickerContainer}>
