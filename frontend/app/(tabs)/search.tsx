@@ -108,65 +108,126 @@ export default function SearchScreen() {
     setHasSearched(false);
   };
 
-  const renderResultItem = ({ item }: { item: ProductResult }) => (
-    <View 
-      style={[styles.resultCard, item.exact_match && styles.exactMatchCard]} 
-      data-testid={`product-${item.product_code}`}
-    >
-      <View style={styles.resultHeader}>
-        <View style={styles.productCodeContainer}>
-          <Text style={styles.productCodeLabel}>Product Code</Text>
-          <Text style={styles.productCode}>{item.product_code}</Text>
-        </View>
-        <View style={[styles.typeTag, item.roller_type === 'impact' && styles.impactTag]}>
-          <Text style={styles.typeTagText}>
-            {item.roller_type === 'impact' ? 'Impact' : 'Carrying'}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.resultBody}>
-        <View style={styles.specRow}>
-          <View style={styles.specItem}>
-            <Ionicons name="disc-outline" size={16} color="#888" />
-            <Text style={styles.specLabel}>Pipe</Text>
-            <Text style={styles.specValue}>
-              {item.pipe_diameter}mm {item.pipe_length ? `x ${item.pipe_length}mm` : ''}
+  const renderResultItem = ({ item }: { item: ProductResult }) => {
+    const isExpanded = expandedProduct === item.product_code;
+    
+    return (
+      <View 
+        style={[styles.resultCard, item.exact_match && styles.exactMatchCard]} 
+        data-testid={`product-${item.product_code}`}
+      >
+        <View style={styles.resultHeader}>
+          <View style={styles.productCodeContainer}>
+            <Text style={styles.productCodeLabel}>Product Code</Text>
+            <Text style={styles.productCode}>{item.product_code}</Text>
+          </View>
+          <View style={[
+            styles.typeTag, 
+            item.roller_type === 'impact' && styles.impactTag,
+            item.roller_type === 'return' && styles.returnTag
+          ]}>
+            <Text style={styles.typeTagText}>
+              {item.roller_type === 'impact' ? 'Impact' : item.roller_type === 'return' ? 'Return' : 'Carrying'}
             </Text>
           </View>
-          <View style={styles.specItem}>
-            <Ionicons name="git-commit-outline" size={16} color="#888" />
-            <Text style={styles.specLabel}>Shaft</Text>
-            <Text style={styles.specValue}>{item.shaft_diameter}mm</Text>
-          </View>
         </View>
 
-        <View style={styles.specRow}>
-          <View style={styles.specItem}>
-            <Ionicons name="settings-outline" size={16} color="#888" />
-            <Text style={styles.specLabel}>Bearing</Text>
-            <Text style={styles.specValue}>{item.bearing}</Text>
+        <View style={styles.resultBody}>
+          <View style={styles.specRow}>
+            <View style={styles.specItem}>
+              <Ionicons name="disc-outline" size={16} color="#888" />
+              <Text style={styles.specLabel}>Pipe</Text>
+              <Text style={styles.specValue}>
+                {item.pipe_diameter}mm {item.rubber_diameter ? `/ ${item.rubber_diameter}mm` : ''}
+              </Text>
+            </View>
+            <View style={styles.specItem}>
+              <Ionicons name="git-commit-outline" size={16} color="#888" />
+              <Text style={styles.specLabel}>Shaft</Text>
+              <Text style={styles.specValue}>{item.shaft_diameter}mm</Text>
+            </View>
           </View>
-          <View style={styles.specItem}>
-            <Ionicons name="business-outline" size={16} color="#888" />
-            <Text style={styles.specLabel}>Make</Text>
-            <Text style={styles.specValue}>{item.bearing_make.toUpperCase()}</Text>
-          </View>
-        </View>
 
-        <View style={styles.divider} />
-
-        <View style={styles.pricingRow}>
-          <View>
-            <Text style={styles.priceLabel}>
-              {item.exact_match ? 'Price' : 'Base Price (1000mm)'}
-            </Text>
-            <Text style={styles.priceValue}>Rs. {(item.base_price || 0).toFixed(2)}</Text>
+          <View style={styles.specRow}>
+            <View style={styles.specItem}>
+              <Ionicons name="settings-outline" size={16} color="#888" />
+              <Text style={styles.specLabel}>Bearing</Text>
+              <Text style={styles.specValue}>{item.bearing}</Text>
+            </View>
+            <View style={styles.specItem}>
+              <Ionicons name="business-outline" size={16} color="#888" />
+              <Text style={styles.specLabel}>Make</Text>
+              <Text style={styles.specValue}>{item.bearing_make.toUpperCase()}</Text>
+            </View>
           </View>
+
+          {/* Base Weight */}
+          {item.base_weight_kg && (
+            <View style={styles.specRow}>
+              <View style={styles.specItem}>
+                <Ionicons name="scale-outline" size={16} color="#888" />
+                <Text style={styles.specLabel}>Base Weight</Text>
+                <Text style={styles.specValue}>{item.base_weight_kg} kg</Text>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.divider} />
+
+          <View style={styles.pricingRow}>
+            <View>
+              <Text style={styles.priceLabel}>
+                {item.exact_match ? 'Price' : 'Base Price'}
+              </Text>
+              <Text style={styles.priceValue}>Rs. {(item.base_price || 0).toFixed(2)}</Text>
+            </View>
+          </View>
+
+          {/* Expandable Length Details */}
+          {item.length_details && item.length_details.length > 0 && (
+            <>
+              <TouchableOpacity 
+                style={styles.expandButton}
+                onPress={() => setExpandedProduct(isExpanded ? null : item.product_code)}
+              >
+                <Text style={styles.expandButtonText}>
+                  {isExpanded ? 'Hide' : 'Show'} Length Details ({item.length_details.length})
+                </Text>
+                <Ionicons 
+                  name={isExpanded ? "chevron-up" : "chevron-down"} 
+                  size={18} 
+                  color="#960018" 
+                />
+              </TouchableOpacity>
+
+              {isExpanded && (
+                <View style={styles.lengthDetailsContainer}>
+                  <View style={styles.lengthTableHeader}>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1.5 }]}>Code</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1 }]}>Length</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1 }]}>Belt</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.8 }]}>Weight</Text>
+                  </View>
+                  {item.length_details.map((ld, idx) => (
+                    <View key={idx} style={[styles.lengthTableRow, idx % 2 === 0 && styles.lengthTableRowAlt]}>
+                      <Text style={[styles.lengthTableCell, styles.lengthCodeCell, { flex: 1.5 }]} numberOfLines={1}>
+                        {ld.product_code}
+                      </Text>
+                      <Text style={[styles.lengthTableCell, { flex: 1 }]}>{ld.length_mm}mm</Text>
+                      <Text style={[styles.lengthTableCell, { flex: 1 }]}>
+                        {ld.belt_widths.length > 0 ? ld.belt_widths.join(', ') : '-'}mm
+                      </Text>
+                      <Text style={[styles.lengthTableCell, { flex: 0.8 }]}>{ld.weight_kg}kg</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
