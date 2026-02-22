@@ -1285,8 +1285,7 @@ export default function CalculatorScreen() {
                           <Ionicons name="refresh" size={20} color="#960018" />
                         </TouchableOpacity>
                       </View>
-                      <TextInput
-                        style={styles.gstInput}
+
               {gstinInput.length > 0 && gstinInput.length < 15 && (
                 <Text style={styles.gstHintText}>
                   {15 - gstinInput.length} more characters needed
