@@ -620,6 +620,7 @@ class DetailedCostRequest(BaseModel):
     bearing_make: Optional[str] = "china"  # china, skf, fag, timken
     pipe_type: Optional[str] = "B"  # A (Light), B (Medium), C (Heavy)
     rubber_diameter: Optional[float] = None  # For impact rollers with rubber lagging
+    packing_type: Optional[str] = "none"  # none, pallet (4%), wooden_box (8%)
     belt_width: Optional[int] = None
 
 class DetailedCostResponse(BaseModel):
