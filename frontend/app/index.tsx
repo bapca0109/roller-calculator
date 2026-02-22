@@ -10,7 +10,7 @@ export default function Index() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        router.replace('/(tabs)/products');
+        router.replace('/(tabs)/calculator');
       } else {
         router.replace('/auth/login');
       }
