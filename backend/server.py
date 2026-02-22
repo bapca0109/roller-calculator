@@ -1014,7 +1014,12 @@ async def search_product_catalog(
         }
     
     # Partial search - search through all configurations
-    standard_lengths = [465, 600, 800, 1000, 1200, 1400]
+    # IS-8598:2019 Standard Roller Lengths (all unique lengths)
+    is8598_lengths = []
+    for lengths in rs.ROLLER_LENGTHS.values():
+        is8598_lengths.extend(lengths)
+    standard_lengths = sorted(set(is8598_lengths))  # [690, 740, 755, 790, 940, 1000, 1090, 1190, 1240, 1390, 1440, 1590, 1640, 1790, 1840, 1990, 2040, 2190, 2240]
+    
     pipe_types = ["A", "B", "C"]
     bearing_makes = ["china", "skf", "fag", "timken"]
     bearing_make_codes = {"china": "C", "skf": "S", "fag": "F", "timken": "T"}
@@ -1047,10 +1052,12 @@ async def search_product_catalog(
                             
                             # Product code format: CR25 89 1000B 62S
                             product_code = f"{type_code}{shaft_dia} {round(pipe_dia)} {series}{make_code}"
-                            full_code = f"{type_code}{shaft_dia} {round(pipe_dia)} 1000{pipe_type} {series}{make_code}"
+                            
+                            # Build search text with ALL IS-8598 standard lengths
+                            all_length_codes = " ".join([f"{type_code}{shaft_dia} {round(pipe_dia)} {length}{pipe_type} {series}{make_code}" for length in standard_lengths])
                             
                             # Check if query matches this product
-                            search_text = f"{product_code} {full_code} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
+                            search_text = f"{product_code} {all_length_codes} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
                             
                             if query in search_text:
                                 # Calculate base price for 1000mm length
