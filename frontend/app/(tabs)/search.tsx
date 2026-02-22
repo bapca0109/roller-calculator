@@ -98,11 +98,6 @@ export default function SearchScreen() {
     setHasSearched(false);
   };
 
-  const handleSelectProduct = (item: ProductResult) => {
-    // Navigate to calculator tab
-    router.navigate('/calculator');
-  };
-
   const renderResultItem = ({ item }: { item: ProductResult }) => (
     <View 
       style={[styles.resultCard, item.exact_match && styles.exactMatchCard]} 
