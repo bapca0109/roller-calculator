@@ -174,6 +174,8 @@ class QuoteUpdate(BaseModel):
 class RollerQuoteCreate(BaseModel):
     """Create a quote from roller calculation"""
     customer_name: str
+    customer_id: Optional[str] = None  # Reference to customer in database
+    customer_details: Optional[Dict[str, Any]] = None  # Full customer details for PDF
     configuration: Dict[str, Any]
     cost_breakdown: Dict[str, float]
     pricing: Dict[str, Any]
