@@ -734,20 +734,30 @@ export default function CalculatorScreen() {
             </View>
 
             {/* Save Quote Button */}
-            <TouchableOpacity
-              style={styles.saveQuoteButton}
-              onPress={saveQuote}
-              disabled={savingQuote}
-            >
-              {savingQuote ? (
-                <ActivityIndicator color="#FF6B00" />
-              ) : (
-                <>
-                  <Ionicons name="save-outline" size={24} color="#FF6B00" />
-                  <Text style={styles.saveQuoteButtonText}>Save as Quote</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            <View style={styles.quoteButtonsContainer}>
+              <TouchableOpacity
+                style={styles.addToQuoteButton}
+                onPress={addToQuote}
+              >
+                <Ionicons name="add-circle-outline" size={24} color="#fff" />
+                <Text style={styles.addToQuoteButtonText}>Add to Quote</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.saveQuoteButton}
+                onPress={saveQuote}
+                disabled={savingQuote}
+              >
+                {savingQuote ? (
+                  <ActivityIndicator color="#FF6B00" />
+                ) : (
+                  <>
+                    <Ionicons name="save-outline" size={24} color="#FF6B00" />
+                    <Text style={styles.saveQuoteButtonText}>Save Single</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
