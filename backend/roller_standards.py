@@ -124,12 +124,12 @@ PIPE_WEIGHT_PER_METER = {
         "C": 14.40   # Heavy: 5.40mm thickness
     },
     127.0: {  # 127mm OD
-        "A": 11.5,   # Light: calculated
+        "A": 12.13,  # Light: 4.0mm thickness
         "B": 15.0,   # Medium: 4.85mm thickness
         "C": 16.5    # Heavy: 5.40mm thickness
     },
     139.7: {  # 139mm OD
-        "A": 13.2,   # Light: calculated
+        "A": 13.38,  # Light: 4.0mm thickness
         "B": 16.5,   # Medium: calculated
         "C": 18.5    # Heavy: 5.40mm thickness
     },
