@@ -227,15 +227,18 @@ backend:
 
   - task: "Freight Calculation System"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "JUST IMPLEMENTED: Added freight calculation to /calculate-detailed-cost endpoint. Features: 1) Calculate roller weight based on pipe, shaft, and rubber weight, 2) Zone-based distance estimation from dispatch pincode (382433) to destination pincode, 3) Distance-tiered freight rates (₹2/kg for 0-300km, ₹4/kg for 300-600km, ₹5/kg for 600-1000km, ₹7/kg for 1000-1500km, ₹9/kg for 1500+km), 4) Added quantity field to request, 5) Response includes freight breakdown (distance_km, single_roller_weight_kg, total_weight_kg, freight_rate_per_kg, freight_charges) and grand_total (product price × quantity + freight). NEEDS TESTING."
+      - working: true
+        agent: "testing"
+        comment: "✅ FREIGHT CALCULATION SYSTEM FULLY FUNCTIONAL: Comprehensive testing completed with 6/6 test scenarios PASSED. 1) WITHOUT freight_pincode: freight=null, grand_total=₹2,581.52 (product price only), 2) WITH Delhi freight (110001): distance=900km, rate=₹5/kg, weight=16.71kg, freight=₹83.55, grand_total=₹2,665.07, 3) Multiple quantity (5 rollers): total_weight=83.55kg (16.71×5), freight=₹417.75, grand_total=₹13,325.35, 4) Gujarat local (382001): distance=150km, rate=₹2/kg, freight=₹33.42, 5) Tamil Nadu (600001): distance=1600km, rate=₹9/kg, freight=₹150.39, 6) Impact roller with rubber: weight=20.1kg (40% heavier due to rubber), freight=₹201.00. All freight fields working: dispatch_pincode=382433, destination_pincode, distance_km, single_roller_weight_kg, total_weight_kg, freight_rate_per_kg, freight_charges. Distance-tiered rates verified: 0-300km=₹2/kg, 600-1000km=₹5/kg, 1500+km=₹9/kg. Math calculations accurate: grand_total = (product_price × quantity) + freight_charges."
 
 frontend:
   - task: "Frontend Integration Testing"
