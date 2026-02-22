@@ -479,6 +479,22 @@ export default function QuotesScreen() {
                   <View style={styles.detailSection}>
                     <Text style={styles.dateText}>Created: {formatDate(selectedQuote.created_at)}</Text>
                   </View>
+
+                  {/* Export PDF Button */}
+                  <TouchableOpacity 
+                    style={styles.exportButton}
+                    onPress={exportToPdf}
+                    disabled={generatingPdf}
+                  >
+                    {generatingPdf ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="download-outline" size={24} color="#fff" />
+                        <Text style={styles.exportButtonText}>Export PDF</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
                 </>
               )}
             </ScrollView>
