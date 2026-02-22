@@ -31,6 +31,17 @@ interface Quote {
   id: string;
   customer_name: string;
   customer_email: string;
+  customer_details?: {
+    name?: string;
+    company?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    gst_number?: string;
+  };
   products: QuoteProduct[];
   subtotal: number;
   total_discount: number;
