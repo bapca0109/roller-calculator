@@ -1028,8 +1028,22 @@ async def search_product_catalog(
     bearing_make_codes = {"china": "C", "skf": "S", "fag": "F", "timken": "T"}
     
     # Generate product configurations
-    for roller_type in ["carrying", "impact"]:
-        type_code = "CR" if roller_type == "carrying" else "IR"
+    for roller_type in ["carrying", "impact", "return"]:
+        type_code = {"carrying": "CR", "impact": "IR", "return": "RR"}.get(roller_type, "CR")
+        
+        # Use appropriate lengths based on roller type
+        if roller_type == "return":
+            # Return rollers use RETURN_ROLLER_LENGTHS
+            return_lengths = []
+            for lengths in rs.RETURN_ROLLER_LENGTHS.values():
+                return_lengths.extend(lengths)
+            standard_lengths = sorted(set(return_lengths))
+        else:
+            # Carrying and Impact rollers use ROLLER_LENGTHS
+            is8598_lengths = []
+            for lengths in rs.ROLLER_LENGTHS.values():
+                is8598_lengths.extend(lengths)
+            standard_lengths = sorted(set(is8598_lengths))
         
         for shaft_dia in rs.SHAFT_DIAMETERS:
             for pipe_dia in rs.PIPE_DIAMETERS:
