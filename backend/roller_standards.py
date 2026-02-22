@@ -219,6 +219,23 @@ def calculate_shaft_length(pipe_length_mm):
     """Calculate shaft length: pipe length + 70mm (35mm on each side)"""
     return pipe_length_mm + 70
 
+def calculate_rubber_cost(pipe_dia, rubber_dia, pipe_length_mm):
+    """
+    Calculate rubber lagging cost for impact rollers.
+    Number of rings = pipe_length / 35mm
+    Total cost = number of rings × cost per ring
+    """
+    rubber_key = f"{int(pipe_dia)}/{int(rubber_dia)}"
+    
+    if rubber_key not in RUBBER_RING_COSTS:
+        return 0  # No rubber for this combination
+    
+    number_of_rings = pipe_length_mm / RUBBER_RING_THICKNESS
+    cost_per_ring = RUBBER_RING_COSTS[rubber_key]
+    total_rubber_cost = number_of_rings * cost_per_ring
+    
+    return round(total_rubber_cost, 2)
+
 def get_housing_for_pipe_and_bearing(pipe_dia, bearing_number):
     """Get compatible housing based on pipe diameter and bearing"""
     bearing_od = BEARING_OD.get(bearing_number)
