@@ -114,6 +114,8 @@ export default function CalculatorScreen() {
   const [calculating, setCalculating] = useState(false);
   const [result, setResult] = useState<CostResult | null>(null);
   const [savingQuote, setSavingQuote] = useState(false);
+  const [quoteItems, setQuoteItems] = useState<CostResult[]>([]);
+  const [showQuoteBuilder, setShowQuoteBuilder] = useState(false);
 
   // Form state
   const [rollerType, setRollerType] = useState<'carrying' | 'impact'>('carrying');
