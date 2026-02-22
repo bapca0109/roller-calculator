@@ -162,6 +162,18 @@ SEAL_COSTS = {
     "6310": 140
 }
 
+# Circlip Costs (INR per piece) - Based on Shaft Diameter - ACTUAL PRICES
+# 4 pieces per roller
+CIRCLIP_COSTS = {
+    20: 1.0,
+    25: 1.5,
+    30: 2.0,
+    35: 2.5,
+    40: 3.0,
+    45: 10.0,
+    50: 12.0
+}
+
 # Cost Calculation Constants - AS PER YOUR FORMULA
 LAYOUT_MARKUP = 0.32  # 32% layout/manufacturing cost
 PROFIT_MARKUP = 0.60  # 60% profit margin
