@@ -58,7 +58,7 @@ export default function Register() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Ionicons name="settings-outline" size={64} color="#007AFF" />
+          <Ionicons name="settings-outline" size={64} color="#960018" />
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join our conveyor platform</Text>
         </View>
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#960018',
     height: 50,
     borderRadius: 12,
     justifyContent: 'center',
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#007AFF',
+    color: '#960018',
     fontSize: 14,
   },
 });
