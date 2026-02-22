@@ -431,6 +431,66 @@ async def create_quote(
     
     return QuoteInDB(**quote_dict)
 
+@api_router.post("/quotes/roller")
+async def create_roller_quote(
+    quote_data: RollerQuoteCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a quote from roller calculation results"""
+    
+    config = quote_data.configuration
+    pricing = quote_data.pricing
+    
+    # Create product entry from roller calculation
+    product = {
+        "product_id": config.get("product_code", "ROLLER"),
+        "product_name": f"{config.get('roller_type', 'Carrying').title()} Roller - {config.get('product_code', '')}",
+        "quantity": config.get("quantity", 1),
+        "unit_price": pricing.get("unit_price", 0),
+        "specifications": {
+            "pipe_diameter": config.get("pipe_diameter_mm"),
+            "pipe_length": config.get("pipe_length_mm"),
+            "pipe_type": config.get("pipe_type"),
+            "shaft_diameter": config.get("shaft_diameter_mm"),
+            "bearing": config.get("bearing"),
+            "bearing_make": config.get("bearing_make"),
+            "housing": config.get("housing"),
+            "rubber_diameter": config.get("rubber_diameter_mm")
+        },
+        "calculated_discount": pricing.get("discount_amount", 0),
+        "custom_premium": 0.0
+    }
+    
+    quote_dict = {
+        "customer_id": current_user["id"],
+        "customer_name": quote_data.customer_name or current_user["name"],
+        "customer_email": current_user["email"],
+        "products": [product],
+        "subtotal": pricing.get("order_value", 0),
+        "total_discount": pricing.get("discount_amount", 0),
+        "packing_charges": pricing.get("packing_charges", 0),
+        "shipping_cost": quote_data.freight.get("freight_charges", 0) if quote_data.freight else 0,
+        "delivery_location": quote_data.freight.get("destination_pincode") if quote_data.freight else None,
+        "total_price": quote_data.grand_total,
+        "status": QuoteStatus.PENDING,
+        "notes": quote_data.notes,
+        "cost_breakdown": quote_data.cost_breakdown,
+        "pricing_details": quote_data.pricing,
+        "freight_details": quote_data.freight,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    
+    result = await db.quotes.insert_one(quote_dict)
+    quote_dict["id"] = str(result.inserted_id)
+    
+    return {
+        "id": quote_dict["id"],
+        "message": "Quote created successfully",
+        "quote_number": f"QT-{quote_dict['id'][-6:].upper()}",
+        "total_price": quote_dict["total_price"]
+    }
+
 @api_router.get("/quotes", response_model=List[QuoteInDB])
 async def get_quotes(current_user: dict = Depends(get_current_user)):
     query = {}
