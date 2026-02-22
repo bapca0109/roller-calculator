@@ -775,4 +775,20 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
   },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF6B00',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 20,
+    marginBottom: 30,
+    gap: 10,
+  },
+  exportButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
 });
