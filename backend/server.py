@@ -985,7 +985,7 @@ async def search_product_catalog(
                         base_price = 0
                     
                     make_code = {'china': 'C', 'skf': 'S', 'fag': 'F', 'timken': 'T'}.get(bearing_make, 'C')
-                    product_code = f"{parsed['type_code']}{shaft_dia} {round(pipe_dia)}{pipe_length}{pipe_type} {bearing_series}{make_code}"
+                    product_code = f"{parsed['type_code']}{shaft_dia} {round(pipe_dia)} {pipe_length}{pipe_type} {bearing_series}{make_code}"
                     
                     results.append({
                         "product_code": product_code,
@@ -1045,9 +1045,9 @@ async def search_product_catalog(
                             make_code = bearing_make_codes.get(make, "C")
                             series = "62" if bearing.startswith("62") else "63" if bearing.startswith("63") else "42"
                             
-                            # Product code format: CR25 891000B 62S
+                            # Product code format: CR25 89 1000B 62S
                             product_code = f"{type_code}{shaft_dia} {round(pipe_dia)} {series}{make_code}"
-                            full_code = f"{type_code}{shaft_dia} {round(pipe_dia)}1000{pipe_type} {series}{make_code}"
+                            full_code = f"{type_code}{shaft_dia} {round(pipe_dia)} 1000{pipe_type} {series}{make_code}"
                             
                             # Check if query matches this product
                             search_text = f"{product_code} {full_code} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
