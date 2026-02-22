@@ -99,8 +99,8 @@ export default function SearchScreen() {
   };
 
   const handleSelectProduct = (item: ProductResult) => {
-    // Navigate to calculator directly using replace to switch tabs
-    router.replace('/(tabs)/calculator');
+    // Navigate to calculator tab
+    router.navigate('/calculator');
   };
 
   const renderResultItem = ({ item }: { item: ProductResult }) => (
