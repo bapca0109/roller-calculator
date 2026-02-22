@@ -1272,6 +1272,80 @@ async def make_user_admin(email: str, current_user: dict = Depends(get_current_u
     
     return {"message": f"User {email} is now an admin"}
 
+# ============= CUSTOMER API =============
+
+@api_router.post("/customers")
+async def create_customer(customer: Customer, current_user: dict = Depends(get_current_user)):
+    """Create a new customer"""
+    customer_dict = customer.dict()
+    customer_dict["created_by"] = current_user.get("email")
+    customer_dict["created_at"] = datetime.utcnow()
+    
+    result = await db.customers.insert_one(customer_dict)
+    customer_dict["id"] = str(result.inserted_id)
+    del customer_dict["_id"] if "_id" in customer_dict else None
+    
+    return {"message": "Customer created successfully", "customer": customer_dict}
+
+@api_router.get("/customers")
+async def get_customers(current_user: dict = Depends(get_current_user)):
+    """Get all customers for the current user"""
+    customers = []
+    cursor = db.customers.find({"created_by": current_user.get("email")})
+    async for customer in cursor:
+        customer["id"] = str(customer["_id"])
+        del customer["_id"]
+        customers.append(customer)
+    
+    return {"customers": customers}
+
+@api_router.get("/customers/{customer_id}")
+async def get_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a specific customer"""
+    from bson import ObjectId
+    customer = await db.customers.find_one({
+        "_id": ObjectId(customer_id),
+        "created_by": current_user.get("email")
+    })
+    
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    customer["id"] = str(customer["_id"])
+    del customer["_id"]
+    return customer
+
+@api_router.put("/customers/{customer_id}")
+async def update_customer(customer_id: str, customer: Customer, current_user: dict = Depends(get_current_user)):
+    """Update a customer"""
+    from bson import ObjectId
+    customer_dict = customer.dict()
+    customer_dict["updated_at"] = datetime.utcnow()
+    
+    result = await db.customers.update_one(
+        {"_id": ObjectId(customer_id), "created_by": current_user.get("email")},
+        {"$set": customer_dict}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    return {"message": "Customer updated successfully"}
+
+@api_router.delete("/customers/{customer_id}")
+async def delete_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a customer"""
+    from bson import ObjectId
+    result = await db.customers.delete_one({
+        "_id": ObjectId(customer_id),
+        "created_by": current_user.get("email")
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    return {"message": "Customer deleted successfully"}
+
 # Include the router in the main app
 app.include_router(api_router)
 
