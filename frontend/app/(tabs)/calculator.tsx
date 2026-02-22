@@ -134,6 +134,14 @@ export default function CalculatorScreen() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  
+  // GST Lookup state (for calculator)
+  const [showGstLookup, setShowGstLookup] = useState(false);
+  const [gstinInput, setGstinInput] = useState('');
+  const [captchaData, setCaptchaData] = useState<any>(null);
+  const [captchaInput, setCaptchaInput] = useState('');
+  const [gstLoading, setGstLoading] = useState(false);
+  const [gstVerifying, setGstVerifying] = useState(false);
 
   // Form state
   const [rollerType, setRollerType] = useState<'carrying' | 'impact' | 'return'>('carrying');
