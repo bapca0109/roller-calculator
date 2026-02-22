@@ -205,20 +205,22 @@ export default function SearchScreen() {
                 <View style={styles.lengthDetailsContainer}>
                   <View style={styles.lengthTableHeader}>
                     <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1.5 }]}>Code</Text>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1 }]}>Length</Text>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1 }]}>Belt</Text>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.8 }]}>Weight</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.8 }]}>Length</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.8 }]}>Belt</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.6 }]}>Wt</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1 }]}>Price</Text>
                   </View>
                   {item.length_details.map((ld, idx) => (
                     <View key={idx} style={[styles.lengthTableRow, idx % 2 === 0 && styles.lengthTableRowAlt]}>
                       <Text style={[styles.lengthTableCell, styles.lengthCodeCell, { flex: 1.5 }]} numberOfLines={1}>
                         {ld.product_code}
                       </Text>
-                      <Text style={[styles.lengthTableCell, { flex: 1 }]}>{ld.length_mm}mm</Text>
-                      <Text style={[styles.lengthTableCell, { flex: 1 }]}>
-                        {ld.belt_widths.length > 0 ? ld.belt_widths.join(', ') : '-'}mm
+                      <Text style={[styles.lengthTableCell, { flex: 0.8 }]}>{ld.length_mm}</Text>
+                      <Text style={[styles.lengthTableCell, { flex: 0.8 }]}>
+                        {ld.belt_widths.length > 0 ? ld.belt_widths.join(',') : '-'}
                       </Text>
-                      <Text style={[styles.lengthTableCell, { flex: 0.8 }]}>{ld.weight_kg}kg</Text>
+                      <Text style={[styles.lengthTableCell, { flex: 0.6 }]}>{ld.weight_kg}</Text>
+                      <Text style={[styles.lengthTableCell, styles.priceCell, { flex: 1 }]}>₹{ld.price}</Text>
                     </View>
                   ))}
                 </View>
