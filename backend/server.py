@@ -1285,7 +1285,8 @@ async def create_customer(customer: Customer, current_user: dict = Depends(get_c
     
     result = await db.customers.insert_one(customer_dict)
     customer_dict["id"] = str(result.inserted_id)
-    del customer_dict["_id"] if "_id" in customer_dict else None
+    if "_id" in customer_dict:
+        del customer_dict["_id"]
     
     return {"message": "Customer created successfully", "customer": customer_dict}
 
