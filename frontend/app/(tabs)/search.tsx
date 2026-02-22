@@ -8,11 +8,12 @@ import {
   FlatList,
   ActivityIndicator,
   Pressable,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 
 interface ProductResult {
   product_code: string;
