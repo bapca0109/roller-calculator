@@ -153,6 +153,16 @@ class QuoteUpdate(BaseModel):
     notes: Optional[str] = None
     shipping_cost: Optional[float] = None
 
+class RollerQuoteCreate(BaseModel):
+    """Create a quote from roller calculation"""
+    customer_name: str
+    configuration: Dict[str, Any]
+    cost_breakdown: Dict[str, float]
+    pricing: Dict[str, Any]
+    freight: Optional[Dict[str, Any]] = None
+    grand_total: float
+    notes: Optional[str] = None
+
 # ============= HELPER FUNCTIONS =============
 
 def verify_password(plain_password, hashed_password):
