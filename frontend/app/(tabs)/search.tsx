@@ -158,14 +158,15 @@ export default function SearchScreen() {
             </Text>
             <Text style={styles.priceValue}>Rs. {(item.base_price || 0).toFixed(2)}</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.configButton}
-            onPress={() => handleSelectProduct(item)}
-            data-testid="configure-btn"
-          >
-            <Text style={styles.configButtonText}>Configure</Text>
-            <Ionicons name="arrow-forward" size={16} color="#FF6B00" />
-          </TouchableOpacity>
+          <Link href="/(tabs)/calculator" asChild>
+            <TouchableOpacity 
+              style={styles.configButton}
+              data-testid="configure-btn"
+            >
+              <Text style={styles.configButtonText}>Configure</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FF6B00" />
+            </TouchableOpacity>
+          </Link>
         </View>
       </View>
     </View>
