@@ -49,7 +49,7 @@ def create_raw_materials_excel():
     ws['A3'].font = Font(bold=True, size=12)
     
     sheets = [
-        ("1. Pipe Specifications", "IS-9295 Pipe diameters and weights per IS-1239"),
+        ("1. Pipe Specifications", "IS-9295 Pipe diameters and weights per IS-9192"),
         ("2. Shaft Specifications", "Shaft diameters and weights"),
         ("3. Bearing Prices", "Bearing prices by make (China, SKF, FAG, Timken)"),
         ("4. Housing Prices", "Housing prices by pipe-bearing combination"),
@@ -71,7 +71,7 @@ def create_raw_materials_excel():
     # ==================== SHEET 2: PIPE SPECIFICATIONS ====================
     ws_pipe = wb.create_sheet("Pipe Specifications")
     
-    ws_pipe['A1'] = "PIPE SPECIFICATIONS (IS-9295 & IS-1239)"
+    ws_pipe['A1'] = "PIPE SPECIFICATIONS (IS-9295 & IS-9192)"
     ws_pipe['A1'].font = Font(bold=True, size=14)
     ws_pipe.merge_cells('A1:F1')
     
