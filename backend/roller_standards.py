@@ -1,6 +1,24 @@
 # IS-9295:2024 - Standard Pipe Diameters (mm) - UPDATED
 PIPE_DIAMETERS = [60.8, 76.1, 88.9, 114.3, 127.0, 139.7, 152.4, 159.0, 165.0]
 
+# Pipe diameter display codes for product codes (actual OD -> display code)
+# Based on industry standard notation
+PIPE_DIAMETER_CODES = {
+    60.8: 60,
+    76.1: 76,
+    88.9: 89,    # User requested 89 instead of 88
+    114.3: 114,
+    127.0: 127,
+    139.7: 139,  # User requested 139 instead of 140
+    152.4: 152,
+    159.0: 159,
+    165.0: 165
+}
+
+def get_pipe_code(pipe_dia):
+    """Get display code for pipe diameter"""
+    return PIPE_DIAMETER_CODES.get(pipe_dia, int(pipe_dia))
+
 # Shaft Diameters (mm)
 SHAFT_DIAMETERS = [20, 25, 30, 35, 40, 45, 50]
 
