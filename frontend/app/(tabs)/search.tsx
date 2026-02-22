@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
-import { router } from 'expo-router';
+import { Link } from 'expo-router';
 
 interface ProductResult {
   product_code: string;
