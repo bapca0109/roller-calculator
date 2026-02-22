@@ -661,7 +661,8 @@ async def calculate_detailed_cost(
         request.pipe_diameter,
         request.pipe_length,
         request.shaft_diameter,
-        request.bearing_number
+        request.bearing_number,
+        request.bearing_make or "china"
     )
     
     # Calculate final pricing
