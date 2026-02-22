@@ -167,7 +167,7 @@ export default function SearchScreen() {
             <Text style={styles.priceLabel}>
               {item.exact_match ? 'Price' : 'Base Price (1000mm)'}
             </Text>
-            <Text style={styles.priceValue}>Rs. {item.base_price.toFixed(2)}</Text>
+            <Text style={styles.priceValue}>Rs. {(item.base_price || 0).toFixed(2)}</Text>
           </View>
           <View style={styles.configButton}>
             <Text style={styles.configButtonText}>Configure</Text>
