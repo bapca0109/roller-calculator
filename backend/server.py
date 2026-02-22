@@ -889,31 +889,29 @@ def parse_product_code(code: str):
     import re
     code = code.upper().strip()
     
-    # Pattern: CR20 88465A 63S or CR20 881000B 62S
-    # Group 1: Type (CR or IR)
-    # Group 2: Shaft diameter (20, 25, 30, etc)
-    # Group 3: Pipe diameter (60, 76, 88, 89, 114, 127, etc) - first 2-3 digits
-    # Group 4: Length (remaining digits before letter)
-    # Group 5: Pipe type (A, B, C)
-    # Group 6: Bearing series (62, 63, 42)
-    # Group 7: Make code (C, S, F, T)
+    # Known pipe diameter prefixes (without decimal)
+    known_pipe_prefixes = ['60', '76', '88', '89', '114', '127', '139', '140', '152', '159', '165']
     
-    pattern = r'^(CR|IR)(\d{2})\s+(\d{2,3})(\d{3,4})([ABC])\s+(\d{2})([CSFT])$'
-    match = re.match(pattern, code)
+    # Try to match with known pipe prefixes
+    for pipe_prefix in sorted(known_pipe_prefixes, key=len, reverse=True):  # Try longer prefixes first
+        # Pattern: CR20 {pipe_prefix}{LENGTH}{PIPE_TYPE} {SERIES}{MAKE}
+        pattern = rf'^(CR|IR)(\d{{2}})\s+({pipe_prefix})(\d{{3,4}})([ABC])\s+(\d{{2}})([CSFT])$'
+        match = re.match(pattern, code)
+        
+        if match:
+            make_map = {'C': 'china', 'S': 'skf', 'F': 'fag', 'T': 'timken'}
+            return {
+                'roller_type': 'carrying' if match.group(1) == 'CR' else 'impact',
+                'type_code': match.group(1),
+                'shaft_diameter': int(match.group(2)),
+                'pipe_diameter_prefix': match.group(3),
+                'pipe_length': int(match.group(4)),
+                'pipe_type': match.group(5),
+                'bearing_series': match.group(6),
+                'bearing_make': make_map.get(match.group(7), 'china'),
+                'make_code': match.group(7)
+            }
     
-    if match:
-        make_map = {'C': 'china', 'S': 'skf', 'F': 'fag', 'T': 'timken'}
-        return {
-            'roller_type': 'carrying' if match.group(1) == 'CR' else 'impact',
-            'type_code': match.group(1),
-            'shaft_diameter': int(match.group(2)),
-            'pipe_diameter_prefix': match.group(3),
-            'pipe_length': int(match.group(4)),
-            'pipe_type': match.group(5),
-            'bearing_series': match.group(6),
-            'bearing_make': make_map.get(match.group(7), 'china'),
-            'make_code': match.group(7)
-        }
     return None
 
 
