@@ -237,7 +237,10 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
     # Seal set cost (2 seal sets)
     seal_cost = SEAL_COSTS.get(bearing_number, 0) * 2
     
-    total_raw_material = pipe_cost + shaft_cost + bearing_cost + housing_cost + seal_cost
+    # Circlip cost (4 circlips per roller)
+    circlip_cost = CIRCLIP_COSTS[shaft_dia] * 4
+    
+    total_raw_material = pipe_cost + shaft_cost + bearing_cost + housing_cost + seal_cost + circlip_cost
     
     return {
         "pipe_cost": round(pipe_cost, 2),
@@ -245,6 +248,7 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
         "bearing_cost": round(bearing_cost, 2),
         "housing_cost": round(housing_cost, 2),
         "seal_cost": round(seal_cost, 2),
+        "circlip_cost": round(circlip_cost, 2),
         "total_raw_material": round(total_raw_material, 2)
     }
 
