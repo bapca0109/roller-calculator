@@ -493,12 +493,15 @@ export default function CalculatorScreen() {
 
           <Text style={styles.label}>Pipe Length (mm)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.pipeLength ? styles.inputError : null]}
             value={pipeLength}
-            onChangeText={setPipeLength}
+            onChangeText={handlePipeLengthChange}
             keyboardType="numeric"
-            placeholder="Enter pipe length"
+            placeholder="Enter pipe length (100-3000mm)"
           />
+          {errors.pipeLength ? (
+            <Text style={styles.errorText}>{errors.pipeLength}</Text>
+          ) : null}
 
           <Text style={styles.label}>Pipe Thickness (IS-9295)</Text>
           <View style={styles.pickerContainer}>
