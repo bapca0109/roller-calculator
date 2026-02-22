@@ -30,7 +30,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      router.replace('/(tabs)/products');
+      router.replace('/(tabs)/calculator');
     } catch (error: any) {
       Alert.alert('Login Failed', error.message);
     } finally {
