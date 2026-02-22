@@ -107,15 +107,22 @@ Examples:
 
 ### GST Verification Feature ✅ (NEW)
 - Auto-fetch customer details from GSTIN via GST Portal
+- **Quick Search by GSTIN** - Checks database first before fetching from GST portal
 - Captcha-based verification flow (solves bot detection)
 - Features:
   - `GET /api/gst/captcha` - Fetch captcha from GST portal
   - `GET /api/gst/validate/{gstin}` - Validate GSTIN format + extract state
   - `POST /api/gst/verify` - Verify GSTIN with captcha solution
   - `POST /api/customers/from-gst` - Save GST data as new customer
+  - `GET /api/customers/search/gstin/{gstin}` - Quick search existing customers by GSTIN
 - Available in:
   - Customers tab: "GST" button for lookup
   - Calculator: "Fetch from GSTIN" in customer picker
+- Flow:
+  1. User enters GSTIN (15 chars)
+  2. System immediately searches database for existing customer
+  3. If found: Shows green "Customer Found!" card with option to select
+  4. If not found: Shows option to fetch from GST Portal via captcha
 - Auto-fills: Legal name, Trade name, Address, City, State, Pincode, GST number
 - Note: GST portal has bot detection - captcha may show "Page not found" from server calls
 
