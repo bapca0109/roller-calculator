@@ -1262,22 +1262,22 @@ export default function CalculatorScreen() {
                 </View>
               )}
 
-              {/* Show GST portal fetch option if no existing customer */}
-              {!existingGstCustomer && gstinInput.length === 15 && (
+              {/* Show add new customer option if GSTIN not found */}
+              {!existingGstCustomer && gstinInput.length === 15 && !searchingGstin && (
                 <View style={styles.newCustomerSection}>
-                  <Text style={styles.newCustomerLabel}>Not in database - Fetch from GST Portal</Text>
-                  
-                  {gstLoading ? (
-                    <View style={styles.captchaLoadingContainer}>
-                      <ActivityIndicator size="small" color="#960018" />
-                      <Text style={styles.captchaLoadingText}>Loading captcha...</Text>
-                    </View>
-                  ) : captchaData?.captcha_image ? (
-                    <View style={styles.captchaSection}>
-                      <Text style={styles.gstInputLabel}>Enter Captcha</Text>
-                      <View style={styles.captchaRow}>
-                        <Image
-                          source={{ uri: captchaData.captcha_image }}
+                  <View style={styles.notFoundHeader}>
+                    <Ionicons name="alert-circle-outline" size={20} color="#F57C00" />
+                    <Text style={styles.newCustomerLabel}>Customer not found in database</Text>
+                  </View>
+                  <Text style={styles.notFoundHint}>
+                    Go to the Customers tab to add this customer with their full details.
+                  </Text>
+                  <View style={styles.gstinPreview}>
+                    <Text style={styles.gstinPreviewLabel}>GSTIN:</Text>
+                    <Text style={styles.gstinPreviewValue}>{gstinInput}</Text>
+                  </View>
+                </View>
+              )}
                           style={styles.captchaImage}
                           resizeMode="contain"
                         />
