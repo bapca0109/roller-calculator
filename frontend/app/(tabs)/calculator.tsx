@@ -827,6 +827,32 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 12,
   },
+  subtotalRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#EEE',
+    marginTop: 4,
+    paddingTop: 8,
+  },
+  discountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    backgroundColor: '#E8F5E9',
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+    marginVertical: 4,
+  },
+  discountLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2E7D32',
+  },
+  discountValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2E7D32',
+  },
   totalLabel: {
     fontSize: 15,
     fontWeight: '700',
