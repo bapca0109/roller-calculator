@@ -199,9 +199,6 @@ def get_captcha() -> Dict[str, Any]:
             "success": False,
             "error": str(e)
         }
-            "success": False,
-            "error": str(e)
-        }
 
 
 def verify_gstin(session_id: str, gstin: str, captcha: str) -> Dict[str, Any]:
