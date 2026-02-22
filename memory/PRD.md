@@ -36,11 +36,16 @@ Create a mobile application to calculate the price of belt conveyor rollers, fun
 - Company branding
 - Form validation
 
-### NEW: Search Tab (Feb 2026)
-- Search products by product code
-- Partial match support (CR, IR, 89, 62S)
-- Display search results with full product details
-- Shows product code, configuration, pricing, and quote info
+### NEW: Search Tab - Product Catalog (Feb 2026)
+- Search through available roller configurations (product range)
+- Search by roller type (CR=Carrying, IR=Impact)
+- Search by shaft diameter (20, 25, 30, 35, 40, 45, 50mm)
+- Search by pipe diameter (60.8, 76.1, 88.9, 114.3mm, etc.)
+- Search by bearing number (6204, 6205, 6305, etc.)
+- Search by bearing make (SKF, FAG, China, Timken)
+- Quick search buttons for common searches
+- Shows base price for 1000mm length
+- "Configure" button to go to calculator with specs
 
 ## Architecture
 
