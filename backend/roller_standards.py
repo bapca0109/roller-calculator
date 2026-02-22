@@ -580,40 +580,55 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
     
     return result
 
-def calculate_final_price(raw_material_cost, packing_type="none"):
+def calculate_final_price(raw_material_cost, packing_type="none", quantity=1):
     """
     Calculate final price using your formula:
     Total = Raw Material × 1.32 × 1.60
-    Then add packing charges based on customer selection
+    Then apply discount based on order value, then add packing charges
     
     Where:
     - 1.32 = Raw Material + 32% Layout cost
     - 1.60 = 60% Profit on (Raw Material + Layout)
     
-    Packing charges (applied AFTER product price):
-    - pallet: 4% of product price
-    - wooden_box: 8% of product price
-    - none: 0%
+    Flow:
+    1. Calculate unit price (Raw Material × 2.112)
+    2. Calculate order value (unit price × quantity)
+    3. Apply discount based on order value
+    4. Add packing charges on discounted price
     """
     layout_cost = raw_material_cost * LAYOUT_MARKUP
     subtotal_with_layout = raw_material_cost + layout_cost
     profit = subtotal_with_layout * PROFIT_MARKUP
-    product_price = subtotal_with_layout + profit
+    unit_price = subtotal_with_layout + profit  # Price per roller before discount
     
-    # Calculate packing charges (percentage of product price)
+    # Calculate order value for discount calculation
+    order_value = unit_price * quantity
+    
+    # Get discount based on order value
+    discount_percent = get_discount_percent(order_value)
+    discount_amount = order_value * (discount_percent / 100)
+    price_after_discount = order_value - discount_amount
+    
+    # Calculate packing charges (on discounted total)
     packing_percent = PACKING_CHARGES.get(packing_type, 0.0)
-    packing_charges = product_price * packing_percent
+    packing_charges = price_after_discount * packing_percent
     
-    final_price = product_price + packing_charges
+    final_price = price_after_discount + packing_charges
     
     return {
         "raw_material_cost": round(raw_material_cost, 2),
         "layout_cost": round(layout_cost, 2),
         "subtotal_with_layout": round(subtotal_with_layout, 2),
         "profit": round(profit, 2),
-        "product_price": round(product_price, 2),
+        "unit_price": round(unit_price, 2),  # Per roller price before discount
+        "quantity": quantity,
+        "order_value": round(order_value, 2),  # Unit price × quantity
+        "discount_percent": discount_percent,
+        "discount_amount": round(discount_amount, 2),
+        "price_after_discount": round(price_after_discount, 2),
         "packing_type": packing_type,
+        "packing_percent": packing_percent * 100,
         "packing_charges": round(packing_charges, 2),
-        "final_price": round(final_price, 2),
+        "final_price": round(final_price, 2),  # After discount + packing (before freight)
         "multiplier": 2.112  # For reference (1.32 × 1.60)
     }
