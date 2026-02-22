@@ -1089,60 +1089,120 @@ async def search_product_catalog(
                     
                     for make in available_makes:
                         for pipe_type in pipe_types:
-                            # Generate product code
-                            make_code = bearing_make_codes.get(make, "C")
+                            # Get bearing series
                             series = "62" if bearing.startswith("62") else "63" if bearing.startswith("63") else "42"
-                            
-                            # Product code format: CR25 139 530B 62S
                             pipe_display = rs.get_pipe_code(pipe_dia)
-                            product_code = f"{type_code}{shaft_dia} {pipe_display} {series}{make_code}"
                             
-                            # Build search text with ALL IS-8598 standard lengths
-                            # Include multiple formats for flexible matching:
-                            # 1. With pipe type and make: CR25 139 600A 62S
-                            # 2. Without pipe type, with make: CR25 139 600 62S
-                            # 3. Without pipe type, without make: CR25 139 600 62
-                            all_length_codes_with_type = " ".join([f"{type_code}{shaft_dia} {pipe_display} {length}{pipe_type} {series}{make_code}" for length in standard_lengths])
-                            all_length_codes_without_type = " ".join([f"{type_code}{shaft_dia} {pipe_display} {length} {series}{make_code}" for length in standard_lengths])
-                            all_length_codes_series_only = " ".join([f"{type_code}{shaft_dia} {pipe_display} {length} {series}" for length in standard_lengths])
-                            
-                            # Also add base product code without make: CR25 139 62
-                            product_code_no_make = f"{type_code}{shaft_dia} {pipe_display} {series}"
-                            
-                            # Check if query matches this product
-                            search_text = f"{product_code} {product_code_no_make} {all_length_codes_with_type} {all_length_codes_without_type} {all_length_codes_series_only} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
-                            
-                            if query in search_text:
-                                # Calculate base price for 1000mm length
-                                try:
-                                    cost = rs.calculate_raw_material_cost(
-                                        pipe_dia, 1000, shaft_dia, bearing, make, None, pipe_type
-                                    )
-                                    pricing = rs.calculate_final_price(cost["total_raw_material"], "none", 1)
-                                    base_price = pricing["unit_price"]
-                                except:
-                                    base_price = 0
+                            # For impact rollers, generate with rubber diameter options
+                            if roller_type == "impact":
+                                # Get rubber lagging options for this pipe diameter
+                                rubber_options = rs.RUBBER_LAGGING_OPTIONS.get(pipe_display, [])
+                                if not rubber_options:
+                                    continue
                                 
-                                result = {
-                                    "product_code": f"{type_code}{shaft_dia} {pipe_display} {series}{make_code}",
-                                    "roller_type": roller_type,
-                                    "type_code": type_code,
-                                    "shaft_diameter": shaft_dia,
-                                    "pipe_diameter": pipe_dia,
-                                    "pipe_type": pipe_type,
-                                    "bearing": bearing,
-                                    "bearing_make": make,
-                                    "bearing_series": series,
-                                    "housing": housing,
-                                    "base_price": round(base_price, 2),
-                                    "available_lengths": standard_lengths,
-                                    "description": f"{roller_type.title()} Roller - {shaft_dia}mm shaft, {pipe_dia}mm pipe, {bearing} ({make.upper()})",
-                                    "exact_match": False
-                                }
-                                results.append(result)
+                                for rubber_dia in rubber_options:
+                                    # Impact roller: lowercase pipe type and make
+                                    make_code_lower = bearing_make_codes.get(make, "c").lower()
+                                    series_lower = series.lower()
+                                    pipe_type_lower = pipe_type.lower()
+                                    
+                                    # Product code format for impact: IR20 76/114 200b 62s
+                                    pipe_with_rubber = f"{pipe_display}/{rubber_dia}"
+                                    product_code = f"IR{shaft_dia} {pipe_with_rubber} {series_lower}{make_code_lower}"
+                                    
+                                    # Build search text with all standard lengths
+                                    all_length_codes = " ".join([f"IR{shaft_dia} {pipe_with_rubber} {length}{pipe_type_lower} {series_lower}{make_code_lower}" for length in standard_lengths])
+                                    
+                                    # Check if query matches this product
+                                    search_text = f"{product_code} {all_length_codes} impact {shaft_dia}mm {pipe_dia}mm {rubber_dia}mm {bearing} {make}".upper()
+                                    
+                                    if query in search_text:
+                                        # Calculate base price for 200mm length with rubber
+                                        try:
+                                            cost = rs.calculate_raw_material_cost(
+                                                pipe_dia, 200, shaft_dia, bearing, make, rubber_dia, pipe_type
+                                            )
+                                            pricing = rs.calculate_final_price(cost["total_raw_material"], "none", 1)
+                                            base_price = pricing["unit_price"]
+                                        except:
+                                            base_price = 0
+                                        
+                                        result = {
+                                            "product_code": f"IR{shaft_dia} {pipe_with_rubber} {series_lower}{make_code_lower}",
+                                            "roller_type": "impact",
+                                            "type_code": "IR",
+                                            "shaft_diameter": shaft_dia,
+                                            "pipe_diameter": pipe_dia,
+                                            "rubber_diameter": rubber_dia,
+                                            "pipe_type": pipe_type,
+                                            "bearing": bearing,
+                                            "bearing_make": make,
+                                            "bearing_series": series,
+                                            "housing": housing,
+                                            "base_price": round(base_price, 2),
+                                            "available_lengths": standard_lengths,
+                                            "description": f"Impact Roller - {shaft_dia}mm shaft, {pipe_display}/{rubber_dia}mm pipe/rubber, {bearing} ({make.upper()})",
+                                            "exact_match": False
+                                        }
+                                        results.append(result)
+                                        
+                                        if len(results) >= 50:
+                                            return {
+                                                "results": results, 
+                                                "count": len(results), 
+                                                "query": query,
+                                                "search_type": "partial",
+                                                "truncated": True
+                                            }
+                            else:
+                                # Carrying/Return roller: uppercase pipe type and make
+                                make_code = bearing_make_codes.get(make, "C")
                                 
-                                # Limit results to prevent too many
-                                if len(results) >= 50:
+                                # Product code format: CR25 139 530B 62S
+                                product_code = f"{type_code}{shaft_dia} {pipe_display} {series}{make_code}"
+                                
+                                # Build search text with ALL IS-8598 standard lengths
+                                all_length_codes_with_type = " ".join([f"{type_code}{shaft_dia} {pipe_display} {length}{pipe_type} {series}{make_code}" for length in standard_lengths])
+                                all_length_codes_without_type = " ".join([f"{type_code}{shaft_dia} {pipe_display} {length} {series}{make_code}" for length in standard_lengths])
+                                all_length_codes_series_only = " ".join([f"{type_code}{shaft_dia} {pipe_display} {length} {series}" for length in standard_lengths])
+                                
+                                # Also add base product code without make: CR25 139 62
+                                product_code_no_make = f"{type_code}{shaft_dia} {pipe_display} {series}"
+                                
+                                # Check if query matches this product
+                                search_text = f"{product_code} {product_code_no_make} {all_length_codes_with_type} {all_length_codes_without_type} {all_length_codes_series_only} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
+                                
+                                if query in search_text:
+                                    # Calculate base price for 1000mm length
+                                    try:
+                                        cost = rs.calculate_raw_material_cost(
+                                            pipe_dia, 1000, shaft_dia, bearing, make, None, pipe_type
+                                        )
+                                        pricing = rs.calculate_final_price(cost["total_raw_material"], "none", 1)
+                                        base_price = pricing["unit_price"]
+                                    except:
+                                        base_price = 0
+                                    
+                                    result = {
+                                        "product_code": f"{type_code}{shaft_dia} {pipe_display} {series}{make_code}",
+                                        "roller_type": roller_type,
+                                        "type_code": type_code,
+                                        "shaft_diameter": shaft_dia,
+                                        "pipe_diameter": pipe_dia,
+                                        "pipe_type": pipe_type,
+                                        "bearing": bearing,
+                                        "bearing_make": make,
+                                        "bearing_series": series,
+                                        "housing": housing,
+                                        "base_price": round(base_price, 2),
+                                        "available_lengths": standard_lengths,
+                                        "description": f"{roller_type.title()} Roller - {shaft_dia}mm shaft, {pipe_dia}mm pipe, {bearing} ({make.upper()})",
+                                        "exact_match": False
+                                    }
+                                    results.append(result)
+                                    
+                                    # Limit results to prevent too many
+                                    if len(results) >= 50:
                                     return {
                                         "results": results, 
                                         "count": len(results), 
