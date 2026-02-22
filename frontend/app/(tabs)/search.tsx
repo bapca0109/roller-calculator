@@ -167,24 +167,6 @@ export default function SearchScreen() {
             </Text>
             <Text style={styles.priceValue}>Rs. {(item.base_price || 0).toFixed(2)}</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.configButton}
-            onPress={() => {
-              // For web, trigger the Calculator tab click
-              if (Platform.OS === 'web' && typeof document !== 'undefined') {
-                const tabs = document.querySelectorAll('[role="tab"]');
-                if (tabs && tabs.length > 0) {
-                  (tabs[0] as HTMLElement).click();
-                }
-              } else {
-                router.push('/(tabs)/calculator');
-              }
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.configButtonText}>Configure</Text>
-            <Ionicons name="arrow-forward" size={16} color="#FF6B00" />
-          </TouchableOpacity>
         </View>
       </View>
     </TouchableOpacity>
