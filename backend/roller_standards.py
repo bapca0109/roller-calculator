@@ -223,7 +223,7 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
         housing_cost = 0  # Default if housing not found
     
     # Seal set cost (2 seal sets)
-    seal_cost = SEAL_COSTS[shaft_dia] * 2
+    seal_cost = SEAL_COSTS.get(bearing_number, 0) * 2
     
     total_raw_material = pipe_cost + shaft_cost + bearing_cost + housing_cost + seal_cost
     
