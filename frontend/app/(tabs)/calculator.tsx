@@ -131,7 +131,7 @@ export default function CalculatorScreen() {
   const [showQuoteBuilder, setShowQuoteBuilder] = useState(false);
 
   // Form state
-  const [rollerType, setRollerType] = useState<'carrying' | 'impact'>('carrying');
+  const [rollerType, setRollerType] = useState<'carrying' | 'impact' | 'return'>('carrying');
   const [pipeDiameter, setPipeDiameter] = useState<number>(88.9);
   const [pipeLength, setPipeLength] = useState<string>('1000');
   const [pipeType, setPipeType] = useState<string>('B');
