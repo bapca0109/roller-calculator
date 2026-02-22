@@ -74,6 +74,19 @@ interface CostResult {
     freight_rate_per_kg: number;
     freight_charges: number;
   };
+  gst?: {
+    taxable_amount: number;
+    gst_type: string;
+    cgst_rate: number;
+    cgst_amount: number;
+    sgst_rate: number;
+    sgst_amount: number;
+    igst_rate: number;
+    igst_amount: number;
+    total_gst: number;
+    destination_state: string;
+    is_same_state: boolean;
+  };
   grand_total: number;
 }
 
