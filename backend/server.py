@@ -1136,6 +1136,124 @@ async def search_product_catalog(
         "truncated": len(unique_results) > 50
     }
 
+# ============= ADMIN API - RAW MATERIAL PRICES =============
+
+class PriceUpdateRequest(BaseModel):
+    category: str  # bearing, seal, circlip, pipe, shaft, rubber_ring, locking_ring
+    key: str  # e.g., "6204", "20", "89/140"
+    sub_key: Optional[str] = None  # e.g., "china", "skf" for bearings; "A", "B", "C" for pipe weight
+    value: float
+
+@api_router.get("/admin/prices")
+async def get_all_prices(current_user: dict = Depends(get_current_user)):
+    """Get all raw material prices for admin panel"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Check if there are custom prices in database
+    custom_prices = await db.custom_prices.find_one({"_id": "prices"})
+    
+    # Build the response with current prices (from DB or defaults)
+    prices = {
+        "basic_rates": {
+            "pipe_cost_per_kg": custom_prices.get("pipe_cost_per_kg", rs.PIPE_COST_PER_KG) if custom_prices else rs.PIPE_COST_PER_KG,
+            "shaft_cost_per_kg": custom_prices.get("shaft_cost_per_kg", rs.SHAFT_COST_PER_KG) if custom_prices else rs.SHAFT_COST_PER_KG,
+        },
+        "bearing_costs": custom_prices.get("bearing_costs", rs.BEARING_COSTS) if custom_prices else rs.BEARING_COSTS,
+        "seal_costs": custom_prices.get("seal_costs", rs.SEAL_COSTS) if custom_prices else rs.SEAL_COSTS,
+        "circlip_costs": custom_prices.get("circlip_costs", rs.CIRCLIP_COSTS) if custom_prices else rs.CIRCLIP_COSTS,
+        "rubber_ring_costs": custom_prices.get("rubber_ring_costs", rs.RUBBER_RING_COSTS) if custom_prices else rs.RUBBER_RING_COSTS,
+        "locking_ring_costs": custom_prices.get("locking_ring_costs", rs.LOCKING_RING_COSTS) if custom_prices else rs.LOCKING_RING_COSTS,
+        "pipe_weight": custom_prices.get("pipe_weight", rs.PIPE_WEIGHT_PER_METER) if custom_prices else rs.PIPE_WEIGHT_PER_METER,
+        "shaft_weight": custom_prices.get("shaft_weight", rs.SHAFT_WEIGHT_PER_METER) if custom_prices else rs.SHAFT_WEIGHT_PER_METER,
+    }
+    
+    return prices
+
+@api_router.post("/admin/prices/update")
+async def update_price(request: PriceUpdateRequest, current_user: dict = Depends(get_current_user)):
+    """Update a specific raw material price"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get or create custom prices document
+    custom_prices = await db.custom_prices.find_one({"_id": "prices"})
+    if not custom_prices:
+        custom_prices = {"_id": "prices"}
+    
+    # Update based on category
+    if request.category == "pipe_cost":
+        custom_prices["pipe_cost_per_kg"] = request.value
+    elif request.category == "shaft_cost":
+        custom_prices["shaft_cost_per_kg"] = request.value
+    elif request.category == "bearing":
+        if "bearing_costs" not in custom_prices:
+            custom_prices["bearing_costs"] = dict(rs.BEARING_COSTS)
+        if request.key not in custom_prices["bearing_costs"]:
+            custom_prices["bearing_costs"][request.key] = {}
+        custom_prices["bearing_costs"][request.key][request.sub_key] = request.value
+    elif request.category == "seal":
+        if "seal_costs" not in custom_prices:
+            custom_prices["seal_costs"] = dict(rs.SEAL_COSTS)
+        custom_prices["seal_costs"][request.key] = request.value
+    elif request.category == "circlip":
+        if "circlip_costs" not in custom_prices:
+            custom_prices["circlip_costs"] = {str(k): v for k, v in rs.CIRCLIP_COSTS.items()}
+        custom_prices["circlip_costs"][request.key] = request.value
+    elif request.category == "rubber_ring":
+        if "rubber_ring_costs" not in custom_prices:
+            custom_prices["rubber_ring_costs"] = dict(rs.RUBBER_RING_COSTS)
+        custom_prices["rubber_ring_costs"][request.key] = request.value
+    elif request.category == "locking_ring":
+        if "locking_ring_costs" not in custom_prices:
+            custom_prices["locking_ring_costs"] = {str(k): v for k, v in rs.LOCKING_RING_COSTS.items()}
+        custom_prices["locking_ring_costs"][request.key] = request.value
+    elif request.category == "pipe_weight":
+        if "pipe_weight" not in custom_prices:
+            custom_prices["pipe_weight"] = {str(k): v for k, v in rs.PIPE_WEIGHT_PER_METER.items()}
+        if request.key not in custom_prices["pipe_weight"]:
+            custom_prices["pipe_weight"][request.key] = {}
+        custom_prices["pipe_weight"][request.key][request.sub_key] = request.value
+    elif request.category == "shaft_weight":
+        if "shaft_weight" not in custom_prices:
+            custom_prices["shaft_weight"] = {str(k): v for k, v in rs.SHAFT_WEIGHT_PER_METER.items()}
+        custom_prices["shaft_weight"][request.key] = request.value
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown category: {request.category}")
+    
+    custom_prices["updated_at"] = datetime.utcnow().isoformat()
+    custom_prices["updated_by"] = current_user.get("email")
+    
+    # Save to database
+    await db.custom_prices.replace_one({"_id": "prices"}, custom_prices, upsert=True)
+    
+    return {"message": "Price updated successfully", "category": request.category, "key": request.key}
+
+@api_router.post("/admin/prices/reset")
+async def reset_prices(current_user: dict = Depends(get_current_user)):
+    """Reset all prices to default values"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    await db.custom_prices.delete_one({"_id": "prices"})
+    return {"message": "All prices reset to default values"}
+
+@api_router.post("/admin/make-admin")
+async def make_user_admin(email: str, current_user: dict = Depends(get_current_user)):
+    """Make a user an admin (only existing admins can do this)"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await db.users.update_one(
+        {"email": email},
+        {"$set": {"role": UserRole.ADMIN}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": f"User {email} is now an admin"}
+
 # Include the router in the main app
 app.include_router(api_router)
 
