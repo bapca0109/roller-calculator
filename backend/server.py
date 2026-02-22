@@ -628,7 +628,7 @@ class DetailedCostRequest(BaseModel):
 class DetailedCostResponse(BaseModel):
     configuration: Dict[str, Any]
     cost_breakdown: Dict[str, float]
-    pricing: Dict[str, float]
+    pricing: Dict[str, Any]  # Changed from Dict[str, float] to allow mixed types including packing_type string
     freight: Optional[Dict[str, Any]] = None  # Freight details if pincode provided
     grand_total: float  # Final price including freight (per roller × quantity)
 
