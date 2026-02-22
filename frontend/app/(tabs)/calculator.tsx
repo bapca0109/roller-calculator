@@ -1058,6 +1058,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#FAFAFA',
   },
+  inputError: {
+    borderColor: '#E53935',
+    borderWidth: 2,
+    backgroundColor: '#FFEBEE',
+  },
+  errorText: {
+    color: '#E53935',
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
+  },
   hint: {
     fontSize: 12,
     color: '#888',
