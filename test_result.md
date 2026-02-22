@@ -225,6 +225,18 @@ backend:
         agent: "testing"
         comment: "✅ VALIDATION AND ERROR HANDLING WORKING: System correctly rejects invalid configurations with appropriate error messages. Verified: Invalid pipe diameter (100.0mm - not in IS-9295) rejected, Invalid shaft diameter (22mm - not standard) rejected, Incompatible bearing-shaft combinations (6205 for 20mm shaft) rejected. All validation errors return 400 status with descriptive error messages per API standards."
 
+  - task: "Freight Calculation System"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "JUST IMPLEMENTED: Added freight calculation to /calculate-detailed-cost endpoint. Features: 1) Calculate roller weight based on pipe, shaft, and rubber weight, 2) Zone-based distance estimation from dispatch pincode (382433) to destination pincode, 3) Distance-tiered freight rates (₹2/kg for 0-300km, ₹4/kg for 300-600km, ₹5/kg for 600-1000km, ₹7/kg for 1000-1500km, ₹9/kg for 1500+km), 4) Added quantity field to request, 5) Response includes freight breakdown (distance_km, single_roller_weight_kg, total_weight_kg, freight_rate_per_kg, freight_charges) and grand_total (product price × quantity + freight). NEEDS TESTING."
+
 frontend:
   - task: "Frontend Integration Testing"
     implemented: false
