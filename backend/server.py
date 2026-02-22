@@ -1017,12 +1017,6 @@ async def search_product_catalog(
         }
     
     # Partial search - search through all configurations
-    # IS-8598:2019 Standard Roller Lengths (all unique lengths)
-    is8598_lengths = []
-    for lengths in rs.ROLLER_LENGTHS.values():
-        is8598_lengths.extend(lengths)
-    standard_lengths = sorted(set(is8598_lengths))  # [690, 740, 755, 790, 940, 1000, 1090, 1190, 1240, 1390, 1440, 1590, 1640, 1790, 1840, 1990, 2040, 2190, 2240]
-    
     pipe_types = ["A", "B", "C"]
     bearing_makes = ["china", "skf", "fag", "timken"]
     bearing_make_codes = {"china": "C", "skf": "S", "fag": "F", "timken": "T"}
