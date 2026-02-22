@@ -100,25 +100,25 @@ ROLLER_LENGTHS = {
     2000: [2190, 2240]
 }
 
-# Pipe Weight per meter (kg/m) - IS-9192 Light/Medium/Heavy Classes
+# Pipe Weight per meter (kg/m) - IS-9295 Light/Medium/Heavy Classes
 # Type A = Light, Type B = Medium, Type C = Heavy
 PIPE_WEIGHT_PER_METER = {
-    63.5: {  # 60mm OD per IS-9192
+    63.5: {  # 60mm OD per IS-9295
         "A": 4.11,   # Light: 2.90mm thickness
         "B": 5.10,   # Medium: 3.65mm thickness
         "C": 6.17    # Heavy: 4.47mm thickness
     },
-    76.1: {  # 76mm OD per IS-9192
+    76.1: {  # 76mm OD per IS-9295
         "A": 5.84,   # Light: 3.25mm thickness
         "B": 6.61,   # Medium: 3.65mm thickness
         "C": 7.90    # Heavy: 4.47mm thickness
     },
-    88.9: {  # 88mm OD per IS-9192
+    88.9: {  # 88mm OD per IS-9295
         "A": 6.81,   # Light: 3.25mm thickness
         "B": 8.47,   # Medium: 4.05mm thickness
         "C": 10.10   # Heavy: 4.85mm thickness
     },
-    114.3: {  # 114mm OD per IS-9192
+    114.3: {  # 114mm OD per IS-9295
         "A": 9.89,   # Light: 3.65mm thickness
         "B": 12.10,  # Medium: 4.50mm thickness
         "C": 14.40   # Heavy: 5.40mm thickness
