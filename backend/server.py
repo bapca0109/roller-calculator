@@ -1146,12 +1146,17 @@ async def search_product_catalog(
                                             belt_widths = rs.get_belt_widths_for_length(length, "carrying")  # Impact uses carrying lengths
                                             try:
                                                 weight = rs.calculate_roller_weight(pipe_dia, length, shaft_dia, pipe_type, rubber_dia)
+                                                cost = rs.calculate_raw_material_cost(pipe_dia, length, shaft_dia, bearing, make, rubber_dia, pipe_type)
+                                                pricing = rs.calculate_final_price(cost["total_raw_material"], "none", 1)
+                                                price = round(pricing["unit_price"], 2)
                                             except:
                                                 weight = 0
+                                                price = 0
                                             length_details.append({
                                                 "length_mm": length,
                                                 "belt_widths": belt_widths,
-                                                "weight_kg": weight,
+                                                "weight_kg": round(weight, 2),
+                                                "price": price,
                                                 "product_code": f"IR{shaft_dia} {pipe_with_rubber} {length}{pipe_type} {series}{make_code}"
                                             })
                                         
