@@ -517,7 +517,7 @@ async def create_roller_quote(
         "total_price": quote_dict["total_price"]
     }
 
-@api_router.get("/quotes", response_model=List[QuoteInDB])
+@api_router.get("/quotes")
 async def get_quotes(current_user: dict = Depends(get_current_user)):
     query = {}
     # Customers can only see their own quotes
@@ -529,7 +529,15 @@ async def get_quotes(current_user: dict = Depends(get_current_user)):
     for quote in quotes:
         quote["id"] = str(quote["_id"])
         del quote["_id"]
-        result.append(QuoteInDB(**quote))
+        # Handle legacy quotes that might be missing required fields
+        # Set defaults for missing fields to prevent validation errors
+        quote.setdefault("subtotal", quote.get("total_price", 0))
+        quote.setdefault("products", [])
+        quote.setdefault("total_price", 0)
+        quote.setdefault("customer_id", "")
+        quote.setdefault("customer_name", "Unknown")
+        quote.setdefault("customer_email", "")
+        result.append(quote)
     return result
 
 @api_router.get("/quotes/{quote_id}", response_model=QuoteInDB)
