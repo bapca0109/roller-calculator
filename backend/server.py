@@ -1101,17 +1101,15 @@ async def search_product_catalog(
                                     continue
                                 
                                 for rubber_dia in rubber_options:
-                                    # Impact roller: lowercase pipe type and make
-                                    make_code_lower = bearing_make_codes.get(make, "c").lower()
-                                    series_lower = series.lower()
-                                    pipe_type_lower = pipe_type.lower()
+                                    # Impact roller: uppercase pipe type and make (same as carrying/return)
+                                    make_code = bearing_make_codes.get(make, "C")
                                     
-                                    # Product code format for impact: IR20 76/114 200b 62s
+                                    # Product code format for impact: IR20 76/114 200B 62S
                                     pipe_with_rubber = f"{pipe_display}/{rubber_dia}"
-                                    product_code = f"IR{shaft_dia} {pipe_with_rubber} {series_lower}{make_code_lower}"
+                                    product_code = f"IR{shaft_dia} {pipe_with_rubber} {series}{make_code}"
                                     
                                     # Build search text with all standard lengths
-                                    all_length_codes = " ".join([f"IR{shaft_dia} {pipe_with_rubber} {length}{pipe_type_lower} {series_lower}{make_code_lower}" for length in standard_lengths])
+                                    all_length_codes = " ".join([f"IR{shaft_dia} {pipe_with_rubber} {length}{pipe_type} {series}{make_code}" for length in standard_lengths])
                                     
                                     # Check if query matches this product
                                     search_text = f"{product_code} {all_length_codes} impact {shaft_dia}mm {pipe_dia}mm {rubber_dia}mm {bearing} {make}".upper()
@@ -1128,7 +1126,7 @@ async def search_product_catalog(
                                             base_price = 0
                                         
                                         result = {
-                                            "product_code": f"IR{shaft_dia} {pipe_with_rubber} {series_lower}{make_code_lower}",
+                                            "product_code": f"IR{shaft_dia} {pipe_with_rubber} {series}{make_code}",
                                             "roller_type": "impact",
                                             "type_code": "IR",
                                             "shaft_diameter": shaft_dia,
