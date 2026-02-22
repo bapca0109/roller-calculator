@@ -672,10 +672,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: 'center',
   },
+  logoContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
   headerLogo: {
     width: 150,
-    height: 80,
-    marginBottom: 8,
+    height: 50,
   },
   headerTitle: {
     fontSize: 24,
