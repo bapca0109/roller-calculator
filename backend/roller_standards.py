@@ -1,5 +1,5 @@
 # IS-9295:2024 - Standard Pipe Diameters (mm) - UPDATED
-PIPE_DIAMETERS = [63.5, 76.1, 88.9, 114.3, 127.0, 139.7, 152.4, 159.0, 165.0]
+PIPE_DIAMETERS = [60.8, 76.1, 88.9, 114.3, 127.0, 139.7, 152.4, 159.0, 165.0]
 
 # Shaft Diameters (mm)
 SHAFT_DIAMETERS = [20, 25, 30, 35, 40, 45, 50]
@@ -62,7 +62,7 @@ BEARING_COSTS = {
 
 # Housing Selection: pipe_dia -> [(housing_dia, [bearing_bores])] - UPDATED
 HOUSING_OPTIONS = {
-    63.5: [(56, [47])],
+    60.8: [(56, [47])],
     76.1: [(72, [47, 52])],
     88.9: [(84, [47, 52, 62])],
     114.3: [(108, [47, 52, 62, 72])],
@@ -103,7 +103,7 @@ ROLLER_LENGTHS = {
 # Pipe Weight per meter (kg/m) - IS-9295 Light/Medium/Heavy Classes
 # Type A = Light, Type B = Medium, Type C = Heavy
 PIPE_WEIGHT_PER_METER = {
-    63.5: {  # 60mm OD per IS-9295
+    60.8: {  # 60mm OD per IS-9295
         "A": 4.11,   # Light: 2.90mm thickness
         "B": 5.10,   # Medium: 3.65mm thickness
         "C": 6.17    # Heavy: 4.47mm thickness
