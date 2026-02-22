@@ -698,10 +698,46 @@ export default function CalculatorScreen() {
                 </View>
               )}
               <View style={[styles.resultRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>Subtotal (excl. freight)</Text>
+                <Text style={styles.totalLabel}>Subtotal (excl. GST & freight)</Text>
                 <Text style={styles.totalValue}>Rs. {result.pricing.final_price.toFixed(2)}</Text>
               </View>
             </View>
+
+            {/* GST */}
+            {result.gst && (
+              <View style={styles.resultCard}>
+                <Text style={styles.resultCardTitle}>GST Details</Text>
+                <View style={styles.resultRow}>
+                  <Text style={styles.resultLabel}>Destination State</Text>
+                  <Text style={styles.resultValue}>{result.gst.destination_state}</Text>
+                </View>
+                <View style={styles.resultRow}>
+                  <Text style={styles.resultLabel}>Taxable Amount</Text>
+                  <Text style={styles.resultValue}>Rs. {result.gst.taxable_amount.toFixed(2)}</Text>
+                </View>
+                {result.gst.is_same_state ? (
+                  <>
+                    <View style={styles.resultRow}>
+                      <Text style={styles.resultLabel}>CGST ({result.gst.cgst_rate}%)</Text>
+                      <Text style={styles.resultValue}>Rs. {result.gst.cgst_amount.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.resultRow}>
+                      <Text style={styles.resultLabel}>SGST ({result.gst.sgst_rate}%)</Text>
+                      <Text style={styles.resultValue}>Rs. {result.gst.sgst_amount.toFixed(2)}</Text>
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.resultRow}>
+                    <Text style={styles.resultLabel}>IGST ({result.gst.igst_rate}%)</Text>
+                    <Text style={styles.resultValue}>Rs. {result.gst.igst_amount.toFixed(2)}</Text>
+                  </View>
+                )}
+                <View style={[styles.resultRow, styles.totalRow]}>
+                  <Text style={styles.totalLabel}>Total GST</Text>
+                  <Text style={styles.totalValue}>Rs. {result.gst.total_gst.toFixed(2)}</Text>
+                </View>
+              </View>
+            )}
 
             {/* Freight */}
             {result.freight && (
