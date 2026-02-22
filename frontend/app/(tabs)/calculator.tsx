@@ -763,6 +763,72 @@ export default function CalculatorScreen() {
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* Floating Quote Badge */}
+      {quoteItems.length > 0 && (
+        <TouchableOpacity 
+          style={styles.floatingQuoteBadge}
+          onPress={() => setShowQuoteBuilder(true)}
+        >
+          <Ionicons name="cart" size={24} color="#fff" />
+          <View style={styles.badgeCount}>
+            <Text style={styles.badgeCountText}>{quoteItems.length}</Text>
+          </View>
+          <Text style={styles.floatingBadgeText}>Rs. {getQuoteTotal().toFixed(0)}</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Quote Builder Modal */}
+      {showQuoteBuilder && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Quote Builder</Text>
+              <TouchableOpacity onPress={() => setShowQuoteBuilder(false)}>
+                <Ionicons name="close" size={28} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalScroll}>
+              {quoteItems.map((item, index) => (
+                <View key={index} style={styles.quoteItem}>
+                  <View style={styles.quoteItemHeader}>
+                    <Text style={styles.quoteItemCode}>{item.configuration.product_code}</Text>
+                    <TouchableOpacity onPress={() => removeFromQuote(index)}>
+                      <Ionicons name="trash-outline" size={20} color="#E53935" />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.quoteItemDesc}>
+                    {item.configuration.roller_type.charAt(0).toUpperCase() + item.configuration.roller_type.slice(1)} Roller
+                  </Text>
+                  <View style={styles.quoteItemRow}>
+                    <Text style={styles.quoteItemLabel}>Qty: {item.configuration.quantity}</Text>
+                    <Text style={styles.quoteItemPrice}>Rs. {item.grand_total.toFixed(2)}</Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <View style={styles.modalTotalRow}>
+                <Text style={styles.modalTotalLabel}>Total ({quoteItems.length} items)</Text>
+                <Text style={styles.modalTotalValue}>Rs. {getQuoteTotal().toFixed(2)}</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.saveAllButton}
+                onPress={saveMultiProductQuote}
+                disabled={savingQuote}
+              >
+                {savingQuote ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveAllButtonText}>Save Quote</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
