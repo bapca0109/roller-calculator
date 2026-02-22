@@ -345,6 +345,110 @@ FREIGHT_RATES_PER_KG = {
     (1500, 9999): 9.0    # 1500+ km: ₹9/kg
 }
 
+def get_distance_from_pincode(destination_pincode):
+    """
+    Calculate distance from dispatch location (382433) to destination pincode.
+    
+    NOTE: This is a simplified implementation using pincode-based zones.
+    For production, integrate with a pincode distance API like:
+    - India Post Pincode API
+    - Google Distance Matrix API
+    - Delhivery/Other logistics APIs
+    
+    Returns distance in km.
+    """
+    # Simplified zone-based distance estimation
+    # First 2 digits of pincode indicate region
+    origin_zone = DISPATCH_PINCODE[:2]  # "38" = Gujarat
+    dest_zone = destination_pincode[:2] if destination_pincode else "00"
+    
+    # Simplified distance mapping based on pincode zones
+    # Gujarat (38) to various regions
+    zone_distances = {
+        "38": 150,    # Gujarat (local)
+        "39": 250,    # Gujarat (other parts)
+        "36": 350,    # Rajasthan
+        "37": 400,    # Maharashtra (North)
+        "40": 500,    # Maharashtra (Pune/Mumbai)
+        "41": 550,    # Maharashtra (South)
+        "42": 600,    # Madhya Pradesh
+        "43": 650,    # Bihar
+        "11": 900,    # Delhi
+        "12": 950,    # Haryana
+        "13": 1000,   # Punjab
+        "14": 1100,   # Himachal
+        "15": 1200,   # Jammu
+        "16": 1150,   # Chandigarh
+        "17": 1300,   # Uttarakhand
+        "20": 800,    # Uttar Pradesh (West)
+        "21": 850,    # Uttar Pradesh
+        "22": 900,    # Uttar Pradesh (East)
+        "24": 1400,   # West Bengal
+        "60": 1600,   # Tamil Nadu
+        "50": 1300,   # Karnataka (North)
+        "56": 1400,   # Karnataka (South)
+        "57": 1350,   # Andhra Pradesh
+        "68": 1700,   # Kerala
+        "70": 1800,   # Assam
+        "78": 1900,   # North East
+    }
+    
+    return zone_distances.get(dest_zone, 500)  # Default 500 km if zone unknown
+
+def get_freight_rate_per_kg(distance_km):
+    """Get freight rate per kg based on distance"""
+    for (min_dist, max_dist), rate in FREIGHT_RATES_PER_KG.items():
+        if min_dist <= distance_km < max_dist:
+            return rate
+    return 9.0  # Default to highest rate if distance exceeds all ranges
+
+def calculate_roller_weight(pipe_dia, pipe_length_mm, shaft_dia, pipe_type, rubber_dia=None):
+    """
+    Calculate total roller weight in kg
+    Includes: pipe + shaft + rubber (if impact roller)
+    (Bearings, housing, seals, circlips weight is negligible)
+    """
+    # Pipe weight
+    pipe_length_m = pipe_length_mm / 1000
+    pipe_weight_per_m = PIPE_WEIGHT_PER_METER[pipe_dia].get(pipe_type, PIPE_WEIGHT_PER_METER[pipe_dia]["B"])
+    pipe_weight = pipe_weight_per_m * pipe_length_m
+    
+    # Shaft weight (2 shafts)
+    shaft_length_mm = calculate_shaft_length(pipe_length_mm)
+    shaft_length_m = shaft_length_mm / 1000
+    shaft_weight = SHAFT_WEIGHT_PER_METER[shaft_dia] * shaft_length_m * 2
+    
+    # Rubber weight (if impact roller)
+    rubber_weight = 0
+    if rubber_dia:
+        # Simplified rubber weight calculation
+        # Rubber ring weight ≈ volume × density
+        # Approximation: add 30-50% to pipe weight for rubber lagging
+        rubber_weight = pipe_weight * 0.4  # Approximate
+    
+    total_weight = pipe_weight + shaft_weight + rubber_weight
+    return round(total_weight, 2)
+
+def calculate_freight_charges(roller_weight_kg, destination_pincode):
+    """
+    Calculate freight charges based on roller weight and destination pincode
+    
+    Returns:
+        - distance_km
+        - freight_rate_per_kg
+        - freight_charges (weight × rate)
+    """
+    distance_km = get_distance_from_pincode(destination_pincode)
+    freight_rate = get_freight_rate_per_kg(distance_km)
+    freight_charges = roller_weight_kg * freight_rate
+    
+    return {
+        "distance_km": round(distance_km, 0),
+        "freight_rate_per_kg": round(freight_rate, 2),
+        "roller_weight_kg": round(roller_weight_kg, 2),
+        "freight_charges": round(freight_charges, 2)
+    }
+
 def calculate_shaft_length(pipe_length_mm):
     """Calculate shaft length: pipe length + 70mm (35mm on each side)"""
     return pipe_length_mm + 70
