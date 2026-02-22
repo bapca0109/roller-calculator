@@ -53,8 +53,14 @@ interface CostResult {
     raw_material_cost: number;
     layout_cost: number;
     profit: number;
-    product_price: number;
+    unit_price: number;
+    quantity: number;
+    order_value: number;
+    discount_percent: number;
+    discount_amount: number;
+    price_after_discount: number;
     packing_type: string;
+    packing_percent: number;
     packing_charges: number;
     final_price: number;
   };
