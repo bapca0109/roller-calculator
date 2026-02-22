@@ -157,7 +157,17 @@ export default function CalculatorScreen() {
 
   useEffect(() => {
     fetchStandards();
+    fetchCustomers();
   }, []);
+  
+  const fetchCustomers = async () => {
+    try {
+      const response = await api.get('/customers');
+      setCustomers(response.data.customers || []);
+    } catch (error) {
+      console.log('Failed to fetch customers');
+    }
+  };
 
   useEffect(() => {
     // Auto-select first bearing when shaft diameter changes
