@@ -262,8 +262,8 @@ def get_bearing_cost(bearing_number, make="china"):
     
     return 0  # Shouldn't happen if bearing exists
 
-def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_number, bearing_make="china"):
-    """Calculate total raw material cost for a roller"""
+def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_number, bearing_make="china", rubber_dia=None):
+    """Calculate total raw material cost for a roller (optionally with rubber lagging for impact rollers)"""
     
     # Pipe cost
     pipe_length_m = pipe_length_mm / 1000
@@ -293,9 +293,14 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
     # Circlip cost (4 circlips per roller)
     circlip_cost = CIRCLIP_COSTS[shaft_dia] * 4
     
-    total_raw_material = pipe_cost + shaft_cost + bearing_cost + housing_cost + seal_cost + circlip_cost
+    # Rubber lagging cost (optional, for impact rollers)
+    rubber_cost = 0
+    if rubber_dia:
+        rubber_cost = calculate_rubber_cost(pipe_dia, rubber_dia, pipe_length_mm)
     
-    return {
+    total_raw_material = pipe_cost + shaft_cost + bearing_cost + housing_cost + seal_cost + circlip_cost + rubber_cost
+    
+    result = {
         "pipe_cost": round(pipe_cost, 2),
         "shaft_cost": round(shaft_cost, 2),
         "bearing_cost": round(bearing_cost, 2),
@@ -304,6 +309,13 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
         "circlip_cost": round(circlip_cost, 2),
         "total_raw_material": round(total_raw_material, 2)
     }
+    
+    if rubber_dia:
+        result["rubber_cost"] = round(rubber_cost, 2)
+        number_of_rings = pipe_length_mm / RUBBER_RING_THICKNESS
+        result["rubber_rings"] = round(number_of_rings, 1)
+    
+    return result
 
 def calculate_final_price(raw_material_cost):
     """
