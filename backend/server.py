@@ -696,8 +696,12 @@ async def calculate_detailed_cost(
     # Calculate quantity
     quantity = request.quantity or 1
     
-    # Calculate total for all rollers (before freight)
-    total_price_all_rollers = pricing["final_price"] * quantity
+    # Calculate final pricing with discount and packing charges
+    pricing = rs.calculate_final_price(
+        cost_breakdown["total_raw_material"],
+        request.packing_type or "none",
+        quantity
+    )
     
     # Initialize freight data
     freight_data = None
@@ -731,8 +735,8 @@ async def calculate_detailed_cost(
         }
         total_freight_charges = freight_calc["freight_charges"]
     
-    # Calculate grand total (product price × quantity + freight)
-    grand_total = total_price_all_rollers + total_freight_charges
+    # Calculate grand total (final_price already includes discount + packing, now add freight)
+    grand_total = pricing["final_price"] + total_freight_charges
     
     return DetailedCostResponse(
         configuration={
