@@ -193,14 +193,31 @@ export default function QuotesScreen() {
             <div class="info-value" style="color: #960018;">#${quote.id.slice(-6).toUpperCase()}</div>
             <div class="info-label" style="margin-top: 10px;">Date</div>
             <div class="info-value">${formatDate(quote.created_at)}</div>
-          </div>
-          <div class="info-box" style="width: 48%;">
-            <div class="info-label">Customer</div>
-            <div class="info-value">${quote.customer_name}</div>
             <div class="info-label" style="margin-top: 10px;">Status</div>
             <div class="info-value">
               <span class="status-badge status-${quote.status?.toLowerCase()}">${quote.status?.toUpperCase()}</span>
             </div>
+          </div>
+          <div class="info-box" style="width: 48%;">
+            <div class="info-label">Bill To</div>
+            <div class="info-value">${quote.customer_details?.company || quote.customer_details?.name || quote.customer_name}</div>
+            ${quote.customer_details?.address ? `
+              <div style="font-size: 12px; color: #555; margin-top: 5px; line-height: 1.5;">
+                ${quote.customer_details.address}${quote.customer_details.city ? `<br>${quote.customer_details.city}` : ''}${quote.customer_details.state ? `, ${quote.customer_details.state}` : ''}${quote.customer_details.pincode ? ` - ${quote.customer_details.pincode}` : ''}
+              </div>
+            ` : ''}
+            ${quote.customer_details?.gst_number ? `
+              <div style="margin-top: 8px; padding: 5px 10px; background: #E3F2FD; border-radius: 4px; display: inline-block;">
+                <span style="font-size: 11px; color: #1565C0;"><strong>GSTIN:</strong> ${quote.customer_details.gst_number}</span>
+              </div>
+            ` : ''}
+            ${quote.customer_details?.phone || quote.customer_details?.email ? `
+              <div style="font-size: 11px; color: #666; margin-top: 8px;">
+                ${quote.customer_details.phone ? `<span>Ph: ${quote.customer_details.phone}</span>` : ''}
+                ${quote.customer_details.phone && quote.customer_details.email ? ' | ' : ''}
+                ${quote.customer_details.email ? `<span>${quote.customer_details.email}</span>` : ''}
+              </div>
+            ` : ''}
           </div>
         </div>
 
