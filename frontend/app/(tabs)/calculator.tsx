@@ -689,7 +689,8 @@ export default function CalculatorScreen() {
               <View style={styles.resultRow}>
                 <Text style={styles.resultLabel}>Type</Text>
                 <Text style={styles.resultValue}>
-                  {result.configuration.roller_type === 'impact' ? 'Impact Roller' : 'Carrying Roller'}
+                  {result.configuration.roller_type === 'impact' ? 'Impact Roller' : 
+                   result.configuration.roller_type === 'return' ? 'Return Roller' : 'Carrying Roller'}
                 </Text>
               </View>
               <View style={styles.resultRow}>
