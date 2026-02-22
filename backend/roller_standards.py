@@ -261,6 +261,164 @@ LOCKING_RING_COSTS = {
     165: 38
 }
 
+# GST Configuration
+GST_RATE = 18.0  # 18% GST for conveyor rollers
+CGST_RATE = 9.0  # Central GST (same state)
+SGST_RATE = 9.0  # State GST (same state)
+IGST_RATE = 18.0  # Integrated GST (different state)
+
+# Company's state (Gujarat)
+COMPANY_STATE_CODE = "24"  # Gujarat state code
+COMPANY_PINCODE_PREFIX = "38"  # Gujarat pincodes start with 38
+
+# Indian State Codes based on Pincode prefix (first 2 digits)
+PINCODE_STATE_MAP = {
+    "11": ("Delhi", "07"),
+    "12": ("Haryana", "06"),
+    "13": ("Haryana", "06"),
+    "14": ("Punjab", "03"),
+    "15": ("Punjab", "03"),
+    "16": ("Punjab", "03"),
+    "17": ("Himachal Pradesh", "02"),
+    "18": ("Jammu & Kashmir", "01"),
+    "19": ("Jammu & Kashmir", "01"),
+    "20": ("Uttar Pradesh", "09"),
+    "21": ("Uttar Pradesh", "09"),
+    "22": ("Uttar Pradesh", "09"),
+    "23": ("Uttar Pradesh", "09"),
+    "24": ("Uttar Pradesh", "09"),
+    "25": ("Uttar Pradesh", "09"),
+    "26": ("Uttar Pradesh", "09"),
+    "27": ("Uttar Pradesh", "09"),
+    "28": ("Uttar Pradesh", "09"),
+    "30": ("Rajasthan", "08"),
+    "31": ("Rajasthan", "08"),
+    "32": ("Rajasthan", "08"),
+    "33": ("Rajasthan", "08"),
+    "34": ("Rajasthan", "08"),
+    "36": ("Gujarat", "24"),
+    "37": ("Gujarat", "24"),
+    "38": ("Gujarat", "24"),
+    "39": ("Gujarat", "24"),
+    "40": ("Maharashtra", "27"),
+    "41": ("Maharashtra", "27"),
+    "42": ("Maharashtra", "27"),
+    "43": ("Maharashtra", "27"),
+    "44": ("Maharashtra", "27"),
+    "45": ("Madhya Pradesh", "23"),
+    "46": ("Madhya Pradesh", "23"),
+    "47": ("Madhya Pradesh", "23"),
+    "48": ("Madhya Pradesh", "23"),
+    "49": ("Chhattisgarh", "22"),
+    "50": ("Telangana", "36"),
+    "51": ("Telangana", "36"),
+    "52": ("Andhra Pradesh", "37"),
+    "53": ("Andhra Pradesh", "37"),
+    "56": ("Karnataka", "29"),
+    "57": ("Karnataka", "29"),
+    "58": ("Karnataka", "29"),
+    "59": ("Karnataka", "29"),
+    "60": ("Tamil Nadu", "33"),
+    "61": ("Tamil Nadu", "33"),
+    "62": ("Tamil Nadu", "33"),
+    "63": ("Tamil Nadu", "33"),
+    "64": ("Tamil Nadu", "33"),
+    "67": ("Kerala", "32"),
+    "68": ("Kerala", "32"),
+    "69": ("Kerala", "32"),
+    "70": ("West Bengal", "19"),
+    "71": ("West Bengal", "19"),
+    "72": ("West Bengal", "19"),
+    "73": ("West Bengal", "19"),
+    "74": ("West Bengal", "19"),
+    "75": ("Odisha", "21"),
+    "76": ("Odisha", "21"),
+    "77": ("Odisha", "21"),
+    "78": ("Assam", "18"),
+    "79": ("Northeast", "00"),
+    "80": ("Bihar", "10"),
+    "81": ("Bihar", "10"),
+    "82": ("Bihar", "10"),
+    "83": ("Bihar", "10"),
+    "84": ("Bihar", "10"),
+    "85": ("Bihar", "10"),
+    "13": ("Chandigarh", "04"),
+    "16": ("Chandigarh", "04"),
+}
+
+def get_state_from_pincode(pincode):
+    """Get state name and code from pincode"""
+    if not pincode or len(str(pincode)) < 2:
+        return None, None
+    prefix = str(pincode)[:2]
+    state_info = PINCODE_STATE_MAP.get(prefix)
+    if state_info:
+        return state_info[0], state_info[1]
+    return "Other", "00"
+
+def calculate_gst(taxable_amount, destination_pincode=None):
+    """
+    Calculate GST based on destination state
+    - Same state (Gujarat): CGST 9% + SGST 9%
+    - Different state: IGST 18%
+    """
+    if not destination_pincode:
+        # Default to IGST if no pincode provided
+        igst = round(taxable_amount * (IGST_RATE / 100), 2)
+        return {
+            "taxable_amount": round(taxable_amount, 2),
+            "gst_type": "IGST",
+            "cgst_rate": 0,
+            "cgst_amount": 0,
+            "sgst_rate": 0,
+            "sgst_amount": 0,
+            "igst_rate": IGST_RATE,
+            "igst_amount": igst,
+            "total_gst": igst,
+            "destination_state": "Unknown",
+            "is_same_state": False
+        }
+    
+    pincode_prefix = str(destination_pincode)[:2]
+    state_name, state_code = get_state_from_pincode(destination_pincode)
+    
+    # Check if same state (Gujarat)
+    is_same_state = pincode_prefix in ["36", "37", "38", "39"]
+    
+    if is_same_state:
+        # Same state: CGST + SGST
+        cgst = round(taxable_amount * (CGST_RATE / 100), 2)
+        sgst = round(taxable_amount * (SGST_RATE / 100), 2)
+        return {
+            "taxable_amount": round(taxable_amount, 2),
+            "gst_type": "CGST+SGST",
+            "cgst_rate": CGST_RATE,
+            "cgst_amount": cgst,
+            "sgst_rate": SGST_RATE,
+            "sgst_amount": sgst,
+            "igst_rate": 0,
+            "igst_amount": 0,
+            "total_gst": round(cgst + sgst, 2),
+            "destination_state": state_name,
+            "is_same_state": True
+        }
+    else:
+        # Different state: IGST
+        igst = round(taxable_amount * (IGST_RATE / 100), 2)
+        return {
+            "taxable_amount": round(taxable_amount, 2),
+            "gst_type": "IGST",
+            "cgst_rate": 0,
+            "cgst_amount": 0,
+            "sgst_rate": 0,
+            "sgst_amount": 0,
+            "igst_rate": IGST_RATE,
+            "igst_amount": igst,
+            "total_gst": igst,
+            "destination_state": state_name,
+            "is_same_state": False
+        }
+
 # Product Code Mappings
 ROLLER_TYPE_CODES = {
     "carrying": "CR",
