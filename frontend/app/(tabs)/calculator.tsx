@@ -213,6 +213,33 @@ export default function CalculatorScreen() {
     }
   };
 
+  const saveQuote = async () => {
+    if (!result) return;
+
+    setSavingQuote(true);
+    try {
+      const response = await api.post('/quotes/roller', {
+        customer_name: user?.name || 'Customer',
+        configuration: result.configuration,
+        cost_breakdown: result.cost_breakdown,
+        pricing: result.pricing,
+        freight: result.freight,
+        grand_total: result.grand_total,
+        notes: `Roller: ${result.configuration.product_code}`
+      });
+      
+      Alert.alert(
+        'Quote Saved!', 
+        `Quote Number: ${response.data.quote_number}\nTotal: Rs. ${response.data.total_price.toFixed(2)}`,
+        [{ text: 'OK' }]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to save quote');
+    } finally {
+      setSavingQuote(false);
+    }
+  };
+
   const availableBearings = standards?.bearing_options[shaftDiameter.toString()] || [];
   const availableRubberDiameters = RUBBER_DIAMETERS[pipeDiameter] || [];
 
