@@ -6,7 +6,7 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#007AFF',
+        tabBarActiveTintColor: '#FF6B00',
         tabBarInactiveTintColor: '#8E8E93',
         headerShown: false,
         tabBarStyle: {
@@ -20,11 +20,11 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="products"
+        name="calculator"
         options={{
-          title: 'Rollers',
+          title: 'Calculator',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
+            <Ionicons name="calculator-outline" size={size} color={color} />
           ),
         }}
       />
@@ -44,6 +44,12 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="products"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
