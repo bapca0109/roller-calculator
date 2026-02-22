@@ -170,6 +170,85 @@ export default function CustomersScreen() {
     setModalVisible(true);
   };
 
+  // GST Lookup functions
+  const openGstLookup = () => {
+    setGstinInput('');
+    setCaptchaData(null);
+    setCaptchaInput('');
+    setGstModalVisible(true);
+    fetchCaptcha();
+  };
+
+  const fetchCaptcha = async () => {
+    setGstLoading(true);
+    try {
+      const response = await api.get('/gst/captcha');
+      if (response.data.success) {
+        setCaptchaData({
+          session_id: response.data.session_id,
+          captcha_image: response.data.captcha_image,
+        });
+      } else {
+        Alert.alert('Error', response.data.error || 'Failed to fetch captcha');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to fetch captcha from GST portal');
+    } finally {
+      setGstLoading(false);
+    }
+  };
+
+  const verifyGstin = async () => {
+    if (!gstinInput || gstinInput.length !== 15) {
+      Alert.alert('Error', 'Please enter a valid 15-character GSTIN');
+      return;
+    }
+    if (!captchaInput) {
+      Alert.alert('Error', 'Please enter the captcha');
+      return;
+    }
+    if (!captchaData?.session_id) {
+      Alert.alert('Error', 'Session expired. Please refresh captcha.');
+      return;
+    }
+
+    setGstVerifying(true);
+    try {
+      const response = await api.post('/gst/verify', {
+        session_id: captchaData.session_id,
+        gstin: gstinInput.toUpperCase(),
+        captcha: captchaInput,
+      });
+
+      if (response.data.success) {
+        const gstData = response.data.data;
+        // Fill form with GST data
+        setFormData({
+          name: gstData.trade_name || gstData.legal_name || '',
+          company: gstData.legal_name || '',
+          email: '',
+          phone: '',
+          address: gstData.address?.full || gstData.address?.street || '',
+          city: gstData.address?.city || '',
+          state: gstData.address?.state || '',
+          pincode: gstData.address?.pincode || '',
+          gst_number: gstData.gstin || gstinInput.toUpperCase(),
+          notes: `Status: ${gstData.status}. Type: ${gstData.taxpayer_type}. Reg: ${gstData.registration_date}`,
+        });
+        setGstModalVisible(false);
+        setModalVisible(true);
+        Alert.alert('Success', 'GST details fetched! Please review and save.');
+      }
+    } catch (error: any) {
+      Alert.alert('Verification Failed', error.response?.data?.detail || 'Invalid GSTIN or captcha. Please try again.');
+      // Refresh captcha on failure
+      fetchCaptcha();
+      setCaptchaInput('');
+    } finally {
+      setGstVerifying(false);
+    }
+  };
+
   const filteredCustomers = customers.filter(
     (c) =>
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
