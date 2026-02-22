@@ -323,8 +323,22 @@ export default function CalculatorScreen() {
 
     setSavingQuote(true);
     try {
+      const customerDetails = selectedCustomer ? {
+        name: selectedCustomer.name,
+        company: selectedCustomer.company,
+        email: selectedCustomer.email,
+        phone: selectedCustomer.phone,
+        address: selectedCustomer.address,
+        city: selectedCustomer.city,
+        state: selectedCustomer.state,
+        pincode: selectedCustomer.pincode,
+        gst_number: selectedCustomer.gst_number,
+      } : null;
+
       const response = await api.post('/quotes/roller', {
-        customer_name: user?.name || 'Customer',
+        customer_name: selectedCustomer?.name || user?.name || 'Customer',
+        customer_id: selectedCustomer?.id || null,
+        customer_details: customerDetails,
         configuration: result.configuration,
         cost_breakdown: result.cost_breakdown,
         pricing: result.pricing,
@@ -335,7 +349,7 @@ export default function CalculatorScreen() {
       
       Alert.alert(
         'Quote Saved!', 
-        `Quote Number: ${response.data.quote_number}\nTotal: Rs. ${response.data.total_price.toFixed(2)}`,
+        `Quote Number: ${response.data.quote_number}\nCustomer: ${selectedCustomer?.name || 'N/A'}\nTotal: Rs. ${response.data.total_price.toFixed(2)}`,
         [{ text: 'OK' }]
       );
     } catch (error: any) {
