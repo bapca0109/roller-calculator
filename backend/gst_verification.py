@@ -1,15 +1,22 @@
 """
 GST Verification Module
-Fetches GST details from the official GST portal (services.gst.gov.in)
-Uses session-based captcha verification
+Fetches GST details from multiple sources:
+1. Primary: Appyflow API (no captcha required, 50 free requests)
+2. Fallback: Official GST portal (requires captcha)
 """
 
 import requests
 import base64
 import uuid
+import os
 from typing import Optional, Dict, Any
 
-# GST Portal endpoints
+# Appyflow API (Primary - no captcha)
+APPYFLOW_API_URL = "https://appyflow.in/api/verifyGST"
+# Get API key from environment or use a default test key
+APPYFLOW_API_KEY = os.environ.get("APPYFLOW_GST_KEY", "")
+
+# GST Portal endpoints (Fallback - requires captcha)
 GST_BASE_URL = "https://services.gst.gov.in/services/api"
 GST_SEARCH_URL = f"{GST_BASE_URL}/search/tp"
 GST_CAPTCHA_URL = f"{GST_BASE_URL}/captcha"
@@ -18,33 +25,164 @@ GST_CAPTCHA_URL = f"{GST_BASE_URL}/captcha"
 gst_sessions: Dict[str, requests.Session] = {}
 
 
-def get_captcha() -> Dict[str, Any]:
+def verify_gstin_appyflow(gstin: str) -> Dict[str, Any]:
     """
-    Get captcha image from GST portal
-    Returns session_id and base64 encoded captcha image
+    Verify GSTIN using Appyflow API (no captcha required)
+    Free tier: 50 requests lifetime
     """
-    session_id = str(uuid.uuid4())
-    session = requests.Session()
+    if not APPYFLOW_API_KEY:
+        return {
+            "success": False,
+            "error": "Appyflow API key not configured. Please add APPYFLOW_GST_KEY to environment.",
+            "needs_captcha": True
+        }
     
     try:
-        # Get the captcha
-        response = session.get(
-            GST_CAPTCHA_URL,
-            headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Referer': 'https://services.gst.gov.in/services/searchtp'
+        response = requests.get(
+            APPYFLOW_API_URL,
+            params={
+                "gstNo": gstin.upper(),
+                "key_secret": APPYFLOW_API_KEY
             },
             timeout=30
         )
         
         if response.status_code == 200:
+            data = response.json()
+            
+            # Check for API errors
+            if data.get("error") or not data.get("taxpayerInfo"):
+                return {
+                    "success": False,
+                    "error": data.get("message", "Invalid GSTIN or API error"),
+                    "needs_captcha": True
+                }
+            
+            # Parse the response
+            taxpayer = data.get("taxpayerInfo", {})
+            address_info = taxpayer.get("pradr", {}).get("addr", {})
+            
+            return {
+                "success": True,
+                "data": {
+                    "gstin": taxpayer.get("gstin", gstin),
+                    "legal_name": taxpayer.get("lgnm", ""),
+                    "trade_name": taxpayer.get("tradeNam", ""),
+                    "status": taxpayer.get("sts", ""),
+                    "registration_date": taxpayer.get("rgdt", ""),
+                    "cancellation_date": taxpayer.get("cxdt", ""),
+                    "constitution_of_business": taxpayer.get("ctb", ""),
+                    "taxpayer_type": taxpayer.get("dty", ""),
+                    "state_jurisdiction": taxpayer.get("stj", ""),
+                    "center_jurisdiction": taxpayer.get("ctj", ""),
+                    "nature_of_business": taxpayer.get("nba", []),
+                    "address": {
+                        "full": format_address(address_info),
+                        "building": address_info.get("bno", ""),
+                        "street": address_info.get("st", ""),
+                        "locality": address_info.get("loc", ""),
+                        "city": address_info.get("dst", ""),
+                        "state": address_info.get("stcd", ""),
+                        "pincode": address_info.get("pncd", "")
+                    }
+                }
+            }
+        else:
+            return {
+                "success": False,
+                "error": f"API returned status {response.status_code}",
+                "needs_captcha": True
+            }
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "needs_captcha": True
+        }
+
+
+def format_address(addr: Dict) -> str:
+    """Format address components into a single string"""
+    parts = []
+    if addr.get("bno"):
+        parts.append(addr["bno"])
+    if addr.get("flno"):
+        parts.append(f"Floor {addr['flno']}")
+    if addr.get("bnm"):
+        parts.append(addr["bnm"])
+    if addr.get("st"):
+        parts.append(addr["st"])
+    if addr.get("loc"):
+        parts.append(addr["loc"])
+    if addr.get("dst"):
+        parts.append(addr["dst"])
+    if addr.get("stcd"):
+        parts.append(addr["stcd"])
+    if addr.get("pncd"):
+        parts.append(f"- {addr['pncd']}")
+    
+    return ", ".join(parts) if parts else ""
+
+
+def get_captcha() -> Dict[str, Any]:
+    """
+    Get captcha image from GST portal
+    Returns session_id and base64 encoded captcha image
+    NOTE: This often fails due to GST portal bot detection
+    """
+    session_id = str(uuid.uuid4())
+    session = requests.Session()
+    
+    try:
+        # First visit the search page to get cookies
+        session.get(
+            "https://services.gst.gov.in/services/searchtp",
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+            },
+            timeout=30
+        )
+        
+        # Get the captcha
+        response = session.get(
+            GST_CAPTCHA_URL,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://services.gst.gov.in/services/searchtp',
+                'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"',
+                'sec-fetch-dest': 'image',
+                'sec-fetch-mode': 'no-cors',
+                'sec-fetch-site': 'same-origin',
+            },
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            content = response.content
+            
+            # Check if we got HTML instead of image (bot detection)
+            if b'<!DOCTYPE' in content or b'<html' in content:
+                return {
+                    "success": False,
+                    "error": "GST portal blocked the request. Please use GSTIN direct lookup instead.",
+                    "blocked": True
+                }
+            
             # Store session for later use
             gst_sessions[session_id] = session
             
             # Get captcha as base64
-            captcha_base64 = base64.b64encode(response.content).decode('utf-8')
+            captcha_base64 = base64.b64encode(content).decode('utf-8')
             
             return {
                 "success": True,
@@ -58,6 +196,9 @@ def get_captcha() -> Dict[str, Any]:
             }
     except Exception as e:
         return {
+            "success": False,
+            "error": str(e)
+        }
             "success": False,
             "error": str(e)
         }
