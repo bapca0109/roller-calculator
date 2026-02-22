@@ -919,6 +919,37 @@ export default function CalculatorScreen() {
               </Text>
             </View>
 
+            {/* Customer Selection */}
+            <View style={styles.customerSection}>
+              <Text style={styles.customerLabel}>Select Customer for Quote:</Text>
+              <TouchableOpacity
+                style={styles.customerSelector}
+                onPress={() => setShowCustomerPicker(true)}
+              >
+                {selectedCustomer ? (
+                  <View style={styles.selectedCustomer}>
+                    <Ionicons name="person" size={20} color="#960018" />
+                    <View style={styles.selectedCustomerInfo}>
+                      <Text style={styles.selectedCustomerName}>{selectedCustomer.name}</Text>
+                      {selectedCustomer.company && (
+                        <Text style={styles.selectedCustomerCompany}>{selectedCustomer.company}</Text>
+                      )}
+                    </View>
+                    <TouchableOpacity onPress={() => setSelectedCustomer(null)}>
+                      <Ionicons name="close-circle" size={20} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.noCustomerSelected}>
+                    <Ionicons name="person-add-outline" size={20} color="#666" />
+                    <Text style={styles.noCustomerText}>
+                      {customers.length > 0 ? 'Tap to select customer' : 'No customers - Add in Customers tab'}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+
             {/* Save Quote Button */}
             <View style={styles.quoteButtonsContainer}>
               <TouchableOpacity
