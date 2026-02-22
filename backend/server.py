@@ -1363,6 +1363,100 @@ async def delete_customer(customer_id: str, current_user: dict = Depends(get_cur
     
     return {"message": "Customer deleted successfully"}
 
+# ============= GST VERIFICATION API =============
+
+import gst_verification as gst
+
+class GSTVerifyRequest(BaseModel):
+    session_id: str
+    gstin: str
+    captcha: str
+
+@api_router.get("/gst/captcha")
+async def get_gst_captcha(current_user: dict = Depends(get_current_user)):
+    """Get captcha image for GST verification"""
+    result = gst.get_captcha()
+    if not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error", "Failed to fetch captcha"))
+    return result
+
+@api_router.post("/gst/verify")
+async def verify_gst(request: GSTVerifyRequest, current_user: dict = Depends(get_current_user)):
+    """Verify GSTIN and get taxpayer details"""
+    # Validate GSTIN format first
+    if not gst.validate_gstin_format(request.gstin):
+        raise HTTPException(status_code=400, detail="Invalid GSTIN format. Must be 15 characters like 27AAACE8661R1Z5")
+    
+    result = gst.verify_gstin(request.session_id, request.gstin, request.captcha)
+    
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Verification failed"))
+    
+    return result
+
+@api_router.get("/gst/validate/{gstin}")
+async def validate_gstin(gstin: str, current_user: dict = Depends(get_current_user)):
+    """Validate GSTIN format without verification"""
+    is_valid = gst.validate_gstin_format(gstin)
+    state = gst.get_state_from_gstin(gstin) if is_valid else None
+    
+    return {
+        "gstin": gstin.upper(),
+        "is_valid_format": is_valid,
+        "state": state
+    }
+
+@api_router.post("/customers/from-gst")
+async def create_customer_from_gst(
+    gst_data: Dict[str, Any],
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a customer from GST verification data"""
+    # Extract data from GST response
+    data = gst_data.get("data", gst_data)
+    address_info = data.get("address", {})
+    
+    customer_dict = {
+        "name": data.get("trade_name") or data.get("legal_name", ""),
+        "company": data.get("legal_name", ""),
+        "email": "",  # Not available from GST
+        "phone": "",  # Not available from GST
+        "address": address_info.get("full", "") or address_info.get("street", ""),
+        "city": address_info.get("city", ""),
+        "state": address_info.get("state", "") or data.get("state_jurisdiction", ""),
+        "pincode": address_info.get("pincode", ""),
+        "gst_number": data.get("gstin", ""),
+        "notes": f"Auto-imported from GST. Status: {data.get('status', 'N/A')}. Type: {data.get('taxpayer_type', 'N/A')}",
+        "created_by": current_user.get("email"),
+        "created_at": datetime.utcnow(),
+        "gst_details": {
+            "registration_date": data.get("registration_date"),
+            "constitution": data.get("constitution_of_business"),
+            "taxpayer_type": data.get("taxpayer_type"),
+            "status": data.get("status"),
+            "nature_of_business": data.get("nature_of_business", [])
+        }
+    }
+    
+    # Check if customer with same GST already exists
+    existing = await db.customers.find_one({
+        "gst_number": customer_dict["gst_number"],
+        "created_by": current_user.get("email")
+    })
+    
+    if existing:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Customer with GSTIN {customer_dict['gst_number']} already exists"
+        )
+    
+    result = await db.customers.insert_one(customer_dict)
+    customer_dict["id"] = str(result.inserted_id)
+    if "_id" in customer_dict:
+        del customer_dict["_id"]
+    
+    return {"message": "Customer created from GST data", "customer": customer_dict}
+
 # Include the router in the main app
 app.include_router(api_router)
 
