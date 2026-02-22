@@ -456,10 +456,11 @@ def generate_product_code(roller_type, shaft_dia, pipe_dia, pipe_length, pipe_ty
     shaft_code = str(int(shaft_dia))
     
     # Pipe diameter (with rubber for impact rollers)
+    # Round pipe diameter for display (88.9 -> 89, not 88)
     if rubber_dia:
-        pipe_code = f"{int(pipe_dia)}/{int(rubber_dia)}"
+        pipe_code = f"{round(pipe_dia)}/{int(rubber_dia)}"
     else:
-        pipe_code = str(int(pipe_dia))
+        pipe_code = str(round(pipe_dia))
     
     # Length in mm
     length_code = str(int(pipe_length))
