@@ -617,6 +617,7 @@ class DetailedCostRequest(BaseModel):
     pipe_length: float  # mm
     shaft_diameter: int
     bearing_number: str
+    bearing_make: Optional[str] = "china"  # china, skf, fag, timken
     belt_width: Optional[int] = None
 
 class DetailedCostResponse(BaseModel):
