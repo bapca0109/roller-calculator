@@ -20,14 +20,16 @@ interface ProductResult {
   type_code: string;
   shaft_diameter: number;
   pipe_diameter: number;
+  pipe_length?: number;
   pipe_type: string;
   bearing: string;
   bearing_make: string;
   bearing_series: string;
   housing: string;
-  base_price_1000mm: number;
+  base_price: number;
   available_lengths: number[];
   description: string;
+  exact_match?: boolean;
 }
 
 export default function SearchScreen() {
