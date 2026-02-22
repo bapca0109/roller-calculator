@@ -443,10 +443,10 @@ def generate_product_code(roller_type, shaft_dia, pipe_dia, pipe_length, pipe_ty
     """
     Generate product code/SKU for conveyor rollers
     
-    Format for Standard Rollers: [TYPE][SHAFT] [PIPE][LENGTH][THICKNESS] [SERIES][MAKE]
-    Example: CR20 89200A 62S
+    Format for Standard Rollers: [TYPE][SHAFT] [PIPE] [LENGTH][THICKNESS] [SERIES][MAKE]
+    Example: CR20 89 1000A 62S
     
-    Format for Impact Rollers: [TYPE][SHAFT] [PIPE/RUBBER][LENGTH][THICKNESS] [SERIES][MAKE]
+    Format for Impact Rollers: [TYPE][SHAFT] [PIPE/RUBBER] [LENGTH][THICKNESS] [SERIES][MAKE]
     Example: IR20 89/140 1190A 62S
     """
     # Roller type
@@ -474,8 +474,8 @@ def generate_product_code(roller_type, shaft_dia, pipe_dia, pipe_length, pipe_ty
     # Bearing make
     make_code = BEARING_MAKE_CODES.get(bearing_make.lower(), "C")
     
-    # Combine all parts
-    product_code = f"{type_code}{shaft_code} {pipe_code}{length_code}{thickness_code} {series_code}{make_code}"
+    # Combine all parts - space between pipe dia and length for better searching
+    product_code = f"{type_code}{shaft_code} {pipe_code} {length_code}{thickness_code} {series_code}{make_code}"
     
     return product_code
 
