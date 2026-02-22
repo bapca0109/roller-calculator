@@ -115,7 +115,7 @@ export default function SearchScreen() {
 
   const renderResultItem = ({ item }: { item: ProductResult }) => (
     <TouchableOpacity 
-      style={styles.resultCard} 
+      style={[styles.resultCard, item.exact_match && styles.exactMatchCard]} 
       onPress={() => handleSelectProduct(item)}
       data-testid={`product-${item.product_code}`}
     >
@@ -136,7 +136,9 @@ export default function SearchScreen() {
           <View style={styles.specItem}>
             <Ionicons name="disc-outline" size={16} color="#888" />
             <Text style={styles.specLabel}>Pipe</Text>
-            <Text style={styles.specValue}>{item.pipe_diameter}mm</Text>
+            <Text style={styles.specValue}>
+              {item.pipe_diameter}mm {item.pipe_length ? `x ${item.pipe_length}mm` : ''}
+            </Text>
           </View>
           <View style={styles.specItem}>
             <Ionicons name="git-commit-outline" size={16} color="#888" />
@@ -162,8 +164,10 @@ export default function SearchScreen() {
 
         <View style={styles.pricingRow}>
           <View>
-            <Text style={styles.priceLabel}>Base Price (1000mm)</Text>
-            <Text style={styles.priceValue}>Rs. {item.base_price_1000mm.toFixed(2)}</Text>
+            <Text style={styles.priceLabel}>
+              {item.exact_match ? 'Price' : 'Base Price (1000mm)'}
+            </Text>
+            <Text style={styles.priceValue}>Rs. {item.base_price.toFixed(2)}</Text>
           </View>
           <View style={styles.configButton}>
             <Text style={styles.configButtonText}>Configure</Text>
