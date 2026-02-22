@@ -12,38 +12,28 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import { router } from 'expo-router';
 
-interface SearchResult {
-  id: string;
+interface ProductResult {
   product_code: string;
   roller_type: string;
-  configuration: {
-    pipe_diameter_mm: number;
-    pipe_length_mm: number;
-    pipe_type: string;
-    shaft_diameter_mm: number;
-    bearing: string;
-    bearing_make: string;
-    housing: string;
-    rubber_diameter_mm?: number;
-    quantity: number;
-  };
-  pricing: {
-    unit_price: number;
-    order_value: number;
-    discount_percent: number;
-    final_price: number;
-  };
-  grand_total: number;
-  customer_name: string;
-  created_at: string;
-  quote_number: string;
+  type_code: string;
+  shaft_diameter: number;
+  pipe_diameter: number;
+  pipe_type: string;
+  bearing: string;
+  bearing_make: string;
+  bearing_series: string;
+  housing: string;
+  base_price_1000mm: number;
+  available_lengths: number[];
+  description: string;
 }
 
 export default function SearchScreen() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<ProductResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -58,7 +48,7 @@ export default function SearchScreen() {
     setHasSearched(true);
 
     try {
-      const response = await api.get('/search/product-code', {
+      const response = await api.get('/search/product-catalog', {
         params: { query: searchQuery.trim().toUpperCase() }
       });
       setResults(response.data.results || []);
@@ -78,7 +68,6 @@ export default function SearchScreen() {
 
   const handleRecentSearch = (query: string) => {
     setSearchQuery(query);
-    // Trigger search after setting query
     setTimeout(() => {
       handleSearchWithQuery(query);
     }, 100);
@@ -89,7 +78,7 @@ export default function SearchScreen() {
     setHasSearched(true);
 
     try {
-      const response = await api.get('/search/product-code', {
+      const response = await api.get('/search/product-catalog', {
         params: { query: query.toUpperCase() }
       });
       setResults(response.data.results || []);
@@ -107,100 +96,88 @@ export default function SearchScreen() {
     setHasSearched(false);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
+  const handleSelectProduct = (item: ProductResult) => {
+    // Navigate to calculator with pre-filled values
+    Alert.alert(
+      'Configure Product',
+      `${item.description}\n\nBase price (1000mm): Rs. ${item.base_price_1000mm.toFixed(2)}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Go to Calculator', 
+          onPress: () => router.push('/(tabs)/calculator')
+        }
+      ]
+    );
   };
 
-  const renderResultItem = ({ item }: { item: SearchResult }) => (
-    <View style={styles.resultCard} data-testid={`search-result-${item.id}`}>
+  const renderResultItem = ({ item }: { item: ProductResult }) => (
+    <TouchableOpacity 
+      style={styles.resultCard} 
+      onPress={() => handleSelectProduct(item)}
+      data-testid={`product-${item.product_code}`}
+    >
       <View style={styles.resultHeader}>
         <View style={styles.productCodeContainer}>
           <Text style={styles.productCodeLabel}>Product Code</Text>
           <Text style={styles.productCode}>{item.product_code}</Text>
         </View>
-        <View style={styles.quoteTag}>
-          <Text style={styles.quoteTagText}>{item.quote_number}</Text>
+        <View style={[styles.typeTag, item.roller_type === 'impact' && styles.impactTag]}>
+          <Text style={styles.typeTagText}>
+            {item.roller_type === 'impact' ? 'Impact' : 'Carrying'}
+          </Text>
         </View>
       </View>
 
       <View style={styles.resultBody}>
         <View style={styles.specRow}>
           <View style={styles.specItem}>
-            <Text style={styles.specLabel}>Type</Text>
-            <Text style={styles.specValue}>
-              {item.roller_type === 'impact' ? 'Impact' : 'Carrying'}
-            </Text>
+            <Ionicons name="disc-outline" size={16} color="#888" />
+            <Text style={styles.specLabel}>Pipe</Text>
+            <Text style={styles.specValue}>{item.pipe_diameter}mm</Text>
           </View>
           <View style={styles.specItem}>
-            <Text style={styles.specLabel}>Pipe</Text>
-            <Text style={styles.specValue}>
-              {item.configuration.pipe_diameter_mm}mm x {item.configuration.pipe_length_mm}mm
-            </Text>
+            <Ionicons name="git-commit-outline" size={16} color="#888" />
+            <Text style={styles.specLabel}>Shaft</Text>
+            <Text style={styles.specValue}>{item.shaft_diameter}mm</Text>
           </View>
         </View>
 
         <View style={styles.specRow}>
           <View style={styles.specItem}>
-            <Text style={styles.specLabel}>Shaft</Text>
-            <Text style={styles.specValue}>{item.configuration.shaft_diameter_mm}mm</Text>
+            <Ionicons name="settings-outline" size={16} color="#888" />
+            <Text style={styles.specLabel}>Bearing</Text>
+            <Text style={styles.specValue}>{item.bearing}</Text>
           </View>
           <View style={styles.specItem}>
-            <Text style={styles.specLabel}>Bearing</Text>
-            <Text style={styles.specValue}>
-              {item.configuration.bearing} ({item.configuration.bearing_make.toUpperCase()})
-            </Text>
+            <Ionicons name="business-outline" size={16} color="#888" />
+            <Text style={styles.specLabel}>Make</Text>
+            <Text style={styles.specValue}>{item.bearing_make.toUpperCase()}</Text>
           </View>
         </View>
-
-        {item.configuration.rubber_diameter_mm && (
-          <View style={styles.specRow}>
-            <View style={styles.specItem}>
-              <Text style={styles.specLabel}>Rubber</Text>
-              <Text style={styles.specValue}>{item.configuration.rubber_diameter_mm}mm</Text>
-            </View>
-            <View style={styles.specItem}>
-              <Text style={styles.specLabel}>Quantity</Text>
-              <Text style={styles.specValue}>{item.configuration.quantity} pcs</Text>
-            </View>
-          </View>
-        )}
 
         <View style={styles.divider} />
 
         <View style={styles.pricingRow}>
-          <View style={styles.priceItem}>
-            <Text style={styles.priceLabel}>Unit Price</Text>
-            <Text style={styles.priceValue}>Rs. {item.pricing.unit_price.toFixed(2)}</Text>
+          <View>
+            <Text style={styles.priceLabel}>Base Price (1000mm)</Text>
+            <Text style={styles.priceValue}>Rs. {item.base_price_1000mm.toFixed(2)}</Text>
           </View>
-          <View style={styles.priceItem}>
-            <Text style={styles.priceLabel}>Total</Text>
-            <Text style={styles.totalValue}>Rs. {item.grand_total.toFixed(2)}</Text>
+          <View style={styles.configButton}>
+            <Text style={styles.configButtonText}>Configure</Text>
+            <Ionicons name="arrow-forward" size={16} color="#FF6B00" />
           </View>
-        </View>
-
-        <View style={styles.metaRow}>
-          <Text style={styles.metaText}>
-            <Ionicons name="person-outline" size={12} color="#888" /> {item.customer_name}
-          </Text>
-          <Text style={styles.metaText}>
-            <Ionicons name="calendar-outline" size={12} color="#888" /> {formatDate(item.created_at)}
-          </Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Search Products</Text>
-        <Text style={styles.headerSubtitle}>Find rollers by product code</Text>
+        <Text style={styles.headerTitle}>Product Catalog</Text>
+        <Text style={styles.headerSubtitle}>Search available roller configurations</Text>
       </View>
 
       {/* Search Bar */}
@@ -209,7 +186,7 @@ export default function SearchScreen() {
           <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Enter product code (e.g., CR25 89)"
+            placeholder="Search by code (CR, IR, 25, 6205...)"
             placeholderTextColor="#999"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -246,12 +223,30 @@ export default function SearchScreen() {
             <View style={styles.tipContent}>
               <Text style={styles.tipTitle}>Search Tips</Text>
               <Text style={styles.tipText}>
-                Search by full or partial product code:{'\n'}
-                - "CR25" - All carrying rollers with 25mm shaft{'\n'}
-                - "IR" - All impact rollers{'\n'}
-                - "89" - All 89mm pipe rollers{'\n'}
-                - "62S" - All SKF 62 series bearing rollers
+                Search by product code or specifications:{'\n'}
+                • "CR" - Carrying rollers{'\n'}
+                • "IR" - Impact rollers{'\n'}
+                • "25" - 25mm shaft rollers{'\n'}
+                • "89" - 89mm pipe rollers{'\n'}
+                • "6205" - Specific bearing{'\n'}
+                • "SKF" - SKF branded bearings
               </Text>
+            </View>
+          </View>
+
+          {/* Quick Filters */}
+          <View style={styles.quickFilters}>
+            <Text style={styles.quickFiltersTitle}>Quick Search</Text>
+            <View style={styles.filterTags}>
+              {['CR', 'IR', '25', '30', '89', '114', 'SKF', 'FAG'].map((tag) => (
+                <TouchableOpacity
+                  key={tag}
+                  style={styles.filterTag}
+                  onPress={() => handleRecentSearch(tag)}
+                >
+                  <Text style={styles.filterTagText}>{tag}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
@@ -282,7 +277,7 @@ export default function SearchScreen() {
         <View style={styles.resultsContainer}>
           <View style={styles.resultsHeader}>
             <Text style={styles.resultsCount}>
-              {results.length} {results.length === 1 ? 'result' : 'results'} found
+              {results.length} {results.length === 1 ? 'product' : 'products'} found
             </Text>
             {results.length > 0 && (
               <Text style={styles.searchedFor}>for "{searchQuery.toUpperCase()}"</Text>
@@ -291,8 +286,8 @@ export default function SearchScreen() {
 
           {results.length === 0 && !loading ? (
             <View style={styles.noResults}>
-              <Ionicons name="search-outline" size={64} color="#DDD" />
-              <Text style={styles.noResultsTitle}>No Results Found</Text>
+              <Ionicons name="cube-outline" size={64} color="#DDD" />
+              <Text style={styles.noResultsTitle}>No Products Found</Text>
               <Text style={styles.noResultsText}>
                 No products match "{searchQuery.toUpperCase()}".{'\n'}
                 Try a different search term.
@@ -302,7 +297,7 @@ export default function SearchScreen() {
             <FlatList
               data={results}
               renderItem={renderResultItem}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item, index) => `${item.product_code}-${item.bearing_make}-${index}`}
               contentContainerStyle={styles.resultsList}
               showsVerticalScrollIndicator={false}
             />
@@ -398,6 +393,31 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 22,
   },
+  quickFilters: {
+    marginTop: 20,
+  },
+  quickFiltersTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  filterTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterTag: {
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  filterTagText: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '600',
+  },
   recentContainer: {
     marginTop: 20,
   },
@@ -486,13 +506,16 @@ const styles = StyleSheet.create({
     color: '#FF6B00',
     letterSpacing: 0.5,
   },
-  quoteTag: {
-    backgroundColor: '#FF6B00',
-    paddingHorizontal: 10,
+  typeTag: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
   },
-  quoteTagText: {
+  impactTag: {
+    backgroundColor: '#2196F3',
+  },
+  typeTagText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#fff',
@@ -506,11 +529,13 @@ const styles = StyleSheet.create({
   },
   specItem: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   specLabel: {
     fontSize: 12,
     color: '#888',
-    marginBottom: 2,
   },
   specValue: {
     fontSize: 14,
@@ -525,10 +550,7 @@ const styles = StyleSheet.create({
   pricingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  priceItem: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   priceLabel: {
     fontSize: 12,
@@ -536,25 +558,23 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   priceValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  totalValue: {
     fontSize: 18,
     fontWeight: '700',
     color: '#FF6B00',
   },
-  metaRow: {
+  configButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
   },
-  metaText: {
-    fontSize: 12,
-    color: '#888',
+  configButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF6B00',
   },
   noResults: {
     flex: 1,
