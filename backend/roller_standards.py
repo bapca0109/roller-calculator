@@ -325,6 +325,13 @@ LAYOUT_MARKUP = 0.32  # 32% layout/manufacturing cost
 PROFIT_MARKUP = 0.60  # 60% profit margin
 # Final multiplier: 1.32 × 1.60 = 2.112
 
+# Packing Charges (Applied AFTER final product price calculation)
+PACKING_CHARGES = {
+    "pallet": 0.04,      # 4% for pallet packing
+    "wooden_box": 0.08,  # 8% for wooden box packing
+    "none": 0.0          # No packing
+}
+
 def calculate_shaft_length(pipe_length_mm):
     """Calculate shaft length: pipe length + 70mm (35mm on each side)"""
     return pipe_length_mm + 70
