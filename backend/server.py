@@ -482,9 +482,10 @@ async def create_roller_quote(
     }
     
     quote_dict = {
-        "customer_id": current_user["id"],
+        "customer_id": quote_data.customer_id or current_user["id"],
         "customer_name": quote_data.customer_name or current_user["name"],
         "customer_email": current_user["email"],
+        "customer_details": quote_data.customer_details,  # Full customer info for PDF
         "products": [product],
         "subtotal": pricing.get("order_value", 0),
         "total_discount": pricing.get("discount_amount", 0),
