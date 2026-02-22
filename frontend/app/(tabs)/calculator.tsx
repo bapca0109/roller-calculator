@@ -1287,37 +1287,6 @@ export default function CalculatorScreen() {
                       </View>
                       <TextInput
                         style={styles.gstInput}
-                        value={captchaInput}
-                        onChangeText={setCaptchaInput}
-                        placeholder="Enter captcha shown above"
-                        autoCapitalize="characters"
-                      />
-                    </View>
-                  ) : (
-                    <TouchableOpacity style={styles.loadCaptchaBtn} onPress={fetchGstCaptcha}>
-                      <Text style={styles.loadCaptchaBtnText}>Load Captcha to Fetch from GST Portal</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {captchaData?.captcha_image && (
-                    <TouchableOpacity
-                      style={[styles.verifyGstBtn, (!captchaInput || gstVerifying) && styles.verifyGstBtnDisabled]}
-                      onPress={verifyGstinFromCalculator}
-                      disabled={!captchaInput || gstVerifying}
-                    >
-                      {gstVerifying ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <>
-                          <Ionicons name="cloud-download" size={20} color="#fff" />
-                          <Text style={styles.verifyGstBtnText}>Fetch & Create Customer</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
-
               {gstinInput.length > 0 && gstinInput.length < 15 && (
                 <Text style={styles.gstHintText}>
                   {15 - gstinInput.length} more characters needed
