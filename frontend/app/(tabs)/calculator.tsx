@@ -310,7 +310,7 @@ export default function CalculatorScreen() {
             placeholder="Enter pipe length"
           />
 
-          <Text style={styles.label}>Pipe Thickness (IS-1239)</Text>
+          <Text style={styles.label}>Pipe Thickness (IS-9192)</Text>
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={pipeType}
