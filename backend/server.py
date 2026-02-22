@@ -674,12 +674,6 @@ async def calculate_detailed_cost(
         request.pipe_type or "B"
     )
     
-    # Calculate final pricing with packing charges
-    pricing = rs.calculate_final_price(
-        cost_breakdown["total_raw_material"],
-        request.packing_type or "none"
-    )
-    
     # Generate product code
     roller_type = "impact" if request.rubber_diameter else "carrying"  # Default to carrying, user can specify
     product_code = rs.generate_product_code(
