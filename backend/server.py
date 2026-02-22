@@ -147,6 +147,7 @@ class Quote(BaseModel):
     customer_id: str
     customer_name: str
     customer_email: str
+    customer_details: Optional[Dict[str, Any]] = None  # Full customer details for PDF
     products: List[QuoteProduct]
     subtotal: float
     total_discount: float = 0.0
@@ -155,6 +156,10 @@ class Quote(BaseModel):
     total_price: float
     status: str = QuoteStatus.PENDING
     notes: Optional[str] = None
+    cost_breakdown: Optional[Dict[str, float]] = None
+    pricing_details: Optional[Dict[str, Any]] = None
+    freight_details: Optional[Dict[str, Any]] = None
+    packing_charges: Optional[float] = 0.0
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
