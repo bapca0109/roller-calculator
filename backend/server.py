@@ -800,8 +800,13 @@ async def calculate_detailed_cost(
         }
         total_freight_charges = freight_calc["freight_charges"]
     
-    # Calculate grand total (final_price already includes discount + packing, now add freight)
-    grand_total = pricing["final_price"] + total_freight_charges
+    # Calculate GST based on destination state
+    # GST is applied on price after discount + packing (before freight)
+    taxable_amount = pricing["final_price"]
+    gst_data = rs.calculate_gst(taxable_amount, request.freight_pincode)
+    
+    # Calculate grand total (final_price + GST + freight)
+    grand_total = pricing["final_price"] + gst_data["total_gst"] + total_freight_charges
     
     return DetailedCostResponse(
         configuration={
@@ -821,6 +826,7 @@ async def calculate_detailed_cost(
         },
         cost_breakdown=cost_breakdown,
         pricing=pricing,
+        gst=gst_data,
         freight=freight_data,
         grand_total=round(grand_total, 2)
     )
