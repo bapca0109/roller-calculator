@@ -95,12 +95,35 @@ Examples:
 - `GET /api/roller-options` - Get dropdown options
 
 ## Pending Tasks
-1. **Admin Panel** - Migrate hardcoded prices to MongoDB with CRUD UI
-2. **Customer Management** - Save customer details with quotes
-3. **Quote Approval Workflow** - Status system (Pending/Approved/Rejected)
-4. **Email Integration** - Email quote PDFs
-5. **Dashboard & Analytics** - Sales analytics
+1. ~~**Admin Panel** - Migrate hardcoded prices to MongoDB with CRUD UI~~ ✅ COMPLETED
+2. ~~**Customer Management** - Save customer details with quotes~~ ✅ COMPLETED
+3. **Print Customer Data in Quotes** - Render customer details on quote PDF (P0)
+4. **Full Data Migration to DB** - Migrate hardcoded product data from roller_standards.py to MongoDB (P1)
+5. **Quote Approval Workflow** - Status system (Pending/Approved/Rejected) (P2)
+6. **Email Integration** - Email quote PDFs (P2)
+7. **Dashboard & Analytics** - Sales analytics (P3)
+
+## Recently Completed (Feb 2026)
+
+### Admin Panel for Price Management ✅
+- Full CRUD UI for managing raw material prices
+- Prices stored in `custom_prices` collection in MongoDB
+- Admin-only access (role-based)
+- API endpoints: `GET/POST /api/admin/prices/*`
+
+### Customer Management System ✅
+- Full CRUD for customers (`/api/customers` endpoints)
+- Customer model: name, company, email, phone, address, city, state, pincode, gst_number, notes
+- Customers tab in app with search functionality
+- Customer selector dropdown in calculator before saving quotes
+- Customer details (customer_details field) saved with roller quotes
+
+### UI Updates ✅
+- Applied carmine red theme (#960018) across all pages
+- Removed non-functional "Configure" button from Search tab
+- Added "Return" as third roller type in calculator
 
 ## Test Credentials
 - Email: `test@test.com`
 - Password: `test123`
+- Role: `admin`
