@@ -174,6 +174,42 @@ CIRCLIP_COSTS = {
     50: 12.0
 }
 
+# Impact Roller - Rubber Lagging Options
+# Format: pipe_dia -> [rubber_dia_options]
+RUBBER_LAGGING_OPTIONS = {
+    60: [90, 114],
+    76: [114, 127, 140],
+    89: [127, 140, 152],
+    114: [139, 152, 165, 190],
+    127: [165, 190],
+    139: [165, 190],
+    152: [190]
+}
+
+# Rubber Ring Costs (INR per ring, 35mm thick) - ACTUAL PRICES
+# Format: "pipe/rubber" -> cost_per_ring
+RUBBER_RING_COSTS = {
+    "60/90": 16,
+    "60/114": 20,
+    "76/114": 20,
+    "76/127": 22,
+    "76/140": 30,
+    "89/127": 32,
+    "89/140": 36,
+    "89/152": 42,
+    "114/139": 35,
+    "114/152": 40,
+    "114/165": 47,
+    "114/190": 72,
+    "127/165": 55,
+    "127/190": 68,
+    "139/165": 54,
+    "139/190": 63,
+    "152/190": 65
+}
+
+RUBBER_RING_THICKNESS = 35  # mm
+
 # Cost Calculation Constants - AS PER YOUR FORMULA
 LAYOUT_MARKUP = 0.32  # 32% layout/manufacturing cost
 PROFIT_MARKUP = 0.60  # 60% profit margin
