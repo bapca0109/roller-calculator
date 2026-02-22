@@ -438,68 +438,113 @@ export default function CustomersScreen() {
             <View style={styles.gstInfoBox}>
               <Ionicons name="information-circle-outline" size={20} color="#960018" />
               <Text style={styles.gstInfoText}>
-                Enter GSTIN to auto-fetch business details from the GST portal
+                Enter GSTIN to find existing customer or fetch from GST portal
               </Text>
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>GSTIN (15 characters)</Text>
-              <TextInput
-                style={styles.input}
-                value={gstinInput}
-                onChangeText={(text) => setGstinInput(text.toUpperCase())}
-                placeholder="e.g., 27AAACE8661R1Z5"
-                maxLength={15}
-                autoCapitalize="characters"
-              />
-            </View>
-
-            {gstLoading ? (
-              <View style={styles.captchaLoading}>
-                <ActivityIndicator size="small" color="#960018" />
-                <Text style={styles.captchaLoadingText}>Loading captcha...</Text>
-              </View>
-            ) : captchaData?.captcha_image ? (
-              <View style={styles.captchaSection}>
-                <Text style={styles.inputLabel}>Enter Captcha</Text>
-                <View style={styles.captchaContainer}>
-                  <Image
-                    source={{ uri: captchaData.captcha_image }}
-                    style={styles.captchaImage}
-                    resizeMode="contain"
-                  />
-                  <TouchableOpacity style={styles.refreshCaptchaBtn} onPress={fetchCaptcha}>
-                    <Ionicons name="refresh" size={20} color="#960018" />
-                  </TouchableOpacity>
-                </View>
+              <View style={styles.gstInputRow}>
                 <TextInput
-                  style={styles.input}
-                  value={captchaInput}
-                  onChangeText={setCaptchaInput}
-                  placeholder="Enter captcha shown above"
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  value={gstinInput}
+                  onChangeText={handleGstinInputChange}
+                  placeholder="e.g., 27AAACE8661R1Z5"
+                  maxLength={15}
                   autoCapitalize="characters"
                 />
+                {searchingGstin && (
+                  <ActivityIndicator size="small" color="#960018" style={{ marginLeft: 10 }} />
+                )}
               </View>
-            ) : (
-              <TouchableOpacity style={styles.loadCaptchaBtn} onPress={fetchCaptcha}>
-                <Text style={styles.loadCaptchaBtnText}>Load Captcha</Text>
-              </TouchableOpacity>
+            </View>
+
+            {/* Show existing customer if found */}
+            {existingGstCustomer && (
+              <View style={styles.existingCustomerCard}>
+                <View style={styles.existingCustomerHeader}>
+                  <Ionicons name="checkmark-circle" size={20} color="#2E7D32" />
+                  <Text style={styles.existingCustomerLabel}>Customer Found!</Text>
+                </View>
+                <View style={styles.existingCustomerInfo}>
+                  <Text style={styles.existingCustomerName}>{existingGstCustomer.name}</Text>
+                  {existingGstCustomer.company && (
+                    <Text style={styles.existingCustomerCompany}>{existingGstCustomer.company}</Text>
+                  )}
+                  {existingGstCustomer.city && (
+                    <Text style={styles.existingCustomerLocation}>
+                      {existingGstCustomer.city}{existingGstCustomer.state ? `, ${existingGstCustomer.state}` : ''}
+                    </Text>
+                  )}
+                </View>
+                <TouchableOpacity style={styles.selectExistingBtn} onPress={editExistingGstCustomer}>
+                  <Ionicons name="create" size={18} color="#fff" />
+                  <Text style={styles.selectExistingBtnText}>View / Edit Customer</Text>
+                </TouchableOpacity>
+              </View>
             )}
 
-            <TouchableOpacity
-              style={[styles.verifyBtn, (!gstinInput || !captchaInput || gstVerifying) && styles.verifyBtnDisabled]}
-              onPress={verifyGstin}
-              disabled={!gstinInput || !captchaInput || gstVerifying}
-            >
-              {gstVerifying ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                  <Text style={styles.verifyBtnText}>Verify & Fetch Details</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {/* Show GST portal fetch option if no existing customer */}
+            {!existingGstCustomer && gstinInput.length === 15 && (
+              <View style={styles.newCustomerSection}>
+                <Text style={styles.newCustomerLabel}>Not in database - Fetch from GST Portal</Text>
+                
+                {gstLoading ? (
+                  <View style={styles.captchaLoading}>
+                    <ActivityIndicator size="small" color="#960018" />
+                    <Text style={styles.captchaLoadingText}>Loading captcha...</Text>
+                  </View>
+                ) : captchaData?.captcha_image ? (
+                  <View style={styles.captchaSection}>
+                    <Text style={styles.inputLabel}>Enter Captcha</Text>
+                    <View style={styles.captchaContainer}>
+                      <Image
+                        source={{ uri: captchaData.captcha_image }}
+                        style={styles.captchaImage}
+                        resizeMode="contain"
+                      />
+                      <TouchableOpacity style={styles.refreshCaptchaBtn} onPress={fetchCaptcha}>
+                        <Ionicons name="refresh" size={20} color="#960018" />
+                      </TouchableOpacity>
+                    </View>
+                    <TextInput
+                      style={styles.input}
+                      value={captchaInput}
+                      onChangeText={setCaptchaInput}
+                      placeholder="Enter captcha shown above"
+                      autoCapitalize="characters"
+                    />
+                  </View>
+                ) : (
+                  <TouchableOpacity style={styles.loadCaptchaBtn} onPress={fetchCaptcha}>
+                    <Text style={styles.loadCaptchaBtnText}>Load Captcha to Fetch from GST Portal</Text>
+                  </TouchableOpacity>
+                )}
+
+                {captchaData?.captcha_image && (
+                  <TouchableOpacity
+                    style={[styles.verifyBtn, (!captchaInput || gstVerifying) && styles.verifyBtnDisabled]}
+                    onPress={verifyGstin}
+                    disabled={!captchaInput || gstVerifying}
+                  >
+                    {gstVerifying ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="cloud-download" size={20} color="#fff" />
+                        <Text style={styles.verifyBtnText}>Fetch & Create Customer</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {gstinInput.length > 0 && gstinInput.length < 15 && (
+              <Text style={styles.gstHintText}>
+                {15 - gstinInput.length} more characters needed
+              </Text>
+            )}
 
             <View style={styles.gstHelpBox}>
               <Text style={styles.gstHelpTitle}>What is GSTIN?</Text>
