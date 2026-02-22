@@ -242,6 +242,71 @@ export default function CalculatorScreen() {
     }
   };
 
+  const addToQuote = () => {
+    if (!result) return;
+    setQuoteItems([...quoteItems, result]);
+    Alert.alert('Added!', `${result.configuration.product_code} added to quote.\nItems in quote: ${quoteItems.length + 1}`);
+    setResult(null); // Clear current result to configure next item
+  };
+
+  const removeFromQuote = (index: number) => {
+    const newItems = [...quoteItems];
+    newItems.splice(index, 1);
+    setQuoteItems(newItems);
+  };
+
+  const getQuoteTotal = () => {
+    return quoteItems.reduce((sum, item) => sum + item.grand_total, 0);
+  };
+
+  const saveMultiProductQuote = async () => {
+    if (quoteItems.length === 0) {
+      Alert.alert('Error', 'No items in quote');
+      return;
+    }
+
+    setSavingQuote(true);
+    try {
+      const products = quoteItems.map(item => ({
+        product_id: item.configuration.product_code,
+        product_name: `${item.configuration.roller_type.charAt(0).toUpperCase() + item.configuration.roller_type.slice(1)} Roller - ${item.configuration.product_code}`,
+        quantity: item.configuration.quantity,
+        unit_price: item.pricing.unit_price,
+        specifications: {
+          pipe_diameter: item.configuration.pipe_diameter_mm,
+          pipe_length: item.configuration.pipe_length_mm,
+          pipe_type: item.configuration.pipe_type,
+          shaft_diameter: item.configuration.shaft_diameter_mm,
+          bearing: item.configuration.bearing,
+          bearing_make: item.configuration.bearing_make,
+          housing: item.configuration.housing,
+          rubber_diameter: item.configuration.rubber_diameter_mm
+        },
+        calculated_discount: item.pricing.discount_amount,
+        custom_premium: 0
+      }));
+
+      const response = await api.post('/quotes', {
+        products,
+        delivery_location: quoteItems[0].freight?.destination_pincode || null,
+        notes: `Multi-product quote with ${quoteItems.length} items`
+      });
+      
+      Alert.alert(
+        'Quote Saved!', 
+        `Quote ID: ${response.data.id}\nTotal Items: ${quoteItems.length}\nTotal: Rs. ${response.data.total_price.toFixed(2)}`,
+        [{ text: 'OK', onPress: () => {
+          setQuoteItems([]);
+          setShowQuoteBuilder(false);
+        }}]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to save quote');
+    } finally {
+      setSavingQuote(false);
+    }
+  };
+
   const availableBearings = standards?.bearing_options[shaftDiameter.toString()] || [];
   const availableRubberDiameters = RUBBER_DIAMETERS[pipeDiameter] || [];
 
