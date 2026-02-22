@@ -117,6 +117,186 @@ export default function QuotesScreen() {
     }
   };
 
+  const generatePdfHtml = (quote: Quote) => {
+    const productsHtml = quote.products.map((product, index) => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #eee;">${index + 1}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee;">
+          <strong>${product.product_name || product.product_id}</strong>
+          ${product.specifications ? `
+            <br><small style="color: #666;">
+              ${product.specifications.pipe_diameter ? `Pipe: ${product.specifications.pipe_diameter}mm` : ''}
+              ${product.specifications.shaft_diameter ? ` | Shaft: ${product.specifications.shaft_diameter}mm` : ''}
+              ${product.specifications.bearing ? ` | Bearing: ${product.specifications.bearing}` : ''}
+            </small>
+          ` : ''}
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${product.quantity}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">Rs. ${product.unit_price?.toFixed(2)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">Rs. ${(product.unit_price * product.quantity)?.toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #FF6B00; padding-bottom: 20px; }
+          .logo { font-size: 28px; font-weight: bold; color: #000; }
+          .logo span { color: #FF6B00; }
+          .company-name { font-size: 12px; color: #666; margin-top: 5px; }
+          .quote-title { font-size: 24px; color: #FF6B00; margin-top: 15px; }
+          .quote-info { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .info-box { background: #f5f5f5; padding: 15px; border-radius: 8px; width: 48%; }
+          .info-label { font-size: 12px; color: #666; }
+          .info-value { font-size: 14px; font-weight: bold; margin-top: 5px; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th { background: #FF6B00; color: white; padding: 12px; text-align: left; }
+          .summary { margin-top: 30px; }
+          .summary-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+          .summary-label { color: #666; }
+          .summary-value { font-weight: bold; }
+          .total-row { background: #FF6B00; color: white; padding: 15px; border-radius: 8px; margin-top: 10px; }
+          .total-row .summary-label, .total-row .summary-value { color: white; }
+          .total-row .summary-value { font-size: 20px; }
+          .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px; }
+          .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+          .status-pending { background: #E3F2FD; color: #1976D2; }
+          .status-approved { background: #E8F5E9; color: #388E3C; }
+          .discount { color: #4CAF50; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">C<span>O</span>NVER<span>O</span></div>
+          <div class="company-name">SOLUTIONS</div>
+          <div class="quote-title">QUOTATION</div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+          <div class="info-box" style="width: 48%;">
+            <div class="info-label">Quote Number</div>
+            <div class="info-value" style="color: #FF6B00;">#${quote.id.slice(-6).toUpperCase()}</div>
+            <div class="info-label" style="margin-top: 10px;">Date</div>
+            <div class="info-value">${formatDate(quote.created_at)}</div>
+          </div>
+          <div class="info-box" style="width: 48%;">
+            <div class="info-label">Customer</div>
+            <div class="info-value">${quote.customer_name}</div>
+            <div class="info-label" style="margin-top: 10px;">Status</div>
+            <div class="info-value">
+              <span class="status-badge status-${quote.status?.toLowerCase()}">${quote.status?.toUpperCase()}</span>
+            </div>
+          </div>
+        </div>
+
+        <h3 style="color: #333; border-bottom: 2px solid #FF6B00; padding-bottom: 10px;">Products</h3>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 5%;">#</th>
+              <th style="width: 40%;">Product</th>
+              <th style="width: 15%; text-align: center;">Qty</th>
+              <th style="width: 20%; text-align: right;">Unit Price</th>
+              <th style="width: 20%; text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${productsHtml}
+          </tbody>
+        </table>
+
+        <div class="summary">
+          <h3 style="color: #333; border-bottom: 2px solid #FF6B00; padding-bottom: 10px;">Summary</h3>
+          <div class="summary-row">
+            <span class="summary-label">Subtotal</span>
+            <span class="summary-value">Rs. ${quote.subtotal?.toFixed(2)}</span>
+          </div>
+          ${quote.total_discount > 0 ? `
+            <div class="summary-row">
+              <span class="summary-label discount">Discount</span>
+              <span class="summary-value discount">- Rs. ${quote.total_discount?.toFixed(2)}</span>
+            </div>
+          ` : ''}
+          ${quote.packing_charges && quote.packing_charges > 0 ? `
+            <div class="summary-row">
+              <span class="summary-label">Packing Charges</span>
+              <span class="summary-value">Rs. ${quote.packing_charges?.toFixed(2)}</span>
+            </div>
+          ` : ''}
+          ${quote.shipping_cost > 0 ? `
+            <div class="summary-row">
+              <span class="summary-label">Freight Charges</span>
+              <span class="summary-value">Rs. ${quote.shipping_cost?.toFixed(2)}</span>
+            </div>
+          ` : ''}
+          <div class="total-row" style="display: flex; justify-content: space-between;">
+            <span class="summary-label">GRAND TOTAL</span>
+            <span class="summary-value">Rs. ${quote.total_price?.toFixed(2)}</span>
+          </div>
+        </div>
+
+        ${quote.delivery_location ? `
+          <div style="margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+            <strong>Delivery Location:</strong> Pincode ${quote.delivery_location}
+          </div>
+        ` : ''}
+
+        ${quote.notes ? `
+          <div style="margin-top: 20px; padding: 15px; background: #FFF3E0; border-radius: 8px;">
+            <strong>Notes:</strong> ${quote.notes}
+          </div>
+        ` : ''}
+
+        <div class="footer">
+          <p><strong>CONVERO SOLUTIONS</strong></p>
+          <p>Conveyor Roller Manufacturer</p>
+          <p>www.convero.in</p>
+          <p style="margin-top: 15px; font-size: 10px;">This is a computer generated quotation.</p>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
+  const exportToPdf = async () => {
+    if (!selectedQuote) return;
+    
+    setGeneratingPdf(true);
+    try {
+      const html = generatePdfHtml(selectedQuote);
+      
+      const { uri } = await Print.printToFileAsync({
+        html,
+        base64: false,
+      });
+
+      if (Platform.OS === 'web') {
+        // For web, open print dialog
+        await Print.printAsync({ html });
+      } else {
+        // For mobile, share the PDF
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Quote #${selectedQuote.id.slice(-6).toUpperCase()}`,
+            UTI: 'com.adobe.pdf',
+          });
+        } else {
+          Alert.alert('Success', 'PDF saved successfully');
+        }
+      }
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      Alert.alert('Error', 'Failed to generate PDF');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   const renderQuote = ({ item }: { item: Quote }) => (
     <TouchableOpacity
       style={styles.quoteCard}
