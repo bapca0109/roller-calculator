@@ -349,10 +349,112 @@ export default function CustomersScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={handleAddNew}>
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
+      {/* Floating Action Buttons */}
+      <View style={styles.fabContainer}>
+        <TouchableOpacity style={styles.fabSecondary} onPress={openGstLookup}>
+          <Ionicons name="search" size={22} color="#fff" />
+          <Text style={styles.fabSecondaryText}>GST</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.fab} onPress={handleAddNew}>
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
+      {/* GST Lookup Modal */}
+      <Modal
+        visible={gstModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setGstModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setGstModalVisible(false)}>
+              <Text style={styles.cancelBtn}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Fetch from GSTIN</Text>
+            <View style={{ width: 50 }} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <View style={styles.gstInfoBox}>
+              <Ionicons name="information-circle-outline" size={20} color="#960018" />
+              <Text style={styles.gstInfoText}>
+                Enter GSTIN to auto-fetch business details from the GST portal
+              </Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>GSTIN (15 characters)</Text>
+              <TextInput
+                style={styles.input}
+                value={gstinInput}
+                onChangeText={(text) => setGstinInput(text.toUpperCase())}
+                placeholder="e.g., 27AAACE8661R1Z5"
+                maxLength={15}
+                autoCapitalize="characters"
+              />
+            </View>
+
+            {gstLoading ? (
+              <View style={styles.captchaLoading}>
+                <ActivityIndicator size="small" color="#960018" />
+                <Text style={styles.captchaLoadingText}>Loading captcha...</Text>
+              </View>
+            ) : captchaData?.captcha_image ? (
+              <View style={styles.captchaSection}>
+                <Text style={styles.inputLabel}>Enter Captcha</Text>
+                <View style={styles.captchaContainer}>
+                  <Image
+                    source={{ uri: captchaData.captcha_image }}
+                    style={styles.captchaImage}
+                    resizeMode="contain"
+                  />
+                  <TouchableOpacity style={styles.refreshCaptchaBtn} onPress={fetchCaptcha}>
+                    <Ionicons name="refresh" size={20} color="#960018" />
+                  </TouchableOpacity>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  value={captchaInput}
+                  onChangeText={setCaptchaInput}
+                  placeholder="Enter captcha shown above"
+                  autoCapitalize="characters"
+                />
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.loadCaptchaBtn} onPress={fetchCaptcha}>
+                <Text style={styles.loadCaptchaBtnText}>Load Captcha</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.verifyBtn, (!gstinInput || !captchaInput || gstVerifying) && styles.verifyBtnDisabled]}
+              onPress={verifyGstin}
+              disabled={!gstinInput || !captchaInput || gstVerifying}
+            >
+              {gstVerifying ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                  <Text style={styles.verifyBtnText}>Verify & Fetch Details</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.gstHelpBox}>
+              <Text style={styles.gstHelpTitle}>What is GSTIN?</Text>
+              <Text style={styles.gstHelpText}>
+                GSTIN is a 15-digit unique identification number assigned to GST registered businesses in India.
+                Example: 27AAACE8661R1Z5
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Add/Edit Customer Modal */}
       <Modal
         visible={modalVisible}
         animationType="slide"
