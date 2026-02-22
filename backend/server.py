@@ -755,6 +755,30 @@ async def calculate_detailed_cost(
         grand_total=round(grand_total, 2)
     )
 
+@api_router.get("/export-raw-materials")
+async def export_raw_materials(
+    current_user: dict = Depends(get_current_user)
+):
+    """Export raw material pricing data to Excel file"""
+    # Generate fresh Excel file
+    import subprocess
+    result = subprocess.run(
+        ["python", "export_raw_materials.py"],
+        cwd=str(ROOT_DIR),
+        capture_output=True,
+        text=True
+    )
+    
+    file_path = ROOT_DIR / "raw_materials_pricing.xlsx"
+    if not file_path.exists():
+        raise HTTPException(status_code=500, detail="Failed to generate Excel file")
+    
+    return FileResponse(
+        path=str(file_path),
+        filename="raw_materials_pricing.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 # Include the router in the main app
 app.include_router(api_router)
 
