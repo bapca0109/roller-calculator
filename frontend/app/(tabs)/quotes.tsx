@@ -82,7 +82,7 @@ export default function QuotesScreen() {
       case 'approved':
         return '#34C759';
       case 'rejected':
-        return '#FF3B30';
+        return '#C41E3A';
       case 'processing':
         return '#FF9500';
       default:
@@ -246,7 +246,7 @@ export default function QuotesScreen() {
         ` : ''}
 
         ${quote.notes ? `
-          <div style="margin-top: 20px; padding: 15px; background: #FFF3E0; border-radius: 8px;">
+          <div style="margin-top: 20px; padding: 15px; background: #FFE4E6; border-radius: 8px;">
             <strong>Notes:</strong> ${quote.notes}
           </div>
         ` : ''}

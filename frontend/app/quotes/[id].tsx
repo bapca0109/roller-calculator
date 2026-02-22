@@ -85,7 +85,7 @@ export default function QuoteDetailScreen() {
       case 'approved':
         return '#34C759';
       case 'rejected':
-        return '#FF3B30';
+        return '#C41E3A';
       case 'processing':
         return '#FF9500';
       default:

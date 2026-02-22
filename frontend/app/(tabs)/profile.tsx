@@ -49,7 +49,7 @@ export default function ProfileScreen() {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'admin':
-        return '#FF3B30';
+        return '#C41E3A';
       case 'sales':
         return '#FF9500';
       case 'customer':
@@ -143,7 +143,7 @@ export default function ProfileScreen() {
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+          <Ionicons name="log-out-outline" size={20} color="#C41E3A" />
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -279,6 +279,6 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF3B30',
+    color: '#C41E3A',
   },
 });

@@ -338,7 +338,7 @@ export default function AdminScreen() {
           onPress={handleResetPrices}
           disabled={saving}
         >
-          <Ionicons name="refresh" size={20} color="#FF3B30" />
+          <Ionicons name="refresh" size={20} color="#C41E3A" />
           <Text style={styles.resetButtonText}>Reset All to Default</Text>
         </TouchableOpacity>
 
@@ -522,13 +522,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FF3B30',
+    borderColor: '#C41E3A',
     marginTop: 8,
   },
   resetButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF3B30',
+    color: '#C41E3A',
   },
   bottomSpacer: {
     height: 40,

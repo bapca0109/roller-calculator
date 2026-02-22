@@ -1098,7 +1098,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   noOptionsContainer: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#FFE4E6',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',

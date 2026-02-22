@@ -93,7 +93,7 @@ export default function ProductDetailScreen() {
         <Text style={styles.headerTitle}>Product Details</Text>
         {user?.role === 'admin' && (
           <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-            <Ionicons name="trash-outline" size={24} color="#FF3B30" />
+            <Ionicons name="trash-outline" size={24} color="#C41E3A" />
           </TouchableOpacity>
         )}
       </View>
