@@ -623,14 +623,18 @@ export default function CalculatorScreen() {
           <Text style={styles.sectionTitle}>Freight (Optional)</Text>
           <Text style={styles.label}>Destination Pincode</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.freightPincode ? styles.inputError : null]}
             value={freightPincode}
-            onChangeText={setFreightPincode}
+            onChangeText={handlePincodeChange}
             keyboardType="numeric"
             placeholder="Enter 6-digit pincode"
             maxLength={6}
           />
-          <Text style={styles.hint}>Dispatch from: 382433 (Gujarat)</Text>
+          {errors.freightPincode ? (
+            <Text style={styles.errorText}>{errors.freightPincode}</Text>
+          ) : (
+            <Text style={styles.hint}>Dispatch from: 382433 (Gujarat)</Text>
+          )}
         </View>
 
         {/* Calculate Button */}
