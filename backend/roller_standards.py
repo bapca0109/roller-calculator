@@ -247,6 +247,20 @@ RUBBER_RING_COSTS = {
 
 RUBBER_RING_THICKNESS = 35  # mm
 
+# Locking Ring Costs (INR per roller) - For Impact Rollers
+# Added to raw material before applying 2.112× formula
+LOCKING_RING_COSTS = {
+    60: 18,
+    76: 20,
+    89: 22,
+    114: 26,
+    127: 28,
+    139: 30,
+    152: 32,
+    159: 34,
+    165: 38
+}
+
 # Cost Calculation Constants - AS PER YOUR FORMULA
 LAYOUT_MARKUP = 0.32  # 32% layout/manufacturing cost
 PROFIT_MARKUP = 0.60  # 60% profit margin
