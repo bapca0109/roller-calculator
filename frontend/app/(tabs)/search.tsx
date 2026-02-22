@@ -491,6 +491,10 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: 'hidden',
   },
+  exactMatchCard: {
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
   resultHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
