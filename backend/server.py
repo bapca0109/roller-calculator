@@ -1203,19 +1203,19 @@ async def search_product_catalog(
                                     
                                     # Limit results to prevent too many
                                     if len(results) >= 50:
-                                    return {
-                                        "results": results, 
-                                        "count": len(results), 
-                                        "query": query,
-                                        "search_type": "partial",
-                                        "truncated": True
-                                    }
+                                        return {
+                                            "results": results, 
+                                            "count": len(results), 
+                                            "query": query,
+                                            "search_type": "partial",
+                                            "truncated": True
+                                        }
     
     # Remove duplicates based on key specs (keep unique combinations)
     seen = set()
     unique_results = []
     for r in results:
-        key = f"{r['type_code']}{r['shaft_diameter']}{r['pipe_diameter']}{r['bearing']}{r['bearing_make']}"
+        key = f"{r['type_code']}{r['shaft_diameter']}{r['pipe_diameter']}{r.get('rubber_diameter', '')}{r['bearing']}{r['bearing_make']}"
         if key not in seen:
             seen.add(key)
             unique_results.append(r)
