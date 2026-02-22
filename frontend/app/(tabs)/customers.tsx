@@ -484,59 +484,30 @@ export default function CustomersScreen() {
               </View>
             )}
 
-            {/* Show GST portal fetch option if no existing customer */}
-            {!existingGstCustomer && gstinInput.length === 15 && (
+            {/* Show add new customer option if GSTIN not found */}
+            {!existingGstCustomer && gstinInput.length === 15 && !searchingGstin && (
               <View style={styles.newCustomerSection}>
-                <Text style={styles.newCustomerLabel}>Not in database - Fetch from GST Portal</Text>
-                
-                {gstLoading ? (
-                  <View style={styles.captchaLoading}>
-                    <ActivityIndicator size="small" color="#960018" />
-                    <Text style={styles.captchaLoadingText}>Loading captcha...</Text>
-                  </View>
-                ) : captchaData?.captcha_image ? (
-                  <View style={styles.captchaSection}>
-                    <Text style={styles.inputLabel}>Enter Captcha</Text>
-                    <View style={styles.captchaContainer}>
-                      <Image
-                        source={{ uri: captchaData.captcha_image }}
-                        style={styles.captchaImage}
-                        resizeMode="contain"
-                      />
-                      <TouchableOpacity style={styles.refreshCaptchaBtn} onPress={fetchCaptcha}>
-                        <Ionicons name="refresh" size={20} color="#960018" />
-                      </TouchableOpacity>
-                    </View>
-                    <TextInput
-                      style={styles.input}
-                      value={captchaInput}
-                      onChangeText={setCaptchaInput}
-                      placeholder="Enter captcha shown above"
-                      autoCapitalize="characters"
-                    />
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.loadCaptchaBtn} onPress={fetchCaptcha}>
-                    <Text style={styles.loadCaptchaBtnText}>Load Captcha to Fetch from GST Portal</Text>
-                  </TouchableOpacity>
-                )}
-
-                {captchaData?.captcha_image && (
-                  <TouchableOpacity
-                    style={[styles.verifyBtn, (!captchaInput || gstVerifying) && styles.verifyBtnDisabled]}
-                    onPress={verifyGstin}
-                    disabled={!captchaInput || gstVerifying}
-                  >
-                    {gstVerifying ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <>
-                        <Ionicons name="cloud-download" size={20} color="#fff" />
-                        <Text style={styles.verifyBtnText}>Fetch & Create Customer</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
+                <View style={styles.notFoundHeader}>
+                  <Ionicons name="alert-circle-outline" size={20} color="#F57C00" />
+                  <Text style={styles.newCustomerLabel}>Customer not found in database</Text>
+                </View>
+                <Text style={styles.notFoundHint}>
+                  Click below to add this customer manually with GSTIN pre-filled.
+                </Text>
+                <TouchableOpacity 
+                  style={styles.addManuallyBtn}
+                  onPress={() => {
+                    setFormData({
+                      ...emptyCustomer,
+                      gst_number: gstinInput,
+                    });
+                    setGstModalVisible(false);
+                    setModalVisible(true);
+                  }}
+                >
+                  <Ionicons name="add-circle" size={20} color="#fff" />
+                  <Text style={styles.addManuallyBtnText}>Add Customer Manually</Text>
+                </TouchableOpacity>
               </View>
             )}
 
