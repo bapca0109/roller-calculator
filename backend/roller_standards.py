@@ -261,6 +261,65 @@ LOCKING_RING_COSTS = {
     165: 38
 }
 
+# Product Code Mappings
+ROLLER_TYPE_CODES = {
+    "carrying": "CR",
+    "return": "RR",
+    "impact": "IR"
+}
+
+BEARING_MAKE_CODES = {
+    "china": "C",
+    "skf": "S",
+    "fag": "F",
+    "timken": "T"
+}
+
+BEARING_SERIES_MAP = {
+    "6204": "62", "6205": "62", "6206": "62", "6207": "62", "6208": "62", "6209": "62", "6210": "62",
+    "6304": "63", "6305": "63", "6306": "63", "6307": "63", "6308": "63", "6309": "63", "6310": "63",
+    "420204": "42", "420205": "42", "420206": "42"
+}
+
+def generate_product_code(roller_type, shaft_dia, pipe_dia, pipe_length, pipe_type, bearing_number, bearing_make, rubber_dia=None):
+    """
+    Generate product code/SKU for conveyor rollers
+    
+    Format for Standard Rollers: [TYPE][SHAFT] [PIPE][LENGTH][THICKNESS] [SERIES][MAKE]
+    Example: CR20 89200A 62S
+    
+    Format for Impact Rollers: [TYPE][SHAFT] [PIPE/RUBBER][LENGTH][THICKNESS] [SERIES][MAKE]
+    Example: IR20 89/140 1190A 62S
+    """
+    # Roller type
+    type_code = ROLLER_TYPE_CODES.get(roller_type.lower(), "CR")
+    
+    # Shaft diameter
+    shaft_code = str(int(shaft_dia))
+    
+    # Pipe diameter (with rubber for impact rollers)
+    if rubber_dia:
+        pipe_code = f"{int(pipe_dia)}/{int(rubber_dia)}"
+    else:
+        pipe_code = str(int(pipe_dia))
+    
+    # Length in mm
+    length_code = str(int(pipe_length))
+    
+    # Pipe thickness type
+    thickness_code = pipe_type.upper()
+    
+    # Bearing series
+    series_code = BEARING_SERIES_MAP.get(bearing_number, "62")
+    
+    # Bearing make
+    make_code = BEARING_MAKE_CODES.get(bearing_make.lower(), "C")
+    
+    # Combine all parts
+    product_code = f"{type_code}{shaft_code} {pipe_code}{length_code}{thickness_code} {series_code}{make_code}"
+    
+    return product_code
+
 # Cost Calculation Constants - AS PER YOUR FORMULA
 LAYOUT_MARKUP = 0.32  # 32% layout/manufacturing cost
 PROFIT_MARKUP = 0.60  # 60% profit margin
