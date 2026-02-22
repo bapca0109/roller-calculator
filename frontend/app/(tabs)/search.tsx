@@ -13,12 +13,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 
+interface LengthDetail {
+  length_mm: number;
+  belt_widths: number[];
+  weight_kg: number;
+  product_code: string;
+}
+
 interface ProductResult {
   product_code: string;
   roller_type: string;
   type_code: string;
   shaft_diameter: number;
   pipe_diameter: number;
+  rubber_diameter?: number;
   pipe_length?: number;
   pipe_type: string;
   bearing: string;
@@ -26,7 +34,9 @@ interface ProductResult {
   bearing_series: string;
   housing: string;
   base_price: number;
+  base_weight_kg?: number;
   available_lengths: number[];
+  length_details?: LengthDetail[];
   description: string;
   exact_match?: boolean;
 }
@@ -38,6 +48,7 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
