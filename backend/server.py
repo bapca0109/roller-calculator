@@ -880,90 +880,117 @@ async def download_raw_materials_public():
 
 # ============= SEARCH ROUTES =============
 
-@api_router.get("/search/product-code")
-async def search_by_product_code(
+@api_router.get("/search/product-catalog")
+async def search_product_catalog(
     query: str,
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Search quotes by product code.
-    Searches in both the product_id field and the product code stored in products array.
-    Supports partial matching (case-insensitive).
+    Search through available product configurations (product range/catalog).
+    Generates all valid roller configurations and filters by search query.
+    Supports searching by:
+    - Roller type: CR (Carrying), IR (Impact)
+    - Shaft diameter: 20, 25, 30, etc.
+    - Pipe diameter: 60, 76, 89, 114, etc.
+    - Bearing number: 6204, 6305, etc.
+    - Bearing make code: C (China), S (SKF), F (FAG), T (Timken)
     """
-    if not query or len(query) < 2:
-        raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
+    if not query or len(query) < 1:
+        raise HTTPException(status_code=400, detail="Search query required")
     
-    # Build search query - case insensitive regex search
-    search_regex = {"$regex": query.upper(), "$options": "i"}
-    
-    # Search in quotes collection
-    pipeline = [
-        {
-            "$match": {
-                "$or": [
-                    {"products.product_id": search_regex},
-                    {"products.product_name": search_regex},
-                ]
-            }
-        },
-        {"$sort": {"created_at": -1}},
-        {"$limit": 50}
-    ]
-    
-    # If user is a customer, only show their own quotes
-    if current_user["role"] == UserRole.CUSTOMER:
-        pipeline.insert(0, {"$match": {"customer_id": current_user["id"]}})
-    
-    quotes = await db.quotes.aggregate(pipeline).to_list(50)
-    
+    query = query.upper().strip()
     results = []
-    for quote in quotes:
-        quote_id = str(quote["_id"])
-        quote_number = f"QT-{quote_id[-6:].upper()}"
-        
-        # Extract matching products from each quote
-        for product in quote.get("products", []):
-            product_id = product.get("product_id", "")
-            product_name = product.get("product_name", "")
-            
-            # Check if this product matches the search
-            if query.upper() in product_id.upper() or query.upper() in product_name.upper():
-                specs = product.get("specifications", {})
-                
-                # Determine roller type from product name
-                roller_type = "carrying"
-                if "impact" in product_name.lower():
-                    roller_type = "impact"
-                
-                result = {
-                    "id": quote_id,
-                    "product_code": product_id,
-                    "roller_type": roller_type,
-                    "configuration": {
-                        "pipe_diameter_mm": specs.get("pipe_diameter", 0),
-                        "pipe_length_mm": specs.get("pipe_length", 0),
-                        "pipe_type": specs.get("pipe_type", "B"),
-                        "shaft_diameter_mm": specs.get("shaft_diameter", 0),
-                        "bearing": specs.get("bearing", ""),
-                        "bearing_make": specs.get("bearing_make", "china"),
-                        "housing": specs.get("housing", ""),
-                        "rubber_diameter_mm": specs.get("rubber_diameter"),
-                        "quantity": product.get("quantity", 1)
-                    },
-                    "pricing": {
-                        "unit_price": product.get("unit_price", 0),
-                        "order_value": product.get("unit_price", 0) * product.get("quantity", 1),
-                        "discount_percent": 0,
-                        "final_price": quote.get("total_price", 0)
-                    },
-                    "grand_total": quote.get("total_price", 0),
-                    "customer_name": quote.get("customer_name", ""),
-                    "created_at": quote.get("created_at", datetime.utcnow()).isoformat(),
-                    "quote_number": quote_number
-                }
-                results.append(result)
     
-    return {"results": results, "count": len(results), "query": query.upper()}
+    # Standard lengths for product catalog display
+    standard_lengths = [600, 800, 1000, 1200, 1400]
+    pipe_types = ["A", "B", "C"]
+    bearing_makes = ["china", "skf", "fag", "timken"]
+    bearing_make_codes = {"china": "C", "skf": "S", "fag": "F", "timken": "T"}
+    
+    # Generate product configurations
+    for roller_type in ["carrying", "impact"]:
+        type_code = "CR" if roller_type == "carrying" else "IR"
+        
+        for shaft_dia in rs.SHAFT_DIAMETERS:
+            for pipe_dia in rs.PIPE_DIAMETERS:
+                # Get compatible bearings for this shaft
+                bearings = rs.BEARING_OPTIONS.get(shaft_dia, [])
+                
+                for bearing in bearings:
+                    # Check if housing is compatible
+                    housing = rs.get_housing_for_pipe_and_bearing(pipe_dia, bearing)
+                    if not housing:
+                        continue
+                    
+                    # Get available bearing makes for this bearing
+                    available_makes = list(rs.BEARING_COSTS.get(bearing, {}).keys())
+                    if not available_makes:
+                        continue
+                    
+                    for make in available_makes:
+                        for pipe_type in pipe_types:
+                            # Generate product code
+                            make_code = bearing_make_codes.get(make, "C")
+                            series = "62" if bearing.startswith("62") else "63" if bearing.startswith("63") else "42"
+                            
+                            # Product code format: CR25 891000B 62S
+                            product_code = f"{type_code}{shaft_dia} {int(pipe_dia)}B {series}{make_code}"
+                            
+                            # Check if query matches this product
+                            search_text = f"{product_code} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
+                            
+                            if query in search_text or query in product_code:
+                                # Calculate base price for 1000mm length
+                                try:
+                                    cost = rs.calculate_raw_material_cost(
+                                        pipe_dia, 1000, shaft_dia, bearing, make, None, pipe_type
+                                    )
+                                    pricing = rs.calculate_final_price(cost["total_raw_material"], "none", 1)
+                                    base_price = pricing["unit_price"]
+                                except:
+                                    base_price = 0
+                                
+                                result = {
+                                    "product_code": f"{type_code}{shaft_dia} {int(pipe_dia)} {series}{make_code}",
+                                    "roller_type": roller_type,
+                                    "type_code": type_code,
+                                    "shaft_diameter": shaft_dia,
+                                    "pipe_diameter": pipe_dia,
+                                    "pipe_type": pipe_type,
+                                    "bearing": bearing,
+                                    "bearing_make": make,
+                                    "bearing_series": series,
+                                    "housing": housing,
+                                    "base_price_1000mm": round(base_price, 2),
+                                    "available_lengths": standard_lengths,
+                                    "description": f"{roller_type.title()} Roller - {shaft_dia}mm shaft, {pipe_dia}mm pipe, {bearing} ({make.upper()})"
+                                }
+                                results.append(result)
+                                
+                                # Limit results to prevent too many
+                                if len(results) >= 50:
+                                    return {
+                                        "results": results, 
+                                        "count": len(results), 
+                                        "query": query,
+                                        "truncated": True
+                                    }
+    
+    # Remove duplicates based on key specs (keep unique combinations)
+    seen = set()
+    unique_results = []
+    for r in results:
+        key = f"{r['type_code']}{r['shaft_diameter']}{r['pipe_diameter']}{r['bearing']}{r['bearing_make']}"
+        if key not in seen:
+            seen.add(key)
+            unique_results.append(r)
+    
+    return {
+        "results": unique_results[:50], 
+        "count": len(unique_results[:50]), 
+        "query": query,
+        "truncated": len(unique_results) > 50
+    }
 
 # Include the router in the main app
 app.include_router(api_router)
