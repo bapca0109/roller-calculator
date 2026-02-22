@@ -882,9 +882,9 @@ async def download_raw_materials_public():
 
 def parse_product_code(code: str):
     """
-    Parse a full product code like 'CR20 88465A 63S' or 'IR25 114800B 62F'
+    Parse a full product code like 'CR20 89 1000A 63S' or 'IR25 114 800B 62F'
     Returns dict with extracted components or None if invalid
-    Format: {TYPE}{SHAFT} {PIPE}{LENGTH}{PIPE_TYPE} {SERIES}{MAKE}
+    Format: {TYPE}{SHAFT} {PIPE} {LENGTH}{PIPE_TYPE} {SERIES}{MAKE}
     """
     import re
     code = code.upper().strip()
@@ -892,10 +892,11 @@ def parse_product_code(code: str):
     # Known pipe diameter prefixes (without decimal)
     known_pipe_prefixes = ['60', '76', '88', '89', '114', '127', '139', '140', '152', '159', '165']
     
-    # Try to match with known pipe prefixes
+    # Try to match with known pipe prefixes - NEW FORMAT with space between pipe and length
     for pipe_prefix in sorted(known_pipe_prefixes, key=len, reverse=True):  # Try longer prefixes first
-        # Pattern: CR20 {pipe_prefix}{LENGTH}{PIPE_TYPE} {SERIES}{MAKE}
-        pattern = rf'^(CR|IR)(\d{{2}})\s+({pipe_prefix})(\d{{3,4}})([ABC])\s+(\d{{2}})([CSFT])$'
+        # Pattern: CR20 {pipe_prefix} {LENGTH}{PIPE_TYPE} {SERIES}{MAKE}
+        # New format with space: CR20 89 1000A 62S
+        pattern = rf'^(CR|IR)(\d{{2}})\s+({pipe_prefix})\s+(\d{{3,4}})([ABC])\s+(\d{{2}})([CSFT])$'
         match = re.match(pattern, code)
         
         if match:
