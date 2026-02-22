@@ -154,15 +154,20 @@ export default function SearchScreen() {
             </Text>
             <Text style={styles.priceValue}>Rs. {(item.base_price || 0).toFixed(2)}</Text>
           </View>
-          <Link href="/(tabs)/calculator" asChild>
-            <TouchableOpacity 
-              style={styles.configButton}
-              data-testid="configure-btn"
-            >
-              <Text style={styles.configButtonText}>Configure</Text>
-              <Ionicons name="arrow-forward" size={16} color="#FF6B00" />
-            </TouchableOpacity>
-          </Link>
+          <Pressable 
+            style={styles.configButton}
+            onPress={() => {
+              if (Platform.OS === 'web') {
+                window.location.href = '/calculator';
+              } else {
+                router.push('/(tabs)/calculator');
+              }
+            }}
+            data-testid="configure-btn"
+          >
+            <Text style={styles.configButtonText}>Configure</Text>
+            <Ionicons name="arrow-forward" size={16} color="#FF6B00" />
+          </Pressable>
         </View>
       </View>
     </View>
