@@ -100,17 +100,54 @@ ROLLER_LENGTHS = {
     2000: [2190, 2240]
 }
 
-# Pipe Weight per meter (kg/m) - Standard IS-9295 specifications
+# Pipe Weight per meter (kg/m) - IS-1239 Light/Medium/Heavy Classes
+# Type A = Light, Type B = Medium, Type C = Heavy
 PIPE_WEIGHT_PER_METER = {
-    63.5: 4.5,
-    76.1: 5.8,
-    88.9: 7.2,
-    114.3: 9.8,
-    127.0: 11.5,
-    139.7: 13.2,
-    152.4: 15.0,
-    159.0: 15.8,
-    165.0: 16.5
+    63.5: {  # 60mm OD per IS-1239
+        "A": 4.11,   # Light: 2.90mm thickness
+        "B": 5.10,   # Medium: 3.65mm thickness
+        "C": 6.17    # Heavy: 4.47mm thickness
+    },
+    76.1: {  # 76mm OD per IS-1239
+        "A": 5.84,   # Light: 3.25mm thickness
+        "B": 6.61,   # Medium: 3.65mm thickness
+        "C": 7.90    # Heavy: 4.47mm thickness
+    },
+    88.9: {  # 88mm OD per IS-1239
+        "A": 6.81,   # Light: 3.25mm thickness
+        "B": 8.47,   # Medium: 4.05mm thickness
+        "C": 10.10   # Heavy: 4.85mm thickness
+    },
+    114.3: {  # 114mm OD per IS-1239
+        "A": 9.89,   # Light: 3.65mm thickness
+        "B": 12.10,  # Medium: 4.50mm thickness
+        "C": 14.40   # Heavy: 5.40mm thickness
+    },
+    127.0: {  # 127mm OD
+        "A": 11.5,   # Light: calculated
+        "B": 15.0,   # Medium: 4.85mm thickness
+        "C": 16.5    # Heavy: 5.40mm thickness
+    },
+    139.7: {  # 139mm OD
+        "A": 13.2,   # Light: calculated
+        "B": 16.5,   # Medium: calculated
+        "C": 18.5    # Heavy: 5.40mm thickness
+    },
+    152.4: {  # 152mm OD
+        "A": 15.0,   # Light: calculated
+        "B": 18.0,   # Medium: 4.85mm thickness
+        "C": 20.0    # Heavy: 5.40mm thickness
+    },
+    159.0: {  # 159mm OD
+        "A": 15.8,   # Light: calculated
+        "B": 19.0,   # Medium: calculated
+        "C": 21.0    # Heavy: calculated
+    },
+    165.0: {  # 165mm OD
+        "A": 16.5,   # Light: calculated
+        "B": 20.0,   # Medium: calculated
+        "C": 21.5    # Heavy: 5.40mm thickness
+    }
 }
 
 # Shaft Weight per meter (kg/m) based on diameter
