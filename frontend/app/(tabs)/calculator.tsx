@@ -447,7 +447,7 @@ export default function CalculatorScreen() {
                   rollerType === 'carrying' && styles.toggleTextActive,
                 ]}
               >
-                Standard
+                Carrying
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -469,6 +469,27 @@ export default function CalculatorScreen() {
                 ]}
               >
                 Impact
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.toggleButton,
+                rollerType === 'return' && styles.toggleButtonActive,
+              ]}
+              onPress={() => setRollerType('return')}
+            >
+              <Ionicons
+                name="sync-outline"
+                size={20}
+                color={rollerType === 'return' ? '#fff' : '#666'}
+              />
+              <Text
+                style={[
+                  styles.toggleText,
+                  rollerType === 'return' && styles.toggleTextActive,
+                ]}
+              >
+                Return
               </Text>
             </TouchableOpacity>
           </View>
