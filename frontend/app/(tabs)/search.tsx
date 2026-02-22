@@ -699,4 +699,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#1A1A2E',
   },
+  priceCell: {
+    fontWeight: '600',
+    color: '#960018',
+  },
 });
