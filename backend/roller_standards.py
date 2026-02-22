@@ -299,12 +299,16 @@ def get_bearing_cost(bearing_number, make="china"):
     
     return 0  # Shouldn't happen if bearing exists
 
-def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_number, bearing_make="china", rubber_dia=None):
-    """Calculate total raw material cost for a roller (optionally with rubber lagging for impact rollers)"""
+def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_number, bearing_make="china", rubber_dia=None, pipe_type="B"):
+    """
+    Calculate total raw material cost for a roller (optionally with rubber lagging for impact rollers)
+    pipe_type: "A" (Light), "B" (Medium), "C" (Heavy) - defaults to "B" (Medium)
+    """
     
-    # Pipe cost
+    # Pipe cost - now depends on pipe type (A/B/C)
     pipe_length_m = pipe_length_mm / 1000
-    pipe_weight = PIPE_WEIGHT_PER_METER[pipe_dia] * pipe_length_m
+    pipe_weight_per_m = PIPE_WEIGHT_PER_METER[pipe_dia].get(pipe_type, PIPE_WEIGHT_PER_METER[pipe_dia]["B"])
+    pipe_weight = pipe_weight_per_m * pipe_length_m
     pipe_cost = pipe_weight * PIPE_COST_PER_KG
     
     # Shaft cost (for 2 shafts)
