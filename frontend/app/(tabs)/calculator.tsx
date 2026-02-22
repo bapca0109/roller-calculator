@@ -1588,4 +1588,127 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 40,
   },
+  customerSection: {
+    marginTop: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+  },
+  customerLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+    marginBottom: 12,
+  },
+  customerSelector: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#FAFAFA',
+  },
+  selectedCustomer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  selectedCustomerInfo: {
+    flex: 1,
+  },
+  selectedCustomerName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  selectedCustomerCompany: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  noCustomerSelected: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  noCustomerText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  customerPickerModal: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '70%',
+    minHeight: 300,
+  },
+  customerPickerScroll: {
+    maxHeight: 400,
+    paddingHorizontal: 16,
+  },
+  customerPickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    marginVertical: 6,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  customerPickerItemSelected: {
+    borderColor: '#960018',
+    backgroundColor: '#FFF5F6',
+  },
+  customerPickerItemInfo: {
+    flex: 1,
+  },
+  customerPickerItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  customerPickerItemCompany: {
+    fontSize: 14,
+    color: '#960018',
+    marginTop: 2,
+  },
+  customerPickerItemLocation: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  customerPickerItemGst: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
+  },
+  customerPickerFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+  },
+  clearCustomerBtn: {
+    padding: 12,
+    alignItems: 'center',
+  },
+  clearCustomerBtnText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  noCustomersMessage: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noCustomersText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
+  },
+  noCustomersSubtext: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
 });
