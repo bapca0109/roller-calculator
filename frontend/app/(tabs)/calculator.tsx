@@ -143,6 +143,13 @@ export default function CalculatorScreen() {
   const [packingType, setPackingType] = useState<string>('none');
   const [freightPincode, setFreightPincode] = useState<string>('');
 
+  // Error state
+  const [errors, setErrors] = useState<{
+    pipeLength?: string;
+    quantity?: string;
+    freightPincode?: string;
+  }>({});
+
   useEffect(() => {
     fetchStandards();
   }, []);
