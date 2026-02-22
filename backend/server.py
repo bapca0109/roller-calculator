@@ -68,6 +68,24 @@ class Token(BaseModel):
     token_type: str
     user: Dict[str, Any]
 
+class Customer(BaseModel):
+    name: str
+    company: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    gst_number: Optional[str] = None
+    notes: Optional[str] = None
+
+class CustomerInDB(Customer):
+    id: str
+    created_by: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
 class RollerSpecs(BaseModel):
     diameter: float  # mm
     length: float  # mm
