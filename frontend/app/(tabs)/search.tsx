@@ -187,7 +187,7 @@ export default function SearchScreen() {
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
