@@ -2130,11 +2130,40 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FFE082',
   },
+  notFoundHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
   newCustomerLabel: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
     color: '#F57C00',
+  },
+  notFoundHint: {
+    fontSize: 13,
+    color: '#666',
     marginBottom: 12,
+    lineHeight: 18,
+  },
+  gstinPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  gstinPreviewLabel: {
+    fontSize: 13,
+    color: '#666',
+  },
+  gstinPreviewValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    fontFamily: 'monospace',
   },
   gstHintText: {
     fontSize: 12,
