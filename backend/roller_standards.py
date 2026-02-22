@@ -333,6 +333,27 @@ PACKING_CHARGES = {
     "wooden_box": 0.08,  # 8% for wooden box packing
 }
 
+# Value-based Discount Slabs (in Lakhs)
+# Applied on (Unit Price × Quantity) BEFORE packing and freight
+DISCOUNT_SLABS = [
+    (0, 200000, 5.0),           # 0 - 2 Lakh: 5%
+    (200000, 500000, 7.5),      # 2 - 5 Lakh: 7.5%
+    (500000, 750000, 10.0),     # 5 - 7.5 Lakh: 10%
+    (750000, 1000000, 15.0),    # 7.5 - 10 Lakh: 15%
+    (1000000, 1500000, 20.0),   # 10 - 15 Lakh: 20%
+    (1500000, 3000000, 25.0),   # 15 - 30 Lakh: 25%
+    (3000000, 5000000, 28.0),   # 30 - 50 Lakh: 28%
+    (5000000, 10000000, 30.0),  # 50 Lakh - 1 Crore: 30%
+    (10000000, float('inf'), 35.0),  # Above 1 Crore: 35%
+]
+
+def get_discount_percent(order_value):
+    """Get discount percentage based on order value"""
+    for min_val, max_val, discount in DISCOUNT_SLABS:
+        if min_val <= order_value < max_val:
+            return discount
+    return 0.0
+
 # Freight Charges Configuration
 DISPATCH_PINCODE = "382433"  # Gujarat - Dispatch location
 
