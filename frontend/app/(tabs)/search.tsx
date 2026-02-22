@@ -99,9 +99,22 @@ export default function SearchScreen() {
     setHasSearched(false);
   };
 
+  const navigateToCalculator = () => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const tabs = document.querySelectorAll('[role="tab"]');
+      if (tabs && tabs.length > 0) {
+        (tabs[0] as HTMLElement).click();
+      }
+    } else {
+      router.push('/(tabs)/calculator');
+    }
+  };
+
   const renderResultItem = ({ item }: { item: ProductResult }) => (
-    <View 
+    <TouchableOpacity 
       style={[styles.resultCard, item.exact_match && styles.exactMatchCard]} 
+      onPress={navigateToCalculator}
+      activeOpacity={0.8}
       data-testid={`product-${item.product_code}`}
     >
       <View style={styles.resultHeader}>
