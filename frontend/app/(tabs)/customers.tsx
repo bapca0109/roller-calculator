@@ -1062,4 +1062,30 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 16,
   },
+  notFoundHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  notFoundHint: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  addManuallyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#960018',
+    padding: 14,
+    borderRadius: 10,
+    gap: 8,
+  },
+  addManuallyBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
