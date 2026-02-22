@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -45,8 +46,12 @@ export default function Login() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Ionicons name="settings-outline" size={64} color="#007AFF" />
-          <Text style={styles.title}>Conveyor Roller Calculator</Text>
+          <Image 
+            source={require('../../assets/images/convero-logo.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.title}>Roller Price Calculator</Text>
           <Text style={styles.subtitle}>Sign in to your account</Text>
         </View>
 
