@@ -1057,12 +1057,19 @@ async def search_product_catalog(
                             product_code = f"{type_code}{shaft_dia} {pipe_display} {series}{make_code}"
                             
                             # Build search text with ALL IS-8598 standard lengths
-                            # Include both with pipe type (315A) and without (315 62F) for flexible matching
+                            # Include multiple formats for flexible matching:
+                            # 1. With pipe type and make: CR25 139 600A 62S
+                            # 2. Without pipe type, with make: CR25 139 600 62S
+                            # 3. Without pipe type, without make: CR25 139 600 62
                             all_length_codes_with_type = " ".join([f"{type_code}{shaft_dia} {pipe_display} {length}{pipe_type} {series}{make_code}" for length in standard_lengths])
                             all_length_codes_without_type = " ".join([f"{type_code}{shaft_dia} {pipe_display} {length} {series}{make_code}" for length in standard_lengths])
+                            all_length_codes_series_only = " ".join([f"{type_code}{shaft_dia} {pipe_display} {length} {series}" for length in standard_lengths])
+                            
+                            # Also add base product code without make: CR25 139 62
+                            product_code_no_make = f"{type_code}{shaft_dia} {pipe_display} {series}"
                             
                             # Check if query matches this product
-                            search_text = f"{product_code} {all_length_codes_with_type} {all_length_codes_without_type} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
+                            search_text = f"{product_code} {product_code_no_make} {all_length_codes_with_type} {all_length_codes_without_type} {all_length_codes_series_only} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
                             
                             if query in search_text:
                                 # Calculate base price for 1000mm length
