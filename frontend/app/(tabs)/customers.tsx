@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -26,6 +27,28 @@ interface Customer {
   pincode?: string;
   gst_number?: string;
   notes?: string;
+}
+
+interface GSTCaptcha {
+  session_id: string;
+  captcha_image: string;
+}
+
+interface GSTData {
+  gstin: string;
+  legal_name: string;
+  trade_name: string;
+  status: string;
+  address: {
+    full: string;
+    street: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
+  registration_date: string;
+  constitution_of_business: string;
+  taxpayer_type: string;
 }
 
 const emptyCustomer: Omit<Customer, 'id'> = {
@@ -50,6 +73,14 @@ export default function CustomersScreen() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState<Omit<Customer, 'id'>>(emptyCustomer);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // GST Lookup state
+  const [gstModalVisible, setGstModalVisible] = useState(false);
+  const [gstinInput, setGstinInput] = useState('');
+  const [captchaData, setCaptchaData] = useState<GSTCaptcha | null>(null);
+  const [captchaInput, setCaptchaInput] = useState('');
+  const [gstLoading, setGstLoading] = useState(false);
+  const [gstVerifying, setGstVerifying] = useState(false);
 
   useEffect(() => {
     fetchCustomers();
