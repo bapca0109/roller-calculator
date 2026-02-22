@@ -17,6 +17,7 @@ interface LengthDetail {
   length_mm: number;
   belt_widths: number[];
   weight_kg: number;
+  price: number;
   product_code: string;
 }
 
