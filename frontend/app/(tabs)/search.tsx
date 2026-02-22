@@ -99,18 +99,8 @@ export default function SearchScreen() {
   };
 
   const handleSelectProduct = (item: ProductResult) => {
-    // Navigate to calculator with pre-filled values
-    Alert.alert(
-      'Configure Product',
-      `${item.description}\n\nBase price (1000mm): Rs. ${item.base_price_1000mm.toFixed(2)}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Go to Calculator', 
-          onPress: () => router.push('/(tabs)/calculator')
-        }
-      ]
-    );
+    // Navigate to calculator directly
+    router.push('/(tabs)/calculator');
   };
 
   const renderResultItem = ({ item }: { item: ProductResult }) => (
