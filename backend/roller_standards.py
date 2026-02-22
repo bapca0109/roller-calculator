@@ -119,16 +119,17 @@ ROLLER_LENGTHS = {
 }
 
 # IS-8598:2019 - Return Idler Lengths (single roll, flat)
+# First value = single piece, second value = 2-piece per set (each roller length)
 RETURN_ROLLER_LENGTHS = {
-    500: [600, 300, 380],    # 600 = single piece, 300/380 = 2-piece per set
-    650: [750, 300, 380],
-    800: [950, 300, 380],
-    1000: [1150, 300, 380],
-    1200: [1400, 300, 380],
-    1400: [1600, 300, 380],
-    1600: [1800, 300, 380],
-    1800: [2000, 300, 380],
-    2000: [2200, 300, 380]
+    500: [600, 250],     # Single: 600mm, 2-piece: 250mm each
+    650: [750, 380],     # Single: 750mm, 2-piece: 380mm each
+    800: [950, 465],     # Single: 950mm, 2-piece: 465mm each
+    1000: [1150, 600],   # Single: 1150mm, 2-piece: 600mm each
+    1200: [1400, 700],   # Single: 1400mm, 2-piece: 700mm each
+    1400: [1600, 800],   # Single: 1600mm, 2-piece: 800mm each
+    1600: [1800, 900],   # Single: 1800mm, 2-piece: 900mm each
+    1800: [2000, 1000],  # Single: 2000mm, 2-piece: 1000mm each
+    2000: [2200, 1100]   # Single: 2200mm, 2-piece: 1100mm each
 }
 
 # Pipe Weight per meter (kg/m) - IS-9295 Light/Medium/Heavy Classes
