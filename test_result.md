@@ -258,12 +258,15 @@ metadata:
 
 test_plan:
   current_focus:
-    - "IS-Standards Belt Conveyor Roller Configuration and Costing APIs"
+    - "Freight Calculation System"
   stuck_tasks: []
   test_all: false
-  test_priority: "completed"
+  test_priority: "high_first"
 
 agent_communication:
+  - agent: "main"
+    message: "IMPLEMENTED FREIGHT CALCULATION SYSTEM: Please test the updated /calculate-detailed-cost endpoint with the following scenarios: 1) Test WITH freight_pincode parameter (e.g., 110001 for Delhi) to verify freight charges are calculated, 2) Test WITHOUT freight_pincode to verify freight is null and grand_total equals unit price × quantity, 3) Test with quantity > 1 to verify total weight and freight is calculated for all rollers, 4) Verify distance tiers: Gujarat pincode (38xxxx) should give ~150km/₹2 per kg, Delhi (11xxxx) should give ~900km/₹5 per kg, Tamil Nadu (60xxxx) should give ~1600km/₹9 per kg. Use admin@test.com / admin123 for authentication."
+  
   - agent: "testing"
     message: "COMPREHENSIVE BELT CONVEYOR ROLLER API TESTING COMPLETED ✅ All 8 test scenarios passed successfully: 1) User authentication (admin/customer login), 2) Create 3 roller products with RollerSpecs (Standard Carrying Roller $85.50, Impact Roller $125.00, HDPE Return Roller $45.00), 3) Get products with complete roller specifications, 4) Get single product details, 5) Price calculation with quantity discounts (5%/10%/15%), 6) Create quote with roller products including delivery location, 7) Update quote with shipping cost, 8) Get quote with complete pricing details. Backend URL https://conveyor-pricer.preview.emergentagent.com/api is fully functional. Fixed database integrity issue by removing old product format. All roller-specific endpoints working with proper specifications model including diameter, length, shaft_diameter, material, bearing_type, load_capacity, surface_type, application_type, rpm, temperature_rating. Ready for production use."
   
