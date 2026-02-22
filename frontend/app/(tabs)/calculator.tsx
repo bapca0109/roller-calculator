@@ -201,9 +201,55 @@ export default function CalculatorScreen() {
     setGstinInput('');
     setCaptchaData(null);
     setCaptchaInput('');
+    setExistingGstCustomer(null);
     setShowCustomerPicker(false);
     setShowGstLookup(true);
-    fetchGstCaptcha();
+  };
+
+  // State for existing customer found by GSTIN
+  const [existingGstCustomer, setExistingGstCustomer] = useState<any>(null);
+  const [searchingGstin, setSearchingGstin] = useState(false);
+
+  // Quick search by GSTIN - check database first
+  const searchGstinInDatabase = async (gstin: string) => {
+    if (gstin.length !== 15) {
+      setExistingGstCustomer(null);
+      return;
+    }
+    
+    setSearchingGstin(true);
+    try {
+      const response = await api.get(`/customers/search/gstin/${gstin.toUpperCase()}`);
+      if (response.data.found) {
+        setExistingGstCustomer(response.data.customer);
+      } else {
+        setExistingGstCustomer(null);
+      }
+    } catch (error) {
+      setExistingGstCustomer(null);
+    } finally {
+      setSearchingGstin(false);
+    }
+  };
+
+  // Handle GSTIN input change with debounced search
+  const handleGstinInputChange = (text: string) => {
+    const upperText = text.toUpperCase();
+    setGstinInput(upperText);
+    if (upperText.length === 15) {
+      searchGstinInDatabase(upperText);
+    } else {
+      setExistingGstCustomer(null);
+    }
+  };
+
+  // Select existing customer from GSTIN search
+  const selectExistingGstCustomer = () => {
+    if (existingGstCustomer) {
+      setSelectedCustomer(existingGstCustomer);
+      setShowGstLookup(false);
+      Alert.alert('Customer Selected', `"${existingGstCustomer.name}" has been selected.`);
+    }
   };
 
   const verifyGstinFromCalculator = async () => {
