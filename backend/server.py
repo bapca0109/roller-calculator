@@ -880,6 +880,59 @@ async def download_raw_materials_public():
 
 # ============= SEARCH ROUTES =============
 
+def parse_product_code(code: str):
+    """
+    Parse a full product code like 'CR20 88465A 63S' or 'IR25 114800B 62F'
+    Returns dict with extracted components or None if invalid
+    Format: {TYPE}{SHAFT} {PIPE}{LENGTH}{PIPE_TYPE} {SERIES}{MAKE}
+    """
+    import re
+    code = code.upper().strip()
+    
+    # Pattern: CR20 88465A 63S or CR20 881000B 62S
+    # Group 1: Type (CR or IR)
+    # Group 2: Shaft diameter (20, 25, 30, etc)
+    # Group 3: Pipe diameter (60, 76, 88, 89, 114, 127, etc) - first 2-3 digits
+    # Group 4: Length (remaining digits before letter)
+    # Group 5: Pipe type (A, B, C)
+    # Group 6: Bearing series (62, 63, 42)
+    # Group 7: Make code (C, S, F, T)
+    
+    pattern = r'^(CR|IR)(\d{2})\s+(\d{2,3})(\d{3,4})([ABC])\s+(\d{2})([CSFT])$'
+    match = re.match(pattern, code)
+    
+    if match:
+        make_map = {'C': 'china', 'S': 'skf', 'F': 'fag', 'T': 'timken'}
+        return {
+            'roller_type': 'carrying' if match.group(1) == 'CR' else 'impact',
+            'type_code': match.group(1),
+            'shaft_diameter': int(match.group(2)),
+            'pipe_diameter_prefix': match.group(3),
+            'pipe_length': int(match.group(4)),
+            'pipe_type': match.group(5),
+            'bearing_series': match.group(6),
+            'bearing_make': make_map.get(match.group(7), 'china'),
+            'make_code': match.group(7)
+        }
+    return None
+
+
+def find_pipe_diameter(prefix: str):
+    """Find actual pipe diameter from prefix like '88' -> 88.9"""
+    prefix_map = {
+        '60': 60.8, '608': 60.8,
+        '76': 76.1, '761': 76.1,
+        '88': 88.9, '889': 88.9, '89': 88.9,
+        '114': 114.3, '1143': 114.3,
+        '127': 127.0, '1270': 127.0,
+        '139': 139.7, '1397': 139.7, '140': 139.7,
+        '152': 152.4, '1524': 152.4,
+        '159': 159.0, '1590': 159.0,
+        '165': 165.0, '1650': 165.0
+    }
+    return prefix_map.get(prefix)
+
+
 @api_router.get("/search/product-catalog")
 async def search_product_catalog(
     query: str,
@@ -887,13 +940,9 @@ async def search_product_catalog(
 ):
     """
     Search through available product configurations (product range/catalog).
-    Generates all valid roller configurations and filters by search query.
-    Supports searching by:
-    - Roller type: CR (Carrying), IR (Impact)
-    - Shaft diameter: 20, 25, 30, etc.
-    - Pipe diameter: 60, 76, 89, 114, etc.
-    - Bearing number: 6204, 6305, etc.
-    - Bearing make code: C (China), S (SKF), F (FAG), T (Timken)
+    Supports:
+    - Full product code: 'CR20 88465A 63S', 'IR25 114800B 62F'
+    - Partial search: 'CR', 'IR', '25', 'SKF', '6205'
     """
     if not query or len(query) < 1:
         raise HTTPException(status_code=400, detail="Search query required")
@@ -901,8 +950,73 @@ async def search_product_catalog(
     query = query.upper().strip()
     results = []
     
-    # Standard lengths for product catalog display
-    standard_lengths = [600, 800, 1000, 1200, 1400]
+    # Try to parse as full product code first
+    parsed = parse_product_code(query)
+    
+    if parsed:
+        # Full product code search - return exact match
+        pipe_dia = find_pipe_diameter(parsed['pipe_diameter_prefix'])
+        if pipe_dia:
+            shaft_dia = parsed['shaft_diameter']
+            pipe_length = parsed['pipe_length']
+            pipe_type = parsed['pipe_type']
+            bearing_make = parsed['bearing_make']
+            bearing_series = parsed['bearing_series']
+            
+            # Find matching bearing for this shaft and series
+            bearings = rs.BEARING_OPTIONS.get(shaft_dia, [])
+            matching_bearing = None
+            for b in bearings:
+                if b.startswith(bearing_series):
+                    # Check if this bearing is available in the requested make
+                    if bearing_make in rs.BEARING_COSTS.get(b, {}):
+                        matching_bearing = b
+                        break
+            
+            if matching_bearing:
+                housing = rs.get_housing_for_pipe_and_bearing(pipe_dia, matching_bearing)
+                if housing:
+                    try:
+                        cost = rs.calculate_raw_material_cost(
+                            pipe_dia, pipe_length, shaft_dia, matching_bearing, 
+                            bearing_make, None, pipe_type
+                        )
+                        pricing = rs.calculate_final_price(cost["total_raw_material"], "none", 1)
+                        base_price = pricing["unit_price"]
+                    except:
+                        base_price = 0
+                    
+                    make_code = {'china': 'C', 'skf': 'S', 'fag': 'F', 'timken': 'T'}.get(bearing_make, 'C')
+                    product_code = f"{parsed['type_code']}{shaft_dia} {int(pipe_dia)}{pipe_length}{pipe_type} {bearing_series}{make_code}"
+                    
+                    results.append({
+                        "product_code": product_code,
+                        "roller_type": parsed['roller_type'],
+                        "type_code": parsed['type_code'],
+                        "shaft_diameter": shaft_dia,
+                        "pipe_diameter": pipe_dia,
+                        "pipe_length": pipe_length,
+                        "pipe_type": pipe_type,
+                        "bearing": matching_bearing,
+                        "bearing_make": bearing_make,
+                        "bearing_series": bearing_series,
+                        "housing": housing,
+                        "base_price": round(base_price, 2),
+                        "available_lengths": [pipe_length],
+                        "description": f"{parsed['roller_type'].title()} Roller - {shaft_dia}mm shaft, {pipe_dia}mm x {pipe_length}mm pipe, {matching_bearing} ({bearing_make.upper()})",
+                        "exact_match": True
+                    })
+        
+        return {
+            "results": results,
+            "count": len(results),
+            "query": query,
+            "search_type": "exact_product_code",
+            "truncated": False
+        }
+    
+    # Partial search - search through all configurations
+    standard_lengths = [465, 600, 800, 1000, 1200, 1400]
     pipe_types = ["A", "B", "C"]
     bearing_makes = ["china", "skf", "fag", "timken"]
     bearing_make_codes = {"china": "C", "skf": "S", "fag": "F", "timken": "T"}
@@ -934,12 +1048,13 @@ async def search_product_catalog(
                             series = "62" if bearing.startswith("62") else "63" if bearing.startswith("63") else "42"
                             
                             # Product code format: CR25 891000B 62S
-                            product_code = f"{type_code}{shaft_dia} {int(pipe_dia)}B {series}{make_code}"
+                            product_code = f"{type_code}{shaft_dia} {int(pipe_dia)} {series}{make_code}"
+                            full_code = f"{type_code}{shaft_dia} {int(pipe_dia)}1000{pipe_type} {series}{make_code}"
                             
                             # Check if query matches this product
-                            search_text = f"{product_code} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
+                            search_text = f"{product_code} {full_code} {roller_type} {shaft_dia}mm {pipe_dia}mm {bearing} {make}".upper()
                             
-                            if query in search_text or query in product_code:
+                            if query in search_text:
                                 # Calculate base price for 1000mm length
                                 try:
                                     cost = rs.calculate_raw_material_cost(
@@ -961,9 +1076,10 @@ async def search_product_catalog(
                                     "bearing_make": make,
                                     "bearing_series": series,
                                     "housing": housing,
-                                    "base_price_1000mm": round(base_price, 2),
+                                    "base_price": round(base_price, 2),
                                     "available_lengths": standard_lengths,
-                                    "description": f"{roller_type.title()} Roller - {shaft_dia}mm shaft, {pipe_dia}mm pipe, {bearing} ({make.upper()})"
+                                    "description": f"{roller_type.title()} Roller - {shaft_dia}mm shaft, {pipe_dia}mm pipe, {bearing} ({make.upper()})",
+                                    "exact_match": False
                                 }
                                 results.append(result)
                                 
@@ -973,6 +1089,7 @@ async def search_product_catalog(
                                         "results": results, 
                                         "count": len(results), 
                                         "query": query,
+                                        "search_type": "partial",
                                         "truncated": True
                                     }
     
@@ -989,6 +1106,7 @@ async def search_product_catalog(
         "results": unique_results[:50], 
         "count": len(unique_results[:50]), 
         "query": query,
+        "search_type": "partial",
         "truncated": len(unique_results) > 50
     }
 
