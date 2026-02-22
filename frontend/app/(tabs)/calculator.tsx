@@ -232,11 +232,13 @@ export default function CalculatorScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Image 
-            source={{ uri: 'https://static.wixstatic.com/media/d714c4_0d70a3cab7694564bc644161f285e30a~mv2.png/v1/fill/w_305,h_98,al_c,q_85,enc_auto/VISITING%20CARD%20LOGO.png' }} 
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
+          <View style={styles.logoContainer}>
+            <Image 
+              source={{ uri: 'https://static.wixstatic.com/media/d714c4_0d70a3cab7694564bc644161f285e30a~mv2.png/v1/fill/w_305,h_98,al_c,q_85,enc_auto/VISITING%20CARD%20LOGO.png' }} 
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+          </View>
           <Text style={styles.headerTitle}>Roller Calculator</Text>
           <Text style={styles.headerSubtitle}>Configure your conveyor roller</Text>
         </View>
