@@ -230,10 +230,10 @@ export default function SearchScreen() {
               <Text style={styles.tipTitle}>Search Tips</Text>
               <Text style={styles.tipText}>
                 Search by product code or specifications:{'\n'}
+                • Full code: "CR20 88465A 63S"{'\n'}
                 • "CR" - Carrying rollers{'\n'}
                 • "IR" - Impact rollers{'\n'}
                 • "25" - 25mm shaft rollers{'\n'}
-                • "89" - 89mm pipe rollers{'\n'}
                 • "6205" - Specific bearing{'\n'}
                 • "SKF" - SKF branded bearings
               </Text>
