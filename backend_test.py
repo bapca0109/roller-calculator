@@ -27,7 +27,7 @@ class FreightCalculationTester:
         }
         
         try:
-            response = requests.post(f"{self.base_url}/login", json=login_data)
+            response = requests.post(f"{self.base_url}/auth/login", json=login_data)
             if response.status_code == 200:
                 token_data = response.json()
                 self.auth_token = token_data["access_token"]
