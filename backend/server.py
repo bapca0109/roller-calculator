@@ -672,15 +672,33 @@ async def calculate_detailed_cost(
     # Calculate final pricing
     pricing = rs.calculate_final_price(cost_breakdown["total_raw_material"])
     
+    # Generate product code
+    roller_type = "impact" if request.rubber_diameter else "carrying"  # Default to carrying, user can specify
+    product_code = rs.generate_product_code(
+        roller_type,
+        request.shaft_diameter,
+        request.pipe_diameter,
+        request.pipe_length,
+        request.pipe_type or "B",
+        request.bearing_number,
+        request.bearing_make or "china",
+        request.rubber_diameter
+    )
+    
     return DetailedCostResponse(
         configuration={
+            "product_code": product_code,
+            "roller_type": roller_type,
             "pipe_diameter_mm": request.pipe_diameter,
             "pipe_length_mm": request.pipe_length,
+            "pipe_type": request.pipe_type or "B",
             "shaft_diameter_mm": request.shaft_diameter,
             "shaft_length_mm": shaft_length,
             "bearing": request.bearing_number,
+            "bearing_make": request.bearing_make or "china",
             "housing": housing,
-            "belt_width_mm": request.belt_width
+            "belt_width_mm": request.belt_width,
+            "rubber_diameter_mm": request.rubber_diameter
         },
         cost_breakdown=cost_breakdown,
         pricing=pricing
