@@ -121,14 +121,14 @@ ROLLER_LENGTHS = {
 # IS-8598:2019 - Return Idler Lengths (single roll, flat)
 RETURN_ROLLER_LENGTHS = {
     500: [600],
-    650: [700],
-    800: [750],
-    1000: [950],
-    1200: [1150],
-    1400: [1400],
-    1600: [1600],
-    1800: [1800],
-    2000: [2000]
+    650: [750],
+    800: [950],
+    1000: [1150],
+    1200: [1400],
+    1400: [1600],
+    1600: [1800],
+    1800: [2000],
+    2000: [2200]
 }
 
 # Pipe Weight per meter (kg/m) - IS-9295 Light/Medium/Heavy Classes
