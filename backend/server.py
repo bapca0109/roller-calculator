@@ -1363,6 +1363,21 @@ async def delete_customer(customer_id: str, current_user: dict = Depends(get_cur
     
     return {"message": "Customer deleted successfully"}
 
+@api_router.get("/customers/search/gstin/{gstin}")
+async def search_customer_by_gstin(gstin: str, current_user: dict = Depends(get_current_user)):
+    """Search for existing customer by GSTIN - Quick lookup before GST portal fetch"""
+    customer = await db.customers.find_one({
+        "gst_number": gstin.upper(),
+        "created_by": current_user.get("email")
+    })
+    
+    if customer:
+        customer["id"] = str(customer["_id"])
+        del customer["_id"]
+        return {"found": True, "customer": customer}
+    
+    return {"found": False, "customer": None}
+
 # ============= GST VERIFICATION API =============
 
 import gst_verification as gst
