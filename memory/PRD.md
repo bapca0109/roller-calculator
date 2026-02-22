@@ -105,6 +105,20 @@ Examples:
 
 ## Recently Completed (Feb 2026)
 
+### GST Verification Feature ✅ (NEW)
+- Auto-fetch customer details from GSTIN via GST Portal
+- Captcha-based verification flow (solves bot detection)
+- Features:
+  - `GET /api/gst/captcha` - Fetch captcha from GST portal
+  - `GET /api/gst/validate/{gstin}` - Validate GSTIN format + extract state
+  - `POST /api/gst/verify` - Verify GSTIN with captcha solution
+  - `POST /api/customers/from-gst` - Save GST data as new customer
+- Available in:
+  - Customers tab: "GST" button for lookup
+  - Calculator: "Fetch from GSTIN" in customer picker
+- Auto-fills: Legal name, Trade name, Address, City, State, Pincode, GST number
+- Note: GST portal has bot detection - captcha may show "Page not found" from server calls
+
 ### Admin Panel for Price Management ✅
 - Full CRUD UI for managing raw material prices
 - Prices stored in `custom_prices` collection in MongoDB
