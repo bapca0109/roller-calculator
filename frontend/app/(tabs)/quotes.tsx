@@ -269,16 +269,26 @@ export default function QuotesScreen() {
     try {
       const html = generatePdfHtml(selectedQuote);
       
-      const { uri } = await Print.printToFileAsync({
-        html,
-        base64: false,
-      });
-
       if (Platform.OS === 'web') {
-        // For web, open print dialog
-        await Print.printAsync({ html });
+        // For web, open in new window and trigger print
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(html);
+          printWindow.document.close();
+          printWindow.focus();
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
+        } else {
+          Alert.alert('Error', 'Please allow popups to export PDF');
+        }
       } else {
-        // For mobile, share the PDF
+        // For mobile, use expo-print
+        const { uri } = await Print.printToFileAsync({
+          html,
+          base64: false,
+        });
+
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(uri, {
             mimeType: 'application/pdf',
@@ -291,7 +301,7 @@ export default function QuotesScreen() {
       }
     } catch (error) {
       console.error('PDF generation error:', error);
-      Alert.alert('Error', 'Failed to generate PDF');
+      Alert.alert('Error', 'Failed to generate PDF. Please try again.');
     } finally {
       setGeneratingPdf(false);
     }
