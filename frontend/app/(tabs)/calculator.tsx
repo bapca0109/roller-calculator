@@ -177,6 +177,85 @@ export default function CalculatorScreen() {
     }
   };
 
+  // GST Lookup functions for calculator
+  const fetchGstCaptcha = async () => {
+    setGstLoading(true);
+    try {
+      const response = await api.get('/gst/captcha');
+      if (response.data.success) {
+        setCaptchaData({
+          session_id: response.data.session_id,
+          captcha_image: response.data.captcha_image,
+        });
+      } else {
+        Alert.alert('Error', response.data.error || 'Failed to fetch captcha');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to fetch captcha from GST portal');
+    } finally {
+      setGstLoading(false);
+    }
+  };
+
+  const openGstLookupFromCalculator = () => {
+    setGstinInput('');
+    setCaptchaData(null);
+    setCaptchaInput('');
+    setShowCustomerPicker(false);
+    setShowGstLookup(true);
+    fetchGstCaptcha();
+  };
+
+  const verifyGstinFromCalculator = async () => {
+    if (!gstinInput || gstinInput.length !== 15) {
+      Alert.alert('Error', 'Please enter a valid 15-character GSTIN');
+      return;
+    }
+    if (!captchaInput) {
+      Alert.alert('Error', 'Please enter the captcha');
+      return;
+    }
+    if (!captchaData?.session_id) {
+      Alert.alert('Error', 'Session expired. Please refresh captcha.');
+      return;
+    }
+
+    setGstVerifying(true);
+    try {
+      const response = await api.post('/gst/verify', {
+        session_id: captchaData.session_id,
+        gstin: gstinInput.toUpperCase(),
+        captcha: captchaInput,
+      });
+
+      if (response.data.success) {
+        const gstData = response.data.data;
+        // Create customer from GST data and save
+        const customerResponse = await api.post('/customers/from-gst', response.data);
+        
+        if (customerResponse.data.customer) {
+          // Refresh customers list and select the new customer
+          await fetchCustomers();
+          setSelectedCustomer(customerResponse.data.customer);
+          setShowGstLookup(false);
+          Alert.alert('Success', `Customer "${gstData.trade_name || gstData.legal_name}" created and selected!`);
+        }
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.detail || 'Verification failed';
+      if (errorMsg.includes('already exists')) {
+        Alert.alert('Customer Exists', errorMsg);
+      } else {
+        Alert.alert('Verification Failed', errorMsg);
+      }
+      // Refresh captcha on failure
+      fetchGstCaptcha();
+      setCaptchaInput('');
+    } finally {
+      setGstVerifying(false);
+    }
+  };
+
   useEffect(() => {
     // Auto-select first bearing when shaft diameter changes
     if (standards && shaftDiameter) {
