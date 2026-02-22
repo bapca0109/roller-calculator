@@ -544,31 +544,37 @@ export default function CalculatorScreen() {
 
             {/* Pricing */}
             <View style={styles.resultCard}>
-              <Text style={styles.resultCardTitle}>Pricing (Per Roller)</Text>
+              <Text style={styles.resultCardTitle}>Pricing</Text>
               <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>Raw Material</Text>
-                <Text style={styles.resultValue}>Rs. {result.pricing.raw_material_cost.toFixed(2)}</Text>
+                <Text style={styles.resultLabel}>Unit Price (per roller)</Text>
+                <Text style={styles.resultValue}>Rs. {result.pricing.unit_price.toFixed(2)}</Text>
               </View>
               <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>+ Layout (32%)</Text>
-                <Text style={styles.resultValue}>Rs. {result.pricing.layout_cost.toFixed(2)}</Text>
+                <Text style={styles.resultLabel}>Quantity</Text>
+                <Text style={styles.resultValue}>{result.pricing.quantity} pcs</Text>
               </View>
-              <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>+ Profit (60%)</Text>
-                <Text style={styles.resultValue}>Rs. {result.pricing.profit.toFixed(2)}</Text>
+              <View style={[styles.resultRow, styles.subtotalRow]}>
+                <Text style={styles.resultLabel}>Order Value</Text>
+                <Text style={styles.resultValue}>Rs. {result.pricing.order_value.toFixed(2)}</Text>
               </View>
+              {result.pricing.discount_percent > 0 && (
+                <View style={styles.discountRow}>
+                  <Text style={styles.discountLabel}>- Discount ({result.pricing.discount_percent}%)</Text>
+                  <Text style={styles.discountValue}>- Rs. {result.pricing.discount_amount.toFixed(2)}</Text>
+                </View>
+              )}
               <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>Product Price</Text>
-                <Text style={styles.resultValue}>Rs. {result.pricing.product_price.toFixed(2)}</Text>
+                <Text style={styles.resultLabel}>After Discount</Text>
+                <Text style={styles.resultValue}>Rs. {result.pricing.price_after_discount.toFixed(2)}</Text>
               </View>
               {result.pricing.packing_charges > 0 && (
                 <View style={styles.resultRow}>
-                  <Text style={styles.resultLabel}>+ Packing ({result.pricing.packing_type})</Text>
+                  <Text style={styles.resultLabel}>+ Packing ({result.pricing.packing_type}, {result.pricing.packing_percent}%)</Text>
                   <Text style={styles.resultValue}>Rs. {result.pricing.packing_charges.toFixed(2)}</Text>
                 </View>
               )}
               <View style={[styles.resultRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>Unit Price</Text>
+                <Text style={styles.totalLabel}>Subtotal (excl. freight)</Text>
                 <Text style={styles.totalValue}>Rs. {result.pricing.final_price.toFixed(2)}</Text>
               </View>
             </View>
