@@ -327,9 +327,10 @@ PROFIT_MARKUP = 0.60  # 60% profit margin
 
 # Packing Charges (Applied AFTER final product price calculation)
 PACKING_CHARGES = {
+    "none": 0.0,         # No packing
+    "standard": 0.01,    # 1% for standard packing
     "pallet": 0.04,      # 4% for pallet packing
     "wooden_box": 0.08,  # 8% for wooden box packing
-    "none": 0.0          # No packing
 }
 
 def calculate_shaft_length(pipe_length_mm):
