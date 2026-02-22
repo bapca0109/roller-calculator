@@ -665,17 +665,23 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#FF6B00',
-    paddingTop: 60,
-    paddingBottom: 24,
+    paddingTop: 50,
+    paddingBottom: 20,
     paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 150,
+    height: 80,
+    marginBottom: 8,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#fff',
     opacity: 0.9,
     marginTop: 4,
