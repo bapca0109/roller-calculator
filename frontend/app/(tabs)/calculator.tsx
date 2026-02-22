@@ -275,6 +275,7 @@ export default function CalculatorScreen() {
 
     try {
       const payload: any = {
+        roller_type: rollerType,
         pipe_diameter: pipeDiameter,
         pipe_length: parseInt(pipeLength),
         shaft_diameter: shaftDiameter,
