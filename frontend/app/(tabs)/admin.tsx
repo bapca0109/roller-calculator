@@ -123,6 +123,7 @@ export default function AdminScreen() {
   };
 
   const handleResetPrices = async () => {
+    console.log('Reset button pressed!');
     Alert.alert(
       'Reset Prices',
       'Are you sure you want to reset all prices to default values?',
@@ -132,6 +133,7 @@ export default function AdminScreen() {
           text: 'Reset',
           style: 'destructive',
           onPress: async () => {
+            console.log('User confirmed reset');
             try {
               setSaving(true);
               // Cancel any active editing
@@ -153,7 +155,7 @@ export default function AdminScreen() {
               // Force re-render by updating key
               setRefreshKey(prev => prev + 1);
               
-              Alert.alert('Success', `Prices reset! Pipe cost: ${response.data.basic_rates.pipe_cost_per_kg}`);
+              Alert.alert('Success', `Prices reset to defaults!\nPipe cost: ₹${response.data.basic_rates.pipe_cost_per_kg}\nShaft cost: ₹${response.data.basic_rates.shaft_cost_per_kg}`);
             } catch (error: any) {
               console.error('Reset error:', error);
               Alert.alert('Error', error.response?.data?.detail || 'Failed to reset prices');
