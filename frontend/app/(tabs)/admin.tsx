@@ -805,7 +805,7 @@ export default function AdminScreen() {
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
               <Text style={styles.standardsTitle}>Product Standards Data</Text>
               <Text style={styles.standardsSubtitle}>
-                Tap a collection to view and manage its data
+                View-only reference data. To change prices, use the Prices tab.
               </Text>
               {renderStandardsSummary()}
               <View style={styles.bottomSpacer} />
