@@ -158,6 +158,10 @@ export default function CalculatorScreen() {
   const [packingType, setPackingType] = useState<string>('none');
   const [freightPincode, setFreightPincode] = useState<string>('');
   
+  // Shaft end type state
+  const [shaftEndType, setShaftEndType] = useState<string>('B');
+  const [customShaftExtension, setCustomShaftExtension] = useState<string>('');
+  
   // Drawing generation state
   const [generatingDrawing, setGeneratingDrawing] = useState(false);
 
@@ -166,6 +170,7 @@ export default function CalculatorScreen() {
     pipeLength?: string;
     quantity?: string;
     freightPincode?: string;
+    customShaftExtension?: string;
   }>({});
 
   useEffect(() => {
