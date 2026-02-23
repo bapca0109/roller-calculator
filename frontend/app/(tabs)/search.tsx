@@ -303,7 +303,27 @@ export default function SearchScreen() {
         quantity: 1
       };
 
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/generate-drawing`, {
+      const filename = `Drawing_${length.product_code.replace(/ /g, '_').replace(/\//g, '-')}.pdf`;
+      const fileUri = FileSystem.documentDirectory + filename;
+
+      // Use FileSystem.uploadAsync in reverse - download with POST
+      const response = await FileSystem.uploadAsync(
+        `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/generate-drawing`,
+        fileUri,
+        {
+          httpMethod: 'POST',
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          fieldName: 'file',
+        }
+      );
+
+      // Since uploadAsync doesn't work for downloads, let's use a different approach
+      // Fetch the PDF as base64 from a new endpoint
+      const base64Response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/generate-drawing-base64`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -312,25 +332,13 @@ export default function SearchScreen() {
         body: JSON.stringify(requestBody)
       });
 
-      if (!response.ok) {
+      if (!base64Response.ok) {
         throw new Error('Failed to generate drawing');
       }
 
-      const blob = await response.blob();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-
-      const filename = `Drawing_${length.product_code.replace(/ /g, '_').replace(/\//g, '-')}.pdf`;
-      const fileUri = FileSystem.documentDirectory + filename;
-
-      await FileSystem.writeAsStringAsync(fileUri, base64, {
+      const data = await base64Response.json();
+      
+      await FileSystem.writeAsStringAsync(fileUri, data.base64, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
@@ -344,7 +352,7 @@ export default function SearchScreen() {
       }
     } catch (error: any) {
       console.error('Drawing error:', error);
-      Alert.alert('Error', 'Failed to generate drawing. Please try again.');
+      Alert.alert('Error', `Failed to generate drawing: ${error.message}`);
     } finally {
       setGeneratingDrawing(null);
     }
