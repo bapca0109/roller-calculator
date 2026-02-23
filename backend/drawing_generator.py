@@ -116,13 +116,20 @@ def generate_roller_drawing(
     detail_y = center_y
     draw_cross_section_detail(c, detail_x, detail_y, pipe_diameter, shaft_diameter, rubber_diameter)
     
-    # ============= DIMENSION TABLE =============
-    table_y = drawing_y - drawing_height - 20
-    c.setFillColor(primary_color)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(20*mm, table_y, "DIMENSIONS")
+    # ============= TABLES SECTION =============
+    # Place tables side by side with proper spacing
+    tables_y = drawing_y - drawing_height - 15
     
-    table_y -= 8
+    # Left column width and right column start
+    left_col_width = 85*mm
+    right_col_start = 20*mm + left_col_width + 8*mm
+    
+    # ============= DIMENSION TABLE (Left) =============
+    c.setFillColor(primary_color)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(20*mm, tables_y, "DIMENSIONS")
+    
+    tables_y_content = tables_y - 8
     
     # Shaft end type display
     shaft_end_label = {
@@ -133,49 +140,42 @@ def generate_roller_drawing(
     }.get(shaft_end_type, f"Type {shaft_end_type}")
     
     dim_data = [
-        ['Symbol', 'Parameter', 'Value', 'Unit'],
-        ['D', 'Pipe Diameter', f'{pipe_diameter}', 'mm'],
-        ['A', 'Pipe Length', f'{int(pipe_length)}', 'mm'],
-        ['B', 'Shaft Length', f'{int(shaft_length)}', 'mm'],
-        ['d', 'Shaft Diameter', f'{shaft_diameter}', 'mm'],
-        ['-', 'Pipe Type', f'Type {pipe_type} ({"Light" if pipe_type == "A" else "Medium" if pipe_type == "B" else "Heavy"})', '-'],
-        ['-', 'Shaft End Type', shaft_end_label, '-'],
-        ['-', 'Weight', f'{weight_kg}', 'kg'],
+        ['Sym', 'Parameter', 'Value'],
+        ['D', 'Pipe Diameter', f'{pipe_diameter} mm'],
+        ['A', 'Pipe Length', f'{int(pipe_length)} mm'],
+        ['B', 'Shaft Length', f'{int(shaft_length)} mm'],
+        ['d', 'Shaft Diameter', f'{shaft_diameter} mm'],
+        ['-', 'Pipe Type', f'Type {pipe_type}'],
+        ['-', 'Shaft End', shaft_end_label],
+        ['-', 'Weight', f'{weight_kg} kg'],
     ]
     
     if rubber_diameter:
-        dim_data.insert(2, ['E', 'Rubber Diameter', f'{rubber_diameter}', 'mm'])
+        dim_data.insert(2, ['E', 'Rubber Dia', f'{rubber_diameter} mm'])
     
-    if belt_widths:
-        dim_data.append(['-', 'Belt Width', ', '.join(map(str, belt_widths)), 'mm'])
-    
-    dim_table = Table(dim_data, colWidths=[15*mm, 45*mm, 40*mm, 15*mm])
+    dim_table = Table(dim_data, colWidths=[12*mm, 38*mm, 32*mm])
     dim_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), primary_color),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('ALIGN', (1, 1), (1, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 9),
-        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),  # Symbol column bold
-        ('TEXTCOLOR', (0, 1), (0, -1), blue),  # Symbol column blue
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 1), (0, -1), blue),
         ('GRID', (0, 0), (-1, -1), 0.5, gray),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8F8F8')]),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     
-    table_w, table_h = dim_table.wrap(0, 0)
-    dim_table.drawOn(c, 20*mm, table_y - table_h - 5)
+    dim_w, dim_h = dim_table.wrap(0, 0)
+    dim_table.drawOn(c, 20*mm, tables_y_content - dim_h - 3)
     
-    # ============= BILL OF MATERIALS (Right side) =============
-    bom_x = width/2 + 10*mm
-    bom_y = table_y
-    
+    # ============= BILL OF MATERIALS (Right) =============
     c.setFillColor(primary_color)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(bom_x, bom_y, "BILL OF MATERIALS")
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(right_col_start, tables_y, "BILL OF MATERIALS")
     
     bom_y -= 8
     
