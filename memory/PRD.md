@@ -170,6 +170,34 @@ Examples:
 
 ## Cleanup History
 - **Feb 2025**: Removed obsolete `gst_verification.py` and external GST API endpoints (captcha-based verification)
+- **Feb 2025**: Migrated roller standards data from `roller_standards.py` to MongoDB (16 collections, 158 documents)
+
+## MongoDB Collections (Standards Data)
+| Collection | Description | Count |
+|------------|-------------|-------|
+| pipe_diameters | IS-9295 standard pipe sizes | 9 |
+| shaft_diameters | Shaft sizes with weights | 7 |
+| shaft_end_types | A/B/C shaft extensions | 3 |
+| bearings | Bearing costs by make | 17 |
+| housings | Housing configurations | 36 |
+| pipe_weights | Weight per meter by type | 9 |
+| roller_lengths | Lengths by belt width | 18 |
+| circlips | Circlip costs | 7 |
+| rubber_lagging | Impact roller options | 7 |
+| rubber_rings | Rubber ring costs | 17 |
+| locking_rings | Locking ring costs | 9 |
+| discount_slabs | Volume discounts | 9 |
+| freight_rates | Distance-based rates | 5 |
+| packing_options | Packing charge % | 4 |
+| gst_config | Tax configuration | 6 |
+| raw_material_costs | Material rates | 5 |
+
+## Admin API Endpoints (Standards)
+- `GET /api/admin/standards-summary` - Overview of all collections
+- `GET /api/admin/standards/{collection}` - Get all items in a collection
+- `POST /api/admin/standards/{collection}` - Add new item
+- `PUT /api/admin/standards/{collection}` - Update item
+- `DELETE /api/admin/standards/{collection}` - Delete item
 
 ## Test Credentials
 - Email: `test@test.com`
