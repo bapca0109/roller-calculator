@@ -338,9 +338,9 @@ def draw_engineering_schematic(c, center_x, center_y, pipe_diameter, pipe_length
     # --- Dimension RD (Rubber Diameter) - for impact rollers only, right side outer ---
     if rubber_diameter and roller_type.lower() == 'impact':
         dim_x_RD = dim_x_D + 25
-        # Extension lines with EXO and EXE
-        c.line(dim_x_D + exo, center_y - outer_dia_s/2, dim_x_RD + exe, center_y - outer_dia_s/2)
-        c.line(dim_x_D + exo, center_y + outer_dia_s/2, dim_x_RD + exe, center_y + outer_dia_s/2)
+        # Extension lines from rubber edge with EXO and EXE
+        c.line(center_x + pipe_len_s/2 + exo, center_y - outer_dia_s/2, dim_x_RD + exe, center_y - outer_dia_s/2)
+        c.line(center_x + pipe_len_s/2 + exo, center_y + outer_dia_s/2, dim_x_RD + exe, center_y + outer_dia_s/2)
         # Dimension line
         c.line(dim_x_RD, center_y - outer_dia_s/2, dim_x_RD, center_y + outer_dia_s/2)
         draw_arrowhead(c, dim_x_RD, center_y - outer_dia_s/2, 'down')
