@@ -744,12 +744,12 @@ def calculate_shaft_length(pipe_length_mm, shaft_end_type="B", custom_extension=
     Args:
         pipe_length_mm: Length of the pipe in mm
         shaft_end_type: Type A (+26mm), B (+36mm), C (+56mm), or 'custom'
-        custom_extension: Custom extension value in mm (only used if shaft_end_type is 'custom')
+        custom_shaft_length: Total shaft length in mm (only used if shaft_end_type is 'custom')
     
     Returns:
         Total shaft length in mm
     """
-    return get_shaft_length(pipe_length_mm, shaft_end_type, custom_extension)
+    return get_shaft_length(pipe_length_mm, shaft_end_type, custom_shaft_length)
 
 def calculate_rubber_cost(pipe_dia, rubber_dia, pipe_length_mm):
     """
