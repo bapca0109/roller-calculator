@@ -98,10 +98,11 @@ Examples:
 1. ~~**Admin Panel** - Migrate hardcoded prices to MongoDB with CRUD UI~~ ✅ COMPLETED
 2. ~~**Customer Management** - Save customer details with quotes~~ ✅ COMPLETED
 3. ~~**Print Customer Data in Quotes** - Render customer details on quote PDF~~ ✅ COMPLETED
-4. **Full Data Migration to DB** - Migrate hardcoded product data from roller_standards.py to MongoDB (P1)
-5. **Quote Approval Workflow** - Status system (Pending/Approved/Rejected) (P2)
-6. **Email Integration** - Email quote PDFs (P2)
-7. **Dashboard & Analytics** - Sales analytics (P3)
+4. ~~**Formula-Based Pipe Weights** - Calculate pipe weights using engineering formula~~ ✅ COMPLETED (Feb 2026)
+5. **Full Data Migration to DB** - Migrate hardcoded product data from roller_standards.py to MongoDB (P1)
+6. **Quote Approval Workflow** - Status system (Pending/Approved/Rejected) (P2)
+7. **Email Integration** - Email quote PDFs (P2)
+8. **Dashboard & Analytics** - Sales analytics (P3)
 
 ## Recently Completed (Feb 2026)
 
