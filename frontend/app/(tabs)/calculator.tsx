@@ -537,7 +537,8 @@ export default function CalculatorScreen() {
         quantity: config.quantity
       };
 
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/generate-drawing`, {
+      // Fetch the PDF as base64
+      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/generate-drawing-base64`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -547,24 +548,16 @@ export default function CalculatorScreen() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate drawing');
+        const errorText = await response.text();
+        throw new Error(`Server error: ${errorText}`);
       }
 
-      const blob = await response.blob();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+      const data = await response.json();
 
       const filename = `Drawing_${config.product_code.replace(/ /g, '_').replace(/\//g, '-')}.pdf`;
       const fileUri = FileSystem.documentDirectory + filename;
 
-      await FileSystem.writeAsStringAsync(fileUri, base64, {
+      await FileSystem.writeAsStringAsync(fileUri, data.base64, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
@@ -578,7 +571,7 @@ export default function CalculatorScreen() {
       }
     } catch (error: any) {
       console.error('Drawing error:', error);
-      Alert.alert('Error', 'Failed to generate drawing. Please try again.');
+      Alert.alert('Error', `Failed to generate drawing: ${error.message || 'Unknown error'}`);
     } finally {
       setGeneratingDrawing(false);
     }
