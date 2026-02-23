@@ -140,6 +140,8 @@ export default function AdminScreen() {
               // Fetch fresh prices from server
               const response = await api.get('/admin/prices');
               setPrices(response.data);
+              // Force re-render by updating key
+              setRefreshKey(prev => prev + 1);
               Alert.alert('Success', 'All prices reset to default values');
             } catch (error: any) {
               Alert.alert('Error', error.response?.data?.detail || 'Failed to reset prices');
