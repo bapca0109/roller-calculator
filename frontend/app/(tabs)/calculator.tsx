@@ -790,6 +790,43 @@ export default function CalculatorScreen() {
             </Picker>
           </View>
 
+          <Text style={styles.label}>Shaft End Type</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={shaftEndType}
+              onValueChange={(value) => setShaftEndType(value)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Type A (+26mm)" value="A" />
+              <Picker.Item label="Type B (+36mm)" value="B" />
+              <Picker.Item label="Type C (+56mm)" value="C" />
+              <Picker.Item label="Custom" value="custom" />
+            </Picker>
+          </View>
+
+          {shaftEndType === 'custom' && (
+            <View style={styles.inputRow}>
+              <Text style={styles.label}>Custom Shaft Extension (mm)</Text>
+              <TextInput
+                style={[styles.input, errors.customShaftExtension ? styles.inputError : null]}
+                value={customShaftExtension}
+                onChangeText={(value) => {
+                  setCustomShaftExtension(value);
+                  if (value && (isNaN(parseInt(value)) || parseInt(value) < 10 || parseInt(value) > 200)) {
+                    setErrors(prev => ({ ...prev, customShaftExtension: 'Enter value between 10-200mm' }));
+                  } else {
+                    setErrors(prev => ({ ...prev, customShaftExtension: '' }));
+                  }
+                }}
+                placeholder="e.g. 50"
+                keyboardType="numeric"
+              />
+              {errors.customShaftExtension ? (
+                <Text style={styles.errorText}>{errors.customShaftExtension}</Text>
+              ) : null}
+            </View>
+          )}
+
           <Text style={styles.label}>Bearing Number</Text>
           <View style={styles.pickerContainer}>
             <Picker
