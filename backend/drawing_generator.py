@@ -63,7 +63,7 @@ def generate_roller_drawing(
     # ============= HEADER WITH LOGO =============
     # White background for header
     c.setFillColor(colors.white)
-    c.rect(0, height - 50, width, 50, fill=1, stroke=0)
+    c.rect(0, height - 25*mm, width, 25*mm, fill=1, stroke=0)
     
     # Add logo using PIL and ImageReader for proper rendering
     logo_path = os.path.join(os.path.dirname(__file__), "static", "convero-logo.png")
@@ -77,25 +77,29 @@ def generate_roller_drawing(
             logo_bytes = BytesIO()
             logo_pil.save(logo_bytes, format='PNG')
             logo_bytes.seek(0)
-            logo_reader = ImageReader(logo_bytes)
-            c.drawImage(logo_reader, 10*mm, height - 45, width=50*mm, height=40*mm, preserveAspectRatio=True)
+            
+            # Position logo correctly - y is from bottom, so height - margin - logo_height
+            logo_height = 18*mm
+            logo_width = 55*mm
+            logo_y = height - 3*mm - logo_height  # 3mm from top
+            c.drawImage(ImageReader(logo_bytes), 8*mm, logo_y, width=logo_width, height=logo_height, preserveAspectRatio=True)
         except Exception as e:
             pass
     
     # Drawing number on right side
     c.setFillColor(black)
     c.setFont("Helvetica-Bold", 10)
-    c.drawRightString(width - 15*mm, height - 18, f"DWG: {product_code}")
+    c.drawRightString(width - 15*mm, height - 10*mm, f"DWG: {product_code}")
     c.setFont("Helvetica", 9)
-    c.drawRightString(width - 15*mm, height - 32, f"Date: {datetime.now().strftime('%d-%m-%Y')}")
+    c.drawRightString(width - 15*mm, height - 16*mm, f"Date: {datetime.now().strftime('%d-%m-%Y')}")
     
     # Header line separator
     c.setStrokeColor(primary_color)
     c.setLineWidth(2)
-    c.line(8*mm, height - 50, width - 8*mm, height - 50)
+    c.line(8*mm, height - 25*mm, width - 8*mm, height - 25*mm)
     
     # ============= TITLE =============
-    y_pos = height - 70
+    y_pos = height - 35*mm
     c.setFillColor(black)
     c.setFont("Helvetica-Bold", 14)
     
