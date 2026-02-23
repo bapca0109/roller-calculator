@@ -275,8 +275,9 @@ def draw_roller_schematic(c, center_x, center_y, pipe_diameter, pipe_length, sha
     # Scaled dimensions
     pipe_len = pipe_length * scale
     pipe_dia = pipe_diameter * scale
-    shaft_dia = shaft_diameter * scale
-    shaft_ext = 35 * scale  # Shaft extension on each side
+    shaft_dia_scaled = shaft_diameter * scale
+    shaft_total = shaft_length * scale  # Use actual shaft length
+    shaft_ext_per_side = (shaft_length - pipe_length) / 2  # Extension per side in mm
     
     if rubber_diameter:
         rubber_dia = rubber_diameter * scale
@@ -290,9 +291,8 @@ def draw_roller_schematic(c, center_x, center_y, pipe_diameter, pipe_length, sha
     dim_color = colors.HexColor('#333333')
     
     # Draw shaft (full length)
-    shaft_total = pipe_len + 2 * shaft_ext
     c.setFillColor(shaft_color)
-    c.rect(center_x - shaft_total/2, center_y - shaft_dia/2, shaft_total, shaft_dia, fill=1, stroke=0)
+    c.rect(center_x - shaft_total/2, center_y - shaft_dia_scaled/2, shaft_total, shaft_dia_scaled, fill=1, stroke=0)
     
     # Draw pipe
     c.setFillColor(pipe_color)
