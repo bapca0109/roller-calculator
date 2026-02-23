@@ -815,7 +815,6 @@ export default function AdminScreen() {
       )}
 
       {renderDetailModal()}
-      {renderEditModal()}
 
       {(saving || savingStandard) && (
         <View style={styles.savingOverlay}>
