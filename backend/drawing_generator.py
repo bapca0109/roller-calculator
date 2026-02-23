@@ -179,11 +179,14 @@ def generate_roller_drawing(
     c.setFillColor(black)
     
     specs = [
-        ("Pipe:", "IS-9295 ERW Steel Tube"),
-        ("Shaft:", "EN8/EN9 Steel, Ground Finish"),
-        ("Bearing:", f"{bearing_make.upper()} Grade {bearing}"),
-        ("Housing:", f"Cast Iron ({housing})"),
-        ("Seals:", "Nitrile Rubber (NBR)"),
+        ("Standard:", "IDLERS AS PER IS 8598"),
+        ("Pipe:", "ERW AS PER IS:9295"),
+        ("Shaft:", "EN 8"),
+        ("Bearing:", f"{bearing_make.upper()} {bearing}"),
+        ("Housing:", "CRCA DEEP DRAWN 3.15 MM (IS-513)"),
+        ("Circlip:", "SPRING STEEL (IS-3075)"),
+        ("Sealset:", "METAL CAP WITH NYLON SEALS"),
+        ("Grease:", "LITHIUM BASED EP-2"),
     ]
     
     if rubber_diameter:
