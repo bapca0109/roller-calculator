@@ -737,7 +737,7 @@ def calculate_freight_charges(roller_weight_kg, destination_pincode):
         "freight_charges": round(freight_charges, 2)
     }
 
-def calculate_shaft_length(pipe_length_mm, shaft_end_type="B", custom_extension=None):
+def calculate_shaft_length(pipe_length_mm, shaft_end_type="B", custom_shaft_length=None):
     """
     Calculate shaft length based on pipe length and shaft end type.
     
