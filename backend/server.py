@@ -884,6 +884,7 @@ async def calculate_detailed_cost(
             "pipe_type": request.pipe_type or "B",
             "shaft_diameter_mm": request.shaft_diameter,
             "shaft_length_mm": shaft_length,
+            "shaft_end_type": shaft_end_type,
             "bearing": request.bearing_number,
             "bearing_make": request.bearing_make or "china",
             "housing": housing,
