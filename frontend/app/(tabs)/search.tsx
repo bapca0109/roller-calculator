@@ -426,27 +426,41 @@ export default function SearchScreen() {
               {isExpanded && (
                 <View style={styles.lengthDetailsContainer}>
                   <View style={styles.lengthTableHeader}>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1.2 }]}>Code</Text>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.6 }]}>Len</Text>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.5 }]}>Wt</Text>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.8 }]}>Price</Text>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.6 }]}>Add</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1.1 }]}>Code</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.5 }]}>Len</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.4 }]}>Wt</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.7 }]}>Price</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.8 }]}>Actions</Text>
                   </View>
                   {item.length_details.map((ld, idx) => (
                     <View key={idx} style={[styles.lengthTableRow, idx % 2 === 0 && styles.lengthTableRowAlt]}>
-                      <Text style={[styles.lengthTableCell, styles.lengthCodeCell, { flex: 1.2 }]} numberOfLines={1}>
+                      <Text style={[styles.lengthTableCell, styles.lengthCodeCell, { flex: 1.1 }]} numberOfLines={1}>
                         {ld.product_code}
                       </Text>
-                      <Text style={[styles.lengthTableCell, { flex: 0.6 }]}>{ld.length_mm}</Text>
-                      <Text style={[styles.lengthTableCell, { flex: 0.5 }]}>{ld.weight_kg}</Text>
-                      <Text style={[styles.lengthTableCell, styles.priceCell, { flex: 0.8 }]}>₹{ld.price}</Text>
-                      <TouchableOpacity 
-                        style={[styles.addButton, { flex: 0.6 }]}
-                        onPress={() => openAddToQuote(item, ld)}
-                        data-testid={`add-quote-${ld.product_code}`}
-                      >
-                        <Ionicons name="add-circle" size={24} color="#960018" />
-                      </TouchableOpacity>
+                      <Text style={[styles.lengthTableCell, { flex: 0.5 }]}>{ld.length_mm}</Text>
+                      <Text style={[styles.lengthTableCell, { flex: 0.4 }]}>{ld.weight_kg}</Text>
+                      <Text style={[styles.lengthTableCell, styles.priceCell, { flex: 0.7 }]}>₹{ld.price}</Text>
+                      <View style={[styles.actionButtons, { flex: 0.8 }]}>
+                        <TouchableOpacity 
+                          style={styles.actionBtn}
+                          onPress={() => openAddToQuote(item, ld)}
+                          data-testid={`add-quote-${ld.product_code}`}
+                        >
+                          <Ionicons name="add-circle" size={22} color="#960018" />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.actionBtn}
+                          onPress={() => downloadDrawing(item, ld)}
+                          disabled={generatingDrawing === ld.product_code}
+                          data-testid={`download-drawing-${ld.product_code}`}
+                        >
+                          {generatingDrawing === ld.product_code ? (
+                            <ActivityIndicator size="small" color="#1A1A2E" />
+                          ) : (
+                            <Ionicons name="document-text" size={20} color="#1A1A2E" />
+                          )}
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   ))}
                 </View>
