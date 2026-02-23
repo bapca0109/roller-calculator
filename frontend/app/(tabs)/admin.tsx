@@ -1136,6 +1136,21 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
+  readOnlyNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF9E6',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  readOnlyText: {
+    fontSize: 13,
+    color: '#666',
+    flex: 1,
+  },
   // Modal styles
   modalOverlay: {
     flex: 1,
