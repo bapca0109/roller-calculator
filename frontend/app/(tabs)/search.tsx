@@ -10,10 +10,14 @@ import {
   Alert,
   Modal,
   ScrollView,
+  Platform,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 interface LengthDetail {
   length_mm: number;
