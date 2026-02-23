@@ -136,14 +136,23 @@ export default function AdminScreen() {
               setSaving(true);
               // Clear current prices first to show loading state
               setPrices(null);
-              await api.post('/admin/prices/reset');
+              
+              console.log('Calling reset API...');
+              const resetResponse = await api.post('/admin/prices/reset');
+              console.log('Reset response:', resetResponse.data);
+              
               // Fetch fresh prices from server
+              console.log('Fetching fresh prices...');
               const response = await api.get('/admin/prices');
+              console.log('Fresh prices received:', JSON.stringify(response.data.basic_rates));
+              
               setPrices(response.data);
               // Force re-render by updating key
               setRefreshKey(prev => prev + 1);
-              Alert.alert('Success', 'All prices reset to default values');
+              
+              Alert.alert('Success', `Prices reset! Pipe cost: ${response.data.basic_rates.pipe_cost_per_kg}`);
             } catch (error: any) {
+              console.error('Reset error:', error);
               Alert.alert('Error', error.response?.data?.detail || 'Failed to reset prices');
               // Try to refetch even on error
               fetchPrices();
