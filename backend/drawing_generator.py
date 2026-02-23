@@ -236,39 +236,38 @@ def generate_roller_drawing(
         c.setFont("Helvetica", 7)
         c.drawString(right_col_start + 15*mm, spec_y, value)
         spec_y -= 10
-        spec_y -= 12
     
-    # ============= LEGEND =============
-    legend_y = table_y - table_h - 40
+    # ============= LEGEND (Below Dimensions table) =============
+    legend_y = tables_y_content - dim_h - 25
     c.setFillColor(primary_color)
-    c.setFont("Helvetica-Bold", 10)
+    c.setFont("Helvetica-Bold", 9)
     c.drawString(20*mm, legend_y, "LEGEND")
     
-    legend_y -= 15
-    c.setFont("Helvetica", 8)
+    legend_y -= 12
+    c.setFont("Helvetica", 7)
     
     # Blue dimension line
     c.setStrokeColor(blue)
     c.setLineWidth(1)
-    c.line(20*mm, legend_y + 3, 30*mm, legend_y + 3)
+    c.line(20*mm, legend_y + 3, 28*mm, legend_y + 3)
     c.setFillColor(black)
-    c.drawString(32*mm, legend_y, "Dimension lines")
+    c.drawString(30*mm, legend_y, "Dimension lines")
     
-    legend_y -= 12
+    legend_y -= 10
     # Green dashed line (hidden features)
     c.setStrokeColor(green)
     c.setDash([3, 2])
-    c.line(20*mm, legend_y + 3, 30*mm, legend_y + 3)
+    c.line(20*mm, legend_y + 3, 28*mm, legend_y + 3)
     c.setDash([])
-    c.drawString(32*mm, legend_y, "Hidden/Internal features")
+    c.drawString(30*mm, legend_y, "Hidden features")
     
-    legend_y -= 12
+    legend_y -= 10
     # Red center line
     c.setStrokeColor(red)
     c.setDash([6, 2, 2, 2])
-    c.line(20*mm, legend_y + 3, 30*mm, legend_y + 3)
+    c.line(20*mm, legend_y + 3, 28*mm, legend_y + 3)
     c.setDash([])
-    c.drawString(32*mm, legend_y, "Center line")
+    c.drawString(30*mm, legend_y, "Center line")
     
     # ============= FOOTER =============
     footer_y = 20
