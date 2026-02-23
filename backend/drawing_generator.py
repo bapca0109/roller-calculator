@@ -1,16 +1,15 @@
 """
-Roller Drawing Generator
-Generates technical drawings with BOM and specifications
+Roller Drawing Generator - Engineering Style
+Generates technical drawings matching the user's template
+For Carrying and Return Rollers
 """
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
-from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Table, TableStyle
 from io import BytesIO
-import math
 from datetime import datetime
 
 
@@ -25,62 +24,58 @@ def generate_roller_drawing(
     bearing_make: str,
     housing: str,
     weight_kg: float,
-    unit_price: float = 0,  # Made optional, not displayed
+    unit_price: float = 0,
     rubber_diameter: float = None,
     belt_widths: list = None,
     quantity: int = 1,
-    shaft_end_type: str = "B",  # A (+26mm), B (+36mm), C (+56mm), custom
+    shaft_end_type: str = "B",
     custom_shaft_extension: int = None
 ) -> BytesIO:
     """
-    Generate a technical drawing PDF for a roller
+    Generate a technical drawing PDF for a roller in engineering style
     """
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
     
-    # Calculate shaft length based on shaft end type
+    # Calculate shaft length
     shaft_extensions = {"A": 26, "B": 36, "C": 56}
     if shaft_end_type == "custom" and custom_shaft_extension is not None:
-        shaft_extension = custom_shaft_extension
+        shaft_length = custom_shaft_extension
     else:
         shaft_extension = shaft_extensions.get(shaft_end_type.upper(), 36)
-    shaft_length = pipe_length + shaft_extension
+        shaft_length = pipe_length + shaft_extension
     
     # Colors
-    primary_color = colors.HexColor('#960018')  # Carmine red
-    dark_color = colors.HexColor('#1A1A2E')
-    gray_color = colors.HexColor('#666666')
-    light_gray = colors.HexColor('#E0E0E0')
+    primary_color = colors.HexColor('#960018')
+    black = colors.black
+    blue = colors.HexColor('#0066CC')
+    green = colors.HexColor('#228B22')
+    red = colors.HexColor('#CC0000')
+    gray = colors.HexColor('#666666')
+    light_gray = colors.HexColor('#CCCCCC')
     
     # ============= HEADER =============
-    # Logo area
     c.setFillColor(primary_color)
-    c.rect(0, height - 80, width, 80, fill=1, stroke=0)
+    c.rect(0, height - 60, width, 60, fill=1, stroke=0)
     
-    # Company name
     c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 24)
+    c.setFont("Helvetica-Bold", 20)
     c.drawString(20*mm, height - 35, "CONVERO SOLUTIONS")
     
     c.setFont("Helvetica", 10)
-    c.drawString(20*mm, height - 50, "Belt Conveyor Components & Solutions")
+    c.drawString(20*mm, height - 48, "Belt Conveyor Components & Engineering")
     
-    # Drawing number box
-    c.setFillColor(colors.white)
-    c.setStrokeColor(colors.white)
-    c.rect(width - 80*mm, height - 70, 70*mm, 55, fill=0, stroke=1)
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(width - 78*mm, height - 30, "DRAWING NO:")
-    c.setFont("Helvetica", 11)
-    c.drawString(width - 78*mm, height - 45, product_code)
-    c.setFont("Helvetica", 8)
-    c.drawString(width - 78*mm, height - 60, f"Date: {datetime.now().strftime('%d-%m-%Y')}")
+    # Drawing number
+    c.setFont("Helvetica-Bold", 10)
+    c.drawRightString(width - 20*mm, height - 30, f"DWG: {product_code}")
+    c.setFont("Helvetica", 9)
+    c.drawRightString(width - 20*mm, height - 42, f"Date: {datetime.now().strftime('%d-%m-%Y')}")
     
-    # ============= TITLE BLOCK =============
-    y_pos = height - 100
-    c.setFillColor(dark_color)
-    c.setFont("Helvetica-Bold", 16)
+    # ============= TITLE =============
+    y_title = height - 85
+    c.setFillColor(black)
+    c.setFont("Helvetica-Bold", 14)
     
     roller_type_text = {
         'carrying': 'CARRYING ROLLER',
@@ -88,68 +83,73 @@ def generate_roller_drawing(
         'return': 'RETURN ROLLER'
     }.get(roller_type.lower(), 'CONVEYOR ROLLER')
     
-    c.drawString(20*mm, y_pos, roller_type_text)
+    c.drawCentredString(width/2, y_title, roller_type_text)
     
-    c.setFont("Helvetica", 11)
-    c.setFillColor(gray_color)
-    c.drawString(20*mm, y_pos - 18, f"Product Code: {product_code}")
-    
-    # ============= DRAWING AREA =============
-    drawing_y = y_pos - 50
-    drawing_height = 180
+    # ============= MAIN DRAWING AREA =============
+    drawing_y = y_title - 40
+    drawing_height = 200
+    drawing_width = width - 40*mm
     
     # Drawing border
     c.setStrokeColor(light_gray)
-    c.setLineWidth(1)
-    c.rect(15*mm, drawing_y - drawing_height, width - 30*mm, drawing_height, fill=0, stroke=1)
+    c.setLineWidth(0.5)
+    c.rect(20*mm, drawing_y - drawing_height, drawing_width, drawing_height, fill=0, stroke=1)
     
-    # Draw roller schematic
-    draw_roller_schematic(
-        c, 
-        center_x=width/2,
-        center_y=drawing_y - drawing_height/2,
+    # Draw the roller schematic
+    center_x = width / 2
+    center_y = drawing_y - drawing_height / 2 + 20
+    
+    draw_engineering_schematic(
+        c,
+        center_x=center_x,
+        center_y=center_y,
         pipe_diameter=pipe_diameter,
         pipe_length=pipe_length,
         shaft_diameter=shaft_diameter,
-        shaft_length=shaft_length,  # Pass calculated shaft length
+        shaft_length=shaft_length,
         rubber_diameter=rubber_diameter,
         roller_type=roller_type
     )
     
-    # ============= DIMENSIONS TABLE =============
-    dim_y = drawing_y - drawing_height - 20
+    # ============= CROSS-SECTION DETAIL (Left side) =============
+    detail_x = 45*mm
+    detail_y = center_y
+    draw_cross_section_detail(c, detail_x, detail_y, pipe_diameter, shaft_diameter, rubber_diameter)
+    
+    # ============= DIMENSION TABLE =============
+    table_y = drawing_y - drawing_height - 20
     c.setFillColor(primary_color)
     c.setFont("Helvetica-Bold", 11)
-    c.drawString(20*mm, dim_y, "DIMENSIONS")
+    c.drawString(20*mm, table_y, "DIMENSIONS")
     
-    dim_y -= 5
+    table_y -= 8
     
     # Shaft end type display
     shaft_end_label = {
         "A": "Type A (+26mm)",
         "B": "Type B (+36mm)",
         "C": "Type C (+56mm)",
-        "custom": f"Custom (+{shaft_extension}mm)"
+        "custom": f"Custom ({int(shaft_length)}mm)"
     }.get(shaft_end_type, f"Type {shaft_end_type}")
     
     dim_data = [
-        ['Parameter', 'Value', 'Unit'],
-        ['Pipe Outside Diameter', f'{pipe_diameter}', 'mm'],
-        ['Pipe Length', f'{pipe_length}', 'mm'],
-        ['Pipe Type', f'Type {pipe_type} ({"Light" if pipe_type == "A" else "Medium" if pipe_type == "B" else "Heavy"})', '-'],
-        ['Shaft Diameter', f'{shaft_diameter}', 'mm'],
-        ['Shaft End Type', shaft_end_label, '-'],
-        ['Shaft Length', f'{int(shaft_length)}', 'mm'],
-        ['Total Weight', f'{weight_kg}', 'kg'],
+        ['Symbol', 'Parameter', 'Value', 'Unit'],
+        ['D', 'Pipe Diameter', f'{pipe_diameter}', 'mm'],
+        ['A', 'Pipe Length', f'{int(pipe_length)}', 'mm'],
+        ['B', 'Shaft Length', f'{int(shaft_length)}', 'mm'],
+        ['d', 'Shaft Diameter', f'{shaft_diameter}', 'mm'],
+        ['-', 'Pipe Type', f'Type {pipe_type} ({"Light" if pipe_type == "A" else "Medium" if pipe_type == "B" else "Heavy"})', '-'],
+        ['-', 'Shaft End Type', shaft_end_label, '-'],
+        ['-', 'Weight', f'{weight_kg}', 'kg'],
     ]
     
     if rubber_diameter:
-        dim_data.insert(3, ['Rubber Outside Diameter', f'{rubber_diameter}', 'mm'])
+        dim_data.insert(2, ['E', 'Rubber Diameter', f'{rubber_diameter}', 'mm'])
     
     if belt_widths:
-        dim_data.append(['Belt Width Compatibility', ', '.join(map(str, belt_widths)), 'mm'])
+        dim_data.append(['-', 'Belt Width', ', '.join(map(str, belt_widths)), 'mm'])
     
-    dim_table = Table(dim_data, colWidths=[60*mm, 50*mm, 20*mm])
+    dim_table = Table(dim_data, colWidths=[15*mm, 45*mm, 40*mm, 15*mm])
     dim_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), primary_color),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -158,218 +158,348 @@ def generate_roller_drawing(
         ('FONTSIZE', (0, 0), (-1, 0), 9),
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 1), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.gray),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F5F5F5')]),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),  # Symbol column bold
+        ('TEXTCOLOR', (0, 1), (0, -1), blue),  # Symbol column blue
+        ('GRID', (0, 0), (-1, -1), 0.5, gray),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8F8F8')]),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
     ]))
     
-    table_width, table_height = dim_table.wrap(0, 0)
-    dim_table.drawOn(c, 20*mm, dim_y - table_height - 5)
+    table_w, table_h = dim_table.wrap(0, 0)
+    dim_table.drawOn(c, 20*mm, table_y - table_h - 5)
     
-    # ============= BILL OF MATERIALS =============
-    bom_y = dim_y - table_height - 30
+    # ============= BILL OF MATERIALS (Right side) =============
+    bom_x = width/2 + 10*mm
+    bom_y = table_y
+    
     c.setFillColor(primary_color)
     c.setFont("Helvetica-Bold", 11)
-    c.drawString(20*mm, bom_y, "BILL OF MATERIALS")
+    c.drawString(bom_x, bom_y, "BILL OF MATERIALS")
     
-    bom_y -= 5
+    bom_y -= 8
     
     bom_data = [
-        ['Sr.', 'Component', 'Specification', 'Qty'],
+        ['Sr', 'Component', 'Spec', 'Qty'],
         ['1', 'Pipe', f'OD {pipe_diameter}mm, Type {pipe_type}', '1'],
-        ['2', 'Shaft', f'Ø{shaft_diameter}mm x {shaft_length}mm', '1'],
+        ['2', 'Shaft', f'Ø{shaft_diameter}mm x {int(shaft_length)}mm', '1'],
         ['3', 'Bearing', f'{bearing} ({bearing_make.upper()})', '2'],
         ['4', 'Housing', f'{housing}', '2'],
         ['5', 'Seal Set', f'For {bearing}', '2'],
-        ['6', 'Circlip', f'For Ø{shaft_diameter}mm shaft', '4'],
+        ['6', 'Circlip', f'Ø{shaft_diameter}mm', '4'],
     ]
     
     if rubber_diameter:
         num_rings = int(pipe_length / 35)
-        bom_data.append(['7', 'Rubber Rings', f'Ø{rubber_diameter}mm x 35mm thick', str(num_rings)])
-        bom_data.append(['8', 'Locking Ring', f'For Ø{int(pipe_diameter)}mm pipe', '1'])
+        bom_data.append(['7', 'Rubber Ring', f'Ø{int(rubber_diameter)}mm x 35mm', str(num_rings)])
+        bom_data.append(['8', 'Locking Ring', f'For Ø{int(pipe_diameter)}mm', '1'])
     
-    bom_table = Table(bom_data, colWidths=[12*mm, 35*mm, 65*mm, 18*mm])
+    bom_table = Table(bom_data, colWidths=[10*mm, 28*mm, 40*mm, 12*mm])
     bom_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), primary_color),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (0, -1), 'CENTER'),
         ('ALIGN', (3, 0), (3, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.gray),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F5F5F5')]),
+        ('GRID', (0, 0), (-1, -1), 0.5, gray),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8F8F8')]),
         ('TOPPADDING', (0, 0), (-1, -1), 4),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
     
-    bom_width, bom_height = bom_table.wrap(0, 0)
-    bom_table.drawOn(c, 20*mm, bom_y - bom_height - 5)
+    bom_w, bom_h = bom_table.wrap(0, 0)
+    bom_table.drawOn(c, bom_x, bom_y - bom_h - 5)
     
-    # ============= MATERIAL SPECS BOX (Right side) =============
-    spec_x = width - 75*mm
-    spec_y = dim_y
-    
+    # ============= MATERIAL SPECIFICATIONS =============
+    spec_y = bom_y - bom_h - 35
     c.setFillColor(primary_color)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(spec_x, spec_y, "MATERIAL SPECS")
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(bom_x, spec_y, "MATERIAL SPECIFICATIONS")
     
-    spec_y -= 18
-    c.setFillColor(dark_color)
+    spec_y -= 15
+    c.setFillColor(black)
     c.setFont("Helvetica", 9)
     
     specs = [
-        f"Pipe: IS-9295 ERW Steel",
-        f"Shaft: EN8/EN9 Steel",
-        f"Bearing: {bearing_make.upper()} Grade",
-        f"Housing: Cast Iron",
-        f"Seals: Nitrile Rubber",
+        ("Pipe:", "IS-9295 ERW Steel Tube"),
+        ("Shaft:", "EN8/EN9 Steel, Ground Finish"),
+        ("Bearing:", f"{bearing_make.upper()} Grade {bearing}"),
+        ("Housing:", "Cast Iron, Machined"),
+        ("Seals:", "Nitrile Rubber (NBR)"),
     ]
     
     if rubber_diameter:
-        specs.append(f"Rubber: Natural Rubber")
+        specs.append(("Rubber:", "Natural Rubber, 40±5 Shore A"))
     
-    for spec in specs:
-        c.drawString(spec_x, spec_y, spec)
-        spec_y -= 14
+    for label, value in specs:
+        c.setFont("Helvetica-Bold", 8)
+        c.drawString(bom_x, spec_y, label)
+        c.setFont("Helvetica", 8)
+        c.drawString(bom_x + 18*mm, spec_y, value)
+        spec_y -= 12
+    
+    # ============= LEGEND =============
+    legend_y = table_y - table_h - 40
+    c.setFillColor(primary_color)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(20*mm, legend_y, "LEGEND")
+    
+    legend_y -= 15
+    c.setFont("Helvetica", 8)
+    
+    # Blue dimension line
+    c.setStrokeColor(blue)
+    c.setLineWidth(1)
+    c.line(20*mm, legend_y + 3, 30*mm, legend_y + 3)
+    c.setFillColor(black)
+    c.drawString(32*mm, legend_y, "Dimension lines")
+    
+    legend_y -= 12
+    # Green dashed line (hidden features)
+    c.setStrokeColor(green)
+    c.setDash([3, 2])
+    c.line(20*mm, legend_y + 3, 30*mm, legend_y + 3)
+    c.setDash([])
+    c.drawString(32*mm, legend_y, "Hidden/Internal features")
+    
+    legend_y -= 12
+    # Red center line
+    c.setStrokeColor(red)
+    c.setDash([6, 2, 2, 2])
+    c.line(20*mm, legend_y + 3, 30*mm, legend_y + 3)
+    c.setDash([])
+    c.drawString(32*mm, legend_y, "Center line")
     
     # ============= FOOTER =============
-    footer_y = 25
+    footer_y = 20
     c.setStrokeColor(light_gray)
-    c.line(15*mm, footer_y + 15, width - 15*mm, footer_y + 15)
+    c.setLineWidth(0.5)
+    c.line(15*mm, footer_y + 12, width - 15*mm, footer_y + 12)
     
-    c.setFillColor(gray_color)
+    c.setFillColor(gray)
     c.setFont("Helvetica", 8)
     c.drawString(20*mm, footer_y, "CONVERO SOLUTIONS | Belt Conveyor Components")
     c.drawRightString(width - 20*mm, footer_y, f"Generated: {datetime.now().strftime('%d-%m-%Y %H:%M')}")
     
-    # Notes
     c.setFont("Helvetica-Oblique", 7)
-    c.drawString(20*mm, footer_y - 12, "* All dimensions in mm unless specified.")
+    c.drawCentredString(width/2, footer_y - 10, "All dimensions in mm. Drawing not to scale.")
     
     c.save()
     buffer.seek(0)
     return buffer
 
 
-def draw_roller_schematic(c, center_x, center_y, pipe_diameter, pipe_length, shaft_diameter, shaft_length=None, rubber_diameter=None, roller_type='carrying'):
+def draw_engineering_schematic(c, center_x, center_y, pipe_diameter, pipe_length, shaft_diameter, shaft_length, rubber_diameter=None, roller_type='carrying'):
     """
-    Draw a simplified roller schematic with dimensions
+    Draw engineering-style roller schematic with proper dimension notation
+    Matching the user's template style
     """
-    # Use provided shaft_length or calculate default
-    if shaft_length is None:
-        shaft_length = pipe_length + 36  # Default to Type B
+    # Colors
+    black = colors.black
+    blue = colors.HexColor('#0066CC')
+    green = colors.HexColor('#228B22')
+    red = colors.HexColor('#CC0000')
     
-    # Scale factor to fit drawing
-    max_width = 140 * mm
-    max_height = 80 * mm
+    # Scale calculation
+    max_width = 120 * mm
+    max_height = 60 * mm
     
-    # Calculate scale
-    actual_length = shaft_length  # Use actual shaft length
-    scale = min(max_width / actual_length, max_height / (rubber_diameter or pipe_diameter))
-    scale = min(scale, 0.4)  # Cap the scale
+    scale = min(max_width / shaft_length, max_height / (rubber_diameter or pipe_diameter))
+    scale = min(scale, 0.35)
     
     # Scaled dimensions
-    pipe_len = pipe_length * scale
-    pipe_dia = pipe_diameter * scale
-    shaft_dia_scaled = shaft_diameter * scale
-    shaft_total = shaft_length * scale  # Use actual shaft length
-    shaft_ext_per_side = (shaft_length - pipe_length) / 2  # Extension per side in mm
+    pipe_len_s = pipe_length * scale
+    pipe_dia_s = pipe_diameter * scale
+    shaft_len_s = shaft_length * scale
+    shaft_dia_s = shaft_diameter * scale
     
     if rubber_diameter:
-        rubber_dia = rubber_diameter * scale
+        outer_dia_s = rubber_diameter * scale
     else:
-        rubber_dia = pipe_dia
+        outer_dia_s = pipe_dia_s
     
-    # Colors
-    pipe_color = colors.HexColor('#4A90A4')
-    shaft_color = colors.HexColor('#666666')
-    rubber_color = colors.HexColor('#2D5016')
-    dim_color = colors.HexColor('#333333')
+    # Calculate shaft extension on each side
+    shaft_ext_s = (shaft_len_s - pipe_len_s) / 2
     
-    # Draw shaft (full length)
-    c.setFillColor(shaft_color)
-    c.rect(center_x - shaft_total/2, center_y - shaft_dia_scaled/2, shaft_total, shaft_dia_scaled, fill=1, stroke=0)
-    
-    # Draw pipe
-    c.setFillColor(pipe_color)
-    c.rect(center_x - pipe_len/2, center_y - pipe_dia/2, pipe_len, pipe_dia, fill=1, stroke=0)
-    
-    # Draw rubber lagging for impact rollers
-    if rubber_diameter and roller_type.lower() == 'impact':
-        c.setFillColor(rubber_color)
-        c.rect(center_x - pipe_len/2, center_y - rubber_dia/2, pipe_len, rubber_dia, fill=1, stroke=0)
-        # Redraw pipe as inner (cutaway effect)
-        c.setFillColor(pipe_color)
-        c.setStrokeColor(colors.white)
-        c.setLineWidth(1)
-        pipe_inner = pipe_dia * 0.8
-        c.rect(center_x - pipe_len/2, center_y - pipe_inner/2, pipe_len, pipe_inner, fill=1, stroke=1)
-    
-    # Draw bearings (simplified as circles at ends)
-    bearing_dia = pipe_dia * 0.7
-    c.setFillColor(colors.HexColor('#FFD700'))
-    c.setStrokeColor(colors.HexColor('#B8860B'))
-    c.setLineWidth(1)
-    c.circle(center_x - pipe_len/2 + 5, center_y, bearing_dia/2, fill=1, stroke=1)
-    c.circle(center_x + pipe_len/2 - 5, center_y, bearing_dia/2, fill=1, stroke=1)
-    
-    # Dimension lines
-    c.setStrokeColor(dim_color)
-    c.setFillColor(dim_color)
+    # ============= DRAW CENTER LINE (Red, dash-dot-dot) =============
+    c.setStrokeColor(red)
     c.setLineWidth(0.5)
-    c.setFont("Helvetica", 7)
+    c.setDash([8, 3, 2, 3])
+    c.line(center_x - shaft_len_s/2 - 15, center_y, center_x + shaft_len_s/2 + 15, center_y)
+    c.setDash([])
     
-    # Pipe length dimension (top)
-    dim_y_top = center_y + rubber_dia/2 + 15
-    c.line(center_x - pipe_len/2, dim_y_top, center_x + pipe_len/2, dim_y_top)
-    c.line(center_x - pipe_len/2, dim_y_top - 3, center_x - pipe_len/2, dim_y_top + 3)
-    c.line(center_x + pipe_len/2, dim_y_top - 3, center_x + pipe_len/2, dim_y_top + 3)
-    c.drawCentredString(center_x, dim_y_top + 5, f"{int(pipe_length)} mm (pipe)")
+    # ============= DRAW SHAFT (extends beyond pipe) =============
+    c.setStrokeColor(black)
+    c.setLineWidth(1)
+    c.setFillColor(colors.white)
     
-    # Total shaft length dimension (top)
-    dim_y_shaft = dim_y_top + 20
-    c.line(center_x - shaft_total/2, dim_y_shaft, center_x + shaft_total/2, dim_y_shaft)
-    c.line(center_x - shaft_total/2, dim_y_shaft - 3, center_x - shaft_total/2, dim_y_shaft + 3)
-    c.line(center_x + shaft_total/2, dim_y_shaft - 3, center_x + shaft_total/2, dim_y_shaft + 3)
-    c.drawCentredString(center_x, dim_y_shaft + 5, f"{int(shaft_length)} mm (shaft)")
+    # Shaft rectangles at ends
+    # Left shaft end
+    c.rect(center_x - shaft_len_s/2, center_y - shaft_dia_s/2, shaft_ext_s, shaft_dia_s, fill=1, stroke=1)
+    # Right shaft end
+    c.rect(center_x + pipe_len_s/2, center_y - shaft_dia_s/2, shaft_ext_s, shaft_dia_s, fill=1, stroke=1)
     
-    # Diameter dimension (right side)
-    dim_x_right = center_x + shaft_total/2 + 20
-    if rubber_diameter:
-        c.line(dim_x_right, center_y - rubber_dia/2, dim_x_right, center_y + rubber_dia/2)
-        c.line(dim_x_right - 3, center_y - rubber_dia/2, dim_x_right + 3, center_y - rubber_dia/2)
-        c.line(dim_x_right - 3, center_y + rubber_dia/2, dim_x_right + 3, center_y + rubber_dia/2)
-        c.saveState()
-        c.translate(dim_x_right + 8, center_y)
-        c.rotate(90)
-        c.drawCentredString(0, 0, f"Ø{rubber_diameter} mm")
-        c.restoreState()
-    else:
-        c.line(dim_x_right, center_y - pipe_dia/2, dim_x_right, center_y + pipe_dia/2)
-        c.line(dim_x_right - 3, center_y - pipe_dia/2, dim_x_right + 3, center_y - pipe_dia/2)
-        c.line(dim_x_right - 3, center_y + pipe_dia/2, dim_x_right + 3, center_y + pipe_dia/2)
-        c.saveState()
-        c.translate(dim_x_right + 8, center_y)
-        c.rotate(90)
-        c.drawCentredString(0, 0, f"Ø{pipe_diameter} mm")
-        c.restoreState()
+    # ============= DRAW PIPE (main body) =============
+    c.setFillColor(colors.HexColor('#E8E8E8'))
+    c.rect(center_x - pipe_len_s/2, center_y - pipe_dia_s/2, pipe_len_s, pipe_dia_s, fill=1, stroke=1)
     
-    # Shaft diameter (left side, smaller)
-    dim_x_left = center_x - shaft_total/2 - 15
-    c.line(dim_x_left, center_y - shaft_dia_scaled/2, dim_x_left, center_y + shaft_dia_scaled/2)
-    c.line(dim_x_left - 3, center_y - shaft_dia_scaled/2, dim_x_left + 3, center_y - shaft_dia_scaled/2)
-    c.line(dim_x_left - 3, center_y + shaft_dia_scaled/2, dim_x_left + 3, center_y + shaft_dia_scaled/2)
+    # ============= DRAW RUBBER (if impact roller) =============
+    if rubber_diameter and roller_type.lower() == 'impact':
+        c.setFillColor(colors.HexColor('#4A6741'))
+        c.rect(center_x - pipe_len_s/2, center_y - outer_dia_s/2, pipe_len_s, outer_dia_s, fill=1, stroke=1)
+        # Redraw pipe inside
+        c.setFillColor(colors.HexColor('#D0D0D0'))
+        c.rect(center_x - pipe_len_s/2 + 2, center_y - pipe_dia_s/2 + 2, pipe_len_s - 4, pipe_dia_s - 4, fill=1, stroke=0)
+    
+    # ============= DRAW HIDDEN LINES (internal bore - green dashed) =============
+    c.setStrokeColor(green)
+    c.setLineWidth(0.5)
+    c.setDash([4, 3])
+    
+    # Inner bore of pipe (shaft passes through)
+    bore_dia_s = shaft_dia_s + 4
+    c.line(center_x - pipe_len_s/2, center_y - bore_dia_s/2, center_x + pipe_len_s/2, center_y - bore_dia_s/2)
+    c.line(center_x - pipe_len_s/2, center_y + bore_dia_s/2, center_x + pipe_len_s/2, center_y + bore_dia_s/2)
+    c.setDash([])
+    
+    # ============= DIMENSION LINES =============
+    c.setStrokeColor(blue)
+    c.setFillColor(blue)
+    c.setLineWidth(0.8)
+    
+    # --- Dimension A (Pipe Length) - below the roller ---
+    dim_y_A = center_y - outer_dia_s/2 - 20
+    # Extension lines
+    c.line(center_x - pipe_len_s/2, center_y - outer_dia_s/2 - 3, center_x - pipe_len_s/2, dim_y_A - 3)
+    c.line(center_x + pipe_len_s/2, center_y - outer_dia_s/2 - 3, center_x + pipe_len_s/2, dim_y_A - 3)
+    # Dimension line with arrows
+    c.line(center_x - pipe_len_s/2, dim_y_A, center_x + pipe_len_s/2, dim_y_A)
+    # Arrowheads
+    draw_arrowhead(c, center_x - pipe_len_s/2, dim_y_A, 'right')
+    draw_arrowhead(c, center_x + pipe_len_s/2, dim_y_A, 'left')
+    # Label
+    c.setFont("Helvetica-Bold", 10)
+    c.drawCentredString(center_x, dim_y_A - 12, f"A = {int(pipe_length)}")
+    
+    # --- Dimension B (Shaft Length) - below A ---
+    dim_y_B = dim_y_A - 28
+    # Extension lines
+    c.line(center_x - shaft_len_s/2, dim_y_A - 5, center_x - shaft_len_s/2, dim_y_B - 3)
+    c.line(center_x + shaft_len_s/2, dim_y_A - 5, center_x + shaft_len_s/2, dim_y_B - 3)
+    # Dimension line
+    c.line(center_x - shaft_len_s/2, dim_y_B, center_x + shaft_len_s/2, dim_y_B)
+    # Arrowheads
+    draw_arrowhead(c, center_x - shaft_len_s/2, dim_y_B, 'right')
+    draw_arrowhead(c, center_x + shaft_len_s/2, dim_y_B, 'left')
+    # Label
+    c.drawCentredString(center_x, dim_y_B - 12, f"B = {int(shaft_length)}")
+    
+    # --- Dimension D (Pipe/Outer Diameter) - right side ---
+    dim_x_D = center_x + pipe_len_s/2 + 25
+    display_dia = rubber_diameter if rubber_diameter else pipe_diameter
+    # Extension lines
+    c.line(center_x + pipe_len_s/2 + 3, center_y - outer_dia_s/2, dim_x_D + 3, center_y - outer_dia_s/2)
+    c.line(center_x + pipe_len_s/2 + 3, center_y + outer_dia_s/2, dim_x_D + 3, center_y + outer_dia_s/2)
+    # Dimension line
+    c.line(dim_x_D, center_y - outer_dia_s/2, dim_x_D, center_y + outer_dia_s/2)
+    # Arrowheads
+    draw_arrowhead(c, dim_x_D, center_y - outer_dia_s/2, 'down')
+    draw_arrowhead(c, dim_x_D, center_y + outer_dia_s/2, 'up')
+    # Label
     c.saveState()
-    c.translate(dim_x_left - 5, center_y)
+    c.translate(dim_x_D + 12, center_y)
     c.rotate(90)
-    c.drawCentredString(0, 0, f"Ø{shaft_diameter}")
+    c.drawCentredString(0, 0, f"D = Ø{display_dia}")
     c.restoreState()
     
-    # Labels
-    c.setFont("Helvetica", 6)
-    c.drawCentredString(center_x, center_y - rubber_dia/2 - 10, "PIPE" if not rubber_diameter else "RUBBER + PIPE")
-    c.drawString(center_x - shaft_total/2 + 2, center_y + shaft_dia/2 + 3, "SHAFT")
+    # --- Dimension d (Shaft Diameter) - left side ---
+    dim_x_d = center_x - shaft_len_s/2 - 15
+    # Extension lines
+    c.line(center_x - shaft_len_s/2 - 3, center_y - shaft_dia_s/2, dim_x_d - 3, center_y - shaft_dia_s/2)
+    c.line(center_x - shaft_len_s/2 - 3, center_y + shaft_dia_s/2, dim_x_d - 3, center_y + shaft_dia_s/2)
+    # Dimension line
+    c.line(dim_x_d, center_y - shaft_dia_s/2, dim_x_d, center_y + shaft_dia_s/2)
+    # Arrowheads
+    draw_arrowhead(c, dim_x_d, center_y - shaft_dia_s/2, 'down')
+    draw_arrowhead(c, dim_x_d, center_y + shaft_dia_s/2, 'up')
+    # Label
+    c.saveState()
+    c.translate(dim_x_d - 10, center_y)
+    c.rotate(90)
+    c.drawCentredString(0, 0, f"d = Ø{int(shaft_diameter)}")
+    c.restoreState()
+
+
+def draw_cross_section_detail(c, center_x, center_y, pipe_diameter, shaft_diameter, rubber_diameter=None):
+    """
+    Draw a circular cross-section detail view
+    """
+    blue = colors.HexColor('#0066CC')
+    green = colors.HexColor('#228B22')
+    red = colors.HexColor('#CC0000')
+    black = colors.black
+    
+    # Scale for detail view
+    max_size = 35
+    outer_dia = rubber_diameter if rubber_diameter else pipe_diameter
+    scale = max_size / outer_dia
+    
+    outer_r = (outer_dia * scale) / 2
+    pipe_r = (pipe_diameter * scale) / 2
+    shaft_r = (shaft_diameter * scale) / 2
+    
+    # Draw outer circle (rubber or pipe)
+    c.setStrokeColor(black)
+    c.setLineWidth(1)
+    if rubber_diameter:
+        c.setFillColor(colors.HexColor('#4A6741'))
+        c.circle(center_x, center_y, outer_r, fill=1, stroke=1)
+        # Pipe circle
+        c.setFillColor(colors.HexColor('#D0D0D0'))
+        c.circle(center_x, center_y, pipe_r, fill=1, stroke=1)
+    else:
+        c.setFillColor(colors.HexColor('#E8E8E8'))
+        c.circle(center_x, center_y, outer_r, fill=1, stroke=1)
+    
+    # Shaft hole (center)
+    c.setFillColor(colors.white)
+    c.circle(center_x, center_y, shaft_r, fill=1, stroke=1)
+    
+    # Center crosshairs (red)
+    c.setStrokeColor(red)
+    c.setLineWidth(0.5)
+    c.setDash([4, 2, 1, 2])
+    c.line(center_x - outer_r - 5, center_y, center_x + outer_r + 5, center_y)
+    c.line(center_x, center_y - outer_r - 5, center_x, center_y + outer_r + 5)
+    c.setDash([])
+    
+    # Dimension for shaft diameter (d)
+    c.setStrokeColor(blue)
+    c.setFillColor(blue)
+    c.setFont("Helvetica-Bold", 7)
+    c.line(center_x, center_y, center_x + shaft_r, center_y)
+    c.drawString(center_x + shaft_r + 3, center_y - 3, f"Ød")
+    
+    # Label
+    c.setFillColor(black)
+    c.setFont("Helvetica", 7)
+    c.drawCentredString(center_x, center_y - outer_r - 12, "SECTION VIEW")
+
+
+def draw_arrowhead(c, x, y, direction):
+    """Draw a small arrowhead for dimension lines"""
+    size = 3
+    if direction == 'right':
+        c.line(x, y, x + size, y - size/2)
+        c.line(x, y, x + size, y + size/2)
+    elif direction == 'left':
+        c.line(x, y, x - size, y - size/2)
+        c.line(x, y, x - size, y + size/2)
+    elif direction == 'up':
+        c.line(x, y, x - size/2, y - size)
+        c.line(x, y, x + size/2, y - size)
+    elif direction == 'down':
+        c.line(x, y, x - size/2, y + size)
+        c.line(x, y, x + size/2, y + size)
