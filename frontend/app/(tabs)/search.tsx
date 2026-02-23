@@ -88,6 +88,9 @@ export default function SearchScreen() {
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [selectedLength, setSelectedLength] = useState<{product: ProductResult, length: LengthDetail} | null>(null);
   const [quantityInput, setQuantityInput] = useState('1');
+  
+  // Drawing generation
+  const [generatingDrawing, setGeneratingDrawing] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCustomers();
