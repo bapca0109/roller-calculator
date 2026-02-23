@@ -300,9 +300,17 @@ def draw_engineering_schematic(c, center_x, center_y, pipe_diameter, pipe_length
     c.drawCentredString(center_x, dim_y_A - 10, f"A = {int(pipe_length)}")
     
     # --- Dimension B (Shaft Length) - below A ---
+    # Extension lines from shaft ends with proper EXEO (offset=2) and EXEE (extension=3)
+    exeo = 2  # Extension line offset from object
+    exee = 3  # Extension line extension beyond dimension line
     dim_y_B = dim_y_A - 22
-    c.line(center_x - shaft_len_s/2, dim_y_A - 5, center_x - shaft_len_s/2, dim_y_B - 3)
-    c.line(center_x + shaft_len_s/2, dim_y_A - 5, center_x + shaft_len_s/2, dim_y_B - 3)
+    
+    # Left extension line - from shaft bottom to below dimension line
+    c.line(center_x - shaft_len_s/2, center_y - shaft_dia_s/2 - exeo, center_x - shaft_len_s/2, dim_y_B - exee)
+    # Right extension line - from shaft bottom to below dimension line  
+    c.line(center_x + shaft_len_s/2, center_y - shaft_dia_s/2 - exeo, center_x + shaft_len_s/2, dim_y_B - exee)
+    
+    # Dimension line
     c.line(center_x - shaft_len_s/2, dim_y_B, center_x + shaft_len_s/2, dim_y_B)
     draw_arrowhead(c, center_x - shaft_len_s/2, dim_y_B, 'right')
     draw_arrowhead(c, center_x + shaft_len_s/2, dim_y_B, 'left')
