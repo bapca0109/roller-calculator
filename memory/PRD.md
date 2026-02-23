@@ -104,6 +104,18 @@ Examples:
 7. **Email Integration** - Email quote PDFs (P2)
 8. **Dashboard & Analytics** - Sales analytics (P3)
 
+
+### Pipe Weight Calculation (Formula-Based) ✅ (Feb 2026)
+- Pipe weights calculated using engineering formula:
+  - `Weight (kg/m) = π/4 × (OD² - ID²) × ρ / 1,000,000`
+  - Where: `ID = OD - (2 × Wall Thickness)`, `ρ = 7.85 kg/dm³` (steel density)
+- Wall thicknesses per IS-9295:
+  - Type A (Light): 2.90-4.00mm depending on OD
+  - Type B (Medium): 3.65-4.85mm depending on OD
+  - Type C (Heavy): 4.47-5.33mm depending on OD
+- Weight values stored in `PIPE_WEIGHT_PER_METER` dictionary in `roller_standards.py`
+- Shaft weight uses 1 shaft per roller (corrected from previous 2-shaft calculation)
+
 ## Recently Completed (Feb 2026)
 
 ### GST Verification Feature ✅ (NEW)
