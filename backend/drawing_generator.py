@@ -85,9 +85,9 @@ def generate_roller_drawing(
     
     c.drawCentredString(width/2, y_title, roller_type_text)
     
-    # ============= MAIN DRAWING AREA (LARGER) =============
-    drawing_y = y_title - 30
-    drawing_height = 280  # Increased from 200
+    # ============= MAIN DRAWING AREA =============
+    drawing_y = y_title - 20
+    drawing_height = 200  # Balanced size
     drawing_width = width - 40*mm
     
     # Drawing border
@@ -95,9 +95,9 @@ def generate_roller_drawing(
     c.setLineWidth(0.5)
     c.rect(20*mm, drawing_y - drawing_height, drawing_width, drawing_height, fill=0, stroke=1)
     
-    # Draw the roller schematic (centered and larger)
-    center_x = width / 2 + 15*mm  # Shift right to leave room for cross-section
-    center_y = drawing_y - drawing_height / 2 + 10
+    # Draw the roller schematic (centered)
+    center_x = width / 2 + 20*mm  # Shift right to leave room for cross-section
+    center_y = drawing_y - drawing_height / 2
     
     draw_engineering_schematic(
         c,
@@ -109,16 +109,16 @@ def generate_roller_drawing(
         shaft_length=shaft_length,
         rubber_diameter=rubber_diameter,
         roller_type=roller_type,
-        scale_factor=0.5  # Larger scale
+        scale_factor=0.38
     )
     
-    # ============= CROSS-SECTION DETAIL (Left side) =============
-    detail_x = 50*mm
-    detail_y = center_y
-    draw_cross_section_detail(c, detail_x, detail_y, pipe_diameter, shaft_diameter, rubber_diameter, scale=1.3)
+    # ============= CROSS-SECTION DETAIL (Left side inside drawing area) =============
+    detail_x = 45*mm
+    detail_y = center_y + 15
+    draw_cross_section_detail(c, detail_x, detail_y, pipe_diameter, shaft_diameter, rubber_diameter, scale=1.0)
     
     # ============= DIMENSION TABLE =============
-    tables_y = drawing_y - drawing_height - 15
+    tables_y = drawing_y - drawing_height - 20
     
     c.setFillColor(primary_color)
     c.setFont("Helvetica-Bold", 11)
