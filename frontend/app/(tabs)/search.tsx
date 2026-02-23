@@ -275,6 +275,62 @@ export default function SearchScreen() {
     }
   };
 
+  // Download Drawing function
+  const downloadDrawing = async (product: ProductResult, length: LengthDetail) => {
+    const drawingKey = `${length.product_code}`;
+    setGeneratingDrawing(drawingKey);
+    
+    try {
+      const response = await api.post('/generate-drawing', {
+        product_code: length.product_code,
+        roller_type: product.roller_type,
+        pipe_diameter: product.pipe_diameter,
+        pipe_length: length.length_mm,
+        pipe_type: product.pipe_type,
+        shaft_diameter: product.shaft_diameter,
+        bearing: product.bearing,
+        bearing_make: product.bearing_make,
+        housing: product.housing,
+        weight_kg: length.weight_kg,
+        unit_price: length.price,
+        rubber_diameter: product.rubber_diameter || null,
+        belt_widths: length.belt_widths,
+        quantity: 1
+      }, {
+        responseType: 'blob'
+      });
+      
+      // Convert blob to base64 for file system
+      const reader = new FileReader();
+      reader.readAsDataURL(response.data);
+      reader.onloadend = async () => {
+        const base64data = reader.result as string;
+        const base64 = base64data.split(',')[1];
+        
+        const filename = `Drawing_${length.product_code.replace(/ /g, '_').replace(/\//g, '-')}.pdf`;
+        const fileUri = FileSystem.documentDirectory + filename;
+        
+        await FileSystem.writeAsStringAsync(fileUri, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Drawing: ${length.product_code}`
+          });
+        } else {
+          Alert.alert('Success', `Drawing saved to: ${fileUri}`);
+        }
+      };
+    } catch (error: any) {
+      console.error('Drawing error:', error);
+      Alert.alert('Error', 'Failed to generate drawing');
+    } finally {
+      setGeneratingDrawing(null);
+    }
+  };
+
   const renderResultItem = ({ item }: { item: ProductResult }) => {
     const isExpanded = expandedProduct === item.product_code;
     
