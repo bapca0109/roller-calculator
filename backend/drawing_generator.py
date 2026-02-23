@@ -278,12 +278,20 @@ def draw_engineering_schematic(c, center_x, center_y, pipe_diameter, pipe_length
     c.setFillColor(colors.HexColor('#E8E8E8'))
     c.rect(center_x - pipe_len_s/2, center_y - pipe_dia_s/2, pipe_len_s, pipe_dia_s, fill=1, stroke=1)
     
-    # ============= DRAW RUBBER (if impact roller) =============
+    # ============= DRAW RUBBER RINGS (if impact roller) =============
     if rubber_diameter and roller_type.lower() == 'impact':
-        c.setFillColor(colors.HexColor('#4A6741'))
-        c.rect(center_x - pipe_len_s/2, center_y - outer_dia_s/2, pipe_len_s, outer_dia_s, fill=1, stroke=1)
-        c.setFillColor(colors.HexColor('#D0D0D0'))
-        c.rect(center_x - pipe_len_s/2 + 3, center_y - pipe_dia_s/2 + 3, pipe_len_s - 6, pipe_dia_s - 6, fill=1, stroke=0)
+        # Draw individual rubber rings pattern
+        ring_width = 8 * scale  # Width of each rubber ring
+        ring_gap = 3 * scale    # Gap between rings
+        num_rings = int(pipe_len_s / (ring_width + ring_gap))
+        start_x = center_x - pipe_len_s/2 + ring_gap
+        
+        c.setFillColor(colors.HexColor('#2D4A2D'))  # Dark green for rubber
+        for i in range(num_rings):
+            ring_x = start_x + i * (ring_width + ring_gap)
+            if ring_x + ring_width <= center_x + pipe_len_s/2:
+                # Draw rubber ring (rectangle extending above and below pipe)
+                c.rect(ring_x, center_y - outer_dia_s/2, ring_width, outer_dia_s, fill=1, stroke=1)
     
     # ============= DIMENSION LINES =============
     c.setStrokeColor(blue)
