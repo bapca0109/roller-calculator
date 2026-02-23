@@ -802,48 +802,31 @@ export default function AdminScreen() {
               {activeCategory === 'locking' && renderLockingRingCosts()}
 
               <TouchableOpacity
-                style={styles.resetButton}
-                onPress={() => {
-                  // Immediate feedback
-                  Alert.alert(
-                    'Reset Prices',
-                    'Are you sure you want to reset all prices to default values?',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Yes, Reset',
-                        style: 'destructive',
-                        onPress: async () => {
-                          try {
-                            setSaving(true);
-                            setEditingKey(null);
-                            setEditValue('');
-                            
-                            // Call reset API
-                            await api.post('/admin/prices/reset');
-                            
-                            // Fetch fresh prices
-                            const response = await api.get('/admin/prices');
-                            setPrices(response.data);
-                            
-                            Alert.alert(
-                              'Reset Complete',
-                              `Pipe: ₹${response.data.basic_rates.pipe_cost_per_kg}\nShaft: ₹${response.data.basic_rates.shaft_cost_per_kg}`
-                            );
-                          } catch (error: any) {
-                            Alert.alert('Reset Failed', error.message || 'Unknown error');
-                          } finally {
-                            setSaving(false);
-                          }
-                        },
-                      },
-                    ]
-                  );
+                style={[styles.resetButton, { backgroundColor: '#C41E3A' }]}
+                onPress={async () => {
+                  try {
+                    setSaving(true);
+                    setEditingKey(null);
+                    setEditValue('');
+                    
+                    // Call reset API directly without confirmation
+                    await api.post('/admin/prices/reset');
+                    
+                    // Fetch fresh prices
+                    const response = await api.get('/admin/prices');
+                    setPrices(response.data);
+                    
+                    Alert.alert('Done', 'Prices reset to defaults');
+                  } catch (error: any) {
+                    Alert.alert('Error', String(error));
+                  } finally {
+                    setSaving(false);
+                  }
                 }}
                 disabled={saving}
               >
-                <Ionicons name="refresh" size={20} color="#C41E3A" />
-                <Text style={styles.resetButtonText}>Reset All to Default</Text>
+                <Ionicons name="refresh" size={20} color="#fff" />
+                <Text style={[styles.resetButtonText, { color: '#fff' }]}>Reset All to Default</Text>
               </TouchableOpacity>
 
               <View style={styles.bottomSpacer} />
