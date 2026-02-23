@@ -119,12 +119,6 @@ def generate_roller_drawing(
     front_view_center_x = 15*mm + drawing_width * 0.82
     draw_cross_section_detail(c, front_view_center_x, center_y, pipe_diameter, shaft_diameter, rubber_diameter, scale=1.2)
     
-    # Labels for views
-    c.setFillColor(gray)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawCentredString(side_view_center_x, y_pos - drawing_height + 8, "SIDE VIEW")
-    c.drawCentredString(front_view_center_x, y_pos - drawing_height + 8, "FRONT VIEW")
-    
     # ============= DIMENSIONS TABLE (Full width, below drawing) =============
     y_pos = y_pos - drawing_height - 15
     
