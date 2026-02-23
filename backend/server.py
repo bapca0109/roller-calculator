@@ -1666,6 +1666,18 @@ class DrawingRequest(BaseModel):
     belt_widths: Optional[List[int]] = None
     quantity: int = 1
 
+@api_router.get("/download/sample-drawing")
+async def download_sample_drawing():
+    """Download sample roller drawing PDF"""
+    file_path = ROOT_DIR / "static" / "sample_drawing.pdf"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Sample drawing not found")
+    return FileResponse(
+        path=str(file_path),
+        filename="Sample_Roller_Drawing.pdf",
+        media_type="application/pdf"
+    )
+
 @api_router.post("/generate-drawing")
 async def generate_drawing(request: DrawingRequest, current_user: dict = Depends(get_current_user)):
     """Generate a technical drawing PDF for a roller"""
