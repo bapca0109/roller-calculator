@@ -689,7 +689,7 @@ def get_all_lengths_with_belt_widths(roller_type="carrying"):
     return result
 
 
-def calculate_roller_weight(pipe_dia, pipe_length_mm, shaft_dia, pipe_type, rubber_dia=None):
+def calculate_roller_weight(pipe_dia, pipe_length_mm, shaft_dia, pipe_type, rubber_dia=None, shaft_end_type="B", custom_shaft_extension=None):
     """
     Calculate total roller weight in kg
     Includes: pipe + shaft + rubber (if impact roller)
@@ -701,7 +701,7 @@ def calculate_roller_weight(pipe_dia, pipe_length_mm, shaft_dia, pipe_type, rubb
     pipe_weight = pipe_weight_per_m * pipe_length_m
     
     # Shaft weight (1 shaft per roller)
-    shaft_length_mm = calculate_shaft_length(pipe_length_mm)
+    shaft_length_mm = calculate_shaft_length(pipe_length_mm, shaft_end_type, custom_shaft_extension)
     shaft_length_m = shaft_length_mm / 1000
     shaft_weight = SHAFT_WEIGHT_PER_METER[shaft_dia] * shaft_length_m
     
