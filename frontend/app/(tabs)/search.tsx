@@ -281,6 +281,9 @@ export default function SearchScreen() {
     const drawingKey = `${length.product_code}`;
     setGeneratingDrawing(drawingKey);
     
+    // Debug alert
+    Alert.alert('Starting', `Downloading drawing for ${length.product_code}...`);
+    
     try {
       // Step 1: Get token
       const token = await AsyncStorage.getItem('token');
