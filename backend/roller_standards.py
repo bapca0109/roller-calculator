@@ -781,18 +781,11 @@ def get_housing_for_pipe_and_bearing(pipe_dia, bearing_number):
     return None
 
 def get_bearing_cost(bearing_number, make="china"):
-    """Get bearing cost by make. Defaults to cheapest available if make not available."""
-    bearing_prices = BEARING_COSTS.get(bearing_number, {})
-    
-    # If requested make is available, return it
-    if make.lower() in bearing_prices:
-        return bearing_prices[make.lower()]
-    
-    # Otherwise return the cheapest available option
-    if bearing_prices:
-        return min(bearing_prices.values())
-    
-    return 0  # Shouldn't happen if bearing exists
+    """Get bearing cost by make. Defaults to cheapest available if make not available.
+    Uses database values if available, falls back to hardcoded defaults.
+    """
+    import price_loader
+    return price_loader.get_bearing_cost(bearing_number, make, BEARING_COSTS)
 
 def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_number, bearing_make="china", rubber_dia=None, pipe_type="B", shaft_end_type="B", custom_shaft_length=None):
     """
