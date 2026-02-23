@@ -765,10 +765,10 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
     pipe_weight = pipe_weight_per_m * pipe_length_m
     pipe_cost = pipe_weight * PIPE_COST_PER_KG
     
-    # Shaft cost (for 2 shafts)
+    # Shaft cost (1 shaft per roller)
     shaft_length_mm = calculate_shaft_length(pipe_length_mm)
     shaft_length_m = shaft_length_mm / 1000
-    shaft_weight = SHAFT_WEIGHT_PER_METER[shaft_dia] * shaft_length_m * 2  # 2 sides
+    shaft_weight = SHAFT_WEIGHT_PER_METER[shaft_dia] * shaft_length_m
     shaft_cost = shaft_weight * SHAFT_COST_PER_KG
     
     # Bearing cost (2 bearings)
