@@ -281,7 +281,11 @@ export default function SearchScreen() {
     setGeneratingDrawing(drawingKey);
     
     try {
-      const response = await api.post('/generate-drawing', {
+      // Get the token for authentication
+      const token = await AsyncStorage.getItem('token');
+      
+      // Create the request body
+      const requestBody = {
         product_code: length.product_code,
         roller_type: product.roller_type,
         pipe_diameter: product.pipe_diameter,
@@ -296,25 +300,39 @@ export default function SearchScreen() {
         rubber_diameter: product.rubber_diameter || null,
         belt_widths: length.belt_widths,
         quantity: 1
-      }, {
-        responseType: 'arraybuffer'
+      };
+
+      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/generate-drawing`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
       });
-      
-      // Convert arraybuffer to base64
-      const base64 = btoa(
-        new Uint8Array(response.data).reduce(
-          (data, byte) => data + String.fromCharCode(byte),
-          ''
-        )
-      );
-      
+
+      if (!response.ok) {
+        throw new Error('Failed to generate drawing');
+      }
+
+      const blob = await response.blob();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
       const filename = `Drawing_${length.product_code.replace(/ /g, '_').replace(/\//g, '-')}.pdf`;
       const fileUri = FileSystem.documentDirectory + filename;
-      
+
       await FileSystem.writeAsStringAsync(fileUri, base64, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      
+
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {
           mimeType: 'application/pdf',
