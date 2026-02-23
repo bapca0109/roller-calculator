@@ -794,10 +794,15 @@ async def calculate_detailed_cost(
     
     # Get shaft end type parameters
     shaft_end_type = request.shaft_end_type or "B"
-    custom_shaft_extension = request.custom_shaft_extension
+    custom_shaft_length = request.custom_shaft_length  # Total shaft length (for custom type)
     
-    # Calculate shaft length with shaft end type
-    shaft_length = rs.calculate_shaft_length(request.pipe_length, shaft_end_type, custom_shaft_extension)
+    # Calculate shaft length based on type
+    if shaft_end_type == "custom" and custom_shaft_length is not None:
+        # User provided total shaft length directly
+        shaft_length = custom_shaft_length
+    else:
+        # Calculate using standard extensions
+        shaft_length = rs.calculate_shaft_length(request.pipe_length, shaft_end_type, None)
     
     # Calculate raw material costs with shaft end type
     cost_breakdown = rs.calculate_raw_material_cost(
@@ -809,7 +814,7 @@ async def calculate_detailed_cost(
         request.rubber_diameter,
         request.pipe_type or "B",
         shaft_end_type,
-        custom_shaft_extension
+        custom_shaft_length  # Pass total length for custom
     )
     
     # Generate product code - use roller_type from request, fallback to impact if rubber_diameter present
