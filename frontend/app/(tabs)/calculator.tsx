@@ -898,7 +898,7 @@ export default function CalculatorScreen() {
                 <Text style={styles.resultValue}>Rs. {result.cost_breakdown.pipe_cost.toFixed(2)}</Text>
               </View>
               <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>Shaft (2 pcs)</Text>
+                <Text style={styles.resultLabel}>Shaft (1 pc)</Text>
                 <Text style={styles.resultValue}>Rs. {result.cost_breakdown.shaft_cost.toFixed(2)}</Text>
               </View>
               <View style={styles.resultRow}>
