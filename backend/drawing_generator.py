@@ -154,7 +154,7 @@ def generate_roller_drawing(
     ]
     
     if rubber_diameter:
-        dim_data.insert(2, ['E', 'Rubber Diameter', f'{rubber_diameter}', 'mm'])
+        dim_data.insert(2, ['RD', 'Rubber Diameter', f'{rubber_diameter}', 'mm'])
     
     # Full width table
     dim_table = Table(dim_data, colWidths=[20*mm, 55*mm, 55*mm, 20*mm])
