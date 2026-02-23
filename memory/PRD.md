@@ -136,6 +136,18 @@ Examples:
 
 ## Recently Completed (Feb 2026)
 
+### Price Calculation Integration with MongoDB ✅ (NEW - Feb 23, 2026)
+- **P0 Bug Fix**: "When we change price from admin panel, final product prices are not changing"
+- Created `price_loader.py` module for synchronous MongoDB price access
+- Calculation functions now use database prices with fallback to hardcoded defaults
+- Cache invalidation on admin price updates ensures immediate reflection
+- Affected functions in `roller_standards.py`:
+  - `calculate_raw_material_cost()` - Pipe, shaft, bearing, housing, seal, circlip, rubber ring, locking ring costs
+  - `calculate_roller_weight()` - Pipe and shaft weights
+  - `calculate_rubber_cost()` - Rubber ring costs
+  - `get_bearing_cost()` - Bearing costs by make
+- All 15 test cases passed (see `/app/backend/tests/test_price_update_bug.py`)
+
 ### GST Verification Feature ✅ (NEW)
 - Quick GSTIN search - checks database first for existing customers
 - GSTIN format validation with state code extraction
