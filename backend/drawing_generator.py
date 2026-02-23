@@ -325,20 +325,34 @@ def draw_engineering_schematic(c, center_x, center_y, pipe_diameter, pipe_length
     draw_arrowhead(c, center_x + shaft_len_s/2, dim_y_B, 'left')
     c.drawCentredString(center_x, dim_y_B - 10, f"B = {int(shaft_length)}")
     
-    # --- Dimension D (Pipe/Outer Diameter) - right side ---
+    # --- Dimension D (Pipe Diameter) - right side ---
     dim_x_D = center_x + pipe_len_s/2 + 22
-    display_dia = rubber_diameter if rubber_diameter else pipe_diameter
-    c.line(center_x + pipe_len_s/2 + 3, center_y - outer_dia_s/2, dim_x_D + 3, center_y - outer_dia_s/2)
-    c.line(center_x + pipe_len_s/2 + 3, center_y + outer_dia_s/2, dim_x_D + 3, center_y + outer_dia_s/2)
-    c.line(dim_x_D, center_y - outer_dia_s/2, dim_x_D, center_y + outer_dia_s/2)
-    draw_arrowhead(c, dim_x_D, center_y - outer_dia_s/2, 'down')
-    draw_arrowhead(c, dim_x_D, center_y + outer_dia_s/2, 'up')
+    c.line(center_x + pipe_len_s/2 + 3, center_y - pipe_dia_s/2, dim_x_D + 3, center_y - pipe_dia_s/2)
+    c.line(center_x + pipe_len_s/2 + 3, center_y + pipe_dia_s/2, dim_x_D + 3, center_y + pipe_dia_s/2)
+    c.line(dim_x_D, center_y - pipe_dia_s/2, dim_x_D, center_y + pipe_dia_s/2)
+    draw_arrowhead(c, dim_x_D, center_y - pipe_dia_s/2, 'down')
+    draw_arrowhead(c, dim_x_D, center_y + pipe_dia_s/2, 'up')
     c.saveState()
     c.translate(dim_x_D + 10, center_y)
     c.rotate(90)
     c.setFont("Helvetica-Bold", 9)
-    c.drawCentredString(0, 0, f"D = {display_dia}")
+    c.drawCentredString(0, 0, f"D = {int(pipe_diameter)}")
     c.restoreState()
+    
+    # --- Dimension RD (Rubber Diameter) - for impact rollers only, right side outer ---
+    if rubber_diameter and roller_type.lower() == 'impact':
+        dim_x_RD = dim_x_D + 25
+        c.line(dim_x_D + 5, center_y - outer_dia_s/2, dim_x_RD + 3, center_y - outer_dia_s/2)
+        c.line(dim_x_D + 5, center_y + outer_dia_s/2, dim_x_RD + 3, center_y + outer_dia_s/2)
+        c.line(dim_x_RD, center_y - outer_dia_s/2, dim_x_RD, center_y + outer_dia_s/2)
+        draw_arrowhead(c, dim_x_RD, center_y - outer_dia_s/2, 'down')
+        draw_arrowhead(c, dim_x_RD, center_y + outer_dia_s/2, 'up')
+        c.saveState()
+        c.translate(dim_x_RD + 10, center_y)
+        c.rotate(90)
+        c.setFont("Helvetica-Bold", 9)
+        c.drawCentredString(0, 0, f"RD = {int(rubber_diameter)}")
+        c.restoreState()
     
     # --- Dimension d (Shaft Diameter) - left side ---
     dim_x_d = center_x - shaft_len_s/2 - 15
