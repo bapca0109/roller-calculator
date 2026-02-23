@@ -65,10 +65,10 @@ def generate_roller_drawing(
     
     # Add logo - use absolute path
     import os
-    logo_path = os.path.join(os.path.dirname(__file__), "static", "convero-logo-converted.png")
+    logo_path = os.path.join(os.path.dirname(__file__), "static", "logo-small.png")
     if os.path.exists(logo_path):
         # Draw logo on left side
-        c.drawImage(logo_path, 8*mm, height - 58, width=55*mm, height=55*mm, preserveAspectRatio=True)
+        c.drawImage(logo_path, 8*mm, height - 55, width=50*mm, height=17*mm, preserveAspectRatio=True)
     
     # Drawing number on right side
     c.setFillColor(black)
