@@ -1169,6 +1169,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  actionBtn: {
+    padding: 4,
+  },
   // Modal styles
   modalOverlay: {
     flex: 1,
