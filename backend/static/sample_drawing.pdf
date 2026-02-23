@@ -1,80 +1,125 @@
-%PDF-1.4
-%“Œ‹ž ReportLab Generated PDF document (opensource)
-1 0 obj
-<<
-/F1 2 0 R /F2 3 0 R /F3 4 0 R
->>
-endobj
-2 0 obj
-<<
-/BaseFont /Helvetica /Encoding /WinAnsiEncoding /Name /F1 /Subtype /Type1 /Type /Font
->>
-endobj
-3 0 obj
-<<
-/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding /Name /F2 /Subtype /Type1 /Type /Font
->>
-endobj
-4 0 obj
-<<
-/BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding /Name /F3 /Subtype /Type1 /Type /Font
->>
-endobj
-5 0 obj
-<<
-/Contents 9 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 8 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
+<!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
 
->> 
-  /Type /Page
->>
-endobj
-6 0 obj
-<<
-/PageMode /UseNone /Pages 8 0 R /Type /Catalog
->>
-endobj
-7 0 obj
-<<
-/Author (anonymous) /CreationDate (D:20260223073048+00'00') /Creator (anonymous) /Keywords () /ModDate (D:20260223073048+00'00') /Producer (ReportLab PDF Library - \(opensource\)) 
-  /Subject (unspecified) /Title (untitled) /Trapped /False
->>
-endobj
-8 0 obj
-<<
-/Count 1 /Kids [ 5 0 R ] /Type /Pages
->>
-endobj
-9 0 obj
-<<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2575
->>
-stream
-Gb!;e>BAQ-&q8H9fV_K5W=dndqTX1o<ujeS,dj$rP8@A6Co4d''%N2iS0*4r]RV+nMG!HhOV:@&@du%S]AJ3J5k2atrtd29b8It'B#$CM4opj8_X&%mZN3qSEhQ<ecq#p(@J_l`j%lEfYr8n\,"9"=)D$SZ%%gi::^qkM/lToD9;e"Y@LK$bcAMF_-9C,u_pLNs2d=,!X1Rn/_oWommr&/qNUFg8?X`XGB!7-/),cnHj[W:=LfGoXj(/R!S+T#9\'5]'XBmgNGb+9\(RT*+q_[!-GJPieLA]6U#)sDP&k,4l`Y=;5A;TB)K2U"gBk_RO@A@ZD$R5s6JqIV8]!ml]&#8Y(N:5%r9P'VQ6!B6?l:_nphh3L"-:(LT$!LRU.^`#a7.`4!2FKN#j)a/<N:Jc"\ILG/7TlN)<)8FQ_ugNX3jTrDZ_6#)),,6s0q%s[XiTSkp3&DU@8YB_o=o\,6hO\`lL23Oa8Nk8`$8H.Cq5?Z<XL[`nO/FGn6bepab`?j,>dKV.bo;%1n'tj`3b89NQm&g@9i"1HcEU=%\8@ciK7>7+A,9onYpLl@>_=P.E7g4;!u>$$;qJRIIn,@&"meGFteX6LuM%dKB@S.quLFG'quaD$i$cq%4s<i8Dn0N2!F%i).FiQVWBfLhm+*'#a^oV<jaZ?b:chfWG3mF_f97W63U>.gtbklZ3mF%0V<8d$p:O^W^Q84*SRt>>eW\F,s=)tC+J78g,'d4qnR/ZRt_="1q[S&JG;#5f5'q(q=t*04Y#@OOaBfXp18tg]]=S+!WK_&'8>jN`0PD:AN^8$?AAlEO`%94=0lb#SmIW2V/4\:d1XNX(0T$7)alNlS5>uOJBS1%6t>En$EI/<\j<-+j`)N%2;/DmQ#)0/\*4h!5_hPQX#k8FCG7905`"1U\DcJKh=LPCqXN1+"W4A$G[FHfR`cU!DHgX_UTG^*FTf!-]jCsRr0alXi_JY<hPF8HKkD6<ge.M4/Gggu`M?*oI95:;[FQYP1'=\Z2I0>b`P-#.-u2q[XWd"Q"L9nuJQ5C%j&ST:M9mZR#d"tDKM=pVVN'UiUV!Ho]XlaLN.a[p_`G&fo#uDAU5H=T^L(6l6>C89bt>u=;DWPiP[T.8G4]Z3Si2J.08"mCJlf#FV7Sp%RT9S*<Xd7,0U%X$1*k9^8J[c@EYL`(1]7p1[U4$d<BYZ_c)g0sZ)Lc*[VRD(Y]D=I958M)RW%Ai3/tE7%Yb,lM1gl$r*T'W5&Q]%Qu41/PaD>iSYUfbc/_KYX;dtq#pUE\?@Y^U@^t0j]At]$\&iX*R!Pikr7ER,F9+kNe5U_H>5eh0NT$mW#D`S7DWCCgqV2=N(m33@*t6j*"1'R[bQ_m6@eT2c@m;s81$SD7&9j:VM>ZlrISBI9)M-Dr@")+)e60DJ_VE/9U&^aB9cYVSm0suVXGP(SNVqG;,l7:n+>[M%N@8=nihVP_7V&m["%)^5^hl@KKbqull$NdZioK>am90c@:`Djb#`Rq!#RWp+laK4Mn#$XUK4VY`cS3lep-\D<5%b,QH($i@b9[&;JVL_Q.@0s%^edXQF31b,=^"kFdD-k!mka,'if)K6\nY,SkFk$2YGu^,Icg:h-42g!bqot?6ol#Bl3P"4d)G<V4QrO4/m<DN>*#dHlG`r<l3IFkp%eRYbdjOS-8WgE#`Nri8&fS=Msk6Gqs<q'K[7Q&"IGn<>I_;"G8IUEA9;hG_u!-mPBd*1ZKkof52L5@oU=oc#4GE:6Da6?L!!233k><f18)hTQF)FM6sjEG<.sFADfq;2aMc/HU=/rP09T,Q@d[QT*D'BGeUGa>>2D9M#XI*E<!Af8qJ6MK\^-d4o^4;AjhY^))s$A<@1uCf2R,Fs*co/g]Eb_O=K;[I+^,p;n/V3<1@FF:-'-`N#.\-qN`*tdeg85X\&l46NBHDk=:8YtO0>]>DE;Qn'!+:.E#ri3aKc%e+nkeF^Zu+T9DYu5FN=;#VE><"&HNp5mU;Et'k>oNNVbi3OM9Rf_(BI6;LTP4@\\7"(.fb(/saUP&'PAli3U%5:\TYU\+VnaMJgEu?<,(<Wo@A^3ac6]mo7kDrhto7+nFI28rN71?o^#2iXqra/W(W]s3DDr_ID>7$jUL!io5DB\f-QH^>kO;fTf2hLCWHck>8\G-B%ZWdY&_!A;-&I"Ar'Q]"6"Di$a:F6(@.7_^95sm/;CI:9cYU@:Z&eSGZs'q_:p!<dM%b9H0_mJrXPp?e+6GLG2*gjT7>@n>@:"7):-[[0kC[iRRS4r9N";S=e!o^ko>W3/>oR$k$GH_oW.NVK'9889A0l$FVRf!R>+5[Vpo\kd9kXL=__/+eJkB/DP()O'ODQr9/)i$ALZuX8+B%dC-Bko:oG"&<=8Dk:fZZD6f+/Z@@+t]`L062&9GTA[tPb:5i(7f/52HNaG=X`u!9T3t2.AY3XmRk/.nT/95EtnKqS_gNa]%L,YVfc+,f)"ep9(dKYqm9^QW*=>&Pe=iK]t]3g;'mG@L(f?8EJK3_f*a,_KA@b@u9p`(qb82mbtT!+bq!]SRG`*_!\*9K>M^Uu,&8:Oa]iB[GJrs-oEhe<~>endstream
-endobj
-xref
-0 10
-0000000000 65535 f 
-0000000061 00000 n 
-0000000112 00000 n 
-0000000219 00000 n 
-0000000331 00000 n 
-0000000446 00000 n 
-0000000649 00000 n 
-0000000717 00000 n 
-0000000978 00000 n 
-0000001037 00000 n 
-trailer
-<<
-/ID 
-[<58041c89598ff60fd91fb62919d74775><58041c89598ff60fd91fb62919d74775>]
-% ReportLab generated PDF document -- digest (opensource)
 
-/Info 7 0 R
-/Root 6 0 R
-/Size 10
->>
-startxref
-3703
-%%EOF
+<title>roller-cost-finder.cluster-7.preview.emergentcf.cloud | 520: Web server is returning an unknown error</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is returning an unknown error</span>
+              <span class="code-label">Error code 520</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_520&utm_campaign=roller-cost-finder.cluster-7.preview.emergentcf.cloud" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-02-23 10:10:06 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_520&utm_campaign=roller-cost-finder.cluster-7.preview.emergentcf.cloud" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Chicago</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_520&utm_campaign=roller-cost-finder.cluster-7.preview.emergentcf.cloud" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">roller-cost-finder.cluster-7.preview.emergentcf.cloud</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>There is an unknown connection issue between Cloudflare and the origin web server. As a result, the web page can not be displayed.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>There is an issue between Cloudflare's cache and your origin web server. Cloudflare monitors for these errors and automatically investigates the cause. To help support the investigation, you can pull the corresponding error log from your web server and submit it our support team.  Please include the Ray ID (which is at the bottom of this error page).</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-520/">Additional troubleshooting resources</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9d25ee7710bc98b9</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">34.16.56.64</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_520&utm_campaign=roller-cost-finder.cluster-7.preview.emergentcf.cloud" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
