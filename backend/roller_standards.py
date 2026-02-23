@@ -19,6 +19,32 @@ def get_pipe_code(pipe_dia):
     """Get display code for pipe diameter"""
     return PIPE_DIAMETER_CODES.get(pipe_dia, int(pipe_dia))
 
+# Shaft End Type Extensions (mm)
+# These define how much the shaft extends beyond the pipe
+SHAFT_END_EXTENSIONS = {
+    "A": 26,  # Type A: +26mm
+    "B": 36,  # Type B: +36mm (default)
+    "C": 56,  # Type C: +56mm
+}
+
+def get_shaft_length(pipe_length: float, shaft_end_type: str = "B", custom_extension: int = None) -> float:
+    """
+    Calculate shaft length based on pipe length and shaft end type.
+    
+    Args:
+        pipe_length: Length of the pipe in mm
+        shaft_end_type: Type A (+26mm), B (+36mm), C (+56mm), or 'custom'
+        custom_extension: Custom extension value in mm (only used if shaft_end_type is 'custom')
+    
+    Returns:
+        Total shaft length in mm
+    """
+    if shaft_end_type == "custom" and custom_extension is not None:
+        return pipe_length + custom_extension
+    
+    extension = SHAFT_END_EXTENSIONS.get(shaft_end_type.upper(), 36)  # Default to Type B
+    return pipe_length + extension
+
 # Shaft Diameters (mm)
 SHAFT_DIAMETERS = [20, 25, 30, 35, 40, 45, 50]
 
