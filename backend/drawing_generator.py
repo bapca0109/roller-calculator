@@ -196,8 +196,9 @@ def generate_roller_drawing(
         ("Sealset:", "METAL CAP WITH NYLON SEALS FILLED WITH LITHIUM BASED EP-2 GREASE"),
     ]
     
-    if rubber_diameter:
-        specs.append(("Rubber:", "Natural Rubber, 40±5 Shore A"))
+    # Add rubber ring spec for impact rollers
+    if rubber_diameter and roller_type.lower() == 'impact':
+        specs.insert(4, ("Rubber Ring:", "SHORE HARDNESS 55-60"))
     
     for label, value in specs:
         c.setFont("Helvetica-Bold", 8)
