@@ -1169,6 +1169,23 @@ export default function CalculatorScreen() {
                 )}
               </TouchableOpacity>
             </View>
+            
+            {/* Download Drawing Button */}
+            <TouchableOpacity
+              style={styles.downloadDrawingButton}
+              onPress={downloadDrawing}
+              disabled={generatingDrawing}
+              data-testid="download-drawing-btn"
+            >
+              {generatingDrawing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="document-text-outline" size={24} color="#fff" />
+                  <Text style={styles.downloadDrawingButtonText}>Download Drawing (PDF)</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         )}
 
