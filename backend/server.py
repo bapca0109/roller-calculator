@@ -310,7 +310,7 @@ async def get_products(
             {"sku": {"$regex": search, "$options": "i"}}
         ]
     
-    products = await db.products.find(query).to_list(1000)
+    products = await db.products.find(query).limit(100).to_list(100)
     result = []
     for product in products:
         product["id"] = str(product["_id"])
@@ -522,7 +522,7 @@ async def get_quotes(current_user: dict = Depends(get_current_user)):
     if current_user["role"] == UserRole.CUSTOMER:
         query["customer_id"] = current_user["id"]
     
-    quotes = await db.quotes.find(query).sort("created_at", -1).to_list(1000)
+    quotes = await db.quotes.find(query).sort("created_at", -1).limit(100).to_list(100)
     result = []
     for quote in quotes:
         quote["id"] = str(quote["_id"])
@@ -1439,7 +1439,7 @@ async def create_customer(customer: Customer, current_user: dict = Depends(get_c
 async def get_customers(current_user: dict = Depends(get_current_user)):
     """Get all customers for the current user"""
     customers = []
-    cursor = db.customers.find({"created_by": current_user.get("email")})
+    cursor = db.customers.find({"created_by": current_user.get("email")}).limit(100)
     async for customer in cursor:
         customer["id"] = str(customer["_id"])
         del customer["_id"]
