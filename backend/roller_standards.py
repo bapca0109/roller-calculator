@@ -794,35 +794,43 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
     shaft_end_type: "A" (+26mm), "B" (+36mm), "C" (+56mm), "custom" - defaults to "B"
     custom_shaft_length: Total shaft length in mm (only used if shaft_end_type is 'custom')
     """
+    import price_loader
     
     # Pipe cost - now depends on pipe type (A/B/C)
+    # Uses database values with fallback to hardcoded defaults
     pipe_length_m = pipe_length_mm / 1000
-    pipe_weight_per_m = PIPE_WEIGHT_PER_METER[pipe_dia].get(pipe_type, PIPE_WEIGHT_PER_METER[pipe_dia]["B"])
+    pipe_weight_per_m = price_loader.get_pipe_weight(pipe_dia, pipe_type, PIPE_WEIGHT_PER_METER)
     pipe_weight = pipe_weight_per_m * pipe_length_m
-    pipe_cost = pipe_weight * PIPE_COST_PER_KG
+    pipe_cost_per_kg = price_loader.get_pipe_cost_per_kg(PIPE_COST_PER_KG)
+    pipe_cost = pipe_weight * pipe_cost_per_kg
     
     # Shaft cost (1 shaft per roller)
     shaft_length_mm = calculate_shaft_length(pipe_length_mm, shaft_end_type, custom_shaft_length)
     shaft_length_m = shaft_length_mm / 1000
-    shaft_weight = SHAFT_WEIGHT_PER_METER[shaft_dia] * shaft_length_m
-    shaft_cost = shaft_weight * SHAFT_COST_PER_KG
+    shaft_weight_per_m = price_loader.get_shaft_weight(shaft_dia, SHAFT_WEIGHT_PER_METER)
+    shaft_weight = shaft_weight_per_m * shaft_length_m
+    shaft_cost_per_kg = price_loader.get_shaft_cost_per_kg(SHAFT_COST_PER_KG)
+    shaft_cost = shaft_weight * shaft_cost_per_kg
     
-    # Bearing cost (2 bearings)
+    # Bearing cost (2 bearings) - uses price_loader internally via get_bearing_cost
     bearing_unit_cost = get_bearing_cost(bearing_number, bearing_make)
     bearing_cost = bearing_unit_cost * 2
     
     # Housing cost (2 housings)
     housing = get_housing_for_pipe_and_bearing(pipe_dia, bearing_number)
-    if housing and housing in HOUSING_COSTS:
-        housing_cost = HOUSING_COSTS[housing] * 2
+    if housing:
+        housing_unit_cost = price_loader.get_housing_cost(housing, HOUSING_COSTS)
+        housing_cost = housing_unit_cost * 2
     else:
         housing_cost = 0  # Default if housing not found
     
     # Seal set cost (2 seal sets)
-    seal_cost = SEAL_COSTS.get(bearing_number, 0) * 2
+    seal_unit_cost = price_loader.get_seal_cost(bearing_number, SEAL_COSTS)
+    seal_cost = seal_unit_cost * 2
     
     # Circlip cost (4 circlips per roller)
-    circlip_cost = CIRCLIP_COSTS[shaft_dia] * 4
+    circlip_unit_cost = price_loader.get_circlip_cost(shaft_dia, CIRCLIP_COSTS)
+    circlip_cost = circlip_unit_cost * 4
     
     # Rubber lagging cost (optional, for impact rollers)
     rubber_cost = 0
@@ -830,7 +838,7 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
     if rubber_dia:
         rubber_cost = calculate_rubber_cost(pipe_dia, rubber_dia, pipe_length_mm)
         # Add locking ring cost for impact rollers
-        locking_ring_cost = LOCKING_RING_COSTS.get(int(pipe_dia), 0)
+        locking_ring_cost = price_loader.get_locking_ring_cost(int(pipe_dia), LOCKING_RING_COSTS)
     
     total_raw_material = pipe_cost + shaft_cost + bearing_cost + housing_cost + seal_cost + circlip_cost + rubber_cost + locking_ring_cost
     
