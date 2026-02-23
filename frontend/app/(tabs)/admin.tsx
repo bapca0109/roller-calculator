@@ -134,11 +134,17 @@ export default function AdminScreen() {
           onPress: async () => {
             try {
               setSaving(true);
+              // Clear current prices first to show loading state
+              setPrices(null);
               await api.post('/admin/prices/reset');
-              await fetchPrices();
-              Alert.alert('Success', 'All prices reset to default');
+              // Fetch fresh prices from server
+              const response = await api.get('/admin/prices');
+              setPrices(response.data);
+              Alert.alert('Success', 'All prices reset to default values');
             } catch (error: any) {
               Alert.alert('Error', error.response?.data?.detail || 'Failed to reset prices');
+              // Try to refetch even on error
+              fetchPrices();
             } finally {
               setSaving(false);
             }
