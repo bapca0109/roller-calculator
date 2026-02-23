@@ -317,6 +317,7 @@ class TestPriceUpdateBugFix:
         initial_data = initial_response.json()
         initial_final_price = initial_data["pricing"]["final_price"]
         initial_raw_material = initial_data["cost_breakdown"]["total_raw_material"]
+        initial_unit_price = initial_data["pricing"]["unit_price"]
         
         # Step 2: Update multiple prices to significantly change raw material cost
         self.update_price("pipe_cost", "", 100)  # 67 -> 100
@@ -328,25 +329,39 @@ class TestPriceUpdateBugFix:
         updated_data = updated_response.json()
         updated_final_price = updated_data["pricing"]["final_price"]
         updated_raw_material = updated_data["cost_breakdown"]["total_raw_material"]
+        updated_unit_price = updated_data["pricing"]["unit_price"]
         
         print(f"FINAL PRICE TEST:")
-        print(f"  Initial: raw_material={initial_raw_material}, final_price={initial_final_price}")
-        print(f"  Updated: raw_material={updated_raw_material}, final_price={updated_final_price}")
+        print(f"  Initial: raw_material={initial_raw_material}, unit_price={initial_unit_price}, final_price={initial_final_price}")
+        print(f"  Updated: raw_material={updated_raw_material}, unit_price={updated_unit_price}, final_price={updated_final_price}")
         
-        # Final price should increase (multiplier is 2.112)
+        # Final price should increase (both should go up)
         assert updated_final_price > initial_final_price, \
             "Final price should increase with increased raw material costs"
         
-        # Verify formula: final_price ≈ raw_material × 2.112
-        expected_ratio = 2.112
-        actual_ratio = updated_final_price / updated_raw_material
+        assert updated_unit_price > initial_unit_price, \
+            "Unit price should increase with increased raw material costs"
         
-        print(f"  Price multiplier: {actual_ratio:.3f} (expected: {expected_ratio})")
+        # Verify unit_price formula: unit_price ≈ raw_material × 2.112
+        # (final_price includes discount which is 5% for orders under 2L)
+        expected_ratio = 2.112
+        actual_ratio = updated_unit_price / updated_raw_material
+        
+        print(f"  Unit price multiplier: {actual_ratio:.3f} (expected: {expected_ratio})")
         
         assert abs(actual_ratio - expected_ratio) < 0.01, \
-            f"Final price formula incorrect! Expected ratio ~{expected_ratio}, got {actual_ratio:.3f}"
+            f"Unit price formula incorrect! Expected ratio ~{expected_ratio}, got {actual_ratio:.3f}"
         
-        print("✓ PASS: Final price correctly reflects raw material cost changes")
+        # Verify final_price accounts for 5% discount (for orders < 2L)
+        # final_price = unit_price * 0.95 (5% discount)
+        expected_final = updated_unit_price * 0.95
+        
+        print(f"  Final price after 5% discount: {expected_final:.2f} (actual: {updated_final_price})")
+        
+        assert abs(updated_final_price - expected_final) < 0.1, \
+            f"Final price discount incorrect! Expected ~{expected_final:.2f}, got {updated_final_price}"
+        
+        print("✓ PASS: Final price correctly reflects raw material cost changes with discount")
     
     # ===================== EDGE CASE TESTS =====================
     
