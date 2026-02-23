@@ -59,35 +59,31 @@ def generate_roller_drawing(
     light_gray = colors.HexColor('#CCCCCC')
     
     # ============= HEADER WITH LOGO =============
-    c.setFillColor(primary_color)
-    c.rect(0, height - 50, width, 50, fill=1, stroke=0)
+    c.setFillColor(colors.white)
+    c.rect(0, height - 55, width, 55, fill=1, stroke=0)
     
-    # Add logo
+    # Add logo only (no text)
     logo_path = Path(__file__).parent / "static" / "convero-logo.png"
     if logo_path.exists():
         try:
-            c.drawImage(str(logo_path), 10*mm, height - 45, width=35*mm, height=35*mm, preserveAspectRatio=True, mask='auto')
-            text_start_x = 48*mm  # Move text right to make room for logo
+            c.drawImage(str(logo_path), 10*mm, height - 52, width=50*mm, height=48*mm, preserveAspectRatio=True, mask='auto')
         except:
-            text_start_x = 15*mm
-    else:
-        text_start_x = 15*mm
+            pass
     
-    c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(text_start_x, height - 30, "CONVERO SOLUTIONS")
-    
+    # Drawing number on right side
+    c.setFillColor(black)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawRightString(width - 15*mm, height - 20, f"DWG: {product_code}")
     c.setFont("Helvetica", 9)
-    c.drawString(text_start_x, height - 42, "Belt Conveyor Components & Engineering")
+    c.drawRightString(width - 15*mm, height - 32, f"Date: {datetime.now().strftime('%d-%m-%Y')}")
     
-    # Drawing number
-    c.setFont("Helvetica-Bold", 9)
-    c.drawRightString(width - 15*mm, height - 25, f"DWG: {product_code}")
-    c.setFont("Helvetica", 8)
-    c.drawRightString(width - 15*mm, height - 36, f"Date: {datetime.now().strftime('%d-%m-%Y')}")
+    # Header line separator
+    c.setStrokeColor(primary_color)
+    c.setLineWidth(2)
+    c.line(10*mm, height - 55, width - 10*mm, height - 55)
     
     # ============= TITLE =============
-    y_pos = height - 70
+    y_pos = height - 75
     c.setFillColor(black)
     c.setFont("Helvetica-Bold", 14)
     
