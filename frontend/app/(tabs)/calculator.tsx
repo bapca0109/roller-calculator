@@ -157,6 +157,9 @@ export default function CalculatorScreen() {
   const [quantity, setQuantity] = useState<string>('1');
   const [packingType, setPackingType] = useState<string>('none');
   const [freightPincode, setFreightPincode] = useState<string>('');
+  
+  // Drawing generation state
+  const [generatingDrawing, setGeneratingDrawing] = useState(false);
 
   // Error state
   const [errors, setErrors] = useState<{
