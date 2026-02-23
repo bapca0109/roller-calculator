@@ -328,14 +328,14 @@ def draw_roller_schematic(c, center_x, center_y, pipe_diameter, pipe_length, sha
     c.line(center_x - pipe_len/2, dim_y_top, center_x + pipe_len/2, dim_y_top)
     c.line(center_x - pipe_len/2, dim_y_top - 3, center_x - pipe_len/2, dim_y_top + 3)
     c.line(center_x + pipe_len/2, dim_y_top - 3, center_x + pipe_len/2, dim_y_top + 3)
-    c.drawCentredString(center_x, dim_y_top + 5, f"{pipe_length} mm")
+    c.drawCentredString(center_x, dim_y_top + 5, f"{int(pipe_length)} mm (pipe)")
     
     # Total shaft length dimension (top)
     dim_y_shaft = dim_y_top + 20
     c.line(center_x - shaft_total/2, dim_y_shaft, center_x + shaft_total/2, dim_y_shaft)
     c.line(center_x - shaft_total/2, dim_y_shaft - 3, center_x - shaft_total/2, dim_y_shaft + 3)
     c.line(center_x + shaft_total/2, dim_y_shaft - 3, center_x + shaft_total/2, dim_y_shaft + 3)
-    c.drawCentredString(center_x, dim_y_shaft + 5, f"{pipe_length + 70} mm (shaft)")
+    c.drawCentredString(center_x, dim_y_shaft + 5, f"{int(shaft_length)} mm (shaft)")
     
     # Diameter dimension (right side)
     dim_x_right = center_x + shaft_total/2 + 20
@@ -360,9 +360,9 @@ def draw_roller_schematic(c, center_x, center_y, pipe_diameter, pipe_length, sha
     
     # Shaft diameter (left side, smaller)
     dim_x_left = center_x - shaft_total/2 - 15
-    c.line(dim_x_left, center_y - shaft_dia/2, dim_x_left, center_y + shaft_dia/2)
-    c.line(dim_x_left - 3, center_y - shaft_dia/2, dim_x_left + 3, center_y - shaft_dia/2)
-    c.line(dim_x_left - 3, center_y + shaft_dia/2, dim_x_left + 3, center_y + shaft_dia/2)
+    c.line(dim_x_left, center_y - shaft_dia_scaled/2, dim_x_left, center_y + shaft_dia_scaled/2)
+    c.line(dim_x_left - 3, center_y - shaft_dia_scaled/2, dim_x_left + 3, center_y - shaft_dia_scaled/2)
+    c.line(dim_x_left - 3, center_y + shaft_dia_scaled/2, dim_x_left + 3, center_y + shaft_dia_scaled/2)
     c.saveState()
     c.translate(dim_x_left - 5, center_y)
     c.rotate(90)
