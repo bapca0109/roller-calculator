@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -42,6 +44,23 @@ interface ProductResult {
   exact_match?: boolean;
 }
 
+interface QuoteItem {
+  product_code: string;
+  roller_type: string;
+  pipe_diameter: number;
+  pipe_length: number;
+  pipe_type: string;
+  shaft_diameter: number;
+  bearing: string;
+  bearing_make: string;
+  housing: string;
+  rubber_diameter?: number;
+  weight_kg: number;
+  unit_price: number;
+  quantity: number;
+  belt_widths: number[];
+}
+
 export default function SearchScreen() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,6 +69,34 @@ export default function SearchScreen() {
   const [hasSearched, setHasSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
+  
+  // Quote builder state
+  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
+  const [showQuoteBuilder, setShowQuoteBuilder] = useState(false);
+  const [savingQuote, setSavingQuote] = useState(false);
+  
+  // Customer selection
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  
+  // Quantity modal
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [selectedLength, setSelectedLength] = useState<{product: ProductResult, length: LengthDetail} | null>(null);
+  const [quantityInput, setQuantityInput] = useState('1');
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await api.get('/customers');
+      setCustomers(response.data.customers || []);
+    } catch (error) {
+      console.log('Failed to fetch customers');
+    }
+  };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -107,6 +154,118 @@ export default function SearchScreen() {
     setSearchQuery('');
     setResults([]);
     setHasSearched(false);
+  };
+
+  // Quote functions
+  const openAddToQuote = (product: ProductResult, length: LengthDetail) => {
+    setSelectedLength({ product, length });
+    setQuantityInput('1');
+    setShowQuantityModal(true);
+  };
+
+  const addToQuote = () => {
+    if (!selectedLength) return;
+    
+    const qty = parseInt(quantityInput) || 1;
+    if (qty < 1 || qty > 10000) {
+      Alert.alert('Invalid Quantity', 'Please enter a quantity between 1 and 10,000');
+      return;
+    }
+
+    const { product, length } = selectedLength;
+    
+    const newItem: QuoteItem = {
+      product_code: length.product_code,
+      roller_type: product.roller_type,
+      pipe_diameter: product.pipe_diameter,
+      pipe_length: length.length_mm,
+      pipe_type: product.pipe_type,
+      shaft_diameter: product.shaft_diameter,
+      bearing: product.bearing,
+      bearing_make: product.bearing_make,
+      housing: product.housing,
+      rubber_diameter: product.rubber_diameter,
+      weight_kg: length.weight_kg,
+      unit_price: length.price,
+      quantity: qty,
+      belt_widths: length.belt_widths,
+    };
+
+    setQuoteItems([...quoteItems, newItem]);
+    setShowQuantityModal(false);
+    setSelectedLength(null);
+    
+    Alert.alert(
+      'Added to Quote!', 
+      `${length.product_code} x ${qty} added.\nItems in quote: ${quoteItems.length + 1}`,
+      [{ text: 'OK' }, { text: 'View Quote', onPress: () => setShowQuoteBuilder(true) }]
+    );
+  };
+
+  const removeFromQuote = (index: number) => {
+    const newItems = [...quoteItems];
+    newItems.splice(index, 1);
+    setQuoteItems(newItems);
+  };
+
+  const getQuoteTotal = () => {
+    return quoteItems.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
+  };
+
+  const getTotalWeight = () => {
+    return quoteItems.reduce((sum, item) => sum + (item.weight_kg * item.quantity), 0);
+  };
+
+  const saveQuote = async () => {
+    if (quoteItems.length === 0) {
+      Alert.alert('Error', 'No items in quote');
+      return;
+    }
+
+    setSavingQuote(true);
+    try {
+      const products = quoteItems.map(item => ({
+        product_id: item.product_code,
+        product_name: `${item.roller_type.charAt(0).toUpperCase() + item.roller_type.slice(1)} Roller - ${item.product_code}`,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        specifications: {
+          pipe_diameter: item.pipe_diameter,
+          pipe_length: item.pipe_length,
+          pipe_type: item.pipe_type,
+          shaft_diameter: item.shaft_diameter,
+          bearing: item.bearing,
+          bearing_make: item.bearing_make,
+          housing: item.housing,
+          rubber_diameter: item.rubber_diameter,
+          weight_kg: item.weight_kg,
+          belt_widths: item.belt_widths,
+        },
+        calculated_discount: 0,
+        custom_premium: 0
+      }));
+
+      const response = await api.post('/quotes', {
+        products,
+        customer_id: selectedCustomer?.id || null,
+        delivery_location: null,
+        notes: `Quote from Search - ${quoteItems.length} items`
+      });
+      
+      Alert.alert(
+        'Quote Saved!', 
+        `Quote Number: ${response.data.quote_number}\nCustomer: ${selectedCustomer?.name || 'N/A'}\nTotal Items: ${quoteItems.length}\nTotal: Rs. ${response.data.total_price.toFixed(2)}`,
+        [{ text: 'OK', onPress: () => {
+          setQuoteItems([]);
+          setShowQuoteBuilder(false);
+          setSelectedCustomer(null);
+        }}]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to save quote');
+    } finally {
+      setSavingQuote(false);
+    }
   };
 
   const renderResultItem = ({ item }: { item: ProductResult }) => {
@@ -184,7 +343,7 @@ export default function SearchScreen() {
             </View>
           </View>
 
-          {/* Expandable Length Details */}
+          {/* Expandable Length Details with Add to Quote */}
           {item.length_details && item.length_details.length > 0 && (
             <>
               <TouchableOpacity 
@@ -204,23 +363,27 @@ export default function SearchScreen() {
               {isExpanded && (
                 <View style={styles.lengthDetailsContainer}>
                   <View style={styles.lengthTableHeader}>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1.5 }]}>Code</Text>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.8 }]}>Length</Text>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.8 }]}>Belt</Text>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.6 }]}>Wt</Text>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1 }]}>Price</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1.2 }]}>Code</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.6 }]}>Len</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.5 }]}>Wt</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.8 }]}>Price</Text>
+                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.6 }]}>Add</Text>
                   </View>
                   {item.length_details.map((ld, idx) => (
                     <View key={idx} style={[styles.lengthTableRow, idx % 2 === 0 && styles.lengthTableRowAlt]}>
-                      <Text style={[styles.lengthTableCell, styles.lengthCodeCell, { flex: 1.5 }]} numberOfLines={1}>
+                      <Text style={[styles.lengthTableCell, styles.lengthCodeCell, { flex: 1.2 }]} numberOfLines={1}>
                         {ld.product_code}
                       </Text>
-                      <Text style={[styles.lengthTableCell, { flex: 0.8 }]}>{ld.length_mm}</Text>
-                      <Text style={[styles.lengthTableCell, { flex: 0.8 }]}>
-                        {ld.belt_widths.length > 0 ? ld.belt_widths.join(',') : '-'}
-                      </Text>
-                      <Text style={[styles.lengthTableCell, { flex: 0.6 }]}>{ld.weight_kg}</Text>
-                      <Text style={[styles.lengthTableCell, styles.priceCell, { flex: 1 }]}>₹{ld.price}</Text>
+                      <Text style={[styles.lengthTableCell, { flex: 0.6 }]}>{ld.length_mm}</Text>
+                      <Text style={[styles.lengthTableCell, { flex: 0.5 }]}>{ld.weight_kg}</Text>
+                      <Text style={[styles.lengthTableCell, styles.priceCell, { flex: 0.8 }]}>₹{ld.price}</Text>
+                      <TouchableOpacity 
+                        style={[styles.addButton, { flex: 0.6 }]}
+                        onPress={() => openAddToQuote(item, ld)}
+                        data-testid={`add-quote-${ld.product_code}`}
+                      >
+                        <Ionicons name="add-circle" size={24} color="#960018" />
+                      </TouchableOpacity>
                     </View>
                   ))}
                 </View>
@@ -275,6 +438,21 @@ export default function SearchScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Quote Builder Button */}
+      {quoteItems.length > 0 && (
+        <TouchableOpacity 
+          style={styles.quoteBuilderButton}
+          onPress={() => setShowQuoteBuilder(true)}
+          data-testid="view-quote-btn"
+        >
+          <View style={styles.quoteBuilderContent}>
+            <Ionicons name="cart" size={20} color="#fff" />
+            <Text style={styles.quoteBuilderText}>View Quote ({quoteItems.length} items)</Text>
+          </View>
+          <Text style={styles.quoteBuilderTotal}>Rs. {getQuoteTotal().toFixed(2)}</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Search Tips */}
       {!hasSearched && (
         <View style={styles.tipsContainer}>
@@ -284,7 +462,7 @@ export default function SearchScreen() {
               <Text style={styles.tipTitle}>Search Tips</Text>
               <Text style={styles.tipText}>
                 Search by product code or specifications:{'\n'}
-                • Full code: "CR20 88465A 63S"{'\n'}
+                • Full code: "CR20 88 465A 63S"{'\n'}
                 • "CR" - Carrying rollers{'\n'}
                 • "IR" - Impact rollers{'\n'}
                 • "25" - 25mm shaft rollers{'\n'}
@@ -364,6 +542,186 @@ export default function SearchScreen() {
           )}
         </View>
       )}
+
+      {/* Quantity Modal */}
+      <Modal
+        visible={showQuantityModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowQuantityModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.quantityModal}>
+            <Text style={styles.modalTitle}>Add to Quote</Text>
+            {selectedLength && (
+              <>
+                <Text style={styles.modalProductCode}>{selectedLength.length.product_code}</Text>
+                <View style={styles.modalDetails}>
+                  <Text style={styles.modalDetailText}>Length: {selectedLength.length.length_mm}mm</Text>
+                  <Text style={styles.modalDetailText}>Weight: {selectedLength.length.weight_kg} kg</Text>
+                  <Text style={styles.modalDetailText}>Price: Rs. {selectedLength.length.price}</Text>
+                </View>
+                <Text style={styles.quantityLabel}>Quantity:</Text>
+                <TextInput
+                  style={styles.quantityInput}
+                  value={quantityInput}
+                  onChangeText={setQuantityInput}
+                  keyboardType="number-pad"
+                  placeholder="Enter quantity"
+                  data-testid="quantity-input"
+                />
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity 
+                    style={styles.cancelButton}
+                    onPress={() => setShowQuantityModal(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.confirmButton}
+                    onPress={addToQuote}
+                    data-testid="confirm-add-btn"
+                  >
+                    <Text style={styles.confirmButtonText}>Add to Quote</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Quote Builder Modal */}
+      <Modal
+        visible={showQuoteBuilder}
+        animationType="slide"
+        onRequestClose={() => setShowQuoteBuilder(false)}
+      >
+        <View style={styles.quoteBuilderModal}>
+          <View style={styles.quoteBuilderHeader}>
+            <Text style={styles.quoteBuilderTitle}>Quote Builder</Text>
+            <TouchableOpacity onPress={() => setShowQuoteBuilder(false)}>
+              <Ionicons name="close" size={28} color="#333" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Customer Selection */}
+          <TouchableOpacity 
+            style={styles.customerSelector}
+            onPress={() => setShowCustomerPicker(true)}
+          >
+            <Ionicons name="person-outline" size={20} color="#666" />
+            <Text style={styles.customerSelectorText}>
+              {selectedCustomer ? selectedCustomer.name : 'Select Customer (Optional)'}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <ScrollView style={styles.quoteItemsList}>
+            {quoteItems.map((item, index) => (
+              <View key={index} style={styles.quoteItem}>
+                <View style={styles.quoteItemHeader}>
+                  <Text style={styles.quoteItemCode}>{item.product_code}</Text>
+                  <TouchableOpacity onPress={() => removeFromQuote(index)}>
+                    <Ionicons name="trash-outline" size={20} color="#FF5252" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.quoteItemDetails}>
+                  <Text style={styles.quoteItemDetail}>Type: {item.roller_type}</Text>
+                  <Text style={styles.quoteItemDetail}>Weight: {item.weight_kg} kg</Text>
+                  <Text style={styles.quoteItemDetail}>Qty: {item.quantity}</Text>
+                </View>
+                <View style={styles.quoteItemPricing}>
+                  <Text style={styles.quoteItemUnitPrice}>Rs. {item.unit_price.toFixed(2)} x {item.quantity}</Text>
+                  <Text style={styles.quoteItemTotal}>Rs. {(item.unit_price * item.quantity).toFixed(2)}</Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+
+          <View style={styles.quoteSummary}>
+            <View style={styles.quoteSummaryRow}>
+              <Text style={styles.quoteSummaryLabel}>Total Items:</Text>
+              <Text style={styles.quoteSummaryValue}>{quoteItems.length}</Text>
+            </View>
+            <View style={styles.quoteSummaryRow}>
+              <Text style={styles.quoteSummaryLabel}>Total Weight:</Text>
+              <Text style={styles.quoteSummaryValue}>{getTotalWeight().toFixed(2)} kg</Text>
+            </View>
+            <View style={styles.quoteSummaryRow}>
+              <Text style={styles.quoteSummaryLabel}>Total Amount:</Text>
+              <Text style={styles.quoteTotalValue}>Rs. {getQuoteTotal().toFixed(2)}</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity 
+            style={styles.saveQuoteButton}
+            onPress={saveQuote}
+            disabled={savingQuote || quoteItems.length === 0}
+            data-testid="save-quote-btn"
+          >
+            {savingQuote ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="save-outline" size={20} color="#fff" />
+                <Text style={styles.saveQuoteButtonText}>Save Quote</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* Customer Picker Modal */}
+      <Modal
+        visible={showCustomerPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCustomerPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.customerPickerModal}>
+            <View style={styles.customerPickerHeader}>
+              <Text style={styles.customerPickerTitle}>Select Customer</Text>
+              <TouchableOpacity onPress={() => setShowCustomerPicker(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.customerList}>
+              <TouchableOpacity 
+                style={styles.customerOption}
+                onPress={() => {
+                  setSelectedCustomer(null);
+                  setShowCustomerPicker(false);
+                }}
+              >
+                <Text style={styles.customerOptionText}>No Customer</Text>
+              </TouchableOpacity>
+              {customers.map((customer) => (
+                <TouchableOpacity 
+                  key={customer.id}
+                  style={[
+                    styles.customerOption,
+                    selectedCustomer?.id === customer.id && styles.customerOptionSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedCustomer(customer);
+                    setShowCustomerPicker(false);
+                  }}
+                >
+                  <Text style={styles.customerOptionName}>{customer.name}</Text>
+                  {customer.company && (
+                    <Text style={styles.customerOptionCompany}>{customer.company}</Text>
+                  )}
+                  {customer.gst_number && (
+                    <Text style={styles.customerOptionGst}>GST: {customer.gst_number}</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -426,6 +784,31 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  quoteBuilderButton: {
+    backgroundColor: '#1A1A2E',
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  quoteBuilderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  quoteBuilderText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  quoteBuilderTotal: {
+    color: '#4CAF50',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   tipsContainer: {
     padding: 16,
@@ -579,6 +962,9 @@ const styles = StyleSheet.create({
   impactTag: {
     backgroundColor: '#2196F3',
   },
+  returnTag: {
+    backgroundColor: '#FF9800',
+  },
   typeTagText: {
     fontSize: 12,
     fontWeight: '600',
@@ -646,9 +1032,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-  returnTag: {
-    backgroundColor: '#FF9800',
-  },
   expandButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -675,6 +1058,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#960018',
     paddingVertical: 10,
     paddingHorizontal: 8,
+    alignItems: 'center',
   },
   lengthTableHeaderText: {
     color: '#fff',
@@ -687,6 +1071,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
+    alignItems: 'center',
   },
   lengthTableRowAlt: {
     backgroundColor: '#F0F0F0',
@@ -702,5 +1087,267 @@ const styles = StyleSheet.create({
   priceCell: {
     fontWeight: '600',
     color: '#960018',
+  },
+  addButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  modalProductCode: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#960018',
+    marginBottom: 16,
+  },
+  modalDetails: {
+    backgroundColor: '#F5F5F5',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  modalDetailText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  quantityLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  quantityInput: {
+    borderWidth: 1,
+    borderColor: '#DDD',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 18,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  confirmButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 8,
+    backgroundColor: '#960018',
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // Quote Builder Modal
+  quoteBuilderModal: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  quoteBuilderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingTop: 50,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  quoteBuilderTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  customerSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    margin: 16,
+    padding: 14,
+    borderRadius: 12,
+    gap: 10,
+  },
+  customerSelectorText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+  },
+  quoteItemsList: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  quoteItem: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  quoteItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  quoteItemCode: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#960018',
+  },
+  quoteItemDetails: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 8,
+  },
+  quoteItemDetail: {
+    fontSize: 13,
+    color: '#666',
+  },
+  quoteItemPricing: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  quoteItemUnitPrice: {
+    fontSize: 14,
+    color: '#666',
+  },
+  quoteItemTotal: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  quoteSummary: {
+    backgroundColor: '#fff',
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+  },
+  quoteSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  quoteSummaryLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  quoteSummaryValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  quoteTotalValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#960018',
+  },
+  saveQuoteButton: {
+    flexDirection: 'row',
+    backgroundColor: '#960018',
+    margin: 16,
+    marginTop: 0,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  saveQuoteButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  // Customer Picker Modal
+  customerPickerModal: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+    width: '100%',
+    position: 'absolute',
+    bottom: 0,
+  },
+  customerPickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  customerPickerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  customerList: {
+    padding: 16,
+  },
+  customerOption: {
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  customerOptionSelected: {
+    backgroundColor: '#FFF0F0',
+  },
+  customerOptionText: {
+    fontSize: 15,
+    color: '#666',
+  },
+  customerOptionName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  customerOptionCompany: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  customerOptionGst: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
   },
 });
