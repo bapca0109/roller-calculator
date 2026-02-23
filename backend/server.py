@@ -1732,6 +1732,43 @@ async def generate_drawing(request: DrawingRequest, current_user: dict = Depends
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate drawing: {str(e)}")
 
+@api_router.post("/generate-drawing-base64")
+async def generate_drawing_base64(request: DrawingRequest, current_user: dict = Depends(get_current_user)):
+    """Generate a technical drawing PDF and return as base64 for mobile apps"""
+    from drawing_generator import generate_roller_drawing
+    import base64
+    
+    try:
+        pdf_buffer = generate_roller_drawing(
+            product_code=request.product_code,
+            roller_type=request.roller_type,
+            pipe_diameter=request.pipe_diameter,
+            pipe_length=request.pipe_length,
+            pipe_type=request.pipe_type,
+            shaft_diameter=request.shaft_diameter,
+            bearing=request.bearing,
+            bearing_make=request.bearing_make,
+            housing=request.housing,
+            weight_kg=request.weight_kg,
+            unit_price=request.unit_price,
+            rubber_diameter=request.rubber_diameter,
+            belt_widths=request.belt_widths,
+            quantity=request.quantity,
+            shaft_end_type=request.shaft_end_type or "B",
+            custom_shaft_extension=request.custom_shaft_extension
+        )
+        
+        # Convert to base64
+        pdf_bytes = pdf_buffer.getvalue()
+        base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+        
+        return {
+            "base64": base64_pdf,
+            "filename": f"Drawing_{request.product_code.replace(' ', '_').replace('/', '-')}.pdf"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate drawing: {str(e)}")
+
 # Include the router in the main app
 app.include_router(api_router)
 
