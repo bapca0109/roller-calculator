@@ -134,51 +134,55 @@ RETURN_ROLLER_LENGTHS = {
 
 # Pipe Weight per meter (kg/m) - IS-9295 Light/Medium/Heavy Classes
 # Type A = Light, Type B = Medium, Type C = Heavy
+# Pipe Weight per meter (kg/m) - Calculated using formula:
+# Weight (kg/m) = π/4 × (OD² - ID²) × ρ / 1,000,000
+# Where: ID = OD - (2 × Wall Thickness), ρ = 7.85 kg/dm³ (steel density)
+
 PIPE_WEIGHT_PER_METER = {
     60.8: {  # 60mm OD per IS-9295
-        "A": 4.11,   # Light: 2.90mm thickness
-        "B": 5.10,   # Medium: 3.65mm thickness
-        "C": 6.17    # Heavy: 4.47mm thickness
+        "A": 4.14,   # Light: 2.90mm thickness
+        "B": 5.14,   # Medium: 3.65mm thickness
+        "C": 6.21    # Heavy: 4.47mm thickness
     },
     76.1: {  # 76mm OD per IS-9295
         "A": 5.84,   # Light: 3.25mm thickness
-        "B": 6.61,   # Medium: 3.65mm thickness
+        "B": 6.52,   # Medium: 3.65mm thickness
         "C": 7.90    # Heavy: 4.47mm thickness
     },
     88.9: {  # 88mm OD per IS-9295
-        "A": 6.81,   # Light: 3.25mm thickness
+        "A": 6.86,   # Light: 3.25mm thickness
         "B": 8.47,   # Medium: 4.05mm thickness
-        "C": 10.10   # Heavy: 4.85mm thickness
+        "C": 10.05   # Heavy: 4.85mm thickness
     },
     114.3: {  # 114mm OD per IS-9295
-        "A": 9.89,   # Light: 3.65mm thickness
-        "B": 12.10,  # Medium: 4.50mm thickness
-        "C": 14.40   # Heavy: 5.40mm thickness
+        "A": 9.96,   # Light: 3.65mm thickness
+        "B": 12.11,  # Medium: 4.47mm thickness
+        "C": 14.32   # Heavy: 5.33mm thickness
     },
     127.0: {  # 127mm OD
-        "A": 12.13,  # Light: 4.0mm thickness
-        "B": 15.0,   # Medium: 4.85mm thickness
-        "C": 16.5    # Heavy: 5.40mm thickness
+        "A": 12.13,  # Light: 4.00mm thickness
+        "B": 14.61,  # Medium: 4.85mm thickness
+        "C": 15.99   # Heavy: 5.33mm thickness
     },
     139.7: {  # 139mm OD
-        "A": 13.38,  # Light: 4.0mm thickness
-        "B": 16.5,   # Medium: calculated
-        "C": 18.5    # Heavy: 5.40mm thickness
+        "A": 13.39,  # Light: 4.00mm thickness
+        "B": 16.13,  # Medium: 4.85mm thickness
+        "C": 17.66   # Heavy: 5.33mm thickness
     },
     152.4: {  # 152mm OD
-        "A": 15.0,   # Light: calculated
-        "B": 18.0,   # Medium: 4.85mm thickness
-        "C": 20.0    # Heavy: 5.40mm thickness
+        "A": 14.64,  # Light: 4.00mm thickness
+        "B": 17.65,  # Medium: 4.85mm thickness
+        "C": 19.33   # Heavy: 5.33mm thickness
     },
     159.0: {  # 159mm OD
-        "A": 15.8,   # Light: calculated
-        "B": 19.0,   # Medium: calculated
-        "C": 21.0    # Heavy: calculated
+        "A": 15.29,  # Light: 4.00mm thickness
+        "B": 18.44,  # Medium: 4.85mm thickness
+        "C": 20.20   # Heavy: 5.33mm thickness
     },
     165.0: {  # 165mm OD
-        "A": 16.5,   # Light: calculated
-        "B": 20.0,   # Medium: calculated
-        "C": 21.5    # Heavy: 5.40mm thickness
+        "A": 15.88,  # Light: 4.00mm thickness
+        "B": 19.16,  # Medium: 4.85mm thickness
+        "C": 20.99   # Heavy: 5.33mm thickness
     }
 }
 
