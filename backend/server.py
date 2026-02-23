@@ -728,6 +728,8 @@ class DetailedCostRequest(BaseModel):
     belt_width: Optional[int] = None
     quantity: Optional[int] = 1  # Number of rollers
     freight_pincode: Optional[str] = None  # Destination pincode for freight calculation
+    shaft_end_type: Optional[str] = "B"  # A (+26mm), B (+36mm), C (+56mm), custom
+    custom_shaft_extension: Optional[int] = None  # Custom shaft extension in mm
 
 class DetailedCostResponse(BaseModel):
     configuration: Dict[str, Any]
