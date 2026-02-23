@@ -557,16 +557,29 @@ export default function AdminScreen() {
           data={collectionData}
           keyExtractor={(item, index) => index.toString()}
           renderItem={({ item }) => (
-            <TouchableOpacity 
-              style={styles.dataRow}
-              onPress={() => viewItemDetails(item)}
-            >
-              <View style={styles.dataRowContent}>
+            <View style={styles.dataRow}>
+              <TouchableOpacity 
+                style={styles.dataRowContent}
+                onPress={() => viewItemDetails(item)}
+              >
                 <Text style={styles.dataRowLabel}>{getItemLabel(item)}</Text>
                 <Text style={styles.dataRowValue}>{getItemSubtitle(item)}</Text>
+              </TouchableOpacity>
+              <View style={styles.dataRowActions}>
+                <TouchableOpacity 
+                  style={styles.editBtn}
+                  onPress={() => openEditModal(item)}
+                >
+                  <Ionicons name="pencil" size={18} color="#960018" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.deleteBtn}
+                  onPress={() => handleDeleteStandard(item)}
+                >
+                  <Ionicons name="trash" size={18} color="#C41E3A" />
+                </TouchableOpacity>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#ccc" />
-            </TouchableOpacity>
+            </View>
           )}
           contentContainerStyle={styles.dataList}
         />
@@ -601,6 +614,84 @@ export default function AdminScreen() {
                 </View>
               ))}
           </ScrollView>
+          <View style={styles.modalFooter}>
+            <TouchableOpacity 
+              style={styles.modalEditBtn}
+              onPress={() => {
+                setDetailModalVisible(false);
+                if (selectedItem) openEditModal(selectedItem);
+              }}
+            >
+              <Ionicons name="pencil" size={18} color="#fff" />
+              <Text style={styles.modalEditBtnText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.modalDeleteBtn}
+              onPress={() => {
+                setDetailModalVisible(false);
+                if (selectedItem) handleDeleteStandard(selectedItem);
+              }}
+            >
+              <Ionicons name="trash" size={18} color="#C41E3A" />
+              <Text style={styles.modalDeleteBtnText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderEditModal = () => (
+    <Modal
+      visible={editModalVisible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setEditModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Edit Item</Text>
+            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalBody}>
+            {editingItem && getEditableFields(editingItem).map(key => (
+              <View key={key} style={styles.editFieldContainer}>
+                <Text style={styles.editFieldLabel}>{key.replace(/_/g, ' ')}</Text>
+                <TextInput
+                  style={styles.editFieldInput}
+                  value={editFormData[key] || ''}
+                  onChangeText={(text) => setEditFormData({...editFormData, [key]: text})}
+                  placeholder={`Enter ${key}`}
+                  multiline={typeof editingItem[key] === 'object'}
+                />
+              </View>
+            ))}
+          </ScrollView>
+          <View style={styles.modalFooter}>
+            <TouchableOpacity 
+              style={styles.cancelButton}
+              onPress={() => setEditModalVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.saveButton}
+              onPress={handleUpdateStandard}
+              disabled={savingStandard}
+            >
+              {savingStandard ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={18} color="#fff" />
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
