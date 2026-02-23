@@ -553,33 +553,26 @@ export default function AdminScreen() {
           </Text>
         </View>
         
+        {/* Read-only notice */}
+        <View style={styles.readOnlyNotice}>
+          <Ionicons name="information-circle" size={16} color="#666" />
+          <Text style={styles.readOnlyText}>View only. To change prices, use the Prices tab.</Text>
+        </View>
+        
         <FlatList
           data={collectionData}
           keyExtractor={(item, index) => index.toString()}
           renderItem={({ item }) => (
-            <View style={styles.dataRow}>
-              <TouchableOpacity 
-                style={styles.dataRowContent}
-                onPress={() => viewItemDetails(item)}
-              >
+            <TouchableOpacity 
+              style={styles.dataRow}
+              onPress={() => viewItemDetails(item)}
+            >
+              <View style={styles.dataRowContent}>
                 <Text style={styles.dataRowLabel}>{getItemLabel(item)}</Text>
                 <Text style={styles.dataRowValue}>{getItemSubtitle(item)}</Text>
-              </TouchableOpacity>
-              <View style={styles.dataRowActions}>
-                <TouchableOpacity 
-                  style={styles.editBtn}
-                  onPress={() => openEditModal(item)}
-                >
-                  <Ionicons name="pencil" size={18} color="#960018" />
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.deleteBtn}
-                  onPress={() => handleDeleteStandard(item)}
-                >
-                  <Ionicons name="trash" size={18} color="#C41E3A" />
-                </TouchableOpacity>
               </View>
-            </View>
+              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            </TouchableOpacity>
           )}
           contentContainerStyle={styles.dataList}
         />
