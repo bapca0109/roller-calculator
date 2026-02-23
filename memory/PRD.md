@@ -64,6 +64,7 @@ Examples:
 - Without bearing make: `CR25 139 600 62`
 - Full exact codes: `CR20 89 200A 62S`
 - **Add to Quote from Search** - Add products directly to quote from search results
+- **Download Drawing from Search** - Generate PDF drawings per product length
 
 ### 6. Pricing Formula
 `(Total Raw Material Cost) × 1.32 (layout) × 1.60 (profit)`
@@ -77,10 +78,21 @@ Examples:
 - PDF export
 - Company branding (CONVERO SOLUTIONS)
 
+### 8. Drawing Generator Feature (NEW - Feb 2026)
+- Auto-generated PDF drawings with:
+  - CONVERO SOLUTIONS logo and branding
+  - Dimensional schematic diagram (pipe length, diameter, shaft)
+  - Bill of Materials table (pipe, shaft, bearing, housing, seals, circlips)
+  - Material specifications (IS-9295 steel, bearing make, etc.)
+  - Pricing information (unit price, quantity, total)
+- Available in both Calculator and Search tabs
+- Download as PDF for sharing/printing
+
 ## Tech Stack
 - **Frontend**: React Native, Expo, Expo Router, TypeScript
 - **Backend**: FastAPI, Python
 - **Database**: MongoDB
+- **PDF Generation**: ReportLab (backend), react-native-html-to-pdf (quotes)
 
 ## Key Files
 - `/app/backend/roller_standards.py` - All roller specifications and pricing data
