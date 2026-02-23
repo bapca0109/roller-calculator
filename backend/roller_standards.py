@@ -794,11 +794,12 @@ def get_bearing_cost(bearing_number, make="china"):
     
     return 0  # Shouldn't happen if bearing exists
 
-def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_number, bearing_make="china", rubber_dia=None, pipe_type="B", shaft_end_type="B", custom_shaft_extension=None):
+def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_number, bearing_make="china", rubber_dia=None, pipe_type="B", shaft_end_type="B", custom_shaft_length=None):
     """
     Calculate total raw material cost for a roller (optionally with rubber lagging for impact rollers)
     pipe_type: "A" (Light), "B" (Medium), "C" (Heavy) - defaults to "B" (Medium)
     shaft_end_type: "A" (+26mm), "B" (+36mm), "C" (+56mm), "custom" - defaults to "B"
+    custom_shaft_length: Total shaft length in mm (only used if shaft_end_type is 'custom')
     """
     
     # Pipe cost - now depends on pipe type (A/B/C)
@@ -808,7 +809,7 @@ def calculate_raw_material_cost(pipe_dia, pipe_length_mm, shaft_dia, bearing_num
     pipe_cost = pipe_weight * PIPE_COST_PER_KG
     
     # Shaft cost (1 shaft per roller)
-    shaft_length_mm = calculate_shaft_length(pipe_length_mm, shaft_end_type, custom_shaft_extension)
+    shaft_length_mm = calculate_shaft_length(pipe_length_mm, shaft_end_type, custom_shaft_length)
     shaft_length_m = shaft_length_mm / 1000
     shaft_weight = SHAFT_WEIGHT_PER_METER[shaft_dia] * shaft_length_m
     shaft_cost = shaft_weight * SHAFT_COST_PER_KG
