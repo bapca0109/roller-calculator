@@ -281,18 +281,17 @@ export default function SearchScreen() {
     const drawingKey = `${length.product_code}`;
     setGeneratingDrawing(drawingKey);
     
-    // Debug alert
-    Alert.alert('Starting', `Downloading drawing for ${length.product_code}...`);
-    
     try {
       // Step 1: Get token
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert('Error', 'Not authenticated. Please login again.');
+        Alert.alert('Error', 'Not authenticated');
+        setGeneratingDrawing(null);
         return;
       }
       
-      // Step 2: Create request body
+      // Step 2: Create request
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
       const requestBody = {
         product_code: length.product_code,
         roller_type: product.roller_type,
@@ -310,8 +309,7 @@ export default function SearchScreen() {
         quantity: 1
       };
 
-      // Step 3: Fetch PDF as base64
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+      // Step 3: Fetch PDF
       const response = await fetch(`${backendUrl}/api/generate-drawing-base64`, {
         method: 'POST',
         headers: {
@@ -322,54 +320,34 @@ export default function SearchScreen() {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        Alert.alert('Error', `Server error: ${response.status} - ${errorText}`);
+        Alert.alert('API Error', `Status: ${response.status}`);
+        setGeneratingDrawing(null);
         return;
       }
 
-      // Step 4: Parse JSON
       const data = await response.json();
       if (!data.base64) {
-        Alert.alert('Error', 'No PDF data received from server');
+        Alert.alert('Error', 'No PDF data');
+        setGeneratingDrawing(null);
         return;
       }
 
-      // Step 5: Write file
-      const filename = `Drawing_${length.product_code.replace(/ /g, '_').replace(/\//g, '-')}.pdf`;
+      // Step 4: Save file
+      const filename = `Drawing_${Date.now()}.pdf`;
       const fileUri = FileSystem.documentDirectory + filename;
-
+      
       await FileSystem.writeAsStringAsync(fileUri, data.base64, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // Step 6: Check if file exists
-      const fileInfo = await FileSystem.getInfoAsync(fileUri);
-      if (!fileInfo.exists) {
-        Alert.alert('Error', 'Failed to save file');
-        return;
-      }
-
-      // Step 7: Share file
-      Alert.alert('File Ready', `File saved (${(fileInfo.size || 0) / 1024} KB). Opening share dialog...`);
+      // Step 5: Share
+      await Sharing.shareAsync(fileUri, {
+        mimeType: 'application/pdf',
+        UTI: 'com.adobe.pdf'
+      });
       
-      const sharingAvailable = await Sharing.isAvailableAsync();
-      if (sharingAvailable) {
-        try {
-          await Sharing.shareAsync(fileUri, {
-            mimeType: 'application/pdf',
-            dialogTitle: `Drawing: ${length.product_code}`,
-            UTI: 'com.adobe.pdf'
-          });
-          Alert.alert('Done', 'Drawing shared successfully');
-        } catch (shareError: any) {
-          Alert.alert('Share Error', shareError.message || String(shareError));
-        }
-      } else {
-        Alert.alert('Sharing Not Available', `File saved at: ${fileUri}`);
-      }
     } catch (error: any) {
-      console.error('Drawing error:', error);
-      Alert.alert('Download Error', `${error.message || String(error)}`);
+      Alert.alert('Error', String(error.message || error));
     } finally {
       setGeneratingDrawing(null);
     }
