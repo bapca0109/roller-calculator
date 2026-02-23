@@ -115,10 +115,12 @@ Examples:
 2. ~~**Customer Management** - Save customer details with quotes~~ ✅ COMPLETED
 3. ~~**Print Customer Data in Quotes** - Render customer details on quote PDF~~ ✅ COMPLETED
 4. ~~**Formula-Based Pipe Weights** - Calculate pipe weights using engineering formula~~ ✅ COMPLETED (Feb 2026)
-5. **Full Data Migration to DB** - Migrate hardcoded product data from roller_standards.py to MongoDB (P1)
-6. **Quote Approval Workflow** - Status system (Pending/Approved/Rejected) (P2)
-7. **Email Integration** - Email quote PDFs (P2)
-8. **Dashboard & Analytics** - Sales analytics (P3)
+5. ~~**Full Data Migration to DB** - Migrate hardcoded product data from roller_standards.py to MongoDB~~ ✅ COMPLETED (Feb 2026)
+6. ~~**Price Calculation Integration** - Connect calculation logic to use MongoDB prices~~ ✅ COMPLETED (Feb 2026)
+7. **Quote Approval Workflow** - Status system (Pending/Approved/Rejected) (P2)
+8. **Email Integration** - Email quote PDFs (P2)
+9. **Dashboard & Analytics** - Sales analytics (P3)
+10. **PDF Download from Mobile** - Fix frontend download on Expo (blocked by tunnel issues) (P1)
 
 
 ### Pipe Weight Calculation (Formula-Based) ✅ (Feb 2026)
