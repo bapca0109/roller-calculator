@@ -25,10 +25,12 @@ def generate_roller_drawing(
     bearing_make: str,
     housing: str,
     weight_kg: float,
-    unit_price: float,
+    unit_price: float = 0,  # Made optional, not displayed
     rubber_diameter: float = None,
     belt_widths: list = None,
-    quantity: int = 1
+    quantity: int = 1,
+    shaft_end_type: str = "B",  # A (+26mm), B (+36mm), C (+56mm), custom
+    custom_shaft_extension: int = None
 ) -> BytesIO:
     """
     Generate a technical drawing PDF for a roller
@@ -36,6 +38,14 @@ def generate_roller_drawing(
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
+    
+    # Calculate shaft length based on shaft end type
+    shaft_extensions = {"A": 26, "B": 36, "C": 56}
+    if shaft_end_type == "custom" and custom_shaft_extension is not None:
+        shaft_extension = custom_shaft_extension
+    else:
+        shaft_extension = shaft_extensions.get(shaft_end_type.upper(), 36)
+    shaft_length = pipe_length + shaft_extension
     
     # Colors
     primary_color = colors.HexColor('#960018')  # Carmine red
