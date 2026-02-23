@@ -177,10 +177,8 @@ def generate_roller_drawing(
     c.setFont("Helvetica-Bold", 10)
     c.drawString(right_col_start, tables_y, "BILL OF MATERIALS")
     
-    bom_y -= 8
-    
     bom_data = [
-        ['Sr', 'Component', 'Spec', 'Qty'],
+        ['Sr', 'Component', 'Specification', 'Qty'],
         ['1', 'Pipe', f'OD {pipe_diameter}mm, Type {pipe_type}', '1'],
         ['2', 'Shaft', f'Ø{shaft_diameter}mm x {int(shaft_length)}mm', '1'],
         ['3', 'Bearing', f'{bearing} ({bearing_make.upper()})', '2'],
@@ -192,9 +190,9 @@ def generate_roller_drawing(
     if rubber_diameter:
         num_rings = int(pipe_length / 35)
         bom_data.append(['7', 'Rubber Ring', f'Ø{int(rubber_diameter)}mm x 35mm', str(num_rings)])
-        bom_data.append(['8', 'Locking Ring', f'For Ø{int(pipe_diameter)}mm', '1'])
+        bom_data.append(['8', 'Lock Ring', f'For Ø{int(pipe_diameter)}mm', '1'])
     
-    bom_table = Table(bom_data, colWidths=[10*mm, 28*mm, 40*mm, 12*mm])
+    bom_table = Table(bom_data, colWidths=[8*mm, 22*mm, 45*mm, 10*mm])
     bom_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), primary_color),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -205,39 +203,39 @@ def generate_roller_drawing(
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
         ('GRID', (0, 0), (-1, -1), 0.5, gray),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8F8F8')]),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     
     bom_w, bom_h = bom_table.wrap(0, 0)
-    bom_table.drawOn(c, bom_x, bom_y - bom_h - 5)
+    bom_table.drawOn(c, right_col_start, tables_y_content - bom_h - 3)
     
-    # ============= MATERIAL SPECIFICATIONS =============
-    spec_y = bom_y - bom_h - 35
+    # ============= MATERIAL SPECIFICATIONS (Below BOM) =============
+    spec_y = tables_y_content - bom_h - 20
     c.setFillColor(primary_color)
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(bom_x, spec_y, "MATERIAL SPECIFICATIONS")
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(right_col_start, spec_y, "MATERIAL SPECS")
     
-    spec_y -= 15
+    spec_y -= 12
     c.setFillColor(black)
-    c.setFont("Helvetica", 9)
     
     specs = [
-        ("Pipe:", "IS-9295 ERW Steel Tube"),
-        ("Shaft:", "EN8/EN9 Steel, Ground Finish"),
-        ("Bearing:", f"{bearing_make.upper()} Grade {bearing}"),
-        ("Housing:", "Cast Iron, Machined"),
-        ("Seals:", "Nitrile Rubber (NBR)"),
+        ("Pipe:", "IS-9295 ERW Steel"),
+        ("Shaft:", "EN8/EN9 Steel"),
+        ("Bearing:", f"{bearing_make.upper()} {bearing}"),
+        ("Housing:", "Cast Iron"),
+        ("Seals:", "Nitrile Rubber"),
     ]
     
     if rubber_diameter:
-        specs.append(("Rubber:", "Natural Rubber, 40±5 Shore A"))
+        specs.append(("Rubber:", "Natural Rubber"))
     
     for label, value in specs:
-        c.setFont("Helvetica-Bold", 8)
-        c.drawString(bom_x, spec_y, label)
-        c.setFont("Helvetica", 8)
-        c.drawString(bom_x + 18*mm, spec_y, value)
+        c.setFont("Helvetica-Bold", 7)
+        c.drawString(right_col_start, spec_y, label)
+        c.setFont("Helvetica", 7)
+        c.drawString(right_col_start + 15*mm, spec_y, value)
+        spec_y -= 10
         spec_y -= 12
     
     # ============= LEGEND =============
