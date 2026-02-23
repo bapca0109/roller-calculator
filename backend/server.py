@@ -1390,7 +1390,8 @@ async def update_price(request: PriceUpdateRequest, current_user: dict = Depends
         custom_prices["locking_ring_costs"][request.key] = request.value
     elif request.category == "pipe_weight":
         if "pipe_weight" not in custom_prices:
-            custom_prices["pipe_weight"] = {str(k): v for k, v in rs.PIPE_WEIGHT_PER_METER.items()}
+            import copy
+            custom_prices["pipe_weight"] = copy.deepcopy({str(k): v for k, v in rs.PIPE_WEIGHT_PER_METER.items()})
         if request.key not in custom_prices["pipe_weight"]:
             custom_prices["pipe_weight"][request.key] = {}
         custom_prices["pipe_weight"][request.key][request.sub_key] = request.value
