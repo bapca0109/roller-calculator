@@ -292,10 +292,16 @@ def draw_engineering_schematic(c, center_x, center_y, pipe_diameter, pipe_length
     c.setFillColor(blue)
     c.setLineWidth(0.8)
     
+    # Standard CAD extension line settings
+    exo = 2   # Extension line offset from object
+    exe = 3   # Extension line extension beyond dimension line
+    
     # --- Dimension A (Pipe Length) - below the roller ---
     dim_y_A = center_y - outer_dia_s/2 - 18
-    c.line(center_x - pipe_len_s/2, center_y - outer_dia_s/2 - 3, center_x - pipe_len_s/2, dim_y_A - 3)
-    c.line(center_x + pipe_len_s/2, center_y - outer_dia_s/2 - 3, center_x + pipe_len_s/2, dim_y_A - 3)
+    # Extension lines with EXO and EXE
+    c.line(center_x - pipe_len_s/2, center_y - outer_dia_s/2 - exo, center_x - pipe_len_s/2, dim_y_A - exe)
+    c.line(center_x + pipe_len_s/2, center_y - outer_dia_s/2 - exo, center_x + pipe_len_s/2, dim_y_A - exe)
+    # Dimension line
     c.line(center_x - pipe_len_s/2, dim_y_A, center_x + pipe_len_s/2, dim_y_A)
     draw_arrowhead(c, center_x - pipe_len_s/2, dim_y_A, 'right')
     draw_arrowhead(c, center_x + pipe_len_s/2, dim_y_A, 'left')
@@ -303,16 +309,10 @@ def draw_engineering_schematic(c, center_x, center_y, pipe_diameter, pipe_length
     c.drawCentredString(center_x, dim_y_A - 10, f"A = {int(pipe_length)}")
     
     # --- Dimension B (Shaft Length) - below A ---
-    # Extension lines from shaft ends with proper EXEO (offset=2) and EXEE (extension=3)
-    exeo = 2  # Extension line offset from object
-    exee = 3  # Extension line extension beyond dimension line
     dim_y_B = dim_y_A - 22
-    
-    # Left extension line - from shaft bottom to below dimension line
-    c.line(center_x - shaft_len_s/2, center_y - shaft_dia_s/2 - exeo, center_x - shaft_len_s/2, dim_y_B - exee)
-    # Right extension line - from shaft bottom to below dimension line  
-    c.line(center_x + shaft_len_s/2, center_y - shaft_dia_s/2 - exeo, center_x + shaft_len_s/2, dim_y_B - exee)
-    
+    # Extension lines from shaft ends with EXO and EXE
+    c.line(center_x - shaft_len_s/2, center_y - shaft_dia_s/2 - exo, center_x - shaft_len_s/2, dim_y_B - exe)
+    c.line(center_x + shaft_len_s/2, center_y - shaft_dia_s/2 - exo, center_x + shaft_len_s/2, dim_y_B - exe)
     # Dimension line
     c.line(center_x - shaft_len_s/2, dim_y_B, center_x + shaft_len_s/2, dim_y_B)
     draw_arrowhead(c, center_x - shaft_len_s/2, dim_y_B, 'right')
@@ -321,8 +321,10 @@ def draw_engineering_schematic(c, center_x, center_y, pipe_diameter, pipe_length
     
     # --- Dimension D (Pipe Diameter) - right side ---
     dim_x_D = center_x + pipe_len_s/2 + 22
-    c.line(center_x + pipe_len_s/2 + 3, center_y - pipe_dia_s/2, dim_x_D + 3, center_y - pipe_dia_s/2)
-    c.line(center_x + pipe_len_s/2 + 3, center_y + pipe_dia_s/2, dim_x_D + 3, center_y + pipe_dia_s/2)
+    # Extension lines with EXO and EXE
+    c.line(center_x + pipe_len_s/2 + exo, center_y - pipe_dia_s/2, dim_x_D + exe, center_y - pipe_dia_s/2)
+    c.line(center_x + pipe_len_s/2 + exo, center_y + pipe_dia_s/2, dim_x_D + exe, center_y + pipe_dia_s/2)
+    # Dimension line
     c.line(dim_x_D, center_y - pipe_dia_s/2, dim_x_D, center_y + pipe_dia_s/2)
     draw_arrowhead(c, dim_x_D, center_y - pipe_dia_s/2, 'down')
     draw_arrowhead(c, dim_x_D, center_y + pipe_dia_s/2, 'up')
@@ -336,8 +338,10 @@ def draw_engineering_schematic(c, center_x, center_y, pipe_diameter, pipe_length
     # --- Dimension RD (Rubber Diameter) - for impact rollers only, right side outer ---
     if rubber_diameter and roller_type.lower() == 'impact':
         dim_x_RD = dim_x_D + 25
-        c.line(dim_x_D + 5, center_y - outer_dia_s/2, dim_x_RD + 3, center_y - outer_dia_s/2)
-        c.line(dim_x_D + 5, center_y + outer_dia_s/2, dim_x_RD + 3, center_y + outer_dia_s/2)
+        # Extension lines with EXO and EXE
+        c.line(dim_x_D + exo, center_y - outer_dia_s/2, dim_x_RD + exe, center_y - outer_dia_s/2)
+        c.line(dim_x_D + exo, center_y + outer_dia_s/2, dim_x_RD + exe, center_y + outer_dia_s/2)
+        # Dimension line
         c.line(dim_x_RD, center_y - outer_dia_s/2, dim_x_RD, center_y + outer_dia_s/2)
         draw_arrowhead(c, dim_x_RD, center_y - outer_dia_s/2, 'down')
         draw_arrowhead(c, dim_x_RD, center_y + outer_dia_s/2, 'up')
@@ -350,8 +354,10 @@ def draw_engineering_schematic(c, center_x, center_y, pipe_diameter, pipe_length
     
     # --- Dimension d (Shaft Diameter) - left side ---
     dim_x_d = center_x - shaft_len_s/2 - 15
-    c.line(center_x - shaft_len_s/2 - 3, center_y - shaft_dia_s/2, dim_x_d - 3, center_y - shaft_dia_s/2)
-    c.line(center_x - shaft_len_s/2 - 3, center_y + shaft_dia_s/2, dim_x_d - 3, center_y + shaft_dia_s/2)
+    # Extension lines with EXO and EXE
+    c.line(center_x - shaft_len_s/2 - exo, center_y - shaft_dia_s/2, dim_x_d - exe, center_y - shaft_dia_s/2)
+    c.line(center_x - shaft_len_s/2 - exo, center_y + shaft_dia_s/2, dim_x_d - exe, center_y + shaft_dia_s/2)
+    # Dimension line
     c.line(dim_x_d, center_y - shaft_dia_s/2, dim_x_d, center_y + shaft_dia_s/2)
     draw_arrowhead(c, dim_x_d, center_y - shaft_dia_s/2, 'down')
     draw_arrowhead(c, dim_x_d, center_y + shaft_dia_s/2, 'up')
