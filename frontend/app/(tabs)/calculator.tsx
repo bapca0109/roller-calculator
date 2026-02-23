@@ -531,34 +531,35 @@ export default function CalculatorScreen() {
         belt_widths: [],
         quantity: config.quantity
       }, {
-        responseType: 'blob'
+        responseType: 'arraybuffer'
       });
       
-      const reader = new FileReader();
-      reader.readAsDataURL(response.data);
-      reader.onloadend = async () => {
-        const base64data = reader.result as string;
-        const base64 = base64data.split(',')[1];
-        
-        const filename = `Drawing_${config.product_code.replace(/ /g, '_').replace(/\//g, '-')}.pdf`;
-        const fileUri = FileSystem.documentDirectory + filename;
-        
-        await FileSystem.writeAsStringAsync(fileUri, base64, {
-          encoding: FileSystem.EncodingType.Base64,
+      // Convert arraybuffer to base64
+      const base64 = btoa(
+        new Uint8Array(response.data).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ''
+        )
+      );
+      
+      const filename = `Drawing_${config.product_code.replace(/ /g, '_').replace(/\//g, '-')}.pdf`;
+      const fileUri = FileSystem.documentDirectory + filename;
+      
+      await FileSystem.writeAsStringAsync(fileUri, base64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Drawing: ${config.product_code}`
         });
-        
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri, {
-            mimeType: 'application/pdf',
-            dialogTitle: `Drawing: ${config.product_code}`
-          });
-        } else {
-          Alert.alert('Success', `Drawing saved to: ${fileUri}`);
-        }
-      };
+      } else {
+        Alert.alert('Success', `Drawing saved to: ${fileUri}`);
+      }
     } catch (error: any) {
       console.error('Drawing error:', error);
-      Alert.alert('Error', 'Failed to generate drawing');
+      Alert.alert('Error', 'Failed to generate drawing. Please try again.');
     } finally {
       setGeneratingDrawing(false);
     }
