@@ -209,39 +209,13 @@ def generate_roller_drawing(
     bom_width, bom_height = bom_table.wrap(0, 0)
     bom_table.drawOn(c, 20*mm, bom_y - bom_height - 5)
     
-    # ============= PRICING (Right side) =============
-    price_x = width - 75*mm
-    price_y = dim_y
+    # ============= MATERIAL SPECS BOX (Right side) =============
+    spec_x = width - 75*mm
+    spec_y = dim_y
     
     c.setFillColor(primary_color)
     c.setFont("Helvetica-Bold", 11)
-    c.drawString(price_x, price_y, "PRICING")
-    
-    price_y -= 20
-    c.setFillColor(dark_color)
-    c.setFont("Helvetica", 10)
-    c.drawString(price_x, price_y, f"Unit Price:")
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(price_x + 25*mm, price_y, f"Rs. {unit_price:.2f}")
-    
-    price_y -= 18
-    c.setFont("Helvetica", 10)
-    c.drawString(price_x, price_y, f"Quantity:")
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(price_x + 25*mm, price_y, f"{quantity} pcs")
-    
-    price_y -= 18
-    c.setFont("Helvetica", 10)
-    c.drawString(price_x, price_y, f"Total:")
-    c.setFont("Helvetica-Bold", 14)
-    c.setFillColor(primary_color)
-    c.drawString(price_x + 25*mm, price_y, f"Rs. {unit_price * quantity:.2f}")
-    
-    # ============= MATERIAL SPECS BOX =============
-    spec_y = price_y - 40
-    c.setFillColor(primary_color)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(price_x, spec_y, "MATERIAL SPECS")
+    c.drawString(spec_x, spec_y, "MATERIAL SPECS")
     
     spec_y -= 18
     c.setFillColor(dark_color)
