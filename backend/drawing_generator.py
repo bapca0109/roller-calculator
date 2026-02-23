@@ -61,29 +61,29 @@ def generate_roller_drawing(
     # ============= HEADER WITH LOGO =============
     # White background for header
     c.setFillColor(colors.white)
-    c.rect(0, height - 60, width, 60, fill=1, stroke=0)
+    c.rect(0, height - 50, width, 50, fill=1, stroke=0)
     
-    # Add logo - use absolute path
+    # Add logo - use absolute path  
     import os
     logo_path = os.path.join(os.path.dirname(__file__), "static", "logo-small.png")
     if os.path.exists(logo_path):
-        # Draw logo on left side
-        c.drawImage(logo_path, 8*mm, height - 55, width=50*mm, height=17*mm, preserveAspectRatio=True)
+        # Draw logo on left side - position from bottom-left of image
+        c.drawImage(logo_path, 10*mm, height - 45, width=45*mm, height=35*mm, preserveAspectRatio=True)
     
     # Drawing number on right side
     c.setFillColor(black)
     c.setFont("Helvetica-Bold", 10)
-    c.drawRightString(width - 15*mm, height - 20, f"DWG: {product_code}")
+    c.drawRightString(width - 15*mm, height - 18, f"DWG: {product_code}")
     c.setFont("Helvetica", 9)
-    c.drawRightString(width - 15*mm, height - 35, f"Date: {datetime.now().strftime('%d-%m-%Y')}")
+    c.drawRightString(width - 15*mm, height - 32, f"Date: {datetime.now().strftime('%d-%m-%Y')}")
     
     # Header line separator
     c.setStrokeColor(primary_color)
     c.setLineWidth(2)
-    c.line(8*mm, height - 60, width - 8*mm, height - 60)
+    c.line(8*mm, height - 50, width - 8*mm, height - 50)
     
     # ============= TITLE =============
-    y_pos = height - 80
+    y_pos = height - 70
     c.setFillColor(black)
     c.setFont("Helvetica-Bold", 14)
     
