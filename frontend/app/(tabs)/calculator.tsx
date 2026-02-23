@@ -497,6 +497,62 @@ export default function CalculatorScreen() {
     }
   };
 
+  // Download Drawing function
+  const downloadDrawing = async () => {
+    if (!result) return;
+    
+    setGeneratingDrawing(true);
+    try {
+      const config = result.configuration;
+      const response = await api.post('/generate-drawing', {
+        product_code: config.product_code,
+        roller_type: rollerType,
+        pipe_diameter: config.pipe_diameter,
+        pipe_length: config.pipe_length,
+        pipe_type: config.pipe_type,
+        shaft_diameter: config.shaft_diameter,
+        bearing: config.bearing_number,
+        bearing_make: config.bearing_make,
+        housing: config.housing,
+        weight_kg: result.cost_breakdown.total_weight || 0,
+        unit_price: result.pricing.unit_price,
+        rubber_diameter: config.rubber_diameter || null,
+        belt_widths: [],
+        quantity: config.quantity
+      }, {
+        responseType: 'blob'
+      });
+      
+      const reader = new FileReader();
+      reader.readAsDataURL(response.data);
+      reader.onloadend = async () => {
+        const base64data = reader.result as string;
+        const base64 = base64data.split(',')[1];
+        
+        const filename = `Drawing_${config.product_code.replace(/ /g, '_').replace(/\//g, '-')}.pdf`;
+        const fileUri = FileSystem.documentDirectory + filename;
+        
+        await FileSystem.writeAsStringAsync(fileUri, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Drawing: ${config.product_code}`
+          });
+        } else {
+          Alert.alert('Success', `Drawing saved to: ${fileUri}`);
+        }
+      };
+    } catch (error: any) {
+      console.error('Drawing error:', error);
+      Alert.alert('Error', 'Failed to generate drawing');
+    } finally {
+      setGeneratingDrawing(false);
+    }
+  };
+
   const addToQuote = () => {
     if (!result) return;
     setQuoteItems([...quoteItems, result]);
