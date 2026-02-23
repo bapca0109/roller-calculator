@@ -199,6 +199,10 @@ Examples:
 - `PUT /api/admin/standards/{collection}` - Update item
 - `DELETE /api/admin/standards/{collection}` - Delete item
 
+## Admin UI Features
+- **Prices Tab**: Manage raw material costs (pipe, shaft, bearings, seals, circlips, rubber rings, locking rings)
+- **Standards Tab**: Browse and view all 16 MongoDB collections with item details modal
+
 ## Test Credentials
 - Email: `test@test.com`
 - Password: `test123`
