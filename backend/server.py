@@ -1367,7 +1367,8 @@ async def update_price(request: PriceUpdateRequest, current_user: dict = Depends
         custom_prices["shaft_cost_per_kg"] = request.value
     elif request.category == "bearing":
         if "bearing_costs" not in custom_prices:
-            custom_prices["bearing_costs"] = dict(rs.BEARING_COSTS)
+            import copy
+            custom_prices["bearing_costs"] = copy.deepcopy(rs.BEARING_COSTS)
         if request.key not in custom_prices["bearing_costs"]:
             custom_prices["bearing_costs"][request.key] = {}
         custom_prices["bearing_costs"][request.key][request.sub_key] = request.value
