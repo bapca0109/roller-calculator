@@ -1433,6 +1433,128 @@ async def make_user_admin(email: str, current_user: dict = Depends(get_current_u
     
     return {"message": f"User {email} is now an admin"}
 
+# ============= ADMIN API - STANDARDS DATA (MongoDB) =============
+
+@api_router.get("/admin/standards/{collection}")
+async def get_standards_data(collection: str, current_user: dict = Depends(get_current_user)):
+    """Get all documents from a standards collection"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    valid_collections = [
+        "pipe_diameters", "shaft_diameters", "shaft_end_types", "bearings", 
+        "housings", "pipe_weights", "roller_lengths", "circlips", 
+        "rubber_lagging", "rubber_rings", "locking_rings", "discount_slabs",
+        "freight_rates", "packing_options", "gst_config", "raw_material_costs"
+    ]
+    
+    if collection not in valid_collections:
+        raise HTTPException(status_code=400, detail=f"Invalid collection. Valid: {valid_collections}")
+    
+    cursor = db[collection].find({}, {"_id": 0})
+    docs = await cursor.to_list(length=500)
+    return {"collection": collection, "count": len(docs), "data": docs}
+
+@api_router.post("/admin/standards/{collection}")
+async def add_standards_item(collection: str, item: Dict[str, Any], current_user: dict = Depends(get_current_user)):
+    """Add a new item to a standards collection"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    valid_collections = [
+        "pipe_diameters", "shaft_diameters", "shaft_end_types", "bearings", 
+        "housings", "pipe_weights", "roller_lengths", "circlips", 
+        "rubber_lagging", "rubber_rings", "locking_rings", "discount_slabs",
+        "freight_rates", "packing_options", "gst_config", "raw_material_costs"
+    ]
+    
+    if collection not in valid_collections:
+        raise HTTPException(status_code=400, detail=f"Invalid collection")
+    
+    item["created_at"] = datetime.utcnow()
+    item["created_by"] = current_user.get("email")
+    
+    result = await db[collection].insert_one(item)
+    return {"message": "Item added successfully", "id": str(result.inserted_id)}
+
+@api_router.put("/admin/standards/{collection}")
+async def update_standards_item(
+    collection: str, 
+    query: Dict[str, Any],
+    update_data: Dict[str, Any],
+    current_user: dict = Depends(get_current_user)
+):
+    """Update an item in a standards collection"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    valid_collections = [
+        "pipe_diameters", "shaft_diameters", "shaft_end_types", "bearings", 
+        "housings", "pipe_weights", "roller_lengths", "circlips", 
+        "rubber_lagging", "rubber_rings", "locking_rings", "discount_slabs",
+        "freight_rates", "packing_options", "gst_config", "raw_material_costs"
+    ]
+    
+    if collection not in valid_collections:
+        raise HTTPException(status_code=400, detail=f"Invalid collection")
+    
+    update_data["updated_at"] = datetime.utcnow()
+    update_data["updated_by"] = current_user.get("email")
+    
+    result = await db[collection].update_one(query, {"$set": update_data})
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    return {"message": "Item updated successfully", "modified": result.modified_count}
+
+@api_router.delete("/admin/standards/{collection}")
+async def delete_standards_item(
+    collection: str,
+    query: Dict[str, Any],
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete an item from a standards collection"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    valid_collections = [
+        "pipe_diameters", "shaft_diameters", "shaft_end_types", "bearings", 
+        "housings", "pipe_weights", "roller_lengths", "circlips", 
+        "rubber_lagging", "rubber_rings", "locking_rings", "discount_slabs",
+        "freight_rates", "packing_options", "gst_config", "raw_material_costs"
+    ]
+    
+    if collection not in valid_collections:
+        raise HTTPException(status_code=400, detail=f"Invalid collection")
+    
+    result = await db[collection].delete_one(query)
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    return {"message": "Item deleted successfully"}
+
+@api_router.get("/admin/standards-summary")
+async def get_standards_summary(current_user: dict = Depends(get_current_user)):
+    """Get a summary of all standards collections"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    collections = [
+        "pipe_diameters", "shaft_diameters", "shaft_end_types", "bearings", 
+        "housings", "pipe_weights", "roller_lengths", "circlips", 
+        "rubber_lagging", "rubber_rings", "locking_rings", "discount_slabs",
+        "freight_rates", "packing_options", "gst_config", "raw_material_costs"
+    ]
+    
+    summary = []
+    for coll in collections:
+        count = await db[coll].count_documents({})
+        summary.append({"collection": coll, "count": count})
+    
+    return {"summary": summary, "total_collections": len(collections)}
+
 # ============= CUSTOMER API =============
 
 @api_router.post("/customers")
