@@ -59,31 +59,31 @@ def generate_roller_drawing(
     light_gray = colors.HexColor('#CCCCCC')
     
     # ============= HEADER WITH LOGO =============
+    # White background for header
     c.setFillColor(colors.white)
-    c.rect(0, height - 55, width, 55, fill=1, stroke=0)
+    c.rect(0, height - 60, width, 60, fill=1, stroke=0)
     
-    # Add logo only (no text)
-    logo_path = Path(__file__).parent / "static" / "convero-logo.png"
-    if logo_path.exists():
-        try:
-            c.drawImage(str(logo_path), 10*mm, height - 52, width=50*mm, height=48*mm, preserveAspectRatio=True, mask='auto')
-        except:
-            pass
+    # Add logo - use absolute path
+    import os
+    logo_path = os.path.join(os.path.dirname(__file__), "static", "convero-logo.png")
+    if os.path.exists(logo_path):
+        # Draw logo on left side
+        c.drawImage(logo_path, 8*mm, height - 58, width=55*mm, height=55*mm, preserveAspectRatio=True)
     
     # Drawing number on right side
     c.setFillColor(black)
     c.setFont("Helvetica-Bold", 10)
     c.drawRightString(width - 15*mm, height - 20, f"DWG: {product_code}")
     c.setFont("Helvetica", 9)
-    c.drawRightString(width - 15*mm, height - 32, f"Date: {datetime.now().strftime('%d-%m-%Y')}")
+    c.drawRightString(width - 15*mm, height - 35, f"Date: {datetime.now().strftime('%d-%m-%Y')}")
     
     # Header line separator
     c.setStrokeColor(primary_color)
     c.setLineWidth(2)
-    c.line(10*mm, height - 55, width - 10*mm, height - 55)
+    c.line(8*mm, height - 60, width - 8*mm, height - 60)
     
     # ============= TITLE =============
-    y_pos = height - 75
+    y_pos = height - 80
     c.setFillColor(black)
     c.setFont("Helvetica-Bold", 14)
     
