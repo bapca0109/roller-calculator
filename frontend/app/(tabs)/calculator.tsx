@@ -442,7 +442,13 @@ export default function CalculatorScreen() {
         pipe_type: pipeType,
         quantity: parseInt(quantity),
         packing_type: packingType,
+        shaft_end_type: shaftEndType,
       };
+
+      // Add custom shaft extension if custom type selected
+      if (shaftEndType === 'custom' && customShaftExtension) {
+        payload.custom_shaft_extension = parseInt(customShaftExtension);
+      }
 
       if (rollerType === 'impact' && rubberDiameter) {
         payload.rubber_diameter = rubberDiameter;
