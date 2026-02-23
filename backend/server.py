@@ -1523,130 +1523,49 @@ async def search_customer_by_gstin(gstin: str, current_user: dict = Depends(get_
     
     return {"found": False, "customer": None}
 
-# ============= GST VERIFICATION API =============
+# ============= GSTIN FORMAT VALIDATION (Local utility) =============
 
-import gst_verification as gst
-
-class GSTVerifyRequest(BaseModel):
-    session_id: str
-    gstin: str
-    captcha: str
-
-@api_router.get("/gst/captcha")
-async def get_gst_captcha(current_user: dict = Depends(get_current_user)):
-    """Get captcha image for GST verification (fallback method)"""
-    result = gst.get_captcha()
-    if not result.get("success"):
-        # If captcha is blocked, return a helpful message
-        if result.get("blocked"):
-            raise HTTPException(
-                status_code=503, 
-                detail="GST portal blocked the request. Please use the direct GSTIN lookup feature instead."
-            )
-        raise HTTPException(status_code=500, detail=result.get("error", "Failed to fetch captcha"))
-    return result
-
-@api_router.get("/gst/lookup/{gstin}")
-async def lookup_gstin_direct(gstin: str, current_user: dict = Depends(get_current_user)):
+def validate_gstin_format(gstin: str) -> bool:
     """
-    Direct GSTIN lookup without captcha using Appyflow API
-    This is the primary method - no captcha required
+    Validate GSTIN format (basic validation)
+    Format: 2 digit state code + 10 char PAN + 1 entity code + 1 check digit
+    Example: 27AAACE8661R1Z5
     """
-    # Validate GSTIN format first
-    if not gst.validate_gstin_format(gstin):
-        raise HTTPException(status_code=400, detail="Invalid GSTIN format. Must be 15 characters like 27AAACE8661R1Z5")
-    
-    # Try Appyflow API first (no captcha)
-    result = gst.verify_gstin_appyflow(gstin)
-    
-    if result.get("success"):
-        return result
-    
-    # If Appyflow fails, let user know they need to configure API key or use manual entry
-    if result.get("needs_captcha"):
-        raise HTTPException(
-            status_code=503, 
-            detail="GST lookup service unavailable. Please enter customer details manually or configure APPYFLOW_GST_KEY."
-        )
-    
-    raise HTTPException(status_code=400, detail=result.get("error", "Lookup failed"))
+    import re
+    if not gstin or len(gstin) != 15:
+        return False
+    pattern = r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$'
+    return bool(re.match(pattern, gstin.upper()))
 
-@api_router.post("/gst/verify")
-async def verify_gst(request: GSTVerifyRequest, current_user: dict = Depends(get_current_user)):
-    """Verify GSTIN and get taxpayer details (captcha method - fallback)"""
-    # Validate GSTIN format first
-    if not gst.validate_gstin_format(request.gstin):
-        raise HTTPException(status_code=400, detail="Invalid GSTIN format. Must be 15 characters like 27AAACE8661R1Z5")
-    
-    result = gst.verify_gstin(request.session_id, request.gstin, request.captcha)
-    
-    if not result.get("success"):
-        raise HTTPException(status_code=400, detail=result.get("error", "Verification failed"))
-    
-    return result
+def get_state_from_gstin(gstin: str):
+    """Extract state from GSTIN (first 2 digits are state code)"""
+    state_codes = {
+        '01': 'Jammu and Kashmir', '02': 'Himachal Pradesh', '03': 'Punjab',
+        '04': 'Chandigarh', '05': 'Uttarakhand', '06': 'Haryana',
+        '07': 'Delhi', '08': 'Rajasthan', '09': 'Uttar Pradesh',
+        '10': 'Bihar', '11': 'Sikkim', '12': 'Arunachal Pradesh',
+        '13': 'Nagaland', '14': 'Manipur', '15': 'Mizoram',
+        '16': 'Tripura', '17': 'Meghalaya', '18': 'Assam',
+        '19': 'West Bengal', '20': 'Jharkhand', '21': 'Odisha',
+        '22': 'Chhattisgarh', '23': 'Madhya Pradesh', '24': 'Gujarat',
+        '27': 'Maharashtra', '29': 'Karnataka', '32': 'Kerala',
+        '33': 'Tamil Nadu', '36': 'Telangana', '37': 'Andhra Pradesh'
+    }
+    if gstin and len(gstin) >= 2:
+        return state_codes.get(gstin[:2])
+    return None
 
 @api_router.get("/gst/validate/{gstin}")
 async def validate_gstin(gstin: str, current_user: dict = Depends(get_current_user)):
-    """Validate GSTIN format without verification"""
-    is_valid = gst.validate_gstin_format(gstin)
-    state = gst.get_state_from_gstin(gstin) if is_valid else None
+    """Validate GSTIN format (local validation only, no external API)"""
+    is_valid = validate_gstin_format(gstin)
+    state = get_state_from_gstin(gstin) if is_valid else None
     
     return {
         "gstin": gstin.upper(),
         "is_valid_format": is_valid,
         "state": state
     }
-
-@api_router.post("/customers/from-gst")
-async def create_customer_from_gst(
-    gst_data: Dict[str, Any],
-    current_user: dict = Depends(get_current_user)
-):
-    """Create a customer from GST verification data"""
-    # Extract data from GST response
-    data = gst_data.get("data", gst_data)
-    address_info = data.get("address", {})
-    
-    customer_dict = {
-        "name": data.get("trade_name") or data.get("legal_name", ""),
-        "company": data.get("legal_name", ""),
-        "email": "",  # Not available from GST
-        "phone": "",  # Not available from GST
-        "address": address_info.get("full", "") or address_info.get("street", ""),
-        "city": address_info.get("city", ""),
-        "state": address_info.get("state", "") or data.get("state_jurisdiction", ""),
-        "pincode": address_info.get("pincode", ""),
-        "gst_number": data.get("gstin", ""),
-        "notes": f"Auto-imported from GST. Status: {data.get('status', 'N/A')}. Type: {data.get('taxpayer_type', 'N/A')}",
-        "created_by": current_user.get("email"),
-        "created_at": datetime.utcnow(),
-        "gst_details": {
-            "registration_date": data.get("registration_date"),
-            "constitution": data.get("constitution_of_business"),
-            "taxpayer_type": data.get("taxpayer_type"),
-            "status": data.get("status"),
-            "nature_of_business": data.get("nature_of_business", [])
-        }
-    }
-    
-    # Check if customer with same GST already exists
-    existing = await db.customers.find_one({
-        "gst_number": customer_dict["gst_number"],
-        "created_by": current_user.get("email")
-    })
-    
-    if existing:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Customer with GSTIN {customer_dict['gst_number']} already exists"
-        )
-    
-    result = await db.customers.insert_one(customer_dict)
-    customer_dict["id"] = str(result.inserted_id)
-    if "_id" in customer_dict:
-        del customer_dict["_id"]
-    
-    return {"message": "Customer created from GST data", "customer": customer_dict}
 
 # ============= FILE DOWNLOADS =============
 
