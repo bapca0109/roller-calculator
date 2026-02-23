@@ -792,10 +792,14 @@ async def calculate_detailed_cost(
                 detail=f"No pricing available for rubber ring combination {rubber_key}. Valid options for {pipe_code}mm pipe: {valid_rubber_options}"
             )
     
-    # Calculate shaft length
-    shaft_length = rs.calculate_shaft_length(request.pipe_length)
+    # Get shaft end type parameters
+    shaft_end_type = request.shaft_end_type or "B"
+    custom_shaft_extension = request.custom_shaft_extension
     
-    # Calculate raw material costs
+    # Calculate shaft length with shaft end type
+    shaft_length = rs.calculate_shaft_length(request.pipe_length, shaft_end_type, custom_shaft_extension)
+    
+    # Calculate raw material costs with shaft end type
     cost_breakdown = rs.calculate_raw_material_cost(
         request.pipe_diameter,
         request.pipe_length,
@@ -803,7 +807,9 @@ async def calculate_detailed_cost(
         request.bearing_number,
         request.bearing_make or "china",
         request.rubber_diameter,
-        request.pipe_type or "B"
+        request.pipe_type or "B",
+        shaft_end_type,
+        custom_shaft_extension
     )
     
     # Generate product code - use roller_type from request, fallback to impact if rubber_diameter present
