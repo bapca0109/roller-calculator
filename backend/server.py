@@ -1406,6 +1406,10 @@ async def update_price(request: PriceUpdateRequest, current_user: dict = Depends
     # Save to database
     await db.custom_prices.replace_one({"_id": "prices"}, custom_prices, upsert=True)
     
+    # Invalidate price cache so calculations use new values immediately
+    import price_loader
+    price_loader.invalidate_cache()
+    
     return {"message": "Price updated successfully", "category": request.category, "key": request.key}
 
 @api_router.post("/admin/prices/reset")
@@ -1415,6 +1419,11 @@ async def reset_prices(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     await db.custom_prices.delete_one({"_id": "prices"})
+    
+    # Invalidate price cache so calculations use default values immediately
+    import price_loader
+    price_loader.invalidate_cache()
+    
     return {"message": "All prices reset to default values"}
 
 @api_router.post("/admin/make-admin")
