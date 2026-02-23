@@ -517,8 +517,12 @@ export default function CalculatorScreen() {
     try {
       const config = result.configuration;
       
-      // Get the token for authentication
+      // Step 1: Get token
       const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        Alert.alert('Error', 'Not authenticated. Please login again.');
+        return;
+      }
       
       const requestBody = {
         product_code: config.product_code,
@@ -537,8 +541,9 @@ export default function CalculatorScreen() {
         quantity: config.quantity
       };
 
-      // Fetch the PDF as base64
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/generate-drawing-base64`, {
+      // Step 2: Fetch PDF as base64
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+      const response = await fetch(`${backendUrl}/api/generate-drawing-base64`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -549,11 +554,18 @@ export default function CalculatorScreen() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Server error: ${errorText}`);
+        Alert.alert('Error', `Server error: ${response.status}`);
+        return;
       }
 
+      // Step 3: Parse JSON
       const data = await response.json();
+      if (!data.base64) {
+        Alert.alert('Error', 'No PDF data received');
+        return;
+      }
 
+      // Step 4: Write file
       const filename = `Drawing_${config.product_code.replace(/ /g, '_').replace(/\//g, '-')}.pdf`;
       const fileUri = FileSystem.documentDirectory + filename;
 
@@ -561,17 +573,27 @@ export default function CalculatorScreen() {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      if (await Sharing.isAvailableAsync()) {
+      // Step 5: Check file exists
+      const fileInfo = await FileSystem.getInfoAsync(fileUri);
+      if (!fileInfo.exists) {
+        Alert.alert('Error', 'Failed to save file');
+        return;
+      }
+
+      // Step 6: Share file
+      const sharingAvailable = await Sharing.isAvailableAsync();
+      if (sharingAvailable) {
         await Sharing.shareAsync(fileUri, {
           mimeType: 'application/pdf',
-          dialogTitle: `Drawing: ${config.product_code}`
+          dialogTitle: `Drawing: ${config.product_code}`,
+          UTI: 'com.adobe.pdf'
         });
       } else {
-        Alert.alert('Success', `Drawing saved to: ${fileUri}`);
+        Alert.alert('Success', `Drawing saved to: ${filename}`);
       }
     } catch (error: any) {
       console.error('Drawing error:', error);
-      Alert.alert('Error', `Failed to generate drawing: ${error.message || 'Unknown error'}`);
+      Alert.alert('Error', `Failed: ${error.message || String(error)}`);
     } finally {
       setGeneratingDrawing(false);
     }
