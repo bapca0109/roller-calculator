@@ -69,7 +69,7 @@ export default function AdminScreen() {
   const [activeCategory, setActiveCategory] = useState<PriceCategory>('basic');
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-
+  const [refreshKey, setRefreshKey] = useState(0); // Force re-render after reset
   // Standards state
   const [standardsSummary, setStandardsSummary] = useState<StandardsCollection[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
