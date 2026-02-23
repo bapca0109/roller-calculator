@@ -78,13 +78,16 @@ Examples:
 - PDF export
 - Company branding (CONVERO SOLUTIONS)
 
-### 8. Drawing Generator Feature (NEW - Feb 2026)
-- Auto-generated PDF drawings with:
+### 8. Drawing Generator Feature (Feb 2026 - Updated)
+- Auto-generated PDF engineering drawings with:
   - CONVERO SOLUTIONS logo and branding
-  - Dimensional schematic diagram (pipe length, diameter, shaft)
-  - Bill of Materials table (pipe, shaft, bearing, housing, seals, circlips)
-  - Material specifications (IS-9295 steel, bearing make, etc.)
-  - Pricing information (unit price, quantity, total)
+  - Large dimensional schematic diagram (pipe length, diameter, shaft)
+  - Dimensions table (A=Pipe Length, B=Shaft Length, D=Pipe Diameter, d=Shaft Diameter)
+  - Material specifications (IS-9295 steel, bearing make/model, housing type)
+  - Cross-section detail view
+  - Legend for dimension lines
+- **NO pricing or Bill of Materials** - Pure engineering drawing
+- Shaft End Type support (A/B/C/Custom) affects shaft length in drawing
 - Available in both Calculator and Search tabs
 - Download as PDF for sharing/printing
 
