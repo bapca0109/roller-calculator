@@ -193,6 +193,115 @@ export default function AdminScreen() {
     setDetailModalVisible(true);
   };
 
+  // Get unique key fields for a collection item
+  const getItemKeyFields = (item: StandardItem): Record<string, any> => {
+    if (item.number) return { number: item.number }; // bearings
+    if (item.actual_od) return { actual_od: item.actual_od }; // pipe_diameters
+    if (item.diameter) return { diameter: item.diameter }; // shaft_diameters
+    if (item.type && item.extension_mm) return { type: item.type }; // shaft_end_types
+    if (item.pipe_dia && item.type_a) return { pipe_dia: item.pipe_dia }; // pipe_weights
+    if (item.housing_dia && item.bearing_bore) return { housing_dia: item.housing_dia, bearing_bore: item.bearing_bore }; // housings
+    if (item.belt_width && item.roller_type) return { belt_width: item.belt_width, roller_type: item.roller_type }; // roller_lengths
+    if (item.shaft_dia && item.cost_per_piece !== undefined) return { shaft_dia: item.shaft_dia }; // circlips
+    if (item.pipe_code && item.rubber_dia) return { pipe_code: item.pipe_code, rubber_dia: item.rubber_dia }; // rubber_rings
+    if (item.pipe_code && item.cost) return { pipe_code: item.pipe_code }; // locking_rings
+    if (item.pipe_code && item.rubber_options) return { pipe_code: item.pipe_code }; // rubber_lagging
+    if (item.min_value !== undefined) return { min_value: item.min_value }; // discount_slabs
+    if (item.min_km !== undefined) return { min_km: item.min_km }; // freight_rates
+    if (item.type && item.percent !== undefined) return { type: item.type }; // packing_options
+    if (item.key) return { key: item.key }; // gst_config
+    if (item.material) return { material: item.material }; // raw_material_costs
+    return {};
+  };
+
+  // Get editable fields for a collection item
+  const getEditableFields = (item: StandardItem): string[] => {
+    const excludeFields = ['_id', 'created_at', 'updated_at', 'migrated_from', 'created_by', 'updated_by'];
+    return Object.keys(item).filter(key => !excludeFields.includes(key));
+  };
+
+  const openEditModal = (item: StandardItem) => {
+    setEditingItem(item);
+    const formData: Record<string, string> = {};
+    getEditableFields(item).forEach(key => {
+      const value = item[key];
+      formData[key] = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    });
+    setEditFormData(formData);
+    setEditModalVisible(true);
+  };
+
+  const handleUpdateStandard = async () => {
+    if (!selectedCollection || !editingItem) return;
+    
+    try {
+      setSavingStandard(true);
+      
+      // Parse form data back to proper types
+      const updateData: Record<string, any> = {};
+      Object.entries(editFormData).forEach(([key, value]) => {
+        // Try to parse as JSON first (for objects/arrays)
+        try {
+          updateData[key] = JSON.parse(value);
+        } catch {
+          // Try to parse as number
+          const num = parseFloat(value);
+          updateData[key] = isNaN(num) ? value : num;
+        }
+      });
+      
+      const query = getItemKeyFields(editingItem);
+      
+      await api.put(`/admin/standards/${selectedCollection}`, {
+        query,
+        update_data: updateData
+      });
+      
+      setEditModalVisible(false);
+      setEditingItem(null);
+      fetchCollectionData(selectedCollection);
+      Alert.alert('Success', 'Item updated successfully');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to update item');
+    } finally {
+      setSavingStandard(false);
+    }
+  };
+
+  const handleDeleteStandard = (item: StandardItem) => {
+    Alert.alert(
+      'Delete Item',
+      'Are you sure you want to delete this item? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!selectedCollection) return;
+            
+            try {
+              setSavingStandard(true);
+              const query = getItemKeyFields(item);
+              
+              await api.delete(`/admin/standards/${selectedCollection}`, {
+                data: { query }
+              });
+              
+              fetchCollectionData(selectedCollection);
+              fetchStandardsSummary();
+              Alert.alert('Success', 'Item deleted successfully');
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.detail || 'Failed to delete item');
+            } finally {
+              setSavingStandard(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // ============= ACCESS CHECK =============
   if (user?.role !== 'admin') {
     return (
