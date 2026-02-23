@@ -27,20 +27,21 @@ SHAFT_END_EXTENSIONS = {
     "C": 56,  # Type C: +56mm
 }
 
-def get_shaft_length(pipe_length: float, shaft_end_type: str = "B", custom_extension: int = None) -> float:
+def get_shaft_length(pipe_length: float, shaft_end_type: str = "B", custom_shaft_length: int = None) -> float:
     """
     Calculate shaft length based on pipe length and shaft end type.
     
     Args:
         pipe_length: Length of the pipe in mm
         shaft_end_type: Type A (+26mm), B (+36mm), C (+56mm), or 'custom'
-        custom_extension: Custom extension value in mm (only used if shaft_end_type is 'custom')
+        custom_shaft_length: Total shaft length in mm (only used if shaft_end_type is 'custom')
     
     Returns:
         Total shaft length in mm
     """
-    if shaft_end_type == "custom" and custom_extension is not None:
-        return pipe_length + custom_extension
+    if shaft_end_type == "custom" and custom_shaft_length is not None:
+        # User provides total shaft length directly
+        return custom_shaft_length
     
     extension = SHAFT_END_EXTENSIONS.get(shaft_end_type.upper(), 36)  # Default to Type B
     return pipe_length + extension
