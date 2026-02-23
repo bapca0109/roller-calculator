@@ -65,12 +65,22 @@ def generate_roller_drawing(
     c.setFillColor(colors.white)
     c.rect(0, height - 50, width, 50, fill=1, stroke=0)
     
-    # Add logo - use absolute path  
-    import os
-    logo_path = os.path.join(os.path.dirname(__file__), "static", "logo-small.png")
+    # Add logo using PIL and ImageReader for proper rendering
+    logo_path = os.path.join(os.path.dirname(__file__), "static", "convero-logo.png")
     if os.path.exists(logo_path):
-        # Draw logo on left side - position from bottom-left of image
-        c.drawImage(logo_path, 10*mm, height - 45, width=45*mm, height=35*mm, preserveAspectRatio=True)
+        try:
+            logo_pil = Image.open(logo_path)
+            if logo_pil.mode == 'RGBA':
+                background = Image.new('RGB', logo_pil.size, (255, 255, 255))
+                background.paste(logo_pil, mask=logo_pil.split()[3])
+                logo_pil = background
+            logo_bytes = BytesIO()
+            logo_pil.save(logo_bytes, format='PNG')
+            logo_bytes.seek(0)
+            logo_reader = ImageReader(logo_bytes)
+            c.drawImage(logo_reader, 10*mm, height - 45, width=50*mm, height=40*mm, preserveAspectRatio=True)
+        except Exception as e:
+            pass
     
     # Drawing number on right side
     c.setFillColor(black)
