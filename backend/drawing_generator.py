@@ -9,6 +9,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Table, TableStyle
+from reportlab.lib.utils import ImageReader
+from PIL import Image
 from io import BytesIO
 from datetime import datetime
 from pathlib import Path
