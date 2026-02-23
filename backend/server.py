@@ -1670,10 +1670,12 @@ class DrawingRequest(BaseModel):
     bearing_make: str
     housing: str
     weight_kg: float
-    unit_price: float
+    unit_price: float = 0  # Optional, not displayed
     rubber_diameter: Optional[float] = None
     belt_widths: Optional[List[int]] = None
     quantity: int = 1
+    shaft_end_type: Optional[str] = "B"  # A (+26mm), B (+36mm), C (+56mm), custom
+    custom_shaft_extension: Optional[int] = None  # Custom shaft extension in mm
 
 @api_router.get("/download/sample-drawing")
 async def download_sample_drawing():
@@ -1708,7 +1710,9 @@ async def generate_drawing(request: DrawingRequest, current_user: dict = Depends
             unit_price=request.unit_price,
             rubber_diameter=request.rubber_diameter,
             belt_widths=request.belt_widths,
-            quantity=request.quantity
+            quantity=request.quantity,
+            shaft_end_type=request.shaft_end_type or "B",
+            custom_shaft_extension=request.custom_shaft_extension
         )
         
         filename = f"Drawing_{request.product_code.replace(' ', '_').replace('/', '-')}.pdf"
