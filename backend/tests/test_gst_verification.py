@@ -13,7 +13,7 @@ import os
 import uuid
 import base64
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://belt-roller-admin.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://roller-cost-finder.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 TEST_EMAIL = "test@test.com"
