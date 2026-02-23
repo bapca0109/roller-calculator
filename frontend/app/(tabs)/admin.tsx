@@ -8,11 +8,14 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 
+type MainTab = 'prices' | 'standards';
 type PriceCategory = 'basic' | 'bearing' | 'seal' | 'circlip' | 'rubber' | 'locking';
 
 interface Prices {
@@ -27,8 +30,39 @@ interface Prices {
   locking_ring_costs: Record<string, number>;
 }
 
+interface StandardsCollection {
+  collection: string;
+  count: number;
+}
+
+interface StandardItem {
+  [key: string]: any;
+}
+
+const COLLECTION_LABELS: Record<string, string> = {
+  pipe_diameters: 'Pipe Diameters',
+  shaft_diameters: 'Shaft Diameters',
+  shaft_end_types: 'Shaft End Types',
+  bearings: 'Bearings',
+  housings: 'Housings',
+  pipe_weights: 'Pipe Weights',
+  roller_lengths: 'Roller Lengths',
+  circlips: 'Circlips',
+  rubber_lagging: 'Rubber Lagging',
+  rubber_rings: 'Rubber Rings',
+  locking_rings: 'Locking Rings',
+  discount_slabs: 'Discount Slabs',
+  freight_rates: 'Freight Rates',
+  packing_options: 'Packing Options',
+  gst_config: 'GST Config',
+  raw_material_costs: 'Raw Materials',
+};
+
 export default function AdminScreen() {
   const { user } = useAuth();
+  const [mainTab, setMainTab] = useState<MainTab>('prices');
+  
+  // Prices state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prices, setPrices] = useState<Prices | null>(null);
@@ -36,10 +70,23 @@ export default function AdminScreen() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
-  useEffect(() => {
-    fetchPrices();
-  }, []);
+  // Standards state
+  const [standardsSummary, setStandardsSummary] = useState<StandardsCollection[]>([]);
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
+  const [collectionData, setCollectionData] = useState<StandardItem[]>([]);
+  const [loadingStandards, setLoadingStandards] = useState(false);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<StandardItem | null>(null);
 
+  useEffect(() => {
+    if (mainTab === 'prices') {
+      fetchPrices();
+    } else {
+      fetchStandardsSummary();
+    }
+  }, [mainTab]);
+
+  // ============= PRICES FUNCTIONS =============
   const fetchPrices = async () => {
     try {
       setLoading(true);
@@ -111,6 +158,38 @@ export default function AdminScreen() {
     handleUpdatePrice(category, key, subKey, value);
   };
 
+  // ============= STANDARDS FUNCTIONS =============
+  const fetchStandardsSummary = async () => {
+    try {
+      setLoadingStandards(true);
+      const response = await api.get('/admin/standards-summary');
+      setStandardsSummary(response.data.summary);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to fetch standards');
+    } finally {
+      setLoadingStandards(false);
+    }
+  };
+
+  const fetchCollectionData = async (collection: string) => {
+    try {
+      setLoadingStandards(true);
+      setSelectedCollection(collection);
+      const response = await api.get(`/admin/standards/${collection}`);
+      setCollectionData(response.data.data);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to fetch data');
+    } finally {
+      setLoadingStandards(false);
+    }
+  };
+
+  const viewItemDetails = (item: StandardItem) => {
+    setSelectedItem(item);
+    setDetailModalVisible(true);
+  };
+
+  // ============= ACCESS CHECK =============
   if (user?.role !== 'admin') {
     return (
       <View style={styles.container}>
@@ -125,15 +204,7 @@ export default function AdminScreen() {
     );
   }
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#960018" />
-        <Text style={styles.loadingText}>Loading prices...</Text>
-      </View>
-    );
-  }
-
+  // ============= PRICES RENDER FUNCTIONS =============
   const renderEditableRow = (
     label: string,
     value: number,
@@ -172,7 +243,7 @@ export default function AdminScreen() {
           style={styles.valueContainer}
           onPress={() => startEdit(editKey, value)}
         >
-          <Text style={styles.priceValue}>Rs. {value.toFixed(2)}</Text>
+          <Text style={styles.priceValue}>₹{value.toFixed(2)}</Text>
           <Ionicons name="pencil" size={16} color="#960018" />
         </TouchableOpacity>
       )}
@@ -280,6 +351,149 @@ export default function AdminScreen() {
     </View>
   );
 
+  // ============= STANDARDS RENDER FUNCTIONS =============
+  const renderStandardsSummary = () => (
+    <View style={styles.standardsGrid}>
+      {standardsSummary.map((item) => (
+        <TouchableOpacity
+          key={item.collection}
+          style={[
+            styles.collectionCard,
+            selectedCollection === item.collection && styles.collectionCardActive
+          ]}
+          onPress={() => fetchCollectionData(item.collection)}
+        >
+          <Ionicons 
+            name="folder-outline" 
+            size={24} 
+            color={selectedCollection === item.collection ? '#fff' : '#960018'} 
+          />
+          <Text style={[
+            styles.collectionName,
+            selectedCollection === item.collection && styles.collectionNameActive
+          ]}>
+            {COLLECTION_LABELS[item.collection] || item.collection}
+          </Text>
+          <Text style={[
+            styles.collectionCount,
+            selectedCollection === item.collection && styles.collectionCountActive
+          ]}>
+            {item.count} items
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const renderCollectionData = () => {
+    if (!selectedCollection) return null;
+
+    const getItemLabel = (item: StandardItem): string => {
+      if (item.number) return item.number; // bearings
+      if (item.actual_od) return `${item.display_code}mm (${item.actual_od}mm)`; // pipe_diameters
+      if (item.diameter) return `${item.diameter}mm`; // shaft_diameters
+      if (item.type) return item.description || item.type; // shaft_end_types, packing
+      if (item.pipe_dia) return `${item.pipe_dia}mm pipe`; // pipe_weights
+      if (item.housing_dia) return `Housing ${item.housing_dia} / Bore ${item.bearing_bore}`; // housings
+      if (item.belt_width) return `Belt ${item.belt_width}mm`; // roller_lengths
+      if (item.shaft_dia) return `Shaft ${item.shaft_dia}mm`; // circlips
+      if (item.pipe_code && item.rubber_dia) return `Pipe ${item.pipe_code} / Rubber ${item.rubber_dia}`; // rubber_rings
+      if (item.pipe_code) return `Pipe ${item.pipe_code}mm`; // locking_rings, rubber_lagging
+      if (item.min_value !== undefined) return `₹${item.min_value.toLocaleString()} - ₹${item.max_value.toLocaleString()}`; // discount_slabs
+      if (item.min_km !== undefined) return `${item.min_km} - ${item.max_km} km`; // freight_rates
+      if (item.key) return item.key; // gst_config
+      if (item.material) return item.material; // raw_material_costs
+      return JSON.stringify(item).substring(0, 40);
+    };
+
+    const getItemSubtitle = (item: StandardItem): string => {
+      if (item.costs) return `SKF: ₹${item.costs.skf || '-'}, FAG: ₹${item.costs.fag || '-'}`;
+      if (item.type_a) return `A: ${item.type_a}, B: ${item.type_b}, C: ${item.type_c} kg/m`;
+      if (item.weight_per_meter) return `${item.weight_per_meter} kg/m`;
+      if (item.cost) return `₹${item.cost}`;
+      if (item.cost_per_piece) return `₹${item.cost_per_piece}/pc`;
+      if (item.cost_per_ring) return `₹${item.cost_per_ring}/ring`;
+      if (item.discount_percent) return `${item.discount_percent}% discount`;
+      if (item.rate_per_kg) return `₹${item.rate_per_kg}/kg`;
+      if (item.percent !== undefined) return `${item.percent}%`;
+      if (item.value !== undefined) return `${item.value}`;
+      if (item.extension_mm) return `+${item.extension_mm}mm`;
+      if (item.rubber_options) return `Options: ${item.rubber_options.join(', ')}mm`;
+      if (item.lengths) return `Lengths: ${item.lengths.join(', ')}mm`;
+      return '';
+    };
+
+    return (
+      <View style={styles.collectionDataContainer}>
+        <View style={styles.collectionHeader}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => setSelectedCollection(null)}
+          >
+            <Ionicons name="arrow-back" size={24} color="#960018" />
+          </TouchableOpacity>
+          <Text style={styles.collectionTitle}>
+            {COLLECTION_LABELS[selectedCollection] || selectedCollection}
+          </Text>
+          <Text style={styles.collectionItemCount}>
+            {collectionData.length} items
+          </Text>
+        </View>
+        
+        <FlatList
+          data={collectionData}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={styles.dataRow}
+              onPress={() => viewItemDetails(item)}
+            >
+              <View style={styles.dataRowContent}>
+                <Text style={styles.dataRowLabel}>{getItemLabel(item)}</Text>
+                <Text style={styles.dataRowValue}>{getItemSubtitle(item)}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={styles.dataList}
+        />
+      </View>
+    );
+  };
+
+  const renderDetailModal = () => (
+    <Modal
+      visible={detailModalVisible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setDetailModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Item Details</Text>
+            <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalBody}>
+            {selectedItem && Object.entries(selectedItem)
+              .filter(([key]) => !key.startsWith('_') && key !== 'created_at' && key !== 'migrated_from')
+              .map(([key, value]) => (
+                <View key={key} style={styles.detailRow}>
+                  <Text style={styles.detailKey}>{key.replace(/_/g, ' ')}</Text>
+                  <Text style={styles.detailValue}>
+                    {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                  </Text>
+                </View>
+              ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // ============= MAIN RENDER =============
   const categories: { key: PriceCategory; label: string; icon: string }[] = [
     { key: 'basic', label: 'Basic', icon: 'cash-outline' },
     { key: 'bearing', label: 'Bearing', icon: 'ellipse-outline' },
@@ -293,57 +507,117 @@ export default function AdminScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Admin Panel</Text>
-        <Text style={styles.headerSubtitle}>Raw Material Prices</Text>
+        <View style={styles.mainTabs}>
+          <TouchableOpacity
+            style={[styles.mainTab, mainTab === 'prices' && styles.mainTabActive]}
+            onPress={() => setMainTab('prices')}
+          >
+            <Ionicons 
+              name="pricetag-outline" 
+              size={18} 
+              color={mainTab === 'prices' ? '#960018' : '#fff'} 
+            />
+            <Text style={[styles.mainTabText, mainTab === 'prices' && styles.mainTabTextActive]}>
+              Prices
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.mainTab, mainTab === 'standards' && styles.mainTabActive]}
+            onPress={() => setMainTab('standards')}
+          >
+            <Ionicons 
+              name="server-outline" 
+              size={18} 
+              color={mainTab === 'standards' ? '#960018' : '#fff'} 
+            />
+            <Text style={[styles.mainTabText, mainTab === 'standards' && styles.mainTabTextActive]}>
+              Standards
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <View style={styles.categoryTabs}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {categories.map((cat) => (
-            <TouchableOpacity
-              key={cat.key}
-              style={[
-                styles.categoryTab,
-                activeCategory === cat.key && styles.categoryTabActive,
-              ]}
-              onPress={() => setActiveCategory(cat.key)}
-            >
-              <Ionicons
-                name={cat.icon as any}
-                size={18}
-                color={activeCategory === cat.key ? '#fff' : '#666'}
-              />
-              <Text
-                style={[
-                  styles.categoryTabText,
-                  activeCategory === cat.key && styles.categoryTabTextActive,
-                ]}
+      {mainTab === 'prices' ? (
+        <>
+          <View style={styles.categoryTabs}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat.key}
+                  style={[
+                    styles.categoryTab,
+                    activeCategory === cat.key && styles.categoryTabActive,
+                  ]}
+                  onPress={() => setActiveCategory(cat.key)}
+                >
+                  <Ionicons
+                    name={cat.icon as any}
+                    size={18}
+                    color={activeCategory === cat.key ? '#fff' : '#666'}
+                  />
+                  <Text
+                    style={[
+                      styles.categoryTabText,
+                      activeCategory === cat.key && styles.categoryTabTextActive,
+                    ]}
+                  >
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#960018" />
+              <Text style={styles.loadingText}>Loading prices...</Text>
+            </View>
+          ) : (
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+              {activeCategory === 'basic' && renderBasicRates()}
+              {activeCategory === 'bearing' && renderBearingCosts()}
+              {activeCategory === 'seal' && renderSealCosts()}
+              {activeCategory === 'circlip' && renderCirclipCosts()}
+              {activeCategory === 'rubber' && renderRubberRingCosts()}
+              {activeCategory === 'locking' && renderLockingRingCosts()}
+
+              <TouchableOpacity
+                style={styles.resetButton}
+                onPress={handleResetPrices}
+                disabled={saving}
               >
-                {cat.label}
+                <Ionicons name="refresh" size={20} color="#C41E3A" />
+                <Text style={styles.resetButtonText}>Reset All to Default</Text>
+              </TouchableOpacity>
+
+              <View style={styles.bottomSpacer} />
+            </ScrollView>
+          )}
+        </>
+      ) : (
+        <>
+          {loadingStandards ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#960018" />
+              <Text style={styles.loadingText}>Loading standards...</Text>
+            </View>
+          ) : selectedCollection ? (
+            renderCollectionData()
+          ) : (
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+              <Text style={styles.standardsTitle}>Product Standards Data</Text>
+              <Text style={styles.standardsSubtitle}>
+                Tap a collection to view and manage its data
               </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+              {renderStandardsSummary()}
+              <View style={styles.bottomSpacer} />
+            </ScrollView>
+          )}
+        </>
+      )}
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {activeCategory === 'basic' && renderBasicRates()}
-        {activeCategory === 'bearing' && renderBearingCosts()}
-        {activeCategory === 'seal' && renderSealCosts()}
-        {activeCategory === 'circlip' && renderCirclipCosts()}
-        {activeCategory === 'rubber' && renderRubberRingCosts()}
-        {activeCategory === 'locking' && renderLockingRingCosts()}
-
-        <TouchableOpacity
-          style={styles.resetButton}
-          onPress={handleResetPrices}
-          disabled={saving}
-        >
-          <Ionicons name="refresh" size={20} color="#C41E3A" />
-          <Text style={styles.resetButtonText}>Reset All to Default</Text>
-        </TouchableOpacity>
-
-        <View style={styles.bottomSpacer} />
-      </ScrollView>
+      {renderDetailModal()}
 
       {saving && (
         <View style={styles.savingOverlay}>
@@ -391,18 +665,38 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#960018',
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: 16,
     paddingHorizontal: 20,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
     color: '#fff',
+    marginBottom: 12,
   },
-  headerSubtitle: {
+  mainTabs: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  mainTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    gap: 6,
+  },
+  mainTabActive: {
+    backgroundColor: '#fff',
+  },
+  mainTabText: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  mainTabTextActive: {
+    color: '#960018',
   },
   categoryTabs: {
     backgroundColor: '#fff',
@@ -546,6 +840,144 @@ const styles = StyleSheet.create({
   savingText: {
     marginTop: 16,
     fontSize: 16,
+    color: '#333',
+  },
+  // Standards styles
+  standardsTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  standardsSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+  },
+  standardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  collectionCard: {
+    width: '47%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  collectionCardActive: {
+    backgroundColor: '#960018',
+    borderColor: '#960018',
+  },
+  collectionName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  collectionNameActive: {
+    color: '#fff',
+  },
+  collectionCount: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  collectionCountActive: {
+    color: 'rgba(255,255,255,0.8)',
+  },
+  collectionDataContainer: {
+    flex: 1,
+  },
+  collectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  backButton: {
+    marginRight: 12,
+  },
+  collectionTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  collectionItemCount: {
+    fontSize: 14,
+    color: '#666',
+  },
+  dataList: {
+    padding: 16,
+  },
+  dataRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  dataRowContent: {
+    flex: 1,
+  },
+  dataRowLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+  },
+  dataRowValue: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalBody: {
+    padding: 20,
+  },
+  detailRow: {
+    marginBottom: 16,
+  },
+  detailKey: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 15,
     color: '#333',
   },
 });
