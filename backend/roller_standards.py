@@ -756,14 +756,20 @@ def calculate_rubber_cost(pipe_dia, rubber_dia, pipe_length_mm):
     Calculate rubber lagging cost for impact rollers.
     Number of rings = pipe_length / 35mm
     Total cost = number of rings × cost per ring
+    Uses database values with fallback to hardcoded defaults.
     """
-    rubber_key = f"{int(pipe_dia)}/{int(rubber_dia)}"
+    import price_loader
     
-    if rubber_key not in RUBBER_RING_COSTS:
+    # Use display code for pipe (e.g., 88.9 -> 89)
+    pipe_code = get_pipe_code(pipe_dia)
+    rubber_key = f"{pipe_code}/{int(rubber_dia)}"
+    
+    # Get cost from price_loader (DB or fallback)
+    cost_per_ring = price_loader.get_rubber_ring_cost(rubber_key, RUBBER_RING_COSTS)
+    if cost_per_ring == 0:
         return 0  # No rubber for this combination
     
     number_of_rings = pipe_length_mm / RUBBER_RING_THICKNESS
-    cost_per_ring = RUBBER_RING_COSTS[rubber_key]
     total_rubber_cost = number_of_rings * cost_per_ring
     
     return round(total_rubber_cost, 2)
