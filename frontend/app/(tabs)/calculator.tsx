@@ -445,9 +445,9 @@ export default function CalculatorScreen() {
         shaft_end_type: shaftEndType,
       };
 
-      // Add custom shaft extension if custom type selected
+      // Add custom shaft length if custom type selected (user enters total shaft length)
       if (shaftEndType === 'custom' && customShaftExtension) {
-        payload.custom_shaft_extension = parseInt(customShaftExtension);
+        payload.custom_shaft_length = parseInt(customShaftExtension);
       }
 
       if (rollerType === 'impact' && rubberDiameter) {
