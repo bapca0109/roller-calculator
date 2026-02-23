@@ -193,11 +193,11 @@ def generate_roller_drawing(
         specs.append(("Rubber:", "Natural Rubber, 40±5 Shore A"))
     
     for label, value in specs:
-        c.setFont("Helvetica-Bold", 9)
+        c.setFont("Helvetica-Bold", 8)
         c.drawString(spec_x, spec_y, label)
-        c.setFont("Helvetica", 9)
-        c.drawString(spec_x + 18*mm, spec_y, value)
-        spec_y -= 14
+        c.setFont("Helvetica", 8)
+        c.drawString(spec_x + 16*mm, spec_y, value)
+        spec_y -= 12
     
     # ============= LEGEND (Below specs) =============
     legend_y = spec_y - 10
@@ -243,7 +243,7 @@ def generate_roller_drawing(
     c.drawRightString(width - 20*mm, footer_y, f"Generated: {datetime.now().strftime('%d-%m-%Y %H:%M')}")
     
     c.setFont("Helvetica-Oblique", 7)
-    c.drawCentredString(width/2, footer_y - 10, "All dimensions in mm. Drawing not to scale.")
+    c.drawCentredString(width/2, footer_y - 10, "ALL DIMENSIONS ARE IN MM. DRAWING NOT TO SCALE.")
     
     c.save()
     buffer.seek(0)
