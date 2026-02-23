@@ -822,8 +822,9 @@ export default function AdminScreen() {
       )}
 
       {renderDetailModal()}
+      {renderEditModal()}
 
-      {saving && (
+      {(saving || savingStandard) && (
         <View style={styles.savingOverlay}>
           <ActivityIndicator size="large" color="#960018" />
           <Text style={styles.savingText}>Saving...</Text>
