@@ -1634,6 +1634,20 @@ async def create_customer_from_gst(
     
     return {"message": "Customer created from GST data", "customer": customer_dict}
 
+# ============= FILE DOWNLOADS =============
+
+@api_router.get("/download/raw-materials")
+async def download_raw_materials():
+    """Download raw materials Excel file"""
+    file_path = ROOT_DIR / "static" / "raw_material_costs.xlsx"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(
+        path=str(file_path),
+        filename="raw_material_costs.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 # Include the router in the main app
 app.include_router(api_router)
 
