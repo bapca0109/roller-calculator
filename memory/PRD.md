@@ -148,7 +148,7 @@ Examples:
   2. System immediately searches database for existing customer
   3. If found: Shows green "Customer Found!" card with option to select/edit
   4. If not found: Shows option to add customer manually with GSTIN pre-filled
-- Note: GST portal auto-fetch is disabled due to bot detection. Users manually enter customer details.
+- Note: External GST portal API was removed (Feb 2025) - only local DB search and format validation remain.
 
 ### Admin Panel for Price Management ✅
 - Full CRUD UI for managing raw material prices
@@ -167,6 +167,9 @@ Examples:
 - Applied carmine red theme (#960018) across all pages
 - Removed non-functional "Configure" button from Search tab
 - Added "Return" as third roller type in calculator
+
+## Cleanup History
+- **Feb 2025**: Removed obsolete `gst_verification.py` and external GST API endpoints (captcha-based verification)
 
 ## Test Credentials
 - Email: `test@test.com`
