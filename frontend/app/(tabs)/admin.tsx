@@ -134,6 +134,9 @@ export default function AdminScreen() {
           onPress: async () => {
             try {
               setSaving(true);
+              // Cancel any active editing
+              setEditingKey(null);
+              setEditValue('');
               // Clear current prices first to show loading state
               setPrices(null);
               
