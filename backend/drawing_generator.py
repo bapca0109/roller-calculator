@@ -206,38 +206,6 @@ def generate_roller_drawing(
         c.drawString(15*mm + 18*mm, y_pos, value)
         y_pos -= 11
     
-    # ============= LEGEND (Full width, below material specs) =============
-    y_pos -= 8
-    
-    c.setFillColor(primary_color)
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(15*mm, y_pos, "LEGEND")
-    
-    y_pos -= 12
-    c.setFont("Helvetica", 8)
-    legend_x = 15*mm
-    
-    # Blue dimension line
-    c.setStrokeColor(blue)
-    c.setLineWidth(1)
-    c.line(legend_x, y_pos + 3, legend_x + 15*mm, y_pos + 3)
-    c.setFillColor(black)
-    c.drawString(legend_x + 18*mm, y_pos, "Dimension lines")
-    
-    # Green dashed line (hidden features)
-    c.setStrokeColor(green)
-    c.setDash([3, 2])
-    c.line(legend_x + 55*mm, y_pos + 3, legend_x + 70*mm, y_pos + 3)
-    c.setDash([])
-    c.drawString(legend_x + 73*mm, y_pos, "Hidden features")
-    
-    # Red center line
-    c.setStrokeColor(red)
-    c.setDash([6, 2, 2, 2])
-    c.line(legend_x + 115*mm, y_pos + 3, legend_x + 130*mm, y_pos + 3)
-    c.setDash([])
-    c.drawString(legend_x + 133*mm, y_pos, "Center line")
-    
     # ============= FOOTER =============
     footer_y = 15
     c.setStrokeColor(light_gray)
@@ -315,15 +283,6 @@ def draw_engineering_schematic(c, center_x, center_y, pipe_diameter, pipe_length
         c.rect(center_x - pipe_len_s/2, center_y - outer_dia_s/2, pipe_len_s, outer_dia_s, fill=1, stroke=1)
         c.setFillColor(colors.HexColor('#D0D0D0'))
         c.rect(center_x - pipe_len_s/2 + 3, center_y - pipe_dia_s/2 + 3, pipe_len_s - 6, pipe_dia_s - 6, fill=1, stroke=0)
-    
-    # ============= DRAW HIDDEN LINES (internal bore - green dashed) =============
-    c.setStrokeColor(green)
-    c.setLineWidth(0.5)
-    c.setDash([4, 3])
-    bore_dia_s = shaft_dia_s + 5
-    c.line(center_x - pipe_len_s/2, center_y - bore_dia_s/2, center_x + pipe_len_s/2, center_y - bore_dia_s/2)
-    c.line(center_x - pipe_len_s/2, center_y + bore_dia_s/2, center_x + pipe_len_s/2, center_y + bore_dia_s/2)
-    c.setDash([])
     
     # ============= DIMENSION LINES =============
     c.setStrokeColor(blue)
