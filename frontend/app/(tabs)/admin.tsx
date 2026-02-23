@@ -77,6 +77,10 @@ export default function AdminScreen() {
   const [loadingStandards, setLoadingStandards] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<StandardItem | null>(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingItem, setEditingItem] = useState<StandardItem | null>(null);
+  const [editFormData, setEditFormData] = useState<Record<string, string>>({});
+  const [savingStandard, setSavingStandard] = useState(false);
 
   useEffect(() => {
     if (mainTab === 'prices') {
