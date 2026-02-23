@@ -111,6 +111,7 @@ def generate_roller_drawing(
         pipe_diameter=pipe_diameter,
         pipe_length=pipe_length,
         shaft_diameter=shaft_diameter,
+        shaft_length=shaft_length,  # Pass calculated shaft length
         rubber_diameter=rubber_diameter,
         roller_type=roller_type
     )
@@ -123,8 +124,13 @@ def generate_roller_drawing(
     
     dim_y -= 5
     
-    # Shaft length calculation
-    shaft_length = pipe_length + 70  # 35mm on each side
+    # Shaft end type display
+    shaft_end_label = {
+        "A": "Type A (+26mm)",
+        "B": "Type B (+36mm)",
+        "C": "Type C (+56mm)",
+        "custom": f"Custom (+{shaft_extension}mm)"
+    }.get(shaft_end_type, f"Type {shaft_end_type}")
     
     dim_data = [
         ['Parameter', 'Value', 'Unit'],
@@ -132,7 +138,8 @@ def generate_roller_drawing(
         ['Pipe Length', f'{pipe_length}', 'mm'],
         ['Pipe Type', f'Type {pipe_type} ({"Light" if pipe_type == "A" else "Medium" if pipe_type == "B" else "Heavy"})', '-'],
         ['Shaft Diameter', f'{shaft_diameter}', 'mm'],
-        ['Shaft Length', f'{shaft_length}', 'mm'],
+        ['Shaft End Type', shaft_end_label, '-'],
+        ['Shaft Length', f'{int(shaft_length)}', 'mm'],
         ['Total Weight', f'{weight_kg}', 'kg'],
     ]
     
