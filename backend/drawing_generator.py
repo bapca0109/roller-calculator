@@ -233,7 +233,7 @@ def generate_roller_drawing(
         specs.append(f"Rubber: Natural Rubber")
     
     for spec in specs:
-        c.drawString(price_x, spec_y, spec)
+        c.drawString(spec_x, spec_y, spec)
         spec_y -= 14
     
     # ============= FOOTER =============
@@ -248,23 +248,27 @@ def generate_roller_drawing(
     
     # Notes
     c.setFont("Helvetica-Oblique", 7)
-    c.drawString(20*mm, footer_y - 12, "* All dimensions in mm unless specified. Prices subject to change. GST extra as applicable.")
+    c.drawString(20*mm, footer_y - 12, "* All dimensions in mm unless specified.")
     
     c.save()
     buffer.seek(0)
     return buffer
 
 
-def draw_roller_schematic(c, center_x, center_y, pipe_diameter, pipe_length, shaft_diameter, rubber_diameter=None, roller_type='carrying'):
+def draw_roller_schematic(c, center_x, center_y, pipe_diameter, pipe_length, shaft_diameter, shaft_length=None, rubber_diameter=None, roller_type='carrying'):
     """
     Draw a simplified roller schematic with dimensions
     """
+    # Use provided shaft_length or calculate default
+    if shaft_length is None:
+        shaft_length = pipe_length + 36  # Default to Type B
+    
     # Scale factor to fit drawing
     max_width = 140 * mm
     max_height = 80 * mm
     
     # Calculate scale
-    actual_length = pipe_length + 100  # Include shaft extensions
+    actual_length = shaft_length  # Use actual shaft length
     scale = min(max_width / actual_length, max_height / (rubber_diameter or pipe_diameter))
     scale = min(scale, 0.4)  # Cap the scale
     
