@@ -350,25 +350,26 @@ export default function SearchScreen() {
       }
 
       // Step 7: Share file
+      Alert.alert('File Ready', `File saved (${(fileInfo.size || 0) / 1024} KB). Opening share dialog...`);
+      
       const sharingAvailable = await Sharing.isAvailableAsync();
       if (sharingAvailable) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Drawing: ${length.product_code}`,
-          UTI: 'com.adobe.pdf'
-        });
-      } else {
-        // Fallback: Open with Linking
-        const canOpen = await Linking.canOpenURL(fileUri);
-        if (canOpen) {
-          await Linking.openURL(fileUri);
-        } else {
-          Alert.alert('Success', `Drawing saved to: ${filename}`);
+        try {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Drawing: ${length.product_code}`,
+            UTI: 'com.adobe.pdf'
+          });
+          Alert.alert('Done', 'Drawing shared successfully');
+        } catch (shareError: any) {
+          Alert.alert('Share Error', shareError.message || String(shareError));
         }
+      } else {
+        Alert.alert('Sharing Not Available', `File saved at: ${fileUri}`);
       }
     } catch (error: any) {
       console.error('Drawing error:', error);
-      Alert.alert('Error', `Failed: ${error.message || String(error)}`);
+      Alert.alert('Download Error', `${error.message || String(error)}`);
     } finally {
       setGeneratingDrawing(null);
     }
