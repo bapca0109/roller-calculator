@@ -63,6 +63,7 @@ Examples:
 - With length: `CR20 89 200`, `RR25 114 700`
 - Without bearing make: `CR25 139 600 62`
 - Full exact codes: `CR20 89 200A 62S`
+- **Add to Quote from Search** - Add products directly to quote from search results
 
 ### 6. Pricing Formula
 `(Total Raw Material Cost) × 1.32 (layout) × 1.60 (profit)`
@@ -72,7 +73,7 @@ Examples:
 - Packing charges (Optional)
 - Freight (distance-based via pincode)
 - GST calculation (CGST/SGST intra-state, IGST inter-state)
-- Multi-product quote builder
+- Multi-product quote builder (from Calculator AND Search tabs)
 - PDF export
 - Company branding (CONVERO SOLUTIONS)
 
