@@ -806,19 +806,21 @@ export default function CalculatorScreen() {
 
           {shaftEndType === 'custom' && (
             <View style={styles.inputRow}>
-              <Text style={styles.label}>Custom Shaft Extension (mm)</Text>
+              <Text style={styles.label}>Total Shaft Length (mm)</Text>
               <TextInput
                 style={[styles.input, errors.customShaftExtension ? styles.inputError : null]}
                 value={customShaftExtension}
                 onChangeText={(value) => {
                   setCustomShaftExtension(value);
-                  if (value && (isNaN(parseInt(value)) || parseInt(value) < 10 || parseInt(value) > 200)) {
-                    setErrors(prev => ({ ...prev, customShaftExtension: 'Enter value between 10-200mm' }));
+                  const pipeLengthNum = parseInt(pipeLength) || 200;
+                  const shaftLen = parseInt(value);
+                  if (value && (isNaN(shaftLen) || shaftLen <= pipeLengthNum || shaftLen > pipeLengthNum + 200)) {
+                    setErrors(prev => ({ ...prev, customShaftExtension: `Enter value between ${pipeLengthNum + 10} - ${pipeLengthNum + 200}mm` }));
                   } else {
                     setErrors(prev => ({ ...prev, customShaftExtension: '' }));
                   }
                 }}
-                placeholder="e.g. 50"
+                placeholder={`e.g. ${(parseInt(pipeLength) || 200) + 50}`}
                 keyboardType="numeric"
               />
               {errors.customShaftExtension ? (
