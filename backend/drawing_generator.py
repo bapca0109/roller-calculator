@@ -11,6 +11,8 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import Table, TableStyle
 from io import BytesIO
 from datetime import datetime
+from pathlib import Path
+import os
 
 
 def generate_roller_drawing(
@@ -56,16 +58,27 @@ def generate_roller_drawing(
     gray = colors.HexColor('#666666')
     light_gray = colors.HexColor('#CCCCCC')
     
-    # ============= HEADER =============
+    # ============= HEADER WITH LOGO =============
     c.setFillColor(primary_color)
     c.rect(0, height - 50, width, 50, fill=1, stroke=0)
     
+    # Add logo
+    logo_path = Path(__file__).parent / "static" / "convero-logo.png"
+    if logo_path.exists():
+        try:
+            c.drawImage(str(logo_path), 10*mm, height - 45, width=35*mm, height=35*mm, preserveAspectRatio=True, mask='auto')
+            text_start_x = 48*mm  # Move text right to make room for logo
+        except:
+            text_start_x = 15*mm
+    else:
+        text_start_x = 15*mm
+    
     c.setFillColor(colors.white)
     c.setFont("Helvetica-Bold", 18)
-    c.drawString(15*mm, height - 30, "CONVERO SOLUTIONS")
+    c.drawString(text_start_x, height - 30, "CONVERO SOLUTIONS")
     
     c.setFont("Helvetica", 9)
-    c.drawString(15*mm, height - 42, "Belt Conveyor Components & Engineering")
+    c.drawString(text_start_x, height - 42, "Belt Conveyor Components & Engineering")
     
     # Drawing number
     c.setFont("Helvetica-Bold", 9)
