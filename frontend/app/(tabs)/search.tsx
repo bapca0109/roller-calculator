@@ -276,7 +276,7 @@ export default function SearchScreen() {
     }
   };
 
-  // Download Drawing function - Using WebBrowser approach
+  // Download Drawing function - Open in browser approach
   const downloadDrawing = async (product: ProductResult, length: LengthDetail) => {
     const drawingKey = `${length.product_code}`;
     setGeneratingDrawing(drawingKey);
@@ -285,7 +285,6 @@ export default function SearchScreen() {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         Alert.alert('Error', 'Not authenticated');
-        setGeneratingDrawing(null);
         return;
       }
       
@@ -307,6 +306,7 @@ export default function SearchScreen() {
         quantity: 1
       };
 
+      // Get base64 PDF
       const response = await fetch(`${backendUrl}/api/generate-drawing-base64`, {
         method: 'POST',
         headers: {
@@ -327,7 +327,7 @@ export default function SearchScreen() {
         return;
       }
 
-      // Save file and share
+      // Save to cache
       const filename = `Drawing_${Date.now()}.pdf`;
       const fileUri = FileSystem.cacheDirectory + filename;
       
@@ -335,22 +335,34 @@ export default function SearchScreen() {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // Check file exists
+      // Verify file exists
       const info = await FileSystem.getInfoAsync(fileUri);
       if (!info.exists) {
-        Alert.alert('Error', 'File save failed');
+        Alert.alert('Error', 'Failed to save PDF');
         return;
       }
 
-      // Try sharing
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, { mimeType: 'application/pdf' });
-      } else {
-        Alert.alert('Done', 'PDF saved but sharing not available');
+      // Try multiple sharing methods
+      try {
+        // Method 1: expo-sharing
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(fileUri);
+          return;
+        }
+      } catch (e) {
+        console.log('Sharing failed:', e);
       }
+
+      // Method 2: Alert with file location
+      Alert.alert(
+        'PDF Generated',
+        `File saved successfully!\nSize: ${Math.round((info.size || 0) / 1024)} KB\n\nFile location: ${fileUri}`,
+        [{ text: 'OK' }]
+      );
       
     } catch (error: any) {
-      Alert.alert('Download Failed', error.message || 'Unknown error');
+      Alert.alert('Error', error.message || 'Download failed');
     } finally {
       setGeneratingDrawing(null);
     }
