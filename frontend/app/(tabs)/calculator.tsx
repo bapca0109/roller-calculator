@@ -163,6 +163,10 @@ export default function CalculatorScreen() {
   const [shaftEndType, setShaftEndType] = useState<string>('B');
   const [customShaftExtension, setCustomShaftExtension] = useState<string>('');
   
+  // Custom discount state
+  const [customDiscount, setCustomDiscount] = useState<string>('');
+  const [useCustomDiscount, setUseCustomDiscount] = useState(false);
+  
   // Drawing generation state
   const [generatingDrawing, setGeneratingDrawing] = useState(false);
 
