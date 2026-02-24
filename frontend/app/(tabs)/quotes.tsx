@@ -552,9 +552,28 @@ export default function QuotesScreen() {
                         <Text style={styles.pricingValue}>Rs. {selectedQuote.shipping_cost?.toFixed(2)}</Text>
                       </View>
                     )}
+                    
+                    {/* Taxable Amount */}
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>Taxable Amount</Text>
+                      <Text style={styles.pricingValue}>
+                        Rs. {((selectedQuote.subtotal || 0) - (selectedQuote.total_discount || 0) + (selectedQuote.packing_charges || 0)).toFixed(2)}
+                      </Text>
+                    </View>
+                    
+                    {/* GST 18% */}
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>GST (18%)</Text>
+                      <Text style={styles.pricingValue}>
+                        Rs. {(((selectedQuote.subtotal || 0) - (selectedQuote.total_discount || 0) + (selectedQuote.packing_charges || 0)) * 0.18).toFixed(2)}
+                      </Text>
+                    </View>
+                    
                     <View style={[styles.pricingRow, styles.totalRow]}>
-                      <Text style={styles.totalLabel2}>TOTAL</Text>
-                      <Text style={styles.totalValue}>Rs. {selectedQuote.total_price?.toFixed(2)}</Text>
+                      <Text style={styles.totalLabel2}>GRAND TOTAL</Text>
+                      <Text style={styles.totalValue}>
+                        Rs. {(((selectedQuote.subtotal || 0) - (selectedQuote.total_discount || 0) + (selectedQuote.packing_charges || 0) + (selectedQuote.shipping_cost || 0)) * 1.18).toFixed(2)}
+                      </Text>
                     </View>
                   </View>
 
