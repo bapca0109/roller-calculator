@@ -597,6 +597,124 @@ export default function QuotesScreen() {
                       </>
                     )}
                   </TouchableOpacity>
+                  
+                  {/* Edit Quote Button */}
+                  <TouchableOpacity 
+                    style={[styles.exportButton, { backgroundColor: '#FF9500', marginTop: 12 }]}
+                    onPress={() => {
+                      setSelectedQuote(null);
+                      openEditQuote(selectedQuote);
+                    }}
+                  >
+                    <Ionicons name="pencil" size={24} color="#fff" />
+                    <Text style={styles.exportButtonText}>Edit Quote</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Quote Modal */}
+      <Modal
+        visible={!!editingQuote}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditingQuote(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Quote</Text>
+              <TouchableOpacity onPress={() => setEditingQuote(null)}>
+                <Ionicons name="close" size={28} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalBody}>
+              {editingQuote && (
+                <>
+                  {/* Products with editable quantity */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Products</Text>
+                    {editedProducts.map((product, index) => (
+                      <View key={index} style={styles.editProductRow}>
+                        <View style={styles.editProductInfo}>
+                          <Text style={styles.editProductName}>{product.product_name || product.product_id}</Text>
+                          <Text style={styles.editProductPrice}>Rs. {product.unit_price?.toFixed(2)}/unit</Text>
+                        </View>
+                        <View style={styles.qtyInputContainer}>
+                          <Text style={styles.qtyLabel}>Qty:</Text>
+                          <TextInput
+                            style={styles.qtyInput}
+                            value={product.quantity.toString()}
+                            onChangeText={(text) => updateProductQuantity(index, text)}
+                            keyboardType="numeric"
+                          />
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Editable Discount */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Discount</Text>
+                    <View style={styles.discountInputRow}>
+                      <TextInput
+                        style={styles.discountInput}
+                        value={editedDiscount}
+                        onChangeText={setEditedDiscount}
+                        keyboardType="numeric"
+                        placeholder="0"
+                      />
+                      <Text style={styles.discountPercent}>%</Text>
+                    </View>
+                  </View>
+
+                  {/* Calculated Totals */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Totals</Text>
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>Subtotal</Text>
+                      <Text style={styles.pricingValue}>Rs. {calculateEditedTotal().subtotal.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabelGreen}>Discount ({editedDiscount}%)</Text>
+                      <Text style={styles.pricingValueGreen}>- Rs. {calculateEditedTotal().discountAmount.toFixed(2)}</Text>
+                    </View>
+                    {calculateEditedTotal().packingCharges > 0 && (
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabel}>Packing</Text>
+                        <Text style={styles.pricingValue}>Rs. {calculateEditedTotal().packingCharges.toFixed(2)}</Text>
+                      </View>
+                    )}
+                    {editingQuote.shipping_cost > 0 && (
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabel}>Shipping</Text>
+                        <Text style={styles.pricingValue}>Rs. {editingQuote.shipping_cost.toFixed(2)}</Text>
+                      </View>
+                    )}
+                    <View style={[styles.pricingRow, styles.totalRow]}>
+                      <Text style={styles.totalLabel}>Total</Text>
+                      <Text style={styles.totalValue}>Rs. {calculateEditedTotal().total.toFixed(2)}</Text>
+                    </View>
+                  </View>
+
+                  {/* Save Button */}
+                  <TouchableOpacity 
+                    style={styles.saveEditButton}
+                    onPress={saveEditedQuote}
+                    disabled={savingEdit}
+                  >
+                    {savingEdit ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark" size={24} color="#fff" />
+                        <Text style={styles.saveEditButtonText}>Save Changes</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
                 </>
               )}
             </ScrollView>
