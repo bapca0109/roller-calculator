@@ -539,7 +539,9 @@ export default function QuotesScreen() {
                     </View>
                     {selectedQuote.total_discount > 0 && (
                       <View style={styles.pricingRow}>
-                        <Text style={styles.pricingLabelGreen}>Discount</Text>
+                        <Text style={styles.pricingLabelGreen}>
+                          Discount ({selectedQuote.subtotal > 0 ? ((selectedQuote.total_discount / selectedQuote.subtotal) * 100).toFixed(1) : 0}%)
+                        </Text>
                         <Text style={styles.pricingValueGreen}>- Rs. {selectedQuote.total_discount?.toFixed(2)}</Text>
                       </View>
                     )}
