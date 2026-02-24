@@ -1043,7 +1043,7 @@ export default function CalculatorScreen() {
             {/* Cost Breakdown - Admin Only */}
             {user?.role === 'admin' && (
             <View style={styles.resultCard}>
-              <Text style={styles.resultCardTitle}>Cost Breakdown (Per Roller)</Text>
+              <Text style={styles.resultCardTitle}>Cost Breakdown (Per Roller) - Admin View</Text>
               <View style={styles.resultRow}>
                 <Text style={styles.resultLabel}>Pipe</Text>
                 <Text style={styles.resultValue}>Rs. {result.cost_breakdown.pipe_cost.toFixed(2)}</Text>
