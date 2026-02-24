@@ -276,13 +276,12 @@ export default function SearchScreen() {
     }
   };
 
-  // Download Drawing function
+  // Download Drawing function - Using WebBrowser approach
   const downloadDrawing = async (product: ProductResult, length: LengthDetail) => {
     const drawingKey = `${length.product_code}`;
     setGeneratingDrawing(drawingKey);
     
     try {
-      // Step 1: Get token
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         Alert.alert('Error', 'Not authenticated');
@@ -290,7 +289,6 @@ export default function SearchScreen() {
         return;
       }
       
-      // Step 2: Create request
       const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
       const requestBody = {
         product_code: length.product_code,
@@ -309,7 +307,6 @@ export default function SearchScreen() {
         quantity: 1
       };
 
-      // Step 3: Fetch PDF
       const response = await fetch(`${backendUrl}/api/generate-drawing-base64`, {
         method: 'POST',
         headers: {
@@ -320,34 +317,40 @@ export default function SearchScreen() {
       });
 
       if (!response.ok) {
-        Alert.alert('API Error', `Status: ${response.status}`);
-        setGeneratingDrawing(null);
+        Alert.alert('Error', `API failed: ${response.status}`);
         return;
       }
 
       const data = await response.json();
       if (!data.base64) {
-        Alert.alert('Error', 'No PDF data');
-        setGeneratingDrawing(null);
+        Alert.alert('Error', 'No PDF data received');
         return;
       }
 
-      // Step 4: Save file
+      // Save file and share
       const filename = `Drawing_${Date.now()}.pdf`;
-      const fileUri = FileSystem.documentDirectory + filename;
+      const fileUri = FileSystem.cacheDirectory + filename;
       
       await FileSystem.writeAsStringAsync(fileUri, data.base64, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // Step 5: Share
-      await Sharing.shareAsync(fileUri, {
-        mimeType: 'application/pdf',
-        UTI: 'com.adobe.pdf'
-      });
+      // Check file exists
+      const info = await FileSystem.getInfoAsync(fileUri);
+      if (!info.exists) {
+        Alert.alert('Error', 'File save failed');
+        return;
+      }
+
+      // Try sharing
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, { mimeType: 'application/pdf' });
+      } else {
+        Alert.alert('Done', 'PDF saved but sharing not available');
+      }
       
     } catch (error: any) {
-      Alert.alert('Error', String(error.message || error));
+      Alert.alert('Download Failed', error.message || 'Unknown error');
     } finally {
       setGeneratingDrawing(null);
     }
