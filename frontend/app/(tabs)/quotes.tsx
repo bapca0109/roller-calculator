@@ -93,6 +93,65 @@ export default function QuotesScreen() {
     fetchQuotes();
   }, []);
 
+  // Edit quote functions
+  const openEditQuote = (quote: Quote) => {
+    setEditingQuote(quote);
+    setEditedProducts([...quote.products]);
+    // Calculate current discount percentage from the quote
+    const discountPercent = quote.subtotal > 0 
+      ? ((quote.total_discount / quote.subtotal) * 100).toFixed(1)
+      : '0';
+    setEditedDiscount(discountPercent);
+  };
+
+  const updateProductQuantity = (index: number, newQty: string) => {
+    const qty = parseInt(newQty) || 0;
+    const updated = [...editedProducts];
+    updated[index] = { ...updated[index], quantity: qty };
+    setEditedProducts(updated);
+  };
+
+  const calculateEditedTotal = () => {
+    const subtotal = editedProducts.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0);
+    const discountAmount = (subtotal * (parseFloat(editedDiscount) || 0)) / 100;
+    const afterDiscount = subtotal - discountAmount;
+    const packingCharges = editingQuote?.packing_charges || 0;
+    const packingPercent = editingQuote?.subtotal > 0 ? (packingCharges / editingQuote.subtotal * 100) : 0;
+    const newPacking = afterDiscount * packingPercent / 100;
+    return {
+      subtotal,
+      discountAmount,
+      afterDiscount,
+      packingCharges: newPacking,
+      total: afterDiscount + newPacking + (editingQuote?.shipping_cost || 0)
+    };
+  };
+
+  const saveEditedQuote = async () => {
+    if (!editingQuote) return;
+    
+    setSavingEdit(true);
+    try {
+      const totals = calculateEditedTotal();
+      const updateData = {
+        products: editedProducts,
+        subtotal: totals.subtotal,
+        total_discount: totals.discountAmount,
+        packing_charges: totals.packingCharges,
+        total_price: totals.total,
+      };
+      
+      await api.put(`/quotes/${editingQuote.id}`, updateData);
+      Alert.alert('Success', 'Quote updated successfully');
+      setEditingQuote(null);
+      fetchQuotes();
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to update quote');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'approved':
