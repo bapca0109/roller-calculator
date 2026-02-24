@@ -1821,6 +1821,46 @@ async def generate_drawing_base64(request: DrawingRequest, current_user: dict = 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate drawing: {str(e)}")
 
+
+@api_router.post("/generate-drawing-download")
+async def generate_drawing_download(request: DrawingRequest, current_user: dict = Depends(get_current_user)):
+    """Generate and directly download a technical drawing PDF"""
+    from drawing_generator import generate_roller_drawing
+    from fastapi.responses import Response
+    
+    try:
+        pdf_buffer = generate_roller_drawing(
+            product_code=request.product_code,
+            roller_type=request.roller_type,
+            pipe_diameter=request.pipe_diameter,
+            pipe_length=request.pipe_length,
+            pipe_type=request.pipe_type,
+            shaft_diameter=request.shaft_diameter,
+            bearing=request.bearing,
+            bearing_make=request.bearing_make,
+            housing=request.housing,
+            weight_kg=request.weight_kg,
+            unit_price=request.unit_price,
+            rubber_diameter=request.rubber_diameter,
+            belt_widths=request.belt_widths,
+            quantity=request.quantity,
+            shaft_end_type=request.shaft_end_type or "B",
+            custom_shaft_extension=request.custom_shaft_extension
+        )
+        
+        pdf_bytes = pdf_buffer.getvalue()
+        filename = f"Drawing_{request.product_code.replace(' ', '_').replace('/', '-')}.pdf"
+        
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate drawing: {str(e)}")
+
 # Include the router in the main app
 app.include_router(api_router)
 
