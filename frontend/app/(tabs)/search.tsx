@@ -428,6 +428,54 @@ export default function SearchScreen() {
             </View>
           </View>
 
+          {/* Direct Add to Quote for Exact Match */}
+          {item.exact_match && (!item.length_details || item.length_details.length === 0) && (
+            <View style={styles.exactMatchActions}>
+              <TouchableOpacity 
+                style={styles.addToQuoteBtn}
+                onPress={() => {
+                  // Create a synthetic length detail for exact match
+                  const syntheticLength: LengthDetail = {
+                    length_mm: item.pipe_length || 0,
+                    weight_kg: item.base_weight_kg || 0,
+                    belt_widths: [],
+                    price: item.base_price || 0,
+                    product_code: item.product_code
+                  };
+                  openAddToQuote(item, syntheticLength);
+                }}
+                data-testid={`add-quote-exact-${item.product_code}`}
+              >
+                <Ionicons name="add-circle" size={20} color="#fff" />
+                <Text style={styles.addToQuoteBtnText}>Add to Quote</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.downloadBtn}
+                onPress={() => {
+                  const syntheticLength: LengthDetail = {
+                    length_mm: item.pipe_length || 0,
+                    weight_kg: item.base_weight_kg || 0,
+                    belt_widths: [],
+                    price: item.base_price || 0,
+                    product_code: item.product_code
+                  };
+                  downloadDrawing(item, syntheticLength);
+                }}
+                disabled={generatingDrawing === item.product_code}
+                data-testid={`download-exact-${item.product_code}`}
+              >
+                {generatingDrawing === item.product_code ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="download" size={20} color="#fff" />
+                    <Text style={styles.downloadBtnText}>Download</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Expandable Length Details with Add to Quote */}
           {item.length_details && item.length_details.length > 0 && (
             <>
