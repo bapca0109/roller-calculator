@@ -309,7 +309,7 @@ export default function QuotesScreen() {
           </div>
           ${quote.total_discount > 0 ? `
             <div class="summary-row">
-              <span class="summary-label discount">Discount</span>
+              <span class="summary-label discount">Discount (${quote.subtotal > 0 ? ((quote.total_discount / quote.subtotal) * 100).toFixed(1) : 0}%)</span>
               <span class="summary-value discount">- Rs. ${quote.total_discount?.toFixed(2)}</span>
             </div>
           ` : ''}
@@ -325,9 +325,21 @@ export default function QuotesScreen() {
               <span class="summary-value">Rs. ${quote.shipping_cost?.toFixed(2)}</span>
             </div>
           ` : ''}
+          <div class="summary-row" style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
+            <span class="summary-label"><strong>Taxable Amount</strong></span>
+            <span class="summary-value"><strong>Rs. ${((quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0)).toFixed(2)}</strong></span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">CGST (9%)</span>
+            <span class="summary-value">Rs. ${(((quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0)) * 0.09).toFixed(2)}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">SGST (9%)</span>
+            <span class="summary-value">Rs. ${(((quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0)) * 0.09).toFixed(2)}</span>
+          </div>
           <div class="total-row" style="display: flex; justify-content: space-between;">
-            <span class="summary-label">GRAND TOTAL</span>
-            <span class="summary-value">Rs. ${quote.total_price?.toFixed(2)}</span>
+            <span class="summary-label">GRAND TOTAL (Incl. GST)</span>
+            <span class="summary-value">Rs. ${(((quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0) + (quote.shipping_cost || 0)) * 1.18).toFixed(2)}</span>
           </div>
         </div>
 
