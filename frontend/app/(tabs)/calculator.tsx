@@ -1040,7 +1040,8 @@ export default function CalculatorScreen() {
               </View>
             </View>
 
-            {/* Cost Breakdown */}
+            {/* Cost Breakdown - Admin Only */}
+            {user?.role === 'admin' && (
             <View style={styles.resultCard}>
               <Text style={styles.resultCardTitle}>Cost Breakdown (Per Roller)</Text>
               <View style={styles.resultRow}>
@@ -1084,6 +1085,7 @@ export default function CalculatorScreen() {
                 <Text style={styles.totalValue}>Rs. {result.cost_breakdown.total_raw_material.toFixed(2)}</Text>
               </View>
             </View>
+            )}
 
             {/* Pricing */}
             <View style={styles.resultCard}>
