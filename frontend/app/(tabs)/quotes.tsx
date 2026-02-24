@@ -375,15 +375,10 @@ export default function QuotesScreen() {
           Alert.alert('Error', 'Please allow popups to export PDF');
         }
       } else {
-        // For mobile, use expo-print to generate PDF file
-        const { uri } = await Print.printToFileAsync({
+        // For mobile, use Print.printAsync which opens native print dialog
+        // User can save to Files from there
+        await Print.printAsync({
           html,
-          base64: false,
-        });
-
-        // Open share dialog
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
         });
       }
     } catch (error: any) {
