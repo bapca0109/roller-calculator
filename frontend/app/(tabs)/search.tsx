@@ -277,7 +277,7 @@ export default function SearchScreen() {
     }
   };
 
-  // Download Drawing function - Open in browser approach
+  // Download Drawing function - Using Print API
   const downloadDrawing = async (product: ProductResult, length: LengthDetail) => {
     const drawingKey = `${length.product_code}`;
     setGeneratingDrawing(drawingKey);
@@ -307,7 +307,7 @@ export default function SearchScreen() {
         quantity: 1
       };
 
-      // Get base64 PDF
+      // Get base64 PDF from API
       const response = await fetch(`${backendUrl}/api/generate-drawing-base64`, {
         method: 'POST',
         headers: {
@@ -318,17 +318,17 @@ export default function SearchScreen() {
       });
 
       if (!response.ok) {
-        Alert.alert('Error', `API failed: ${response.status}`);
+        Alert.alert('Error', `API Error: ${response.status}`);
         return;
       }
 
       const data = await response.json();
       if (!data.base64) {
-        Alert.alert('Error', 'No PDF data received');
+        Alert.alert('Error', 'No PDF data');
         return;
       }
 
-      // Save to cache
+      // Save to file first
       const filename = `Drawing_${Date.now()}.pdf`;
       const fileUri = FileSystem.cacheDirectory + filename;
       
@@ -336,34 +336,13 @@ export default function SearchScreen() {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // Verify file exists
-      const info = await FileSystem.getInfoAsync(fileUri);
-      if (!info.exists) {
-        Alert.alert('Error', 'Failed to save PDF');
-        return;
-      }
-
-      // Try multiple sharing methods
-      try {
-        // Method 1: expo-sharing
-        const canShare = await Sharing.isAvailableAsync();
-        if (canShare) {
-          await Sharing.shareAsync(fileUri);
-          return;
-        }
-      } catch (e) {
-        console.log('Sharing failed:', e);
-      }
-
-      // Method 2: Alert with file location
-      Alert.alert(
-        'PDF Generated',
-        `File saved successfully!\nSize: ${Math.round((info.size || 0) / 1024)} KB\n\nFile location: ${fileUri}`,
-        [{ text: 'OK' }]
-      );
+      // Use Print.printAsync which opens iOS print dialog with save-to-files option
+      await Print.printAsync({
+        uri: fileUri,
+      });
       
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Download failed');
+      Alert.alert('Error', error.message || 'Failed to download');
     } finally {
       setGeneratingDrawing(null);
     }
