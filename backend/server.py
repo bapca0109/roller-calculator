@@ -172,9 +172,14 @@ class QuoteCreate(BaseModel):
     notes: Optional[str] = None
 
 class QuoteUpdate(BaseModel):
-    status: str
+    status: Optional[str] = None
     notes: Optional[str] = None
     shipping_cost: Optional[float] = None
+    products: Optional[List[QuoteProduct]] = None
+    subtotal: Optional[float] = None
+    total_discount: Optional[float] = None
+    packing_charges: Optional[float] = None
+    total_price: Optional[float] = None
 
 class RollerQuoteCreate(BaseModel):
     """Create a quote from roller calculation"""
