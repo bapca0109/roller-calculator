@@ -1248,6 +1248,44 @@ const styles = StyleSheet.create({
   actionBtn: {
     padding: 4,
   },
+  exactMatchActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 12,
+  },
+  addToQuoteBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#960018',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  addToQuoteBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  downloadBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1A1A2E',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  downloadBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
   // Modal styles
   modalOverlay: {
     flex: 1,
