@@ -431,11 +431,9 @@ export default function QuotesScreen() {
       <View style={styles.quoteFooter}>
         <View>
           <Text style={styles.totalLabel}>{item.products.length} item{item.products.length !== 1 ? 's' : ''}</Text>
-          {item.total_discount > 0 && (
-            <Text style={styles.discountBadge}>
-              Discount: {item.subtotal > 0 ? ((item.total_discount / item.subtotal) * 100).toFixed(1) : 0}%
-            </Text>
-          )}
+          <Text style={[styles.discountBadge, { color: '#4CAF50', fontWeight: 'bold' }]}>
+            Discount: {item.subtotal > 0 ? ((item.total_discount / item.subtotal) * 100).toFixed(1) : 0}%
+          </Text>
         </View>
         <Text style={styles.totalPrice}>Rs. {item.total_price?.toFixed(2) || '0.00'}</Text>
       </View>
