@@ -277,7 +277,7 @@ export default function SearchScreen() {
     }
   };
 
-  // Download Drawing function - Using Print API
+  // Download Drawing function - Open in browser
   const downloadDrawing = async (product: ProductResult, length: LengthDetail) => {
     const drawingKey = `${length.product_code}`;
     setGeneratingDrawing(drawingKey);
@@ -290,6 +290,8 @@ export default function SearchScreen() {
       }
       
       const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+      
+      // Create form data for the request
       const requestBody = {
         product_code: length.product_code,
         roller_type: product.roller_type,
@@ -307,7 +309,7 @@ export default function SearchScreen() {
         quantity: 1
       };
 
-      // Get base64 PDF from API
+      // Get base64 and open as data URL
       const response = await fetch(`${backendUrl}/api/generate-drawing-base64`, {
         method: 'POST',
         headers: {
@@ -328,21 +330,24 @@ export default function SearchScreen() {
         return;
       }
 
-      // Save to file first
-      const filename = `Drawing_${Date.now()}.pdf`;
-      const fileUri = FileSystem.cacheDirectory + filename;
+      // Open PDF as data URL in browser
+      const dataUrl = `data:application/pdf;base64,${data.base64}`;
+      const supported = await Linking.canOpenURL(dataUrl);
       
-      await FileSystem.writeAsStringAsync(fileUri, data.base64, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      // Use Print.printAsync which opens iOS print dialog with save-to-files option
-      await Print.printAsync({
-        uri: fileUri,
-      });
+      if (supported) {
+        await Linking.openURL(dataUrl);
+      } else {
+        // Fallback: Save and share
+        const filename = `Drawing_${Date.now()}.pdf`;
+        const fileUri = FileSystem.cacheDirectory + filename;
+        await FileSystem.writeAsStringAsync(fileUri, data.base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await Sharing.shareAsync(fileUri);
+      }
       
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to download');
+      Alert.alert('Error', error.message || 'Download failed');
     } finally {
       setGeneratingDrawing(null);
     }
