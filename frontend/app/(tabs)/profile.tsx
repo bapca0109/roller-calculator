@@ -17,30 +17,11 @@ export default function ProfileScreen() {
   const router = useRouter();
 
   const handleLogout = async () => {
-    if (Platform.OS === 'web') {
-      // Web: Use window.confirm instead of Alert
-      const confirmed = window.confirm('Are you sure you want to logout?');
-      if (confirmed) {
-        await logout();
-        router.replace('/auth/login');
-      }
-    } else {
-      // Mobile: Use Alert
-      Alert.alert(
-        'Logout',
-        'Are you sure you want to logout?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Logout',
-            style: 'destructive',
-            onPress: async () => {
-              await logout();
-              router.replace('/auth/login');
-            },
-          },
-        ]
-      );
+    try {
+      await logout();
+      router.replace('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
     }
   };
 
