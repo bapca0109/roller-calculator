@@ -840,6 +840,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  discountBadge: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: '600',
+    marginTop: 2,
+  },
   totalPrice: {
     fontSize: 18,
     fontWeight: '700',
