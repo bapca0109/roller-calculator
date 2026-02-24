@@ -375,25 +375,20 @@ export default function QuotesScreen() {
           Alert.alert('Error', 'Please allow popups to export PDF');
         }
       } else {
-        // For mobile, use expo-print
+        // For mobile, use expo-print to generate PDF file
         const { uri } = await Print.printToFileAsync({
           html,
           base64: false,
         });
 
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(uri, {
-            mimeType: 'application/pdf',
-            dialogTitle: `Quote #${selectedQuote.id.slice(-6).toUpperCase()}`,
-            UTI: 'com.adobe.pdf',
-          });
-        } else {
-          Alert.alert('Success', 'PDF saved successfully');
-        }
+        // Open share dialog
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('PDF generation error:', error);
-      Alert.alert('Error', 'Failed to generate PDF. Please try again.');
+      Alert.alert('PDF Error', error.message || 'Failed to generate PDF');
     } finally {
       setGeneratingPdf(false);
     }
