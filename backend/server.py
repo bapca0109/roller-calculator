@@ -575,12 +575,9 @@ async def update_quote(
     update_dict = quote_update.dict(exclude_unset=True)
     update_dict["updated_at"] = datetime.utcnow()
     
-    # If shipping cost is updated, recalculate total
-    if "shipping_cost" in update_dict:
-        quote = await db.quotes.find_one({"_id": obj_id})
-        if quote:
-            new_total = quote["subtotal"] - quote["total_discount"] + update_dict["shipping_cost"]
-            update_dict["total_price"] = new_total
+    # Convert products to dict format if present
+    if "products" in update_dict and update_dict["products"]:
+        update_dict["products"] = [p.dict() if hasattr(p, 'dict') else p for p in update_dict["products"]]
     
     result = await db.quotes.update_one(
         {"_id": obj_id},
