@@ -15,22 +15,32 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/auth/login');
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      // Web: Use window.confirm instead of Alert
+      const confirmed = window.confirm('Are you sure you want to logout?');
+      if (confirmed) {
+        await logout();
+        router.replace('/auth/login');
+      }
+    } else {
+      // Mobile: Use Alert
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Logout',
+            style: 'destructive',
+            onPress: async () => {
+              await logout();
+              router.replace('/auth/login');
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const getRoleLabel = (role: string) => {
