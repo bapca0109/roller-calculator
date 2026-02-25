@@ -329,25 +329,24 @@ export default function SearchScreen() {
         return;
       }
 
-      // For web: Create blob and download
+      // For web: Create blob and open in new window
       if (Platform.OS === 'web') {
-        const byteCharacters = atob(data.base64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        try {
+          const byteCharacters = atob(data.base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          
+          // Open in new window - works better on Safari
+          window.open(url, '_blank');
+        } catch (e) {
+          console.error('PDF download error:', e);
+          Alert.alert('Error', 'Failed to download PDF');
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        
-        // Create download link
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Drawing_${length.product_code.replace(/ /g, '_').replace(/\//g, '-')}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
       } else {
         // For mobile: Save and share
         const filename = `Drawing_${Date.now()}.pdf`;
