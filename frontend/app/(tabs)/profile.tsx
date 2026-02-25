@@ -133,8 +133,16 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#C41E3A" />
+        <TouchableOpacity 
+          style={styles.logoutButton} 
+          onPress={() => {
+            // Clear all storage and redirect
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '/auth/login';
+          }}
+        >
+          <Ionicons name="log-out-outline" size={20} color="#fff" />
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
