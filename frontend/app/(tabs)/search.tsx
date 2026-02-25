@@ -93,6 +93,10 @@ export default function SearchScreen() {
   
   // Drawing generation
   const [generatingDrawing, setGeneratingDrawing] = useState<string | null>(null);
+  const [emailingDrawing, setEmailingDrawing] = useState<string | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailRecipient, setEmailRecipient] = useState('');
+  const [emailDrawingData, setEmailDrawingData] = useState<{product: ProductResult, length: LengthDetail} | null>(null);
 
   useEffect(() => {
     fetchCustomers();
