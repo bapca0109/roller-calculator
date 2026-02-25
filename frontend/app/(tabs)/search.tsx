@@ -291,7 +291,6 @@ export default function SearchScreen() {
       
       const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
       
-      // Create form data for the request
       const requestBody = {
         product_code: length.product_code,
         roller_type: product.roller_type,
@@ -309,7 +308,7 @@ export default function SearchScreen() {
         quantity: 1
       };
 
-      // Get base64 and open as data URL
+      // Get base64 PDF
       const response = await fetch(`${backendUrl}/api/generate-drawing-base64`, {
         method: 'POST',
         headers: {
@@ -330,14 +329,27 @@ export default function SearchScreen() {
         return;
       }
 
-      // Open PDF as data URL in browser
-      const dataUrl = `data:application/pdf;base64,${data.base64}`;
-      const supported = await Linking.canOpenURL(dataUrl);
-      
-      if (supported) {
-        await Linking.openURL(dataUrl);
+      // For web: Create blob and download
+      if (Platform.OS === 'web') {
+        const byteCharacters = atob(data.base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Drawing_${length.product_code.replace(/ /g, '_').replace(/\//g, '-')}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
       } else {
-        // Fallback: Save and share
+        // For mobile: Save and share
         const filename = `Drawing_${Date.now()}.pdf`;
         const fileUri = FileSystem.cacheDirectory + filename;
         await FileSystem.writeAsStringAsync(fileUri, data.base64, {
