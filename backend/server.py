@@ -1871,6 +1871,104 @@ async def generate_drawing_download(request: DrawingRequest, current_user: dict 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate drawing: {str(e)}")
 
+
+class EmailDrawingRequest(BaseModel):
+    product_code: str
+    roller_type: str
+    pipe_diameter: float
+    pipe_length: int
+    pipe_type: str
+    shaft_diameter: int
+    bearing: str
+    bearing_make: str
+    housing: str
+    weight_kg: float
+    unit_price: float
+    rubber_diameter: Optional[float] = None
+    belt_widths: Optional[List[int]] = None
+    quantity: int = 1
+    shaft_end_type: Optional[str] = "B"
+    custom_shaft_extension: Optional[int] = None
+    recipient_email: str
+
+
+@api_router.post("/email-drawing")
+async def email_drawing(request: EmailDrawingRequest, current_user: dict = Depends(get_current_user)):
+    """Generate a drawing PDF and email it to the recipient"""
+    from drawing_generator import generate_roller_drawing
+    
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        raise HTTPException(status_code=500, detail="Email service not configured")
+    
+    try:
+        # Generate the PDF
+        pdf_buffer = generate_roller_drawing(
+            product_code=request.product_code,
+            roller_type=request.roller_type,
+            pipe_diameter=request.pipe_diameter,
+            pipe_length=request.pipe_length,
+            pipe_type=request.pipe_type,
+            shaft_diameter=request.shaft_diameter,
+            bearing=request.bearing,
+            bearing_make=request.bearing_make,
+            housing=request.housing,
+            weight_kg=request.weight_kg,
+            unit_price=request.unit_price,
+            rubber_diameter=request.rubber_diameter,
+            belt_widths=request.belt_widths,
+            quantity=request.quantity,
+            shaft_end_type=request.shaft_end_type or "B",
+            custom_shaft_extension=request.custom_shaft_extension
+        )
+        
+        pdf_bytes = pdf_buffer.getvalue()
+        filename = f"Drawing_{request.product_code.replace(' ', '_').replace('/', '-')}.pdf"
+        
+        # Create email
+        msg = MIMEMultipart()
+        msg['From'] = GMAIL_USER
+        msg['To'] = request.recipient_email
+        msg['Subject'] = f"Roller Drawing - {request.product_code}"
+        
+        # Email body
+        body = f"""
+Dear Customer,
+
+Please find attached the technical drawing for your requested roller:
+
+Product Code: {request.product_code}
+Roller Type: {request.roller_type}
+Pipe Diameter: {request.pipe_diameter}mm
+Pipe Length: {request.pipe_length}mm
+Shaft Diameter: {request.shaft_diameter}mm
+Bearing: {request.bearing}
+Weight: {request.weight_kg}kg
+
+For any queries, please contact us.
+
+Best Regards,
+Convero Solutions
+        """
+        msg.attach(MIMEText(body, 'plain'))
+        
+        # Attach PDF
+        pdf_attachment = MIMEApplication(pdf_bytes, _subtype='pdf')
+        pdf_attachment.add_header('Content-Disposition', 'attachment', filename=filename)
+        msg.attach(pdf_attachment)
+        
+        # Send email via Gmail SMTP
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            server.send_message(msg)
+        
+        return {"message": f"Drawing sent successfully to {request.recipient_email}"}
+        
+    except smtplib.SMTPAuthenticationError:
+        raise HTTPException(status_code=500, detail="Email authentication failed. Please check Gmail credentials.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
