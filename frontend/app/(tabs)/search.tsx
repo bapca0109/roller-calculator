@@ -373,6 +373,72 @@ export default function SearchScreen() {
     }
   };
 
+  // Email Drawing function
+  const openEmailModal = (product: ProductResult, length: LengthDetail) => {
+    setEmailDrawingData({ product, length });
+    setEmailRecipient('');
+    setShowEmailModal(true);
+  };
+
+  const sendEmailDrawing = async () => {
+    if (!emailDrawingData || !emailRecipient) {
+      Alert.alert('Error', 'Please enter email address');
+      return;
+    }
+
+    const { product, length } = emailDrawingData;
+    setEmailingDrawing(length.product_code);
+    setShowEmailModal(false);
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        Alert.alert('Error', 'Not authenticated');
+        return;
+      }
+
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+      const requestBody = {
+        product_code: length.product_code,
+        roller_type: product.roller_type,
+        pipe_diameter: product.pipe_diameter,
+        pipe_length: length.length_mm,
+        pipe_type: product.pipe_type,
+        shaft_diameter: product.shaft_diameter,
+        bearing: product.bearing,
+        bearing_make: product.bearing_make,
+        housing: product.housing,
+        weight_kg: length.weight_kg,
+        unit_price: length.price,
+        rubber_diameter: product.rubber_diameter || null,
+        belt_widths: length.belt_widths,
+        quantity: 1,
+        recipient_email: emailRecipient
+      };
+
+      const response = await fetch(`${backendUrl}/api/email-drawing`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        Alert.alert('Error', errorData.detail || 'Failed to send email');
+        return;
+      }
+
+      Alert.alert('Success', `Drawing sent to ${emailRecipient}`);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to send email');
+    } finally {
+      setEmailingDrawing(null);
+    }
+  };
+
   const renderResultItem = ({ item }: { item: ProductResult }) => {
     const isExpanded = expandedProduct === item.product_code;
     
