@@ -562,6 +562,32 @@ export default function SearchScreen() {
                 </>
               )}
             </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.downloadBtn, { backgroundColor: '#4CAF50' }]}
+              onPress={() => {
+                const lengthDetail: LengthDetail = (item.length_details && item.length_details.length > 0) 
+                  ? item.length_details[0]
+                  : {
+                      length_mm: item.pipe_length || 0,
+                      weight_kg: item.base_weight_kg || 0,
+                      belt_widths: [],
+                      price: item.base_price || 0,
+                      product_code: item.product_code
+                    };
+                openEmailModal(item, lengthDetail);
+              }}
+              disabled={emailingDrawing === item.product_code}
+              data-testid={`email-${item.product_code}`}
+            >
+              {emailingDrawing === item.product_code ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="mail" size={20} color="#fff" />
+                  <Text style={styles.downloadBtnText}>Email</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
 
           {/* Expandable Length Details with Add to Quote */}
