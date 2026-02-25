@@ -329,7 +329,7 @@ export default function SearchScreen() {
         return;
       }
 
-      // For web: Create blob and open in new window
+      // For web: Create blob and trigger download
       if (Platform.OS === 'web') {
         try {
           const byteCharacters = atob(data.base64);
@@ -339,10 +339,15 @@ export default function SearchScreen() {
           }
           const byteArray = new Uint8Array(byteNumbers);
           const blob = new Blob([byteArray], { type: 'application/pdf' });
-          const url = URL.createObjectURL(blob);
           
-          // Open in new window - works better on Safari
-          window.open(url, '_blank');
+          // For iOS Safari - use FileReader and data URL
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const dataUrl = reader.result as string;
+            // Navigate to data URL in same window
+            window.location.href = dataUrl;
+          };
+          reader.readAsDataURL(blob);
         } catch (e) {
           console.error('PDF download error:', e);
           Alert.alert('Error', 'Failed to download PDF');
