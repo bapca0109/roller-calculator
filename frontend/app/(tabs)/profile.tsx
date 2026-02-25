@@ -16,13 +16,12 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      router.replace('/auth/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+  const handleLogout = () => {
+    // Clear storage directly
+    AsyncStorage.removeItem('token');
+    AsyncStorage.removeItem('user');
+    // Force navigation to login
+    window.location.href = '/auth/login';
   };
 
   const getRoleLabel = (role: string) => {
