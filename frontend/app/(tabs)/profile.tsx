@@ -133,18 +133,45 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={styles.logoutButton} 
-          onPress={() => {
-            // Clear all storage and redirect
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.href = '/auth/login';
-          }}
-        >
-          <Ionicons name="log-out-outline" size={20} color="#fff" />
-          <Text style={styles.logoutButtonText}>Logout</Text>
-        </TouchableOpacity>
+        {Platform.OS === 'web' ? (
+          <button
+            onClick={() => {
+              localStorage.clear();
+              sessionStorage.clear();
+              window.location.href = '/auth/login';
+            }}
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#C41E3A',
+              borderRadius: 12,
+              padding: 16,
+              gap: 8,
+              marginTop: 20,
+              marginBottom: 30,
+              border: 'none',
+              cursor: 'pointer',
+              width: '100%',
+            }}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#fff" />
+            <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>Logout</span>
+          </button>
+        ) : (
+          <TouchableOpacity 
+            style={styles.logoutButton} 
+            onPress={() => {
+              AsyncStorage.removeItem('token');
+              AsyncStorage.removeItem('user');
+              router.replace('/auth/login');
+            }}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#fff" />
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
