@@ -983,6 +983,58 @@ export default function SearchScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Email Drawing Modal */}
+      <Modal
+        visible={showEmailModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowEmailModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: 300 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Email Drawing</Text>
+              <TouchableOpacity onPress={() => setShowEmailModal(false)}>
+                <Ionicons name="close" size={28} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <View style={{ padding: 20 }}>
+              <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>
+                Enter email address to send drawing:
+              </Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#ddd',
+                  borderRadius: 8,
+                  padding: 12,
+                  fontSize: 16,
+                  marginBottom: 16,
+                }}
+                value={emailRecipient}
+                onChangeText={setEmailRecipient}
+                placeholder="customer@email.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#4CAF50',
+                  padding: 14,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                }}
+                onPress={sendEmailDrawing}
+              >
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+                  Send Email
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
