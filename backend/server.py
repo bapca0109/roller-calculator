@@ -14,6 +14,10 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from bson import ObjectId
 import roller_standards as rs
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -22,6 +26,10 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+# Gmail configuration
+GMAIL_USER = os.environ.get('GMAIL_USER')
+GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD')
 
 # Security
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
