@@ -982,10 +982,18 @@ export default function CalculatorScreen() {
         <TouchableOpacity
           style={[styles.calculateButton, calculating && styles.calculateButtonDisabled]}
           onPress={async () => {
-            await calculateCost();
-            // For customers, show RFQ popup after calculation
-            if (isCustomer && result) {
-              setShowRfqPopup(true);
+            if (isCustomer) {
+              // For customers: calculate, add to cart, and show popup directly
+              const calcResult = await calculateCost();
+              if (calcResult) {
+                // Add the calculated item directly to quote items
+                setQuoteItems([...quoteItems, calcResult]);
+                setShowRfqPopup(true);
+                setResult(null); // Don't show result section
+              }
+            } else {
+              // For admin: just calculate and show results
+              await calculateCost();
             }
           }}
           disabled={calculating}
@@ -1000,8 +1008,8 @@ export default function CalculatorScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Results */}
-        {result && (
+        {/* Results - Only for Admin */}
+        {result && !isCustomer && (
           <View style={styles.resultsContainer}>
             {/* Product Code */}
             <View style={styles.productCodeCard}>
