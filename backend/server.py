@@ -769,7 +769,12 @@ async def create_quote(
     # Calculate total price
     total_price = subtotal - total_discount + (quote.delivery_location and 0 or 0)  # Shipping calculated later by admin
     
+    # Generate sequential quote number
+    quote_number = await generate_quote_number()
+    ist_now = get_ist_now()
+    
     quote_dict = {
+        "quote_number": quote_number,
         "customer_id": current_user["id"],
         "customer_name": current_user["name"],
         "customer_email": current_user["email"],
@@ -781,8 +786,8 @@ async def create_quote(
         "total_price": total_price,
         "status": QuoteStatus.PENDING,
         "notes": quote.notes,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "created_at": ist_now,
+        "updated_at": ist_now
     }
     
     result = await db.quotes.insert_one(quote_dict)
