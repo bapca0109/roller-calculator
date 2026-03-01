@@ -82,11 +82,14 @@ export default function QuotesScreen() {
   const docLabel = isCustomer ? 'RFQ' : 'Quote';
   
   // Debug log
-  console.log('QuotesScreen - user:', user, 'isCustomer:', isCustomer, 'isAdmin:', isAdmin);
+  console.log('QuotesScreen - user:', user, 'isCustomer:', isCustomer, 'isAdmin:', isAdmin, 'authLoading:', authLoading);
 
   useEffect(() => {
-    fetchQuotes();
-  }, []);
+    // Only fetch quotes when auth is loaded and user exists
+    if (!authLoading && user) {
+      fetchQuotes();
+    }
+  }, [authLoading, user]);
 
   const fetchQuotes = async () => {
     try {
