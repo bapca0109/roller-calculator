@@ -9,10 +9,11 @@ import {
   Platform,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { API_URL } from '../../utils/api';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -21,7 +22,6 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
   const router = useRouter();
 
   const handleRegister = async () => {
@@ -40,10 +40,45 @@ export default function Register() {
       return;
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
     setLoading(true);
     try {
-      await register(email, password, name, company || undefined);
-      router.replace('/(tabs)/products');
+      // Send OTP request
+      const response = await fetch(`${API_URL}/api/auth/send-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          name,
+          company: company || null,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to send verification code');
+      }
+
+      // Navigate to OTP verification screen
+      router.push({
+        pathname: '/auth/verify-otp',
+        params: {
+          email,
+          name,
+          company: company || '',
+          password,
+        },
+      });
     } catch (error: any) {
       Alert.alert('Registration Failed', error.message);
     } finally {
@@ -58,17 +93,20 @@ export default function Register() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Ionicons name="settings-outline" size={64} color="#960018" />
+          <View style={styles.iconContainer}>
+            <Ionicons name="person-add-outline" size={48} color="#960018" />
+          </View>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join our conveyor platform</Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+            <Ionicons name="person-outline" size={20} color="#64748B" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Full Name *"
+              placeholderTextColor="#94A3B8"
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
@@ -76,10 +114,11 @@ export default function Register() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+            <Ionicons name="mail-outline" size={20} color="#64748B" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Email *"
+              placeholderTextColor="#94A3B8"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -89,20 +128,22 @@ export default function Register() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="business-outline" size={20} color="#666" style={styles.inputIcon} />
+            <Ionicons name="business-outline" size={20} color="#64748B" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Company (Optional)"
+              placeholderTextColor="#94A3B8"
               value={company}
               onChangeText={setCompany}
             />
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+            <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Password *"
+              placeholderTextColor="#94A3B8"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -111,10 +152,11 @@ export default function Register() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+            <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Confirm Password *"
+              placeholderTextColor="#94A3B8"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
@@ -122,14 +164,27 @@ export default function Register() {
             />
           </View>
 
+          <View style={styles.infoBox}>
+            <Ionicons name="shield-checkmark-outline" size={20} color="#10B981" />
+            <Text style={styles.infoText}>
+              We'll send a verification code to your email
+            </Text>
+          </View>
+
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleRegister}
             disabled={loading}
+            data-testid="register-btn"
           >
-            <Text style={styles.buttonText}>
-              {loading ? 'Creating account...' : 'Sign Up'}
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Text style={styles.buttonText}>Send Verification Code</Text>
+                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+              </>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -147,7 +202,7 @@ export default function Register() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FAFC',
   },
   scrollContent: {
     flexGrow: 1,
@@ -158,15 +213,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000',
-    marginTop: 16,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginTop: 8,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 15,
+    color: '#64748B',
     marginTop: 8,
   },
   form: {
@@ -176,35 +241,64 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
     marginBottom: 16,
     paddingHorizontal: 16,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   inputIcon: {
     marginRight: 12,
   },
   input: {
     flex: 1,
-    height: 50,
+    height: 52,
     fontSize: 16,
+    color: '#0F172A',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 20,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#059669',
   },
   button: {
+    flexDirection: 'row',
     backgroundColor: '#960018',
-    height: 50,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
+    gap: 8,
+    shadowColor: '#960018',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   buttonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: '#94A3B8',
+    shadowOpacity: 0,
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   linkButton: {
     marginTop: 24,
@@ -213,5 +307,6 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#960018',
     fontSize: 14,
+    fontWeight: '500',
   },
 });
