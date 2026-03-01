@@ -1,8 +1,12 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function TabsLayout() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
   return (
     <Tabs
       screenOptions={{
@@ -60,6 +64,7 @@ export default function TabsLayout() {
         name="customers"
         options={{
           title: 'Customers',
+          href: isAdmin ? '/customers' : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
           ),
@@ -69,6 +74,7 @@ export default function TabsLayout() {
         name="admin"
         options={{
           title: 'Admin',
+          href: isAdmin ? '/admin' : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" size={size} color={color} />
           ),
