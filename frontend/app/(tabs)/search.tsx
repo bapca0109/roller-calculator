@@ -1419,6 +1419,28 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 12,
   },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 12,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#960018',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  actionBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
   addToQuoteBtn: {
     flex: 1,
     flexDirection: 'row',
