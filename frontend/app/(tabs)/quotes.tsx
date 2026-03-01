@@ -527,10 +527,7 @@ export default function QuotesScreen() {
       {canApprove && (
         <TouchableOpacity 
           style={styles.approveButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            approveRfq(item);
-          }}
+          onPress={() => approveRfq(item)}
           disabled={approvingId === item.id}
         >
           {approvingId === item.id ? (
