@@ -209,6 +209,8 @@ class QuoteStatus:
     REJECTED = "rejected"
 
 class Quote(BaseModel):
+    quote_number: Optional[str] = None
+    quote_type: Optional[str] = None
     customer_id: str
     customer_name: str
     customer_email: str
