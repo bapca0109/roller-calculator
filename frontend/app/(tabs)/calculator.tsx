@@ -1370,8 +1370,8 @@ export default function CalculatorScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Floating Quote Badge - Admin only */}
-      {!isCustomer && quoteItems.length > 0 && (
+      {/* Floating Quote Badge - Show for both admin and customer */}
+      {quoteItems.length > 0 && (
         <TouchableOpacity 
           style={styles.floatingQuoteBadge}
           onPress={() => setShowQuoteBuilder(true)}
@@ -1380,7 +1380,8 @@ export default function CalculatorScreen() {
           <View style={styles.badgeCount}>
             <Text style={styles.badgeCountText}>{quoteItems.length}</Text>
           </View>
-          <Text style={styles.floatingBadgeText}>Rs. {getQuoteTotal().toFixed(0)}</Text>
+          {!isCustomer && <Text style={styles.floatingBadgeText}>Rs. {getQuoteTotal().toFixed(0)}</Text>}
+          {isCustomer && <Text style={styles.floatingBadgeText}>{quoteItems.length} items</Text>}
         </TouchableOpacity>
       )}
 
