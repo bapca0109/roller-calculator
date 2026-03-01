@@ -47,6 +47,15 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 - Generate PDF engineering drawings for any roller configuration
 - Email drawing feature as alternative to direct download
 
+### 7. User Authentication (NEW - March 2026)
+- **OTP-based Email Verification** for customer signup
+  - 4-digit OTP sent to email
+  - 10-minute expiry time
+  - Resend OTP with 60-second cooldown
+  - Professional email template with Convero branding
+- JWT-based authentication for login
+- Role-based access control (Admin, Sales, Customer)
+
 ## UI/UX Design
 
 ### Design System (Updated March 2026)
@@ -67,6 +76,12 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Completed Work
 
 ### March 2026
+- **OTP-based Email Verification**: Implemented 4-digit OTP verification for customer signup
+  - Backend: `/api/auth/send-otp`, `/api/auth/verify-otp`, `/api/auth/resend-otp` endpoints
+  - Frontend: New verify-otp.tsx screen with 4-digit input boxes
+  - Email: Professional HTML email template with OTP code
+  - Features: 10-minute expiry, 60-second resend cooldown
+  
 - **UI/UX Redesign**: Applied professional corporate look to Calculator and Search screens
   - Updated color palette (Carmine Red + Slate)
   - Improved typography with uppercase section labels
@@ -94,19 +109,14 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ### P0 - Pending Verification
 1. **Email Button in Search Actions** - Added but needs user verification
 
-## Security Considerations
-- **CRITICAL**: Email SMTP credentials are hardcoded in `backend/server.py` - Should be moved to environment variables
-
-## Credentials
-- **Admin**: test@test.com / test123
-- **Customer**: customer@test.com / test123
-- **Email Account**: info@convero.in (App password configured)
-
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/login`
-- `POST /api/auth/register`
+- `POST /api/auth/send-otp` - Send OTP for registration
+- `POST /api/auth/verify-otp` - Verify OTP and create account
+- `POST /api/auth/resend-otp` - Resend OTP with cooldown
+- `POST /api/auth/login` - User login
+- `POST /api/auth/register` - Direct registration (legacy)
 
 ### Pricing
 - `POST /api/admin/prices/reset`
@@ -129,14 +139,17 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ```
 /app
 ├── backend/
-│   ├── server.py (main API endpoints)
+│   ├── server.py (main API endpoints including OTP)
 │   ├── roller_standards.py (calculation logic)
 │   ├── drawing_generator.py (PDF generation)
 │   └── price_loader.py (cached price lookups)
 ├── frontend/
 │   ├── app/
 │   │   ├── (tabs)/ (main screens)
-│   │   └── auth/ (login/register)
+│   │   └── auth/
+│   │       ├── login.tsx
+│   │       ├── register.tsx (updated with OTP flow)
+│   │       └── verify-otp.tsx (NEW)
 │   ├── constants/
 │   │   └── Colors.ts (design tokens)
 │   └── contexts/
@@ -146,15 +159,17 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 
 ## Upcoming Tasks
 
-### P0 - Critical
-1. Move hardcoded SMTP credentials to .env file
-
 ### P1 - Important
-1. User acceptance testing for Quote Editing
-2. User acceptance testing for Custom Discounts
-3. Verify Email button visibility in all contexts
+1. User acceptance testing for OTP verification flow
+2. User acceptance testing for Quote Editing
+3. Verify Email button visibility in all search contexts
 
 ### P2 - Future
 1. Quote Approval Workflow (Pending/Approved/Rejected)
 2. Dashboard & Analytics
 3. Update Raw Material Costs from Excel import
+
+## Credentials
+- **Admin**: test@test.com / test123
+- **Customer**: customer@test.com / test123
+- **Email Account**: info@convero.in (App password in backend/.env)
