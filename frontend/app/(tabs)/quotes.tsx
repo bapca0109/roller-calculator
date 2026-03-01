@@ -193,9 +193,11 @@ export default function QuotesScreen() {
     
     switch (activeTab) {
       case 'pending':
+        // Show RFQs that are not approved (pending for admin review)
         return quotes.filter(q => q.quote_number?.startsWith('RFQ') && q.status?.toLowerCase() !== 'approved');
       case 'approved':
-        return quotes.filter(q => q.status?.toLowerCase() === 'approved' || q.quote_number?.startsWith('Q/'));
+        // Show only approved quotes (both original quotes and approved RFQs)
+        return quotes.filter(q => q.status?.toLowerCase() === 'approved');
       default:
         return quotes;
     }
