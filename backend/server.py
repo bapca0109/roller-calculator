@@ -1255,6 +1255,235 @@ async def update_quote(
     
     return QuoteInDB(**updated_quote)
 
+# ============= RFQ APPROVAL WORKFLOW =============
+
+async def send_quote_approval_email(quote_data: dict, customer_email: str):
+    """Send approved quote email to customer and admins"""
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        logging.warning("Email service not configured, skipping quote approval notification")
+        return False
+    
+    # Send to customer + admin emails
+    recipient_emails = [customer_email] + ADMIN_RFQ_EMAILS
+    
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['From'] = f"Convero Solutions <{GMAIL_USER}>"
+        msg['To'] = ', '.join(recipient_emails)
+        msg['Subject'] = f"Quotation Approved - {quote_data.get('quote_number')} | Convero Solutions"
+        
+        # Get product details
+        products = quote_data.get('products', [])
+        products_html = ""
+        for p in products:
+            products_html += f"""
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px;">{p.get('product_name', 'Product')}</td>
+                <td style="padding: 12px; text-align: center;">{p.get('quantity', 1)}</td>
+                <td style="padding: 12px; text-align: right;">Rs. {p.get('unit_price', 0):,.2f}</td>
+            </tr>
+            """
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }}
+                .container {{ max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+                .header {{ background: #960018; color: white; padding: 20px; text-align: center; }}
+                .quote-number {{ font-size: 24px; font-weight: bold; color: #960018; }}
+                .content {{ padding: 30px; }}
+                .info-box {{ background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; }}
+                .info-label {{ font-size: 12px; color: #666; text-transform: uppercase; }}
+                .info-value {{ font-size: 16px; font-weight: bold; color: #333; }}
+                .total-box {{ background: #960018; color: white; padding: 20px; text-align: center; margin-top: 20px; border-radius: 8px; }}
+                .approved-badge {{ display: inline-block; background: #4CAF50; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="margin: 0;">CONVERO SOLUTIONS</h1>
+                    <p style="margin: 10px 0 0 0; font-size: 14px;">Your Quotation Has Been Approved!</p>
+                </div>
+                <div class="content">
+                    <div style="text-align: center;">
+                        <span class="approved-badge">✓ APPROVED</span>
+                        <p class="quote-number">{quote_data.get('quote_number')}</p>
+                    </div>
+                    
+                    <div class="info-box">
+                        <div style="display: flex; justify-content: space-between;">
+                            <div>
+                                <div class="info-label">Customer Name</div>
+                                <div class="info-value">{quote_data.get('customer_name')}</div>
+                            </div>
+                            <div>
+                                <div class="info-label">Company</div>
+                                <div class="info-value">{quote_data.get('customer_company', 'N/A')}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="color: #333; border-bottom: 2px solid #960018; padding-bottom: 10px;">Products</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 12px; text-align: left;">Product</th>
+                            <th style="padding: 12px; text-align: center;">Qty</th>
+                            <th style="padding: 12px; text-align: right;">Unit Price</th>
+                        </tr>
+                        {products_html}
+                    </table>
+                    
+                    <div class="total-box">
+                        <span style="font-size: 14px;">TOTAL VALUE</span>
+                        <span style="font-size: 24px; font-weight: bold; margin-left: 10px;">Rs. {quote_data.get('total_price', 0):,.2f}</span>
+                    </div>
+                    
+                    <div style="margin-top: 30px; padding: 20px; background: #E8F5E9; border-radius: 8px; text-align: center;">
+                        <p style="margin: 0; color: #2E7D32; font-weight: bold;">
+                            This quotation has been approved and is ready for processing.
+                        </p>
+                        <p style="margin: 10px 0 0 0; color: #666;">
+                            For any queries, please contact us at info@convero.in
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(html_content, 'html'))
+        
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            server.sendmail(GMAIL_USER, recipient_emails, msg.as_string())
+        
+        logging.info(f"Quote approval email sent for: {quote_data.get('quote_number')}")
+        return True
+        
+    except Exception as e:
+        logging.error(f"Failed to send quote approval email: {str(e)}")
+        return False
+
+@api_router.post("/quotes/{quote_id}/approve")
+async def approve_rfq(
+    quote_id: str,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+):
+    """
+    Approve an RFQ and convert it to a Quote.
+    - Changes quote_number from RFQ/XX-XX/XXXX to Q/XX-XX/XXXX
+    - Sets status to APPROVED
+    - Sends email to customer and admins
+    """
+    try:
+        obj_id = ObjectId(quote_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid quote ID")
+    
+    # Get the quote
+    quote = await db.quotes.find_one({"_id": obj_id})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    
+    # Check if it's an RFQ (has RFQ prefix)
+    old_number = quote.get("quote_number", "")
+    if not old_number.startswith("RFQ"):
+        raise HTTPException(status_code=400, detail="This is already a Quote, not an RFQ")
+    
+    if quote.get("status") == QuoteStatus.APPROVED:
+        raise HTTPException(status_code=400, detail="This RFQ has already been approved")
+    
+    # Generate new Quote number
+    new_quote_number = await generate_quote_number()
+    ist_now = get_ist_now()
+    
+    # Update the quote
+    update_result = await db.quotes.update_one(
+        {"_id": obj_id},
+        {"$set": {
+            "quote_number": new_quote_number,
+            "original_rfq_number": old_number,
+            "quote_type": "quote",
+            "status": QuoteStatus.APPROVED,
+            "approved_by": current_user["email"],
+            "approved_at": ist_now,
+            "updated_at": ist_now
+        }}
+    )
+    
+    if update_result.modified_count == 0:
+        raise HTTPException(status_code=500, detail="Failed to update quote")
+    
+    # Get updated quote
+    updated_quote = await db.quotes.find_one({"_id": obj_id})
+    updated_quote["id"] = str(updated_quote["_id"])
+    
+    # Send approval email to customer and admins
+    customer_email = quote.get("customer_email")
+    if customer_email:
+        await send_quote_approval_email({
+            "quote_number": new_quote_number,
+            "original_rfq_number": old_number,
+            "customer_name": quote.get("customer_name"),
+            "customer_company": quote.get("customer_company"),
+            "products": quote.get("products", []),
+            "total_price": quote.get("total_price", 0)
+        }, customer_email)
+    
+    return {
+        "message": "RFQ approved successfully",
+        "old_number": old_number,
+        "new_quote_number": new_quote_number,
+        "status": QuoteStatus.APPROVED
+    }
+
+@api_router.put("/quotes/{quote_id}/discount")
+async def update_quote_discount(
+    quote_id: str,
+    discount_percent: float,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+):
+    """Update discount on a quote before approval"""
+    try:
+        obj_id = ObjectId(quote_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid quote ID")
+    
+    quote = await db.quotes.find_one({"_id": obj_id})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    
+    # Calculate new prices
+    subtotal = quote.get("subtotal", 0)
+    discount_amount = (subtotal * discount_percent) / 100
+    new_total = subtotal - discount_amount + quote.get("packing_charges", 0) + quote.get("shipping_cost", 0)
+    
+    ist_now = get_ist_now()
+    
+    # Update quote
+    await db.quotes.update_one(
+        {"_id": obj_id},
+        {"$set": {
+            "total_discount": discount_amount,
+            "discount_percent": discount_percent,
+            "total_price": new_total,
+            "updated_at": ist_now,
+            "updated_by": current_user["email"]
+        }}
+    )
+    
+    return {
+        "message": "Discount updated successfully",
+        "discount_percent": discount_percent,
+        "discount_amount": discount_amount,
+        "new_total_price": new_total
+    }
+
 # ============= STATS ROUTES (Admin only) =============
 
 @api_router.get("/stats")
