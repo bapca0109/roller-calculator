@@ -2067,20 +2067,39 @@ async def create_customer(customer: Customer, current_user: dict = Depends(get_c
     return {"message": "Customer created successfully", "customer": customer_dict}
 
 @api_router.get("/customers")
-async def get_customers(current_user: dict = Depends(get_current_user)):
-    """Get all customers - admin sees all, others see their own"""
+async def get_customers(
+    customer_type: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all customers - admin sees all, others see their own. 
+    Filter by customer_type: 'registered' or 'quoted'"""
     customers = []
     
+    # Build query
+    query = {}
+    
     # Admin users see all customers
-    if current_user.get("role") == "admin":
-        cursor = db.customers.find().limit(100)
-    else:
-        # Other users see customers they created
-        cursor = db.customers.find({"created_by": current_user.get("email")}).limit(100)
+    if current_user.get("role") != "admin":
+        query["created_by"] = current_user.get("email")
+    
+    # Filter by customer type if specified
+    if customer_type == "registered":
+        query["customer_type"] = "registered"
+    elif customer_type == "quoted":
+        query["$or"] = [
+            {"customer_type": "quoted"},
+            {"customer_type": {"$exists": False}},
+            {"customer_type": None}
+        ]
+    
+    cursor = db.customers.find(query).sort("created_at", -1).limit(100)
     
     async for customer in cursor:
         customer["id"] = str(customer["_id"])
         del customer["_id"]
+        # Add customer_type for display (default to 'quoted' for legacy customers)
+        if not customer.get("customer_type"):
+            customer["customer_type"] = "quoted"
         customers.append(customer)
     
     return {"customers": customers}
