@@ -825,7 +825,12 @@ async def create_roller_quote(
         "custom_premium": 0.0
     }
     
+    # Generate sequential quote number
+    quote_number = await generate_quote_number()
+    ist_now = get_ist_now()
+    
     quote_dict = {
+        "quote_number": quote_number,
         "customer_id": quote_data.customer_id or current_user["id"],
         "customer_name": quote_data.customer_name or current_user["name"],
         "customer_email": current_user["email"],
@@ -842,8 +847,8 @@ async def create_roller_quote(
         "cost_breakdown": quote_data.cost_breakdown,
         "pricing_details": quote_data.pricing,
         "freight_details": quote_data.freight,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "created_at": ist_now,
+        "updated_at": ist_now
     }
     
     result = await db.quotes.insert_one(quote_dict)
@@ -852,7 +857,7 @@ async def create_roller_quote(
     return {
         "id": quote_dict["id"],
         "message": "Quote created successfully",
-        "quote_number": f"QT-{quote_dict['id'][-6:].upper()}",
+        "quote_number": quote_number,
         "total_price": quote_dict["total_price"]
     }
 
