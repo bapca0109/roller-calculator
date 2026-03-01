@@ -1,0 +1,236 @@
+{
+  "identity": {
+    "name": "E1",
+    "mission": "Create a Corporate Professional UI that commands respect without being boring. We are building a tool for engineers, not a toy.",
+    "core_principles": [
+      "Function over Flash: Every pixel must serve a purpose.",
+      "Tactile Precision: Inputs must feel like physical switches.",
+      "Data Density: Engineers want to see the numbers, not whitespace.",
+      "Carmine Authority: Use the brand red sparingly but powerfully."
+    ]
+  },
+  "visual_style": {
+    "theme": "Corporate Professional",
+    "mode": "Light (Primary) / Dark (Secondary)",
+    "palette": {
+      "primary": {
+        "main": "#960018",
+        "light": "#C32E41",
+        "dark": "#6B0011",
+        "contrast_text": "#FFFFFF"
+      },
+      "secondary": {
+        "main": "#475569",
+        "light": "#64748B",
+        "dark": "#1E293B",
+        "contrast_text": "#FFFFFF"
+      },
+      "background": {
+        "default": "#F8FAFC",
+        "paper": "#FFFFFF",
+        "subtle": "#F1F5F9"
+      },
+      "text": {
+        "primary": "#0F172A",
+        "secondary": "#475569",
+        "disabled": "#94A3B8"
+      },
+      "status": {
+        "success": "#10B981",
+        "warning": "#F59E0B",
+        "error": "#EF4444",
+        "info": "#3B82F6"
+      },
+      "border": "#E2E8F0"
+    },
+    "typography": {
+      "font_family": {
+        "headings": "System",
+        "body": "System",
+        "monospace": "SpaceMono"
+      },
+      "scale": {
+        "h1": { "fontSize": 32, "fontWeight": "700", "lineHeight": 40 },
+        "h2": { "fontSize": 24, "fontWeight": "700", "lineHeight": 32 },
+        "h3": { "fontSize": 20, "fontWeight": "600", "lineHeight": 28 },
+        "body_large": { "fontSize": 18, "fontWeight": "400", "lineHeight": 28 },
+        "body": { "fontSize": 16, "fontWeight": "400", "lineHeight": 24 },
+        "caption": { "fontSize": 14, "fontWeight": "500", "color": "#64748B" },
+        "overline": { "fontSize": 12, "fontWeight": "700", "textTransform": "uppercase", "letterSpacing": 1 }
+      }
+    },
+    "spacing": {
+      "base_unit": 4,
+      "scale": {
+        "xs": 4,
+        "s": 8,
+        "m": 16,
+        "l": 24,
+        "xl": 32,
+        "xxl": 48
+      }
+    },
+    "shapes": {
+      "radius": {
+        "sm": 4,
+        "md": 8,
+        "lg": 12,
+        "xl": 16,
+        "full": 9999
+      },
+      "border_width": {
+        "hairline": 0.5,
+        "thin": 1,
+        "thick": 2
+      }
+    },
+    "shadows": {
+      "card": {
+        "shadowColor": "#000",
+        "shadowOffset": { "width": 0, "height": 2 },
+        "shadowOpacity": 0.1,
+        "shadowRadius": 4,
+        "elevation": 3
+      },
+      "floating": {
+        "shadowColor": "#960018",
+        "shadowOffset": { "width": 0, "height": 4 },
+        "shadowOpacity": 0.2,
+        "shadowRadius": 8,
+        "elevation": 6
+      }
+    }
+  },
+  "components": {
+    "Button": {
+      "default_props": {
+        "activeOpacity": 0.8
+      },
+      "variants": {
+        "primary": {
+          "backgroundColor": "#960018",
+          "borderRadius": 8,
+          "paddingVertical": 12,
+          "paddingHorizontal": 24,
+          "alignItems": "center",
+          "justifyContent": "center",
+          "minHeight": 48
+        },
+        "secondary": {
+          "backgroundColor": "transparent",
+          "borderWidth": 1,
+          "borderColor": "#960018",
+          "borderRadius": 8,
+          "paddingVertical": 12,
+          "paddingHorizontal": 24,
+          "alignItems": "center",
+          "justifyContent": "center",
+          "minHeight": 48
+        },
+        "ghost": {
+          "backgroundColor": "transparent",
+          "paddingVertical": 8,
+          "paddingHorizontal": 16
+        }
+      },
+      "text_style": {
+        "primary": { "color": "#FFFFFF", "fontWeight": "600", "fontSize": 16 },
+        "secondary": { "color": "#960018", "fontWeight": "600", "fontSize": 16 },
+        "ghost": { "color": "#475569", "fontWeight": "500", "fontSize": 14 }
+      }
+    },
+    "Input": {
+      "container": {
+        "marginBottom": 16
+      },
+      "label": {
+        "fontSize": 12,
+        "fontWeight": "700",
+        "color": "#475569",
+        "textTransform": "uppercase",
+        "marginBottom": 8,
+        "letterSpacing": 0.5
+      },
+      "field": {
+        "backgroundColor": "#FFFFFF",
+        "borderWidth": 1,
+        "borderColor": "#E2E8F0",
+        "borderRadius": 8,
+        "paddingHorizontal": 12,
+        "height": 48,
+        "fontSize": 16,
+        "color": "#0F172A"
+      },
+      "focused": {
+        "borderColor": "#960018",
+        "backgroundColor": "#FFF5F5"
+      }
+    },
+    "Card": {
+      "style": {
+        "backgroundColor": "#FFFFFF",
+        "borderRadius": 12,
+        "padding": 16,
+        "marginBottom": 16,
+        "borderWidth": 1,
+        "borderColor": "#E2E8F0"
+      },
+      "header": {
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+        "alignItems": "center",
+        "marginBottom": 12,
+        "borderBottomWidth": 1,
+        "borderBottomColor": "#F1F5F9",
+        "paddingBottom": 8
+      }
+    }
+  },
+  "layout_strategies": {
+    "Calculator": {
+      "description": "Dense, form-heavy layout. Prioritize clear input-output mapping.",
+      "structure": "Single column scroll view. Inputs grouped by section (e.g., 'Dimensions', 'Material'). Floating 'Calculate' button at bottom or sticky footer.",
+      "tips": "Use specialized keypads (numeric) for dimensions."
+    },
+    "Search": {
+      "description": "List view with expandable details.",
+      "structure": "Search bar fixed at top. FlatList for results. Each item is a card showing Part #, OD, and Length. Tap to expand for Price and 'Add to Quote'.",
+      "tips": "Use 'skeletons' while loading."
+    },
+    "Quote": {
+      "description": "Table-like view.",
+      "structure": "Header with customer info. List of line items. Summary footer with 'Total' and action buttons (PDF, Email)."
+    }
+  },
+  "image_assets": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1720036236694-d0a231c52563?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwxfHxpbmR1c3RyaWFsJTIwY29udmV5b3IlMjByb2xsZXIlMjBzdGVlbCUyMHdhcmVob3VzZSUyMGZhY3Rvcnl8ZW58MHx8fHwxNzcyMzU1OTcyfDA&ixlib=rb-4.1.0&q=85",
+      "description": "Industrial factory background for Login/Welcome screens",
+      "category": "background"
+    },
+    "placeholder_product": {
+      "url": "https://via.placeholder.com/300x200?text=Roller+Image",
+      "description": "Fallback image for rollers if no specific image is available",
+      "category": "product"
+    }
+  },
+  "instructions_to_main_agent": [
+    "IMPORTANT: The project structure contains .tsx files, but you are instructed to Provide Guidelines Compatible with .js logic. You may write code in .tsx if the file exists, or .js if creating new ones, but avoid complex TypeScript interfaces in your reasoning to keep it simple as per instructions.",
+    "Use 'StyleSheet.create' for all styles. Do not use inline styles for complex components.",
+    "Ensure all interactive elements (Touchable, TextInput, Button) have a 'data-testid' prop for testing.",
+    "Respect the Safe Area Context. Always wrap screens in <SafeAreaView> or use useSafeAreaInsets().",
+    "For the Calculator, use 'KeyboardAvoidingView' to prevent the keyboard from hiding inputs.",
+    "Use the predefined color palette constants. Create a 'constants/Colors.ts' or '.js' file if it doesn't exist.",
+    "Do not use generic 'blue' for links. Use the Primary Red (#960018) or Secondary Slate (#475569).",
+    "For icons, use '@expo/vector-icons' (Ionicons or MaterialCommunityIcons).",
+    "Keep the 'Carmine Red' as the primary action color (Buttons, Active Tabs, Highlights).",
+    "Never use pure black (#000). Use Slate 900 (#0F172A) instead."
+  ],
+  "universal_guidelines": [
+    "Accessibility: Ensure text contrast ratio is at least 4.5:1 against the background.",
+    "Touch Targets: Minimum 44x44 points for all buttons.",
+    "Feedback: All buttons must have an 'activeOpacity' or visual change on press.",
+    "Loading: Show a tailored loading spinner (ActivityIndicator color='#960018') for all async actions.",
+    "Error Handling: Display user-friendly error messages in red (#EF4444) below inputs."
+  ]
+}
