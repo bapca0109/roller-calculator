@@ -498,7 +498,7 @@ export default function QuotesScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                Quote #{selectedQuote?.id.slice(-6).toUpperCase()}
+                {selectedQuote?.quote_number || `Quote #${selectedQuote?.id.slice(-6).toUpperCase()}`}
               </Text>
               <TouchableOpacity onPress={() => setSelectedQuote(null)}>
                 <Ionicons name="close" size={28} color="#333" />
