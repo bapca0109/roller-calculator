@@ -243,6 +243,255 @@ def require_role(allowed_roles: List[str]):
 
 # ============= AUTH ROUTES =============
 
+# OTP Configuration
+OTP_EXPIRY_MINUTES = 10
+OTP_COOLDOWN_SECONDS = 60
+
+import random
+
+class OTPRequest(BaseModel):
+    email: EmailStr
+    name: str
+    company: Optional[str] = None
+    password: str
+
+class OTPVerify(BaseModel):
+    email: EmailStr
+    otp: str
+    name: str
+    company: Optional[str] = None
+    password: str
+
+class ResendOTPRequest(BaseModel):
+    email: EmailStr
+
+def generate_otp():
+    """Generate a 4-digit OTP"""
+    return str(random.randint(1000, 9999))
+
+async def send_otp_email(email: str, otp: str, name: str):
+    """Send OTP email to the user"""
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        raise HTTPException(status_code=500, detail="Email service not configured")
+    
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"Your Verification Code - {otp}"
+        msg['From'] = GMAIL_USER
+        msg['To'] = email
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: #1E293B; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }}
+                .otp-box {{ background-color: #960018; color: white; font-size: 32px; font-weight: bold; letter-spacing: 8px; padding: 20px 40px; text-align: center; border-radius: 8px; margin: 20px 0; }}
+                .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="margin: 0;">Convero Solutions</h1>
+                    <p style="margin: 5px 0 0 0;">Roller Price Calculator</p>
+                </div>
+                <div class="content">
+                    <p>Hello {name},</p>
+                    <p>Your verification code for account registration is:</p>
+                    <div class="otp-box">{otp}</div>
+                    <p>This code will expire in <strong>10 minutes</strong>.</p>
+                    <p>If you didn't request this code, please ignore this email.</p>
+                </div>
+                <div class="footer">
+                    <p>&copy; 2026 Convero Solutions. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        Hello {name},
+        
+        Your verification code for account registration is: {otp}
+        
+        This code will expire in 10 minutes.
+        
+        If you didn't request this code, please ignore this email.
+        
+        - Convero Solutions
+        """
+        
+        part1 = MIMEText(text_content, 'plain')
+        part2 = MIMEText(html_content, 'html')
+        msg.attach(part1)
+        msg.attach(part2)
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            server.sendmail(GMAIL_USER, email, msg.as_string())
+        
+        return True
+    except Exception as e:
+        logging.error(f"Failed to send OTP email: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to send verification email")
+
+@api_router.post("/auth/send-otp")
+async def send_otp(request: OTPRequest):
+    """Send OTP to email for verification"""
+    # Check if user already exists
+    existing_user = await db.users.find_one({"email": request.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check cooldown - prevent spam
+    existing_otp = await db.otp_verifications.find_one({"email": request.email})
+    if existing_otp:
+        last_sent = existing_otp.get("created_at")
+        if last_sent:
+            time_diff = (datetime.utcnow() - last_sent).total_seconds()
+            if time_diff < OTP_COOLDOWN_SECONDS:
+                remaining = int(OTP_COOLDOWN_SECONDS - time_diff)
+                raise HTTPException(
+                    status_code=429, 
+                    detail=f"Please wait {remaining} seconds before requesting a new OTP"
+                )
+    
+    # Generate OTP
+    otp = generate_otp()
+    
+    # Store OTP in database with expiry
+    otp_data = {
+        "email": request.email,
+        "otp": otp,
+        "name": request.name,
+        "company": request.company,
+        "password_hash": get_password_hash(request.password),
+        "created_at": datetime.utcnow(),
+        "expires_at": datetime.utcnow() + timedelta(minutes=OTP_EXPIRY_MINUTES),
+        "verified": False
+    }
+    
+    # Upsert - update if exists, insert if not
+    await db.otp_verifications.replace_one(
+        {"email": request.email},
+        otp_data,
+        upsert=True
+    )
+    
+    # Send OTP email
+    await send_otp_email(request.email, otp, request.name)
+    
+    return {
+        "message": "OTP sent successfully",
+        "email": request.email,
+        "expires_in_minutes": OTP_EXPIRY_MINUTES
+    }
+
+@api_router.post("/auth/verify-otp", response_model=Token)
+async def verify_otp(request: OTPVerify):
+    """Verify OTP and complete registration"""
+    # Find OTP record
+    otp_record = await db.otp_verifications.find_one({"email": request.email})
+    
+    if not otp_record:
+        raise HTTPException(status_code=400, detail="No OTP found. Please request a new one.")
+    
+    # Check if OTP is expired
+    if datetime.utcnow() > otp_record["expires_at"]:
+        await db.otp_verifications.delete_one({"email": request.email})
+        raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
+    
+    # Verify OTP
+    if otp_record["otp"] != request.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
+    
+    # Check if user already exists (double check)
+    existing_user = await db.users.find_one({"email": request.email})
+    if existing_user:
+        await db.otp_verifications.delete_one({"email": request.email})
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create user with stored password hash
+    user_dict = {
+        "email": request.email,
+        "name": request.name,
+        "company": request.company,
+        "role": UserRole.CUSTOMER,
+        "hashed_password": otp_record["password_hash"],
+        "created_at": datetime.utcnow(),
+        "email_verified": True
+    }
+    
+    result = await db.users.insert_one(user_dict)
+    user_dict["id"] = str(result.inserted_id)
+    
+    # Delete OTP record
+    await db.otp_verifications.delete_one({"email": request.email})
+    
+    # Create token
+    access_token = create_access_token(data={"sub": request.email})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user_dict["id"],
+            "email": request.email,
+            "name": request.name,
+            "role": UserRole.CUSTOMER,
+            "company": request.company
+        }
+    }
+
+@api_router.post("/auth/resend-otp")
+async def resend_otp(request: ResendOTPRequest):
+    """Resend OTP to email"""
+    # Find existing OTP record
+    otp_record = await db.otp_verifications.find_one({"email": request.email})
+    
+    if not otp_record:
+        raise HTTPException(status_code=400, detail="No pending registration found. Please start registration again.")
+    
+    # Check cooldown
+    last_sent = otp_record.get("created_at")
+    if last_sent:
+        time_diff = (datetime.utcnow() - last_sent).total_seconds()
+        if time_diff < OTP_COOLDOWN_SECONDS:
+            remaining = int(OTP_COOLDOWN_SECONDS - time_diff)
+            raise HTTPException(
+                status_code=429, 
+                detail=f"Please wait {remaining} seconds before requesting a new OTP"
+            )
+    
+    # Generate new OTP
+    otp = generate_otp()
+    
+    # Update OTP record
+    await db.otp_verifications.update_one(
+        {"email": request.email},
+        {
+            "$set": {
+                "otp": otp,
+                "created_at": datetime.utcnow(),
+                "expires_at": datetime.utcnow() + timedelta(minutes=OTP_EXPIRY_MINUTES)
+            }
+        }
+    )
+    
+    # Send OTP email
+    await send_otp_email(request.email, otp, otp_record["name"])
+    
+    return {
+        "message": "OTP resent successfully",
+        "email": request.email,
+        "expires_in_minutes": OTP_EXPIRY_MINUTES
+    }
+
 @api_router.post("/auth/register", response_model=Token)
 async def register(user: UserRegister):
     # Check if user exists
