@@ -1877,9 +1877,16 @@ async def create_customer(customer: Customer, current_user: dict = Depends(get_c
 
 @api_router.get("/customers")
 async def get_customers(current_user: dict = Depends(get_current_user)):
-    """Get all customers for the current user"""
+    """Get all customers - admin sees all, others see their own"""
     customers = []
-    cursor = db.customers.find({"created_by": current_user.get("email")}).limit(100)
+    
+    # Admin users see all customers
+    if current_user.get("role") == "admin":
+        cursor = db.customers.find().limit(100)
+    else:
+        # Other users see customers they created
+        cursor = db.customers.find({"created_by": current_user.get("email")}).limit(100)
+    
     async for customer in cursor:
         customer["id"] = str(customer["_id"])
         del customer["_id"]
