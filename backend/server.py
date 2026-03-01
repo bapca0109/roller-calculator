@@ -1500,6 +1500,226 @@ async def update_quote_discount(
         "new_total_price": new_total
     }
 
+# ============= QUOTE REVISION SYSTEM =============
+
+async def send_quote_revision_email(quote_data: dict, customer_email: str, revision_number: str):
+    """Send revised quote email to customer and admins"""
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        logging.warning("Email service not configured, skipping revision notification")
+        return False
+    
+    # Send to customer + admin emails
+    recipient_emails = [customer_email] + ADMIN_RFQ_EMAILS
+    
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['From'] = f"Convero Solutions <{GMAIL_USER}>"
+        msg['To'] = ', '.join(recipient_emails)
+        msg['Subject'] = f"Revised Quotation - {quote_data.get('quote_number')} | Convero Solutions"
+        
+        # Get product details
+        products = quote_data.get('products', [])
+        products_html = ""
+        for p in products:
+            products_html += f"""
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px;">{p.get('product_name', 'Product')}</td>
+                <td style="padding: 12px; text-align: center;">{p.get('quantity', 1)}</td>
+                <td style="padding: 12px; text-align: right;">Rs. {p.get('unit_price', 0):,.2f}</td>
+            </tr>
+            """
+        
+        discount_percent = quote_data.get('discount_percent', 0)
+        discount_amount = quote_data.get('total_discount', 0)
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }}
+                .container {{ max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+                .header {{ background: #960018; color: white; padding: 20px; text-align: center; }}
+                .revision-badge {{ display: inline-block; background: #FF9500; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; }}
+                .quote-number {{ font-size: 24px; font-weight: bold; color: #960018; }}
+                .content {{ padding: 30px; }}
+                .info-box {{ background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; }}
+                .discount-box {{ background: #E8F5E9; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #4CAF50; }}
+                .total-box {{ background: #960018; color: white; padding: 20px; text-align: center; margin-top: 20px; border-radius: 8px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="margin: 0;">CONVERO SOLUTIONS</h1>
+                    <p style="margin: 10px 0 0 0; font-size: 14px;">Revised Quotation</p>
+                </div>
+                <div class="content">
+                    <div style="text-align: center;">
+                        <span class="revision-badge">{revision_number}</span>
+                        <p class="quote-number">{quote_data.get('quote_number')}</p>
+                    </div>
+                    
+                    <div class="info-box">
+                        <div style="display: flex; justify-content: space-between;">
+                            <div>
+                                <div style="font-size: 12px; color: #666;">Customer Name</div>
+                                <div style="font-weight: bold;">{quote_data.get('customer_name')}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: #666;">Company</div>
+                                <div style="font-weight: bold;">{quote_data.get('customer_company', 'N/A')}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="color: #333; border-bottom: 2px solid #960018; padding-bottom: 10px;">Products</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 12px; text-align: left;">Product</th>
+                            <th style="padding: 12px; text-align: center;">Qty</th>
+                            <th style="padding: 12px; text-align: right;">Unit Price</th>
+                        </tr>
+                        {products_html}
+                    </table>
+                    
+                    <div class="discount-box">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: bold; color: #2E7D32;">Special Discount Applied</span>
+                            <span style="font-size: 18px; font-weight: bold; color: #2E7D32;">{discount_percent:.1f}% (Rs. {discount_amount:,.2f})</span>
+                        </div>
+                    </div>
+                    
+                    <div class="total-box">
+                        <span style="font-size: 14px;">REVISED TOTAL</span>
+                        <span style="font-size: 28px; font-weight: bold; margin-left: 10px;">Rs. {quote_data.get('total_price', 0):,.2f}</span>
+                    </div>
+                    
+                    <div style="margin-top: 30px; padding: 20px; background: #FFF3E0; border-radius: 8px; text-align: center;">
+                        <p style="margin: 0; color: #E65100; font-weight: bold;">
+                            This is a revised quotation. Please review the updated pricing.
+                        </p>
+                        <p style="margin: 10px 0 0 0; color: #666;">
+                            For any queries, please contact us at info@convero.in
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(html_content, 'html'))
+        
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            server.sendmail(GMAIL_USER, recipient_emails, msg.as_string())
+        
+        logging.info(f"Quote revision email sent for: {quote_data.get('quote_number')} - {revision_number}")
+        return True
+        
+    except Exception as e:
+        logging.error(f"Failed to send quote revision email: {str(e)}")
+        return False
+
+class QuoteRevisionRequest(BaseModel):
+    discount_percent: float
+    notes: Optional[str] = None
+
+@api_router.post("/quotes/{quote_id}/revise")
+async def create_quote_revision(
+    quote_id: str,
+    revision_data: QuoteRevisionRequest,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+):
+    """
+    Create a revision of an approved quote with new discount.
+    - Adds revision number (R1, R2, etc.) to quote
+    - Sends email to customer and admins
+    """
+    try:
+        obj_id = ObjectId(quote_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid quote ID")
+    
+    # Get the quote
+    quote = await db.quotes.find_one({"_id": obj_id})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    
+    # Check if it's an approved quote
+    if quote.get("status") != QuoteStatus.APPROVED:
+        raise HTTPException(status_code=400, detail="Only approved quotes can be revised")
+    
+    # Get current revision number
+    current_revision = quote.get("revision_number", 0)
+    new_revision = current_revision + 1
+    revision_label = f"R{new_revision}"
+    
+    # Calculate new prices with new discount
+    subtotal = quote.get("subtotal", 0)
+    discount_amount = (subtotal * revision_data.discount_percent) / 100
+    new_total = subtotal - discount_amount + quote.get("packing_charges", 0) + quote.get("shipping_cost", 0)
+    
+    ist_now = get_ist_now()
+    
+    # Store revision history
+    revision_history = quote.get("revision_history", [])
+    revision_history.append({
+        "revision": revision_label,
+        "discount_percent": revision_data.discount_percent,
+        "discount_amount": discount_amount,
+        "total_price": new_total,
+        "revised_by": current_user["email"],
+        "revised_at": ist_now,
+        "notes": revision_data.notes
+    })
+    
+    # Update quote
+    update_result = await db.quotes.update_one(
+        {"_id": obj_id},
+        {"$set": {
+            "total_discount": discount_amount,
+            "discount_percent": revision_data.discount_percent,
+            "total_price": new_total,
+            "revision_number": new_revision,
+            "current_revision": revision_label,
+            "revision_history": revision_history,
+            "updated_at": ist_now,
+            "updated_by": current_user["email"]
+        }}
+    )
+    
+    if update_result.modified_count == 0:
+        raise HTTPException(status_code=500, detail="Failed to create revision")
+    
+    # Get updated quote
+    updated_quote = await db.quotes.find_one({"_id": obj_id})
+    
+    # Send revision email to customer and admins
+    customer_email = quote.get("customer_email")
+    if customer_email:
+        await send_quote_revision_email({
+            "quote_number": quote.get("quote_number"),
+            "customer_name": quote.get("customer_name"),
+            "customer_company": quote.get("customer_company"),
+            "products": quote.get("products", []),
+            "discount_percent": revision_data.discount_percent,
+            "total_discount": discount_amount,
+            "total_price": new_total
+        }, customer_email, revision_label)
+    
+    return {
+        "message": f"Quote revised successfully - {revision_label}",
+        "quote_number": quote.get("quote_number"),
+        "revision": revision_label,
+        "discount_percent": revision_data.discount_percent,
+        "discount_amount": discount_amount,
+        "new_total_price": new_total,
+        "email_sent": customer_email is not None
+    }
+
 # ============= STATS ROUTES (Admin only) =============
 
 @api_router.get("/stats")
