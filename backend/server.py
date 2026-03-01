@@ -388,6 +388,130 @@ async def send_otp_email(email: str, otp: str, name: str):
         logging.error(f"Failed to send OTP email: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to send verification email")
 
+async def send_registration_notification_email(customer_data):
+    """Send registration notification email to admin"""
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        logging.warning("Email service not configured, skipping registration notification")
+        return False
+    
+    admin_emails = ["info@convero.in", "admin@convero.in"]
+    ist_now = get_ist_now()
+    
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"New Customer Registration - {customer_data.name} ({customer_data.company})"
+        msg['From'] = GMAIL_USER
+        msg['To'] = ", ".join(admin_emails)
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: #960018; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }}
+                .info-table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+                .info-table th {{ background-color: #1E293B; color: white; padding: 12px; text-align: left; }}
+                .info-table td {{ padding: 12px; border-bottom: 1px solid #ddd; }}
+                .info-table tr:nth-child(even) {{ background-color: #f9f9f9; }}
+                .highlight {{ color: #960018; font-weight: bold; }}
+                .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="margin: 0;">New Customer Registration</h1>
+                    <p style="margin: 5px 0 0 0;">Convero Solutions - Roller Price Calculator</p>
+                </div>
+                <div class="content">
+                    <p>A new customer has registered on the platform:</p>
+                    
+                    <table class="info-table">
+                        <tr>
+                            <th colspan="2">Customer Details</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Customer Name</strong></td>
+                            <td class="highlight">{customer_data.name}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Company Name</strong></td>
+                            <td class="highlight">{customer_data.company}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Email ID</strong></td>
+                            <td>{customer_data.email}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Mobile Number</strong></td>
+                            <td>{customer_data.mobile}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Pin Code</strong></td>
+                            <td>{customer_data.pincode}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>City</strong></td>
+                            <td>{customer_data.city}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>State</strong></td>
+                            <td>{customer_data.state}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Registration Time</strong></td>
+                            <td>{ist_now.strftime("%d %b %Y, %I:%M %p IST")}</td>
+                        </tr>
+                    </table>
+                    
+                    <p style="color: #666;">This customer can now access the Roller Price Calculator app and create quotes.</p>
+                </div>
+                <div class="footer">
+                    <p>&copy; 2026 Convero Solutions. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        New Customer Registration - Convero Solutions
+        
+        Customer Details:
+        -----------------
+        Customer Name: {customer_data.name}
+        Company Name: {customer_data.company}
+        Email ID: {customer_data.email}
+        Mobile Number: {customer_data.mobile}
+        Pin Code: {customer_data.pincode}
+        City: {customer_data.city}
+        State: {customer_data.state}
+        Registration Time: {ist_now.strftime("%d %b %Y, %I:%M %p IST")}
+        
+        This customer can now access the Roller Price Calculator app and create quotes.
+        
+        - Convero Solutions
+        """
+        
+        part1 = MIMEText(text_content, 'plain')
+        part2 = MIMEText(html_content, 'html')
+        msg.attach(part1)
+        msg.attach(part2)
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            for admin_email in admin_emails:
+                server.sendmail(GMAIL_USER, admin_email, msg.as_string())
+        
+        logging.info(f"Registration notification sent to admins for customer: {customer_data.email}")
+        return True
+    except Exception as e:
+        logging.error(f"Failed to send registration notification email: {str(e)}")
+        return False  # Don't raise exception, just log the error
+
 @api_router.post("/auth/send-otp")
 async def send_otp(request: OTPRequest):
     """Send OTP to email for verification"""
