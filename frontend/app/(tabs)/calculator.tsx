@@ -1053,6 +1053,7 @@ export default function CalculatorScreen() {
                 <Text style={styles.resultValue}>{result.configuration.quantity} pcs</Text>
               </View>
             </View>
+            )}
 
             {/* Cost Breakdown - Admin Only */}
             {user?.role === 'admin' && (
