@@ -85,6 +85,8 @@ db = client[os.environ['DB_NAME']]
 # Gmail configuration
 GMAIL_USER = os.environ.get('GMAIL_USER')
 GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD')
+ADMIN_REGISTRATION_EMAILS = os.environ.get('ADMIN_REGISTRATION_EMAILS', 'info@convero.in,admin@convero.in').split(',')
+ADMIN_RFQ_EMAILS = os.environ.get('ADMIN_RFQ_EMAILS', 'info@convero.in,design@convero.in').split(',')
 
 # Security
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -409,7 +411,7 @@ async def send_registration_notification_email(customer_data):
         logging.warning("Email service not configured, skipping registration notification")
         return False
     
-    admin_emails = ["info@convero.in", "admin@convero.in"]
+    admin_emails = ADMIN_REGISTRATION_EMAILS
     ist_now = get_ist_now()
     
     try:
@@ -533,7 +535,7 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
         logging.warning("Email service not configured, skipping RFQ notification")
         return False
     
-    admin_emails = ["info@convero.in", "design@convero.in"]
+    admin_emails = ADMIN_RFQ_EMAILS
     ist_now = get_ist_now()
     
     try:
