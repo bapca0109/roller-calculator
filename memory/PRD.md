@@ -75,7 +75,18 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 
 ## Completed Work
 
-### March 2026
+### March 2026 (Latest)
+- **RFQ Feature Complete**: Customer users now generate RFQ (Request for Quote) while Admin users generate Quotes
+  - Backend: `generate_rfq_number()` creates `RFQ/YY-YY/XXXX` for customers
+  - Backend: `generate_quote_number()` creates `Q/YY-YY/XXXX` for admins  
+  - Frontend: Dynamic `docLabel` variable shows "RFQ" or "Quote" based on user role
+  - PDF: Document title shows "REQUEST FOR QUOTATION" or "QUOTATION" based on quote_number prefix
+  - Email notifications sent to admins when customers submit RFQs
+
+- **Security Fix**: Moved hardcoded admin emails to environment variables
+  - `ADMIN_REGISTRATION_EMAILS` - Recipients for new customer registration alerts
+  - `ADMIN_RFQ_EMAILS` - Recipients for new RFQ submissions
+
 - **OTP-based Email Verification**: Implemented 4-digit OTP verification for customer signup
   - Backend: `/api/auth/send-otp`, `/api/auth/verify-otp`, `/api/auth/resend-otp` endpoints
   - Frontend: New verify-otp.tsx screen with 4-digit input boxes
@@ -160,7 +171,7 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Upcoming Tasks
 
 ### P1 - Important
-1. User acceptance testing for OTP verification flow
+1. User acceptance testing for RFQ flow (customer creates RFQ)
 2. User acceptance testing for Quote Editing
 3. Verify Email button visibility in all search contexts
 
