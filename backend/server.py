@@ -777,6 +777,7 @@ async def create_quote(
         "quote_number": quote_number,
         "customer_id": current_user["id"],
         "customer_name": current_user["name"],
+        "customer_company": current_user.get("company", ""),
         "customer_email": current_user["email"],
         "products": processed_products,
         "subtotal": subtotal,
