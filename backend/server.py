@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from bson import ObjectId
@@ -21,6 +21,46 @@ from email.mime.application import MIMEApplication
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# IST Timezone (UTC+5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def get_ist_now():
+    """Get current time in IST"""
+    return datetime.now(IST)
+
+def utc_to_ist(utc_dt):
+    """Convert UTC datetime to IST"""
+    if utc_dt is None:
+        return None
+    if utc_dt.tzinfo is None:
+        utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+    return utc_dt.astimezone(IST)
+
+def get_financial_year():
+    """Get current financial year in format YY-YY (e.g., 25-26)"""
+    now = get_ist_now()
+    if now.month >= 4:  # April onwards
+        start_year = now.year
+    else:  # January to March
+        start_year = now.year - 1
+    end_year = start_year + 1
+    return f"{start_year % 100:02d}-{end_year % 100:02d}"
+
+async def generate_quote_number():
+    """Generate sequential quote number like Q/25-26/0001"""
+    fy = get_financial_year()
+    
+    # Get the counter collection for this financial year
+    counter = await db.quote_counters.find_one_and_update(
+        {"_id": f"quote_{fy}"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True
+    )
+    
+    seq_num = counter.get("seq", 1)
+    return f"Q/{fy}/{seq_num:04d}"
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
