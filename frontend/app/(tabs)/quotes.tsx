@@ -410,8 +410,8 @@ export default function QuotesScreen() {
     >
       <View style={styles.quoteHeader}>
         <View style={styles.quoteInfo}>
-          <Text style={styles.quoteId}>Quote #{item.id.slice(-6).toUpperCase()}</Text>
-          <Text style={styles.quoteDate}>{formatDate(item.created_at)}</Text>
+          <Text style={styles.quoteId}>{item.quote_number || `Quote #${item.id.slice(-6).toUpperCase()}`}</Text>
+          <Text style={styles.quoteDate}>{item.created_at_ist || formatDate(item.created_at)}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status)}20` }]}>
           <Ionicons name={getStatusIcon(item.status)} size={16} color={getStatusColor(item.status)} />
@@ -419,6 +419,12 @@ export default function QuotesScreen() {
             {item.status?.charAt(0).toUpperCase() + item.status?.slice(1)}
           </Text>
         </View>
+      </View>
+
+      {/* Customer Name */}
+      <View style={styles.customerRow}>
+        <Ionicons name="person-outline" size={16} color="#64748B" />
+        <Text style={styles.customerName}>{item.customer_name || 'Unknown Customer'}</Text>
       </View>
 
       <View style={styles.productsList}>
