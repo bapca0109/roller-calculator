@@ -534,8 +534,34 @@ export default function QuotesScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Admin Filter Tabs */}
+      {isAdmin && (
+        <View style={styles.filterTabs}>
+          <TouchableOpacity
+            style={[styles.filterTab, activeTab === 'all' && styles.filterTabActive]}
+            onPress={() => setActiveTab('all')}
+          >
+            <Text style={[styles.filterTabText, activeTab === 'all' && styles.filterTabTextActive]}>All</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterTab, activeTab === 'pending' && styles.filterTabActive]}
+            onPress={() => setActiveTab('pending')}
+          >
+            <Text style={[styles.filterTabText, activeTab === 'pending' && styles.filterTabTextActive]}>
+              Pending RFQ {pendingRfqCount > 0 && `(${pendingRfqCount})`}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterTab, activeTab === 'approved' && styles.filterTabActive]}
+            onPress={() => setActiveTab('approved')}
+          >
+            <Text style={[styles.filterTabText, activeTab === 'approved' && styles.filterTabTextActive]}>Approved</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <FlatList
-        data={quotes}
+        data={getFilteredQuotes()}
         renderItem={renderQuote}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
