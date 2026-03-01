@@ -241,10 +241,14 @@ class TestRfqVsQuoteNumberGeneration:
         if not rfq_id:
             pytest.skip("No RFQ created in previous test")
         
-        response = customer_client.get(f"{BASE_URL}/api/quotes/{rfq_id}")
-        assert response.status_code == 200, f"Failed to fetch RFQ: {response.text}"
+        # Use /api/quotes list which returns raw data including quote_number
+        response = customer_client.get(f"{BASE_URL}/api/quotes")
+        assert response.status_code == 200, f"Failed to fetch quotes: {response.text}"
         
-        rfq = response.json()
+        quotes = response.json()
+        rfq = next((q for q in quotes if q.get("id") == rfq_id), None)
+        
+        assert rfq is not None, f"RFQ with id {rfq_id} not found in quotes list"
         assert rfq["quote_number"] == expected_number
         assert rfq["quote_number"].startswith("RFQ/")
         print(f"Verified RFQ in database: {rfq['quote_number']}")
@@ -257,10 +261,14 @@ class TestRfqVsQuoteNumberGeneration:
         if not quote_id:
             pytest.skip("No Quote created in previous test")
         
-        response = admin_client.get(f"{BASE_URL}/api/quotes/{quote_id}")
-        assert response.status_code == 200, f"Failed to fetch Quote: {response.text}"
+        # Use /api/quotes list which returns raw data including quote_number
+        response = admin_client.get(f"{BASE_URL}/api/quotes")
+        assert response.status_code == 200, f"Failed to fetch quotes: {response.text}"
         
-        quote = response.json()
+        quotes = response.json()
+        quote = next((q for q in quotes if q.get("id") == quote_id), None)
+        
+        assert quote is not None, f"Quote with id {quote_id} not found in quotes list"
         assert quote["quote_number"] == expected_number
         assert quote["quote_number"].startswith("Q/")
         print(f"Verified Quote in database: {quote['quote_number']}")
