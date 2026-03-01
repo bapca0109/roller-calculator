@@ -544,7 +544,7 @@ export default function QuotesScreen() {
     );
   };
 
-  if (loading && !refreshing) {
+  if ((loading || authLoading) && !refreshing) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#960018" />
