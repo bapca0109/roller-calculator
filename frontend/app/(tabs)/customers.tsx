@@ -348,6 +348,44 @@ export default function CustomersScreen() {
         )}
       </View>
 
+      {/* Filter Tabs */}
+      <View style={styles.filterContainer}>
+        <TouchableOpacity
+          style={[styles.filterTab, filterType === 'all' && styles.filterTabActive]}
+          onPress={() => setFilterType('all')}
+        >
+          <Text style={[styles.filterTabText, filterType === 'all' && styles.filterTabTextActive]}>
+            All
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterTab, filterType === 'registered' && styles.filterTabActive]}
+          onPress={() => setFilterType('registered')}
+        >
+          <Ionicons 
+            name="person-add-outline" 
+            size={16} 
+            color={filterType === 'registered' ? '#FFFFFF' : '#64748B'} 
+          />
+          <Text style={[styles.filterTabText, filterType === 'registered' && styles.filterTabTextActive]}>
+            Registered
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterTab, filterType === 'quoted' && styles.filterTabActive]}
+          onPress={() => setFilterType('quoted')}
+        >
+          <Ionicons 
+            name="document-text-outline" 
+            size={16} 
+            color={filterType === 'quoted' ? '#FFFFFF' : '#64748B'} 
+          />
+          <Text style={[styles.filterTabText, filterType === 'quoted' && styles.filterTabTextActive]}>
+            Quoted
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {filteredCustomers.length === 0 ? (
           <View style={styles.emptyState}>
