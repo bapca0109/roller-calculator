@@ -1129,4 +1129,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  filterTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    gap: 6,
+  },
+  filterTabActive: {
+    backgroundColor: '#960018',
+  },
+  filterTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  filterTabTextActive: {
+    color: '#FFFFFF',
+  },
 });
