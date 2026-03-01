@@ -28,8 +28,13 @@ export default function VerifyOTP() {
   const [success, setSuccess] = useState(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
+  // Get all params including new fields
   const email = params.email as string;
   const name = params.name as string;
+  const mobile = params.mobile as string;
+  const pincode = params.pincode as string;
+  const city = params.city as string;
+  const state = params.state as string;
   const company = params.company as string;
   const password = params.password as string;
 
