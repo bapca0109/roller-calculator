@@ -74,7 +74,7 @@ export default function QuotesScreen() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved'>('all');
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   
   // Check if user is customer - show RFQ terminology
   const isCustomer = user?.role === 'customer';

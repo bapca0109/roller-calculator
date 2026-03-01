@@ -68,7 +68,7 @@ interface QuoteItem {
 }
 
 export default function SearchScreen() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const isCustomer = user?.role === 'customer';
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<ProductResult[]>([]);
