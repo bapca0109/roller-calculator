@@ -80,6 +80,9 @@ export default function QuotesScreen() {
   const isCustomer = user?.role === 'customer';
   const isAdmin = user?.role === 'admin';
   const docLabel = isCustomer ? 'RFQ' : 'Quote';
+  
+  // Debug log
+  console.log('QuotesScreen - user:', user, 'isCustomer:', isCustomer, 'isAdmin:', isAdmin);
 
   useEffect(() => {
     fetchQuotes();
