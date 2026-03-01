@@ -1300,62 +1300,33 @@ export default function CalculatorScreen() {
             </View>
             )}
 
-            {/* Save Quote/RFQ Buttons */}
+            {/* Save Quote/RFQ Buttons - Admin Only */}
+            {!isCustomer && (
             <View style={styles.quoteButtonsContainer}>
-              {isCustomer ? (
-                // Customer: Add to RFQ + Submit RFQ buttons
-                <>
-                  <TouchableOpacity
-                    style={styles.addToQuoteButton}
-                    onPress={addToQuote}
-                  >
-                    <Ionicons name="add-circle-outline" size={24} color="#fff" />
-                    <Text style={styles.addToQuoteButtonText}>Add to RFQ</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={styles.saveQuoteButton}
-                    onPress={saveQuote}
-                    disabled={savingQuote}
-                  >
-                    {savingQuote ? (
-                      <ActivityIndicator color="#960018" />
-                    ) : (
-                      <>
-                        <Ionicons name="send" size={24} color="#960018" />
-                        <Text style={styles.saveQuoteButtonText}>Submit RFQ</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </>
-              ) : (
-                // Admin: Add to Quote + Save Single buttons
-                <>
-                  <TouchableOpacity
-                    style={styles.addToQuoteButton}
-                    onPress={addToQuote}
-                  >
-                    <Ionicons name="add-circle-outline" size={24} color="#fff" />
-                    <Text style={styles.addToQuoteButtonText}>Add to Quote</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={styles.saveQuoteButton}
-                    onPress={saveQuote}
-                    disabled={savingQuote}
-                  >
-                    {savingQuote ? (
-                      <ActivityIndicator color="#960018" />
-                    ) : (
-                      <>
-                        <Ionicons name="save-outline" size={24} color="#960018" />
-                        <Text style={styles.saveQuoteButtonText}>Save Single</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </>
-              )}
+              <TouchableOpacity
+                style={styles.addToQuoteButton}
+                onPress={addToQuote}
+              >
+                <Ionicons name="add-circle-outline" size={24} color="#fff" />
+                <Text style={styles.addToQuoteButtonText}>Add to Quote</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.saveQuoteButton}
+                onPress={saveQuote}
+                disabled={savingQuote}
+              >
+                {savingQuote ? (
+                  <ActivityIndicator color="#960018" />
+                ) : (
+                  <>
+                    <Ionicons name="save-outline" size={24} color="#960018" />
+                    <Text style={styles.saveQuoteButtonText}>Save Single</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
+            )}
             
             {/* Download Drawing Button - Admin only */}
             {!isCustomer && (
