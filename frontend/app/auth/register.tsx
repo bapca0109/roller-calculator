@@ -145,7 +145,7 @@ export default function Register() {
           pincode,
           city,
           state,
-          company: company || null,
+          company,
           password,
         }),
       });
