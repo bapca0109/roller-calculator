@@ -1362,8 +1362,10 @@ export default function CalculatorScreen() {
           <View style={styles.badgeCount}>
             <Text style={styles.badgeCountText}>{quoteItems.length}</Text>
           </View>
-          {!isCustomer && <Text style={styles.floatingBadgeText}>Rs. {getQuoteTotal().toFixed(0)}</Text>}
-          {isCustomer && <Text style={styles.floatingBadgeText}>{quoteItems.length} items</Text>}
+          {/* Hide price for customers - only show item count */}
+          <Text style={styles.floatingBadgeText}>
+            {isCustomer ? `${quoteItems.length} item${quoteItems.length !== 1 ? 's' : ''}` : `Rs. ${getQuoteTotal().toFixed(0)}`}
+          </Text>
         </TouchableOpacity>
       )}
 
