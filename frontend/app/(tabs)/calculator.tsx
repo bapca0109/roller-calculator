@@ -1009,7 +1009,8 @@ export default function CalculatorScreen() {
               <Text style={styles.productCode}>{result.configuration.product_code}</Text>
             </View>
 
-            {/* Configuration Summary */}
+            {/* Configuration Summary - Hide for customers */}
+            {!isCustomer && (
             <View style={styles.resultCard}>
               <Text style={styles.resultCardTitle}>Configuration</Text>
               <View style={styles.resultRow}>
