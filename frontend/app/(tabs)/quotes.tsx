@@ -1394,4 +1394,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  // Save Revision Button - Blue
+  saveRevisionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2196F3',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 12,
+    gap: 8,
+  },
+  revisionLabel: {
+    fontSize: 14,
+    color: '#FF9500',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 12,
+  },
 });
