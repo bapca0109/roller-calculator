@@ -327,6 +327,44 @@ const styles = StyleSheet.create({
     borderColor: '#960018',
     backgroundColor: '#FEF2F2',
   },
+  otpInputError: {
+    borderColor: '#EF4444',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#DC2626',
+    fontWeight: '500',
+  },
+  successContainer: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  successIconContainer: {
+    marginBottom: 24,
+  },
+  successTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 8,
+  },
+  successText: {
+    fontSize: 15,
+    color: '#64748B',
+    textAlign: 'center',
+  },
   verifyButton: {
     backgroundColor: '#960018',
     height: 52,
