@@ -1038,6 +1038,9 @@ async def create_quote(
     quote: QuoteCreate,
     current_user: dict = Depends(get_current_user)
 ):
+    # Check if user is a customer
+    is_customer = current_user["role"] == UserRole.CUSTOMER
+    
     # Calculate pricing with discounts and premiums
     subtotal = 0.0
     total_discount = 0.0
@@ -1065,12 +1068,19 @@ async def create_quote(
     # Calculate total price
     total_price = subtotal - total_discount + (quote.delivery_location and 0 or 0)  # Shipping calculated later by admin
     
-    # Generate sequential quote number
-    quote_number = await generate_quote_number()
+    # Generate sequential quote/RFQ number based on user role
+    if is_customer:
+        quote_number = await generate_rfq_number()
+        quote_type = "rfq"
+    else:
+        quote_number = await generate_quote_number()
+        quote_type = "quote"
+    
     ist_now = get_ist_now()
     
     quote_dict = {
         "quote_number": quote_number,
+        "quote_type": quote_type,
         "customer_id": current_user["id"],
         "customer_name": current_user["name"],
         "customer_company": current_user.get("company", ""),
@@ -1089,6 +1099,10 @@ async def create_quote(
     
     result = await db.quotes.insert_one(quote_dict)
     quote_dict["id"] = str(result.inserted_id)
+    
+    # If customer created RFQ, send email to admins
+    if is_customer:
+        await send_rfq_notification_email(quote_dict, current_user)
     
     return QuoteInDB(**quote_dict)
 
