@@ -74,6 +74,7 @@ export default function CustomersScreen() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState<Omit<Customer, 'id'>>(emptyCustomer);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'registered' | 'quoted'>('all');
   
   // GST Lookup state
   const [gstModalVisible, setGstModalVisible] = useState(false);
@@ -85,12 +86,13 @@ export default function CustomersScreen() {
 
   useEffect(() => {
     fetchCustomers();
-  }, []);
+  }, [filterType]);
 
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/customers');
+      const params = filterType !== 'all' ? `?customer_type=${filterType}` : '';
+      const response = await api.get(`/customers${params}`);
       setCustomers(response.data.customers || []);
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to fetch customers');
