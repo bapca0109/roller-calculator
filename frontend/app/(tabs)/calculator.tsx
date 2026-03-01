@@ -125,6 +125,7 @@ const RUBBER_DIAMETERS: { [key: number]: number[] } = {
 
 export default function CalculatorScreen() {
   const { user } = useAuth();
+  const isCustomer = user?.role === 'customer';
   const [standards, setStandards] = useState<RollerStandards | null>(null);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
@@ -981,8 +982,8 @@ export default function CalculatorScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Ionicons name="calculator" size={24} color="#fff" />
-              <Text style={styles.calculateButtonText}>Calculate Price</Text>
+              <Ionicons name={isCustomer ? "document-text" : "calculator"} size={24} color="#fff" />
+              <Text style={styles.calculateButtonText}>{isCustomer ? 'Generate RFQ' : 'Calculate Price'}</Text>
             </>
           )}
         </TouchableOpacity>
