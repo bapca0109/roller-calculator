@@ -1315,8 +1315,19 @@ const styles = StyleSheet.create({
   filterTabTextActive: {
     color: '#fff',
   },
-  // Approve Button
-  approveButton: {
+  // Approve Button - RED (before approval)
+  approveButtonRed: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#C41E3A',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 8,
+  },
+  // Approved Badge - GREEN (after approval)
+  approvedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
