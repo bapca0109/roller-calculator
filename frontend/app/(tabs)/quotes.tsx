@@ -88,7 +88,7 @@ export default function QuotesScreen() {
       setQuotes(response.data);
     } catch (error: any) {
       console.error('Error fetching quotes:', error);
-      Alert.alert('Error', 'Failed to load quotes');
+      Alert.alert('Error', `Failed to load ${docLabel.toLowerCase()}s`);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -149,11 +149,11 @@ export default function QuotesScreen() {
       };
       
       await api.put(`/quotes/${editingQuote.id}`, updateData);
-      Alert.alert('Success', 'Quote updated successfully');
+      Alert.alert('Success', `${docLabel} updated successfully`);
       setEditingQuote(null);
       fetchQuotes();
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.detail || 'Failed to update quote');
+      Alert.alert('Error', error.response?.data?.detail || `Failed to update ${docLabel.toLowerCase()}`);
     } finally {
       setSavingEdit(false);
     }
@@ -415,7 +415,7 @@ export default function QuotesScreen() {
     >
       <View style={styles.quoteHeader}>
         <View style={styles.quoteInfo}>
-          <Text style={styles.quoteId}>{item.quote_number || `Quote #${item.id.slice(-6).toUpperCase()}`}</Text>
+          <Text style={styles.quoteId}>{item.quote_number || `${docLabel} #${item.id.slice(-6).toUpperCase()}`}</Text>
           <Text style={styles.quoteDate}>{item.created_at_ist || formatDate(item.created_at)}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status)}20` }]}>
@@ -465,7 +465,7 @@ export default function QuotesScreen() {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#960018" />
-        <Text style={styles.loadingText}>Loading quotes...</Text>
+        <Text style={styles.loadingText}>Loading {docLabel.toLowerCase()}s...</Text>
       </View>
     );
   }
@@ -473,7 +473,7 @@ export default function QuotesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>My Quotes</Text>
+        <Text style={styles.title}>My {docLabel}s</Text>
         <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
           <Ionicons name="refresh" size={24} color="#960018" />
         </TouchableOpacity>
@@ -490,9 +490,9 @@ export default function QuotesScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="document-text-outline" size={64} color="#ccc" />
-            <Text style={styles.emptyText}>No quotes yet</Text>
+            <Text style={styles.emptyText}>No {docLabel.toLowerCase()}s yet</Text>
             <Text style={styles.emptySubtext}>
-              Go to Calculator tab to create your first quote
+              Go to Calculator tab to create your first {docLabel.toLowerCase()}
             </Text>
           </View>
         }
@@ -509,7 +509,7 @@ export default function QuotesScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {selectedQuote?.quote_number || `Quote #${selectedQuote?.id.slice(-6).toUpperCase()}`}
+                {selectedQuote?.quote_number || `${docLabel} #${selectedQuote?.id.slice(-6).toUpperCase()}`}
               </Text>
               <TouchableOpacity onPress={() => setSelectedQuote(null)}>
                 <Ionicons name="close" size={28} color="#333" />
@@ -654,7 +654,7 @@ export default function QuotesScreen() {
                     }}
                   >
                     <Ionicons name="pencil" size={24} color="#fff" />
-                    <Text style={styles.exportButtonText}>Edit Quote</Text>
+                    <Text style={styles.exportButtonText}>Edit {docLabel}</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -673,7 +673,7 @@ export default function QuotesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Quote</Text>
+              <Text style={styles.modalTitle}>Edit {docLabel}</Text>
               <TouchableOpacity onPress={() => setEditingQuote(null)}>
                 <Ionicons name="close" size={28} color="#333" />
               </TouchableOpacity>
