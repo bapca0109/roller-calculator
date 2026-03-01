@@ -72,10 +72,13 @@ export default function QuotesScreen() {
   const [editedProducts, setEditedProducts] = useState<QuoteProduct[]>([]);
   const [editedDiscount, setEditedDiscount] = useState<string>('0');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved'>('all');
   const { user } = useAuth();
   
   // Check if user is customer - show RFQ terminology
   const isCustomer = user?.role === 'customer';
+  const isAdmin = user?.role === 'admin';
   const docLabel = isCustomer ? 'RFQ' : 'Quote';
 
   useEffect(() => {
