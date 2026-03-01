@@ -855,6 +855,20 @@ const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
   },
+  customerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  customerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
   quoteFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
