@@ -2598,4 +2598,68 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
+  // RFQ Popup Styles
+  rfqPopupContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  rfqPopupHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  rfqPopupTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginTop: 16,
+  },
+  rfqPopupSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  rfqPopupButtons: {
+    width: '100%',
+    gap: 12,
+  },
+  rfqAddMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#960018',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  rfqAddMoreButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#960018',
+  },
+  rfqSubmitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#960018',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  rfqSubmitButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  rfqItemCount: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 16,
+  },
 });
