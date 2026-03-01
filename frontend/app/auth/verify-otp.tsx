@@ -218,46 +218,48 @@ export default function VerifyOTP() {
               disabled={loading}
               data-testid="verify-otp-btn"
             >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.verifyButtonText}>Verify & Create Account</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.resendContainer}>
-          <Text style={styles.resendText}>Didn't receive the code?</Text>
-          {cooldown > 0 ? (
-            <Text style={styles.cooldownText}>
-              Resend in {cooldown}s
-            </Text>
-          ) : (
-            <TouchableOpacity
-              onPress={handleResendOtp}
-              disabled={resendLoading}
-              data-testid="resend-otp-btn"
-            >
-              {resendLoading ? (
-                <ActivityIndicator size="small" color="#960018" />
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.resendLink}>Resend OTP</Text>
+                <Text style={styles.verifyButtonText}>Verify & Create Account</Text>
               )}
             </TouchableOpacity>
-          )}
-        </View>
 
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={20} color="#64748B" />
-          <Text style={styles.backButtonText}>Back to Registration</Text>
-        </TouchableOpacity>
+            <View style={styles.resendContainer}>
+              <Text style={styles.resendText}>Didn't receive the code?</Text>
+              {cooldown > 0 ? (
+                <Text style={styles.cooldownText}>
+                  Resend in {cooldown}s
+                </Text>
+              ) : (
+                <TouchableOpacity
+                  onPress={handleResendOtp}
+                  disabled={resendLoading}
+                  data-testid="resend-otp-btn"
+                >
+                  {resendLoading ? (
+                    <ActivityIndicator size="small" color="#960018" />
+                  ) : (
+                    <Text style={styles.resendLink}>Resend OTP</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
 
-        <View style={styles.expiryNote}>
-          <Ionicons name="time-outline" size={16} color="#94A3B8" />
-          <Text style={styles.expiryText}>Code expires in 10 minutes</Text>
-        </View>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="arrow-back" size={20} color="#64748B" />
+              <Text style={styles.backButtonText}>Back to Registration</Text>
+            </TouchableOpacity>
+
+            <View style={styles.expiryNote}>
+              <Ionicons name="time-outline" size={16} color="#94A3B8" />
+              <Text style={styles.expiryText}>Code expires in 10 minutes</Text>
+            </View>
+          </>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
