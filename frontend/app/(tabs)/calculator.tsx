@@ -128,6 +128,9 @@ export default function CalculatorScreen() {
   const isCustomer = user?.role === 'customer';
   const [standards, setStandards] = useState<RollerStandards | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Debug: Log user state on every render
+  console.log('CalculatorScreen render - user:', user, 'role:', user?.role, 'isCustomer:', isCustomer);
   const [calculating, setCalculating] = useState(false);
   const [result, setResult] = useState<CostResult | null>(null);
   const [savingQuote, setSavingQuote] = useState(false);
