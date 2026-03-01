@@ -910,6 +910,31 @@ export default function QuotesScreen() {
                       </>
                     )}
                   </TouchableOpacity>
+                  
+                  {/* Save Changes & Mail Button - Only for Approved Quotes */}
+                  {editingQuote.status?.toLowerCase() === 'approved' && (
+                    <TouchableOpacity 
+                      style={styles.saveRevisionButton}
+                      onPress={saveRevisionAndMail}
+                      disabled={savingRevision}
+                    >
+                      {savingRevision ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <>
+                          <Ionicons name="mail" size={24} color="#fff" />
+                          <Text style={styles.saveEditButtonText}>Save Changes & Mail</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  
+                  {/* Show current revision if exists */}
+                  {editingQuote.current_revision && (
+                    <Text style={styles.revisionLabel}>
+                      Current Revision: {editingQuote.current_revision}
+                    </Text>
+                  )}
                 </>
               )}
             </ScrollView>
