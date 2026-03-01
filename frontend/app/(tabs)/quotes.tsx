@@ -73,6 +73,10 @@ export default function QuotesScreen() {
   const [editedDiscount, setEditedDiscount] = useState<string>('0');
   const [savingEdit, setSavingEdit] = useState(false);
   const { user } = useAuth();
+  
+  // Check if user is customer - show RFQ terminology
+  const isCustomer = user?.role === 'customer';
+  const docLabel = isCustomer ? 'RFQ' : 'Quote';
 
   useEffect(() => {
     fetchQuotes();
