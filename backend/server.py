@@ -372,11 +372,15 @@ async def send_otp(request: OTPRequest):
     # Generate OTP
     otp = generate_otp()
     
-    # Store OTP in database with expiry
+    # Store OTP in database with expiry (including new fields)
     otp_data = {
         "email": request.email,
         "otp": otp,
         "name": request.name,
+        "mobile": request.mobile,
+        "pincode": request.pincode,
+        "city": request.city,
+        "state": request.state,
         "company": request.company,
         "password_hash": get_password_hash(request.password),
         "created_at": datetime.utcnow(),
