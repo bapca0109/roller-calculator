@@ -1,223 +1,160 @@
-# Belt Conveyor Roller Price Calculator - PRD
+# Roller Price Calculator - Product Requirements Document
 
 ## Original Problem Statement
-Mobile application to calculate the price of belt conveyor rollers, functioning as a comprehensive engineering and quoting tool with complex pricing logic, freight, value-based discounts, GST, multi-product quote builder, PDF exports, and company branding.
+Mobile application to calculate the price of belt conveyor rollers, serving as an engineering and quoting tool. Features include product catalog search, full admin panel for price management, customer database for quote association, GSTIN lookup, and engineering drawing generation.
 
-## Core Features Implemented
-
-### 1. Roller Types (3 types)
-- **Carrying (CR)** - Standard carrying rollers for 3-roll troughed idlers
-- **Impact (IR)** - Impact rollers with rubber lagging
-- **Return (RR)** - Return idler rollers (single piece & 2-piece)
-
-### 2. IS-8598:2019 Standard Pipe Lengths
-
-**Carrying Idler Pipe Lengths (3-roll troughed):**
-| Belt Width | Pipe Length |
-|------------|-------------|
-| 500mm | 200mm |
-| 650mm | 250mm |
-| 800mm | 315mm |
-| 1000mm | 380mm |
-| 1200mm | 465mm |
-| 1400mm | 530mm |
-| 1600mm | 600mm |
-| 1800mm | 670mm |
-| 2000mm | 750mm |
-
-**Return Idler Lengths:**
-| Belt Width | Single Piece | 2-Piece (each) |
-|------------|--------------|----------------|
-| 500mm | 600mm | 250mm |
-| 650mm | 750mm | 380mm |
-| 800mm | 950mm | 465mm |
-| 1000mm | 1150mm | 600mm |
-| 1200mm | 1400mm | 700mm |
-| 1400mm | 1600mm | 800mm |
-| 1600mm | 1800mm | 900mm |
-| 1800mm | 2000mm | 1000mm |
-| 2000mm | 2200mm | 1100mm |
-
-### 3. Pipe Diameter Codes (IS-9295)
-| Actual OD | Display Code |
-|-----------|--------------|
-| 60.8mm | 60 |
-| 76.1mm | 76 |
-| 88.9mm | 89 |
-| 114.3mm | 114 |
-| 127.0mm | 127 |
-| 139.7mm | 139 |
-| 152.4mm | 152 |
-| 159.0mm | 159 |
-| 165.0mm | 165 |
-
-### 4. Product Code Format
-`{TYPE}{SHAFT} {PIPE} {LENGTH}{PIPE_TYPE} {SERIES}{MAKE}`
-
-Examples:
-- `CR20 89 200A 62S` - Carrying roller, 20mm shaft, 89mm pipe, 200mm length, Type A, 62 series, SKF
-- `RR25 114 700 62F` - Return roller, 25mm shaft, 114mm pipe, 700mm length, 62 series, FAG
-
-### 5. Search Functionality
-- Partial search: `CR20`, `89`, `CR20 89`
-- With length: `CR20 89 200`, `RR25 114 700`
-- Without bearing make: `CR25 139 600 62`
-- Full exact codes: `CR20 89 200A 62S`
-- **Add to Quote from Search** - Add products directly to quote from search results
-- **Download Drawing from Search** - Generate PDF drawings per product length
-
-### 6. Pricing Formula
-`(Total Raw Material Cost) × 1.32 (layout) × 1.60 (profit)`
-
-### 7. Additional Features
-- Value-based discounts (5% to 35%)
-- Packing charges (Optional)
-- Freight (distance-based via pincode)
-- GST calculation (CGST/SGST intra-state, IGST inter-state)
-- Multi-product quote builder (from Calculator AND Search tabs)
-- PDF export
-- Company branding (CONVERO SOLUTIONS)
-
-### 8. Drawing Generator Feature (Feb 2026 - Updated)
-- Auto-generated PDF engineering drawings with:
-  - CONVERO SOLUTIONS logo and branding
-  - Large dimensional schematic diagram (pipe length, diameter, shaft)
-  - Dimensions table (A=Pipe Length, B=Shaft Length, D=Pipe Diameter, d=Shaft Diameter)
-  - Material specifications (IS-9295 steel, bearing make/model, housing type)
-  - Cross-section detail view
-  - Legend for dimension lines
-- **NO pricing or Bill of Materials** - Pure engineering drawing
-- Shaft End Type support (A/B/C/Custom) affects shaft length in drawing
-- Available in both Calculator and Search tabs
-- Download as PDF for sharing/printing
+## Target Audience
+Sales teams, engineers, and industrial professionals in the conveyor equipment industry.
 
 ## Tech Stack
-- **Frontend**: React Native, Expo, Expo Router, TypeScript
-- **Backend**: FastAPI, Python
+- **Frontend**: React Native (Expo), TypeScript
+- **Backend**: FastAPI (Python)
 - **Database**: MongoDB
-- **PDF Generation**: ReportLab (backend), react-native-html-to-pdf (quotes)
+- **PDF Generation**: fpdf2 with Pillow
+- **Email**: Python smtplib with Gmail SMTP
 
-## Key Files
-- `/app/backend/roller_standards.py` - All roller specifications and pricing data
-- `/app/backend/server.py` - API endpoints including search
-- `/app/frontend/app/(tabs)/calculator.tsx` - Calculator UI with 3 roller types
-- `/app/frontend/app/(tabs)/search.tsx` - Product search UI
+## Core Features
+
+### 1. Roller Price Calculator
+- Calculate prices for Carrying, Impact, and Return belt conveyor rollers
+- Selectable shaft end types (A/B/C/Custom)
+- Role-based cost breakdown visibility (admin only)
+- Editable custom discount feature
+
+### 2. Product Catalog Search
+- Search by partial terms or full codes
+- Display roller length, weight, belt width, and price
+- Quick search filters (CR, IR, 25, 30, etc.)
+- Add items to quote directly from results
+- Email and PDF download for search results
+
+### 3. Quote Management
+- Associate quotes with customers
+- Edit quantity and discount
+- GST calculation and display
+- Print customer details on final quote PDF
+
+### 4. Customer Management
+- CRUD operations for customer information
+- GSTIN lookup from local database
+
+### 5. Admin Panel
+- Secure interface for managing raw material prices
+- Read-only standards view
+- Excel export of raw material costs
+
+### 6. Engineering Drawings
+- Generate PDF engineering drawings for any roller configuration
+- Email drawing feature as alternative to direct download
+
+## UI/UX Design
+
+### Design System (Updated March 2026)
+- **Style**: Corporate Professional
+- **Primary Color**: Carmine Red (#960018)
+- **Dark Accent**: Slate (#1E293B)
+- **Background**: Light Slate (#F8FAFC)
+- **Typography**: Clean, professional with uppercase section labels
+- **Cards**: White backgrounds with subtle shadows and borders
+
+### Key Visual Elements
+- Dark slate headers with white text
+- Professional card layouts with proper spacing
+- Carmine red accent for prices and CTAs
+- Green/Blue/Orange tags for roller type identification
+- Improved tab bar with better active state indication
+
+## Completed Work
+
+### March 2026
+- **UI/UX Redesign**: Applied professional corporate look to Calculator and Search screens
+  - Updated color palette (Carmine Red + Slate)
+  - Improved typography with uppercase section labels
+  - Enhanced card designs with better shadows and borders
+  - Professional tab bar styling
+  - Login page styling improvements
+
+### Previous Sessions
+- Fixed core price calculation bug (now data-driven from MongoDB)
+- Admin panel UX improvement (read-only standards)
+- Fixed price reset functionality
+- Search functionality with Add to Quote
+- Email drawing feature
+- Quote editing (quantity/discount)
+- GST display in quotes
+- Role-based access control for cost breakdown
+- Logout functionality fix
+
+## Known Issues
+
+### P1 - In Progress
+1. **Expo Tunnel Instability** (ERR_NGROK_3200) - Environmental issue, use web preview as workaround
+2. **PDF Download on iOS** - Native share/download not working in Expo Go; workarounds available (browser tab, email)
+
+### P0 - Pending Verification
+1. **Email Button in Search Actions** - Added but needs user verification
+
+## Security Considerations
+- **CRITICAL**: Email SMTP credentials are hardcoded in `backend/server.py` - Should be moved to environment variables
+
+## Credentials
+- **Admin**: test@test.com / test123
+- **Customer**: customer@test.com / test123
+- **Email Account**: info@convero.in (App password configured)
 
 ## API Endpoints
-- `GET /api/products/search` - Search product catalog
-- `POST /api/calculate-detailed-cost` - Calculate roller price
-- `POST /api/quotes/roller` - Save quote
-- `GET /api/quotes` - Fetch user quotes
-- `GET /api/roller-options` - Get dropdown options
 
-## Pending Tasks
-1. ~~**Admin Panel** - Migrate hardcoded prices to MongoDB with CRUD UI~~ ✅ COMPLETED
-2. ~~**Customer Management** - Save customer details with quotes~~ ✅ COMPLETED
-3. ~~**Print Customer Data in Quotes** - Render customer details on quote PDF~~ ✅ COMPLETED
-4. ~~**Formula-Based Pipe Weights** - Calculate pipe weights using engineering formula~~ ✅ COMPLETED (Feb 2026)
-5. ~~**Full Data Migration to DB** - Migrate hardcoded product data from roller_standards.py to MongoDB~~ ✅ COMPLETED (Feb 2026)
-6. ~~**Price Calculation Integration** - Connect calculation logic to use MongoDB prices~~ ✅ COMPLETED (Feb 2026)
-7. **Quote Approval Workflow** - Status system (Pending/Approved/Rejected) (P2)
-8. **Email Integration** - Email quote PDFs (P2)
-9. **Dashboard & Analytics** - Sales analytics (P3)
-10. **PDF Download from Mobile** - Fix frontend download on Expo (blocked by tunnel issues) (P1)
+### Authentication
+- `POST /api/auth/login`
+- `POST /api/auth/register`
 
+### Pricing
+- `POST /api/admin/prices/reset`
+- `PUT /api/admin/prices/update`
+- `GET /api/admin/prices`
 
-### Pipe Weight Calculation (Formula-Based) ✅ (Feb 2026)
-- Pipe weights calculated using engineering formula:
-  - `Weight (kg/m) = π/4 × (OD² - ID²) × ρ / 1,000,000`
-  - Where: `ID = OD - (2 × Wall Thickness)`, `ρ = 7.85 kg/dm³` (steel density)
-- Wall thicknesses per IS-9295:
-  - Type A (Light): 2.90-4.00mm depending on OD
-  - Type B (Medium): 3.65-4.85mm depending on OD
-  - Type C (Heavy): 4.47-5.33mm depending on OD
-- Weight values stored in `PIPE_WEIGHT_PER_METER` dictionary in `roller_standards.py`
-- Shaft weight uses 1 shaft per roller (corrected from previous 2-shaft calculation)
+### Quotes
+- `GET /api/quotes`
+- `POST /api/quotes`
+- `PUT /api/quotes/{quote_id}`
 
-## Recently Completed (Feb 2026)
+### Search
+- `GET /api/search/product-catalog?query=`
 
-### Price Calculation Integration with MongoDB ✅ (NEW - Feb 23, 2026)
-- **P0 Bug Fix**: "When we change price from admin panel, final product prices are not changing"
-- Created `price_loader.py` module for synchronous MongoDB price access
-- Calculation functions now use database prices with fallback to hardcoded defaults
-- Cache invalidation on admin price updates ensures immediate reflection
-- Affected functions in `roller_standards.py`:
-  - `calculate_raw_material_cost()` - Pipe, shaft, bearing, housing, seal, circlip, rubber ring, locking ring costs
-  - `calculate_roller_weight()` - Pipe and shaft weights
-  - `calculate_rubber_cost()` - Rubber ring costs
-  - `get_bearing_cost()` - Bearing costs by make
-- All 15 test cases passed (see `/app/backend/tests/test_price_update_bug.py`)
+### Drawings
+- `POST /api/email-drawing`
+- `GET /api/generate-drawing-download/{product_code}`
 
-### GST Verification Feature ✅ (NEW)
-- Quick GSTIN search - checks database first for existing customers
-- GSTIN format validation with state code extraction
-- Features:
-  - `GET /api/customers/search/gstin/{gstin}` - Quick search existing customers
-  - `GET /api/gst/validate/{gstin}` - Validate GSTIN format + extract state
-- Available in:
-  - Customers tab: "GST" button for lookup  
-  - Calculator: "Fetch from GSTIN" in customer picker
-- Flow:
-  1. User enters GSTIN (15 chars)
-  2. System immediately searches database for existing customer
-  3. If found: Shows green "Customer Found!" card with option to select/edit
-  4. If not found: Shows option to add customer manually with GSTIN pre-filled
-- Note: External GST portal API was removed (Feb 2025) - only local DB search and format validation remain.
+## File Structure
+```
+/app
+├── backend/
+│   ├── server.py (main API endpoints)
+│   ├── roller_standards.py (calculation logic)
+│   ├── drawing_generator.py (PDF generation)
+│   └── price_loader.py (cached price lookups)
+├── frontend/
+│   ├── app/
+│   │   ├── (tabs)/ (main screens)
+│   │   └── auth/ (login/register)
+│   ├── constants/
+│   │   └── Colors.ts (design tokens)
+│   └── contexts/
+└── memory/
+    └── PRD.md
+```
 
-### Admin Panel for Price Management ✅
-- Full CRUD UI for managing raw material prices
-- Prices stored in `custom_prices` collection in MongoDB
-- Admin-only access (role-based)
-- API endpoints: `GET/POST /api/admin/prices/*`
+## Upcoming Tasks
 
-### Customer Management System ✅
-- Full CRUD for customers (`/api/customers` endpoints)
-- Customer model: name, company, email, phone, address, city, state, pincode, gst_number, notes
-- Customers tab in app with search functionality
-- Customer selector dropdown in calculator before saving quotes
-- Customer details (customer_details field) saved with roller quotes
+### P0 - Critical
+1. Move hardcoded SMTP credentials to .env file
 
-### UI Updates ✅
-- Applied carmine red theme (#960018) across all pages
-- Removed non-functional "Configure" button from Search tab
-- Added "Return" as third roller type in calculator
+### P1 - Important
+1. User acceptance testing for Quote Editing
+2. User acceptance testing for Custom Discounts
+3. Verify Email button visibility in all contexts
 
-## Cleanup History
-- **Feb 2025**: Removed obsolete `gst_verification.py` and external GST API endpoints (captcha-based verification)
-- **Feb 2025**: Migrated roller standards data from `roller_standards.py` to MongoDB (16 collections, 158 documents)
-
-## MongoDB Collections (Standards Data)
-| Collection | Description | Count |
-|------------|-------------|-------|
-| pipe_diameters | IS-9295 standard pipe sizes | 9 |
-| shaft_diameters | Shaft sizes with weights | 7 |
-| shaft_end_types | A/B/C shaft extensions | 3 |
-| bearings | Bearing costs by make | 17 |
-| housings | Housing configurations | 36 |
-| pipe_weights | Weight per meter by type | 9 |
-| roller_lengths | Lengths by belt width | 18 |
-| circlips | Circlip costs | 7 |
-| rubber_lagging | Impact roller options | 7 |
-| rubber_rings | Rubber ring costs | 17 |
-| locking_rings | Locking ring costs | 9 |
-| discount_slabs | Volume discounts | 9 |
-| freight_rates | Distance-based rates | 5 |
-| packing_options | Packing charge % | 4 |
-| gst_config | Tax configuration | 6 |
-| raw_material_costs | Material rates | 5 |
-
-## Admin API Endpoints (Standards)
-- `GET /api/admin/standards-summary` - Overview of all collections
-- `GET /api/admin/standards/{collection}` - Get all items in a collection
-- `POST /api/admin/standards/{collection}` - Add new item
-- `PUT /api/admin/standards/{collection}` - Update item
-- `DELETE /api/admin/standards/{collection}` - Delete item
-
-## Admin UI Features
-- **Prices Tab**: Manage raw material costs (pipe, shaft, bearings, seals, circlips, rubber rings, locking rings)
-- **Standards Tab**: Browse and view all 16 MongoDB collections with item details modal
-
-## Test Credentials
-- Email: `test@test.com`
-- Password: `test123`
-- Role: `admin`
+### P2 - Future
+1. Quote Approval Workflow (Pending/Approved/Rejected)
+2. Dashboard & Analytics
+3. Update Raw Material Costs from Excel import
