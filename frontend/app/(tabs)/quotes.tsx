@@ -421,11 +421,17 @@ export default function QuotesScreen() {
         </View>
       </View>
 
-      {/* Customer Name */}
+      {/* Customer & Company Name */}
       <View style={styles.customerRow}>
         <Ionicons name="person-outline" size={16} color="#64748B" />
         <Text style={styles.customerName}>{item.customer_name || 'Unknown Customer'}</Text>
       </View>
+      {(item.customer_details?.company || item.customer_company) && (
+        <View style={styles.companyRow}>
+          <Ionicons name="business-outline" size={16} color="#64748B" />
+          <Text style={styles.companyName}>{item.customer_details?.company || item.customer_company}</Text>
+        </View>
+      )}
 
       <View style={styles.productsList}>
         {item.products.slice(0, 2).map((product, index) => (
