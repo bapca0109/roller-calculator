@@ -468,7 +468,11 @@ export default function QuotesScreen() {
 
   const renderQuote = ({ item }: { item: Quote }) => {
     const isRfq = item.quote_number?.startsWith('RFQ');
-    const canApprove = isAdmin && isRfq && item.status?.toLowerCase() !== 'approved';
+    const isApproved = item.status?.toLowerCase() === 'approved';
+    const canApprove = isAdmin && isRfq && !isApproved;
+    
+    // Debug log for each quote card
+    console.log(`Quote ${item.quote_number}: isRfq=${isRfq}, isApproved=${isApproved}, isAdmin=${isAdmin}, canApprove=${canApprove}`);
     
     return (
     <TouchableOpacity
