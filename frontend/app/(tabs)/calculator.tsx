@@ -981,7 +981,13 @@ export default function CalculatorScreen() {
         {/* Calculate Button */}
         <TouchableOpacity
           style={[styles.calculateButton, calculating && styles.calculateButtonDisabled]}
-          onPress={calculateCost}
+          onPress={async () => {
+            await calculateCost();
+            // For customers, show RFQ popup after calculation
+            if (isCustomer && result) {
+              setShowRfqPopup(true);
+            }
+          }}
           disabled={calculating}
         >
           {calculating ? (
