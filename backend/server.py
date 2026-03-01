@@ -833,6 +833,7 @@ async def create_roller_quote(
         "quote_number": quote_number,
         "customer_id": quote_data.customer_id or current_user["id"],
         "customer_name": quote_data.customer_name or current_user["name"],
+        "customer_company": quote_data.customer_details.get("company", "") if quote_data.customer_details else current_user.get("company", ""),
         "customer_email": current_user["email"],
         "customer_details": quote_data.customer_details,  # Full customer info for PDF
         "products": [product],
