@@ -260,12 +260,12 @@ export default function Register() {
             </View>
           )}
 
-          {/* Company (Optional) */}
+          {/* Company (Required) */}
           <View style={styles.inputContainer}>
             <Ionicons name="business-outline" size={20} color="#64748B" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Company (Optional)"
+              placeholder="Company Name *"
               placeholderTextColor="#94A3B8"
               value={company}
               onChangeText={setCompany}
