@@ -169,6 +169,27 @@ export default function QuotesScreen() {
     }
   };
 
+  // Save revision and send email (for approved quotes)
+  const saveRevisionAndMail = async () => {
+    if (!editingQuote) return;
+    
+    setSavingRevision(true);
+    try {
+      const response = await api.post(`/quotes/${editingQuote.id}/revise`, {
+        discount_percent: parseFloat(editedDiscount) || 0,
+        notes: `Revised by admin`
+      });
+      
+      window.alert(`Quote Revised Successfully!\n\n${response.data.revision}\nNew Total: Rs. ${response.data.new_total_price.toFixed(2)}\n\nEmail sent to customer and admin.`);
+      setEditingQuote(null);
+      fetchQuotes();
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to create revision');
+    } finally {
+      setSavingRevision(false);
+    }
+  };
+
   // Approve RFQ function
   const approveRfq = async (quote: Quote) => {
     // Use window.confirm for web compatibility
