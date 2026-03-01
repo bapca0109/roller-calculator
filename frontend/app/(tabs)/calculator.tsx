@@ -1088,7 +1088,8 @@ export default function CalculatorScreen() {
             </View>
             )}
 
-            {/* Pricing */}
+            {/* Pricing - Hide for customers */}
+            {!isCustomer && (
             <View style={styles.resultCard}>
               <Text style={styles.resultCardTitle}>Pricing</Text>
               <View style={styles.resultRow}>
@@ -1168,9 +1169,10 @@ export default function CalculatorScreen() {
                 <Text style={styles.totalValue}>Rs. {result.pricing.final_price.toFixed(2)}</Text>
               </View>
             </View>
+            )}
 
-            {/* GST */}
-            {result.gst && (
+            {/* GST - Hide for customers */}
+            {!isCustomer && result.gst && (
               <View style={styles.resultCard}>
                 <Text style={styles.resultCardTitle}>GST Details</Text>
                 <View style={styles.resultRow}>
@@ -1205,8 +1207,8 @@ export default function CalculatorScreen() {
               </View>
             )}
 
-            {/* Freight */}
-            {result.freight && (
+            {/* Freight - Hide for customers */}
+            {!isCustomer && result.freight && (
               <View style={styles.resultCard}>
                 <Text style={styles.resultCardTitle}>Freight Charges</Text>
                 <View style={styles.resultRow}>
@@ -1236,7 +1238,8 @@ export default function CalculatorScreen() {
               </View>
             )}
 
-            {/* Grand Total */}
+            {/* Grand Total - Hide for customers */}
+            {!isCustomer && (
             <View style={styles.grandTotalCard}>
               <View style={styles.grandTotalRow}>
                 <Text style={styles.grandTotalLabel}>GRAND TOTAL</Text>
@@ -1248,6 +1251,7 @@ export default function CalculatorScreen() {
                 {result.freight ? ' + freight' : ''})
               </Text>
             </View>
+            )}
 
             {/* Customer Selection */}
             <View style={styles.customerSection}>
