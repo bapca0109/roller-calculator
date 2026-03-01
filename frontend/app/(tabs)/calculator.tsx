@@ -1600,9 +1600,9 @@ export default function CalculatorScreen() {
           <View style={styles.rfqPopupContent}>
             <View style={styles.rfqPopupHeader}>
               <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
-              <Text style={styles.rfqPopupTitle}>Item Added to RFQ</Text>
+              <Text style={styles.rfqPopupTitle}>Item Added!</Text>
               <Text style={styles.rfqPopupSubtitle}>
-                {result?.configuration?.product_code || 'Product'} - Qty: {result?.configuration?.quantity || 1}
+                {quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''} in your RFQ
               </Text>
             </View>
             
@@ -1610,28 +1610,19 @@ export default function CalculatorScreen() {
               <TouchableOpacity
                 style={styles.rfqAddMoreButton}
                 onPress={() => {
-                  // Add current item to quote items and close popup
-                  if (result) {
-                    addToQuote();
-                  }
                   setShowRfqPopup(false);
-                  setResult(null);
                 }}
               >
                 <Ionicons name="add-circle-outline" size={24} color="#960018" />
-                <Text style={styles.rfqAddMoreButtonText}>Add More Items</Text>
+                <Text style={styles.rfqAddMoreButtonText}>Add More</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
                 style={styles.rfqSubmitButton}
                 onPress={async () => {
-                  // Add current item and submit
-                  if (result) {
-                    addToQuote();
-                  }
                   setShowRfqPopup(false);
-                  // Submit the quote
-                  await saveQuote();
+                  // Submit the RFQ with all items
+                  await saveMultiProductQuote();
                 }}
                 disabled={savingQuote}
               >
@@ -1645,12 +1636,6 @@ export default function CalculatorScreen() {
                 )}
               </TouchableOpacity>
             </View>
-            
-            {quoteItems.length > 0 && (
-              <Text style={styles.rfqItemCount}>
-                {quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''} already in RFQ
-              </Text>
-            )}
           </View>
         </View>
       )}
