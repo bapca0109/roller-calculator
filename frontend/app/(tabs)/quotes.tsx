@@ -463,7 +463,11 @@ export default function QuotesScreen() {
     }
   };
 
-  const renderQuote = ({ item }: { item: Quote }) => (
+  const renderQuote = ({ item }: { item: Quote }) => {
+    const isRfq = item.quote_number?.startsWith('RFQ');
+    const canApprove = isAdmin && isRfq && item.status?.toLowerCase() !== 'approved';
+    
+    return (
     <TouchableOpacity
       style={styles.quoteCard}
       onPress={() => setSelectedQuote(item)}
@@ -507,14 +511,38 @@ export default function QuotesScreen() {
       <View style={styles.quoteFooter}>
         <View>
           <Text style={styles.totalLabel}>{item.products.length} item{item.products.length !== 1 ? 's' : ''}</Text>
-          <Text style={[styles.discountBadge, { color: '#4CAF50', fontWeight: 'bold' }]}>
-            Discount: {item.subtotal > 0 ? ((item.total_discount / item.subtotal) * 100).toFixed(1) : 0}%
-          </Text>
+          {!isCustomer && (
+            <Text style={[styles.discountBadge, { color: '#4CAF50', fontWeight: 'bold' }]}>
+              Discount: {item.subtotal > 0 ? ((item.total_discount / item.subtotal) * 100).toFixed(1) : 0}%
+            </Text>
+          )}
         </View>
-        <Text style={styles.totalPrice}>Rs. {item.total_price?.toFixed(2) || '0.00'}</Text>
+        {!isCustomer && <Text style={styles.totalPrice}>Rs. {item.total_price?.toFixed(2) || '0.00'}</Text>}
       </View>
+      
+      {/* Approve Button for RFQs */}
+      {canApprove && (
+        <TouchableOpacity 
+          style={styles.approveButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            approveRfq(item);
+          }}
+          disabled={approvingId === item.id}
+        >
+          {approvingId === item.id ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle" size={18} color="#fff" />
+              <Text style={styles.approveButtonText}>Approve & Generate Quote</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
-  );
+    );
+  };
 
   if (loading && !refreshing) {
     return (
