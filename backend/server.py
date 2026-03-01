@@ -256,7 +256,7 @@ class OTPRequest(BaseModel):
     pincode: str
     city: str
     state: str
-    company: Optional[str] = None
+    company: str  # Required field
     password: str
 
 class OTPVerify(BaseModel):
@@ -267,7 +267,7 @@ class OTPVerify(BaseModel):
     pincode: str
     city: str
     state: str
-    company: Optional[str] = None
+    company: str  # Required field
     password: str
 
 class ResendOTPRequest(BaseModel):
