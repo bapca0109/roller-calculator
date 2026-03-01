@@ -1535,7 +1535,7 @@ export default function CalculatorScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Quote Builder</Text>
+              <Text style={styles.modalTitle}>{isCustomer ? 'RFQ Items' : 'Quote Builder'}</Text>
               <TouchableOpacity onPress={() => setShowQuoteBuilder(false)}>
                 <Ionicons name="close" size={28} color="#333" />
               </TouchableOpacity>
@@ -1555,7 +1555,8 @@ export default function CalculatorScreen() {
                   </Text>
                   <View style={styles.quoteItemRow}>
                     <Text style={styles.quoteItemLabel}>Qty: {item.configuration.quantity}</Text>
-                    <Text style={styles.quoteItemPrice}>Rs. {item.grand_total.toFixed(2)}</Text>
+                    {/* Hide price for customers */}
+                    {!isCustomer && <Text style={styles.quoteItemPrice}>Rs. {item.grand_total.toFixed(2)}</Text>}
                   </View>
                 </View>
               ))}
@@ -1564,7 +1565,8 @@ export default function CalculatorScreen() {
             <View style={styles.modalFooter}>
               <View style={styles.modalTotalRow}>
                 <Text style={styles.modalTotalLabel}>Total ({quoteItems.length} items)</Text>
-                <Text style={styles.modalTotalValue}>Rs. {getQuoteTotal().toFixed(2)}</Text>
+                {/* Hide total price for customers */}
+                {!isCustomer && <Text style={styles.modalTotalValue}>Rs. {getQuoteTotal().toFixed(2)}</Text>}
               </View>
               <TouchableOpacity 
                 style={styles.saveAllButton}
@@ -1574,7 +1576,7 @@ export default function CalculatorScreen() {
                 {savingQuote ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveAllButtonText}>Save Quote</Text>
+                  <Text style={styles.saveAllButtonText}>{isCustomer ? 'Submit RFQ' : 'Save Quote'}</Text>
                 )}
               </TouchableOpacity>
             </View>
