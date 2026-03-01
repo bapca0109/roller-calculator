@@ -13,14 +13,19 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../utils/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function VerifyOTP() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { setUser } = useAuth();
   const [otp, setOtp] = useState(['', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
   const email = params.email as string;
@@ -41,6 +46,9 @@ export default function VerifyOTP() {
   }, [cooldown]);
 
   const handleOtpChange = (value: string, index: number) => {
+    // Clear error when user starts typing
+    setError('');
+    
     if (value.length > 1) {
       value = value[value.length - 1];
     }
@@ -64,11 +72,13 @@ export default function VerifyOTP() {
   const handleVerify = async () => {
     const otpCode = otp.join('');
     if (otpCode.length !== 4) {
-      Alert.alert('Error', 'Please enter the complete 4-digit OTP');
+      setError('Please enter the complete 4-digit OTP');
       return;
     }
 
     setLoading(true);
+    setError('');
+    
     try {
       const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
         method: 'POST',
@@ -91,19 +101,26 @@ export default function VerifyOTP() {
       }
 
       // Store token and user info
-      // Note: In a real app, you'd use AsyncStorage or a context
-      Alert.alert(
-        'Success',
-        'Your email has been verified! You can now log in.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/auth/login'),
-          },
-        ]
-      );
+      await AsyncStorage.setItem('token', data.access_token);
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+      
+      // Update auth context
+      if (setUser) {
+        setUser(data.user);
+      }
+      
+      setSuccess(true);
+      
+      // Navigate to calculator after short delay
+      setTimeout(() => {
+        router.replace('/(tabs)/calculator');
+      }, 1500);
+      
     } catch (error: any) {
-      Alert.alert('Verification Failed', error.message);
+      setError(error.message || 'Verification failed. Please try again.');
+      // Clear OTP inputs on error
+      setOtp(['', '', '', '']);
+      inputRefs.current[0]?.focus();
     } finally {
       setLoading(false);
     }
