@@ -1253,7 +1253,8 @@ export default function CalculatorScreen() {
             </View>
             )}
 
-            {/* Customer Selection */}
+            {/* Customer Selection - Admin only */}
+            {!isCustomer && (
             <View style={styles.customerSection}>
               <Text style={styles.customerLabel}>Select Customer for Quote:</Text>
               <TouchableOpacity
@@ -1283,34 +1284,57 @@ export default function CalculatorScreen() {
                 )}
               </TouchableOpacity>
             </View>
+            )}
 
-            {/* Save Quote Button */}
+            {/* Save Quote/RFQ Buttons */}
             <View style={styles.quoteButtonsContainer}>
-              <TouchableOpacity
-                style={styles.addToQuoteButton}
-                onPress={addToQuote}
-              >
-                <Ionicons name="add-circle-outline" size={24} color="#fff" />
-                <Text style={styles.addToQuoteButtonText}>Add to Quote</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.saveQuoteButton}
-                onPress={saveQuote}
-                disabled={savingQuote}
-              >
-                {savingQuote ? (
-                  <ActivityIndicator color="#960018" />
-                ) : (
-                  <>
-                    <Ionicons name="save-outline" size={24} color="#960018" />
-                    <Text style={styles.saveQuoteButtonText}>Save Single</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+              {isCustomer ? (
+                // Customer: Single "Submit RFQ" button
+                <TouchableOpacity
+                  style={[styles.calculateButton, { marginHorizontal: 0, marginTop: 0 }]}
+                  onPress={saveQuote}
+                  disabled={savingQuote}
+                >
+                  {savingQuote ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="send" size={24} color="#fff" />
+                      <Text style={styles.calculateButtonText}>Submit RFQ</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                // Admin: Add to Quote + Save Single buttons
+                <>
+                  <TouchableOpacity
+                    style={styles.addToQuoteButton}
+                    onPress={addToQuote}
+                  >
+                    <Ionicons name="add-circle-outline" size={24} color="#fff" />
+                    <Text style={styles.addToQuoteButtonText}>Add to Quote</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.saveQuoteButton}
+                    onPress={saveQuote}
+                    disabled={savingQuote}
+                  >
+                    {savingQuote ? (
+                      <ActivityIndicator color="#960018" />
+                    ) : (
+                      <>
+                        <Ionicons name="save-outline" size={24} color="#960018" />
+                        <Text style={styles.saveQuoteButtonText}>Save Single</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
             
-            {/* Download Drawing Button */}
+            {/* Download Drawing Button - Admin only */}
+            {!isCustomer && (
             <TouchableOpacity
               style={styles.downloadDrawingButton}
               onPress={downloadDrawing}
@@ -1326,14 +1350,15 @@ export default function CalculatorScreen() {
                 </>
               )}
             </TouchableOpacity>
+            )}
           </View>
         )}
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Floating Quote Badge */}
-      {quoteItems.length > 0 && (
+      {/* Floating Quote Badge - Admin only */}
+      {!isCustomer && quoteItems.length > 0 && (
         <TouchableOpacity 
           style={styles.floatingQuoteBadge}
           onPress={() => setShowQuoteBuilder(true)}
