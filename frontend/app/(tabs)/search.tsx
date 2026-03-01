@@ -616,7 +616,7 @@ export default function SearchScreen() {
                     <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 1.1 }]}>Code</Text>
                     <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.5 }]}>Len</Text>
                     <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.4 }]}>Wt</Text>
-                    <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.7 }]}>Price</Text>
+                    {!isCustomer && <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.7 }]}>Price</Text>}
                     <Text style={[styles.lengthTableCell, styles.lengthTableHeaderText, { flex: 0.8 }]}>Actions</Text>
                   </View>
                   {item.length_details.map((ld, idx) => (
@@ -626,7 +626,7 @@ export default function SearchScreen() {
                       </Text>
                       <Text style={[styles.lengthTableCell, { flex: 0.5 }]}>{ld.length_mm}</Text>
                       <Text style={[styles.lengthTableCell, { flex: 0.4 }]}>{ld.weight_kg}</Text>
-                      <Text style={[styles.lengthTableCell, styles.priceCell, { flex: 0.7 }]}>₹{ld.price}</Text>
+                      {!isCustomer && <Text style={[styles.lengthTableCell, styles.priceCell, { flex: 0.7 }]}>₹{ld.price}</Text>}
                       <View style={[styles.actionButtons, { flex: 0.8 }]}>
                         <TouchableOpacity 
                           style={styles.actionBtn}
