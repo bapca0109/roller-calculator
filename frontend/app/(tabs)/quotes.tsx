@@ -200,6 +200,11 @@ export default function QuotesScreen() {
   };
 
   const generatePdfHtml = (quote: Quote) => {
+    // Determine document label based on quote number prefix
+    const isRfq = quote.quote_number?.startsWith('RFQ');
+    const pdfDocLabel = isRfq ? 'RFQ' : 'Quotation';
+    const pdfDocLabelFull = isRfq ? 'REQUEST FOR QUOTATION' : 'QUOTATION';
+    
     const productsHtml = quote.products.map((product, index) => `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #eee;">${index + 1}</td>
@@ -255,12 +260,12 @@ export default function QuotesScreen() {
         <div class="header">
           <div class="logo">C<span>O</span>NVER<span>O</span></div>
           <div class="company-name">SOLUTIONS</div>
-          <div class="quote-title">QUOTATION</div>
+          <div class="quote-title">${pdfDocLabelFull}</div>
         </div>
 
         <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
           <div class="info-box" style="width: 48%;">
-            <div class="info-label">Quote Number</div>
+            <div class="info-label">${pdfDocLabel} Number</div>
             <div class="info-value" style="color: #960018;">${quote.quote_number || `#${quote.id.slice(-6).toUpperCase()}`}</div>
             <div class="info-label" style="margin-top: 10px;">Date</div>
             <div class="info-value">${quote.created_at_ist || formatDate(quote.created_at)}</div>
