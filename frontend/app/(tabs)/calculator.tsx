@@ -1620,11 +1620,22 @@ export default function CalculatorScreen() {
               </TouchableOpacity>
               
               <TouchableOpacity
-                style={styles.rfqSubmitButton}
+                style={styles.rfqSubmitButtonGreen}
                 onPress={async () => {
                   setShowRfqPopup(false);
-                  // Submit the RFQ with all items
-                  await saveMultiProductQuote();
+                  setSavingQuote(true);
+                  try {
+                    const response = await saveMultiProductQuote();
+                    // Show success popup
+                    setSubmittedRfqNumber(response?.quote_number || 'RFQ');
+                    setShowRfqSuccessPopup(true);
+                    // Clear the cart
+                    setQuoteItems([]);
+                  } catch (error) {
+                    console.log('RFQ submission error:', error);
+                  } finally {
+                    setSavingQuote(false);
+                  }
                 }}
                 disabled={savingQuote}
               >
@@ -1638,6 +1649,32 @@ export default function CalculatorScreen() {
                 )}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      )}
+
+      {/* RFQ Success Popup */}
+      {showRfqSuccessPopup && isCustomer && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.rfqPopupContent}>
+            <View style={styles.rfqPopupHeader}>
+              <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
+              <Text style={styles.rfqSuccessTitle}>RFQ Submitted!</Text>
+              <Text style={styles.rfqSuccessSubtitle}>
+                Your Request for Quotation has been sent successfully.
+              </Text>
+              <Text style={styles.rfqSuccessNumber}>{submittedRfqNumber}</Text>
+            </View>
+            
+            <TouchableOpacity
+              style={styles.rfqSuccessButton}
+              onPress={() => {
+                setShowRfqSuccessPopup(false);
+              }}
+            >
+              <Ionicons name="checkmark" size={24} color="#fff" />
+              <Text style={styles.rfqSubmitButtonText}>OK</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
