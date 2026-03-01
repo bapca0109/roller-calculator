@@ -98,7 +98,7 @@ export default function VerifyOTP() {
           pincode,
           city,
           state,
-          company: company || null,
+          company,
           password,
         }),
       });
