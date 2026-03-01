@@ -27,6 +27,7 @@ interface Customer {
   pincode?: string;
   gst_number?: string;
   notes?: string;
+  customer_type?: string;
 }
 
 interface GSTCaptcha {
