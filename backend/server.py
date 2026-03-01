@@ -449,7 +449,7 @@ async def verify_otp(request: OTPVerify):
     # Also create a customer record for this user
     customer_dict = {
         "name": request.name,
-        "company": request.company or "",
+        "company": request.company,
         "email": request.email,
         "phone": request.mobile,
         "address": f"{request.city}, {request.state}",
@@ -461,7 +461,8 @@ async def verify_otp(request: OTPVerify):
         "user_id": str(result.inserted_id)  # Link to user account
     }
     
-    await db.customers.insert_one(customer_dict)
+    customer_result = await db.customers.insert_one(customer_dict)
+    logging.info(f"Customer created with ID: {customer_result.inserted_id} for user: {request.email}")
     
     # Delete OTP record
     await db.otp_verifications.delete_one({"email": request.email})
