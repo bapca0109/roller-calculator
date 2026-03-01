@@ -161,43 +161,63 @@ export default function VerifyOTP() {
       style={styles.container}
     >
       <View style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="mail-outline" size={48} color="#960018" />
+        {success ? (
+          <View style={styles.successContainer}>
+            <View style={styles.successIconContainer}>
+              <Ionicons name="checkmark-circle" size={64} color="#10B981" />
+            </View>
+            <Text style={styles.successTitle}>Email Verified!</Text>
+            <Text style={styles.successText}>Your account has been created successfully.</Text>
+            <Text style={styles.successText}>Redirecting to calculator...</Text>
+            <ActivityIndicator color="#960018" style={{ marginTop: 20 }} />
           </View>
-          <Text style={styles.title}>Verify Your Email</Text>
-          <Text style={styles.subtitle}>
-            We've sent a 4-digit code to
-          </Text>
-          <Text style={styles.email}>{email}</Text>
-        </View>
+        ) : (
+          <>
+            <View style={styles.header}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="mail-outline" size={48} color="#960018" />
+              </View>
+              <Text style={styles.title}>Verify Your Email</Text>
+              <Text style={styles.subtitle}>
+                We've sent a 4-digit code to
+              </Text>
+              <Text style={styles.email}>{email}</Text>
+            </View>
 
-        <View style={styles.otpContainer}>
-          {otp.map((digit, index) => (
-            <TextInput
-              key={index}
-              ref={(ref) => (inputRefs.current[index] = ref)}
-              style={[
-                styles.otpInput,
-                digit ? styles.otpInputFilled : null,
-              ]}
-              value={digit}
-              onChangeText={(value) => handleOtpChange(value, index)}
-              onKeyPress={(e) => handleKeyPress(e, index)}
-              keyboardType="number-pad"
-              maxLength={1}
-              selectTextOnFocus
-              data-testid={`otp-input-${index}`}
-            />
-          ))}
-        </View>
+            {error ? (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={20} color="#EF4444" />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
 
-        <TouchableOpacity
-          style={[styles.verifyButton, loading && styles.buttonDisabled]}
-          onPress={handleVerify}
-          disabled={loading}
-          data-testid="verify-otp-btn"
-        >
+            <View style={styles.otpContainer}>
+              {otp.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  ref={(ref) => (inputRefs.current[index] = ref)}
+                  style={[
+                    styles.otpInput,
+                    digit ? styles.otpInputFilled : null,
+                    error ? styles.otpInputError : null,
+                  ]}
+                  value={digit}
+                  onChangeText={(value) => handleOtpChange(value, index)}
+                  onKeyPress={(e) => handleKeyPress(e, index)}
+                  keyboardType="number-pad"
+                  maxLength={1}
+                  selectTextOnFocus
+                  data-testid={`otp-input-${index}`}
+                />
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.verifyButton, loading && styles.buttonDisabled]}
+              onPress={handleVerify}
+              disabled={loading}
+              data-testid="verify-otp-btn"
+            >
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
