@@ -527,6 +527,157 @@ async def send_registration_notification_email(customer_data):
         logging.error(f"Failed to send registration notification email: {str(e)}")
         return False  # Don't raise exception, just log the error
 
+async def send_rfq_notification_email(rfq_data: dict, customer: dict):
+    """Send RFQ notification email with PDF to admins"""
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        logging.warning("Email service not configured, skipping RFQ notification")
+        return False
+    
+    admin_emails = ["info@convero.in", "design@convero.in"]
+    ist_now = get_ist_now()
+    
+    try:
+        msg = MIMEMultipart('mixed')
+        msg['Subject'] = f"New RFQ Received - {rfq_data.get('quote_number')} from {rfq_data.get('customer_name')}"
+        msg['From'] = GMAIL_USER
+        msg['To'] = ", ".join(admin_emails)
+        
+        # Get product details
+        products = rfq_data.get('products', [])
+        products_html = ""
+        products_text = ""
+        for idx, product in enumerate(products, 1):
+            products_html += f"""
+            <tr>
+                <td>{idx}</td>
+                <td>{product.get('product_id', 'N/A')}</td>
+                <td>{product.get('product_name', 'N/A')}</td>
+                <td>{product.get('quantity', 0)}</td>
+                <td>Rs. {product.get('unit_price', 0):,.2f}</td>
+            </tr>
+            """
+            products_text += f"{idx}. {product.get('product_id', 'N/A')} - {product.get('product_name', 'N/A')} x {product.get('quantity', 0)}\n"
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: #960018; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }}
+                .rfq-number {{ font-size: 24px; font-weight: bold; color: #960018; }}
+                .info-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }}
+                .info-box {{ background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #960018; }}
+                .info-label {{ font-size: 12px; color: #666; text-transform: uppercase; }}
+                .info-value {{ font-size: 16px; font-weight: bold; color: #333; margin-top: 5px; }}
+                .products-table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+                .products-table th {{ background-color: #1E293B; color: white; padding: 12px; text-align: left; }}
+                .products-table td {{ padding: 12px; border-bottom: 1px solid #ddd; }}
+                .products-table tr:nth-child(even) {{ background-color: #f9f9f9; }}
+                .total-box {{ background: #960018; color: white; padding: 15px; border-radius: 8px; text-align: right; margin-top: 20px; }}
+                .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="margin: 0;">New RFQ Received</h1>
+                    <p style="margin: 5px 0 0 0;">Convero Solutions - Roller Price Calculator</p>
+                </div>
+                <div class="content">
+                    <p class="rfq-number">{rfq_data.get('quote_number')}</p>
+                    <p>A new Request for Quotation has been submitted:</p>
+                    
+                    <div class="info-grid">
+                        <div class="info-box">
+                            <div class="info-label">Customer Name</div>
+                            <div class="info-value">{rfq_data.get('customer_name')}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Company</div>
+                            <div class="info-value">{rfq_data.get('customer_company', 'N/A')}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Email</div>
+                            <div class="info-value">{rfq_data.get('customer_email')}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Submission Time</div>
+                            <div class="info-value">{ist_now.strftime("%d %b %Y, %I:%M %p IST")}</div>
+                        </div>
+                    </div>
+                    
+                    <h3>Products Requested</h3>
+                    <table class="products-table">
+                        <tr>
+                            <th>#</th>
+                            <th>Product Code</th>
+                            <th>Description</th>
+                            <th>Qty</th>
+                            <th>Unit Price</th>
+                        </tr>
+                        {products_html}
+                    </table>
+                    
+                    <div class="total-box">
+                        <span style="font-size: 14px;">Total Value:</span>
+                        <span style="font-size: 24px; font-weight: bold; margin-left: 10px;">Rs. {rfq_data.get('total_price', 0):,.2f}</span>
+                    </div>
+                    
+                    {f'<p style="margin-top: 20px;"><strong>Notes:</strong> {rfq_data.get("notes")}</p>' if rfq_data.get("notes") else ''}
+                </div>
+                <div class="footer">
+                    <p>&copy; 2026 Convero Solutions. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        New RFQ Received - Convero Solutions
+        
+        RFQ Number: {rfq_data.get('quote_number')}
+        
+        Customer Details:
+        -----------------
+        Customer Name: {rfq_data.get('customer_name')}
+        Company: {rfq_data.get('customer_company', 'N/A')}
+        Email: {rfq_data.get('customer_email')}
+        Submission Time: {ist_now.strftime("%d %b %Y, %I:%M %p IST")}
+        
+        Products Requested:
+        -------------------
+        {products_text}
+        
+        Total Value: Rs. {rfq_data.get('total_price', 0):,.2f}
+        
+        {f'Notes: {rfq_data.get("notes")}' if rfq_data.get("notes") else ''}
+        
+        - Convero Solutions
+        """
+        
+        # Create the email body
+        msg_alternative = MIMEMultipart('alternative')
+        part1 = MIMEText(text_content, 'plain')
+        part2 = MIMEText(html_content, 'html')
+        msg_alternative.attach(part1)
+        msg_alternative.attach(part2)
+        msg.attach(msg_alternative)
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            for admin_email in admin_emails:
+                server.sendmail(GMAIL_USER, admin_email, msg.as_string())
+        
+        logging.info(f"RFQ notification sent to admins for RFQ: {rfq_data.get('quote_number')}")
+        return True
+    except Exception as e:
+        logging.error(f"Failed to send RFQ notification email: {str(e)}")
+        return False
+
 @api_router.post("/auth/send-otp")
 async def send_otp(request: OTPRequest):
     """Send OTP to email for verification"""
