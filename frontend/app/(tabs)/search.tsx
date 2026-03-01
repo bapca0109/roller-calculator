@@ -506,6 +506,8 @@ export default function SearchScreen() {
 
           <View style={styles.divider} />
 
+          {/* Price Row - Hide for customers */}
+          {!isCustomer && (
           <View style={styles.pricingRow}>
             <View>
               <Text style={styles.priceLabel}>
@@ -514,6 +516,7 @@ export default function SearchScreen() {
               <Text style={styles.priceValue}>Rs. {(item.base_price || 0).toFixed(2)}</Text>
             </View>
           </View>
+          )}
 
           {/* Direct Add to Quote Button - Always visible on card */}
           <View style={styles.cardActions}>
@@ -534,7 +537,7 @@ export default function SearchScreen() {
               data-testid={`add-quote-${item.product_code}`}
             >
               <Ionicons name="cart" size={18} color="#fff" />
-              <Text style={styles.actionBtnText}>Quote</Text>
+              <Text style={styles.actionBtnText}>{isCustomer ? 'RFQ' : 'Quote'}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.actionBtn, { backgroundColor: '#1A1A2E' }]}
