@@ -72,6 +72,7 @@ export default function QuotesScreen() {
   const [editedProducts, setEditedProducts] = useState<QuoteProduct[]>([]);
   const [editedDiscount, setEditedDiscount] = useState<string>('0');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [savingRevision, setSavingRevision] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved'>('all');
   const { user, loading: authLoading } = useAuth();
