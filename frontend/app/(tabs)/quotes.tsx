@@ -509,13 +509,15 @@ export default function QuotesScreen() {
       <View style={styles.quoteFooter}>
         <View>
           <Text style={styles.totalLabel}>{item.products.length} item{item.products.length !== 1 ? 's' : ''}</Text>
-          {!isCustomer && (
+          {/* Admin always sees discount, Customer sees it only for approved quotes */}
+          {(!isCustomer || isApproved) && (
             <Text style={[styles.discountBadge, { color: '#4CAF50', fontWeight: 'bold' }]}>
               Discount: {item.subtotal > 0 ? ((item.total_discount / item.subtotal) * 100).toFixed(1) : 0}%
             </Text>
           )}
         </View>
-        {!isCustomer && <Text style={styles.totalPrice}>Rs. {item.total_price?.toFixed(2) || '0.00'}</Text>}
+        {/* Admin always sees price, Customer sees it only for approved quotes */}
+        {(!isCustomer || isApproved) && <Text style={styles.totalPrice}>Rs. {item.total_price?.toFixed(2) || '0.00'}</Text>}
       </View>
       
       {/* Approve Button for RFQs - RED before approval */}
