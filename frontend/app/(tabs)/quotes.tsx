@@ -1277,4 +1277,46 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
+  // Filter Tabs
+  filterTabs: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    padding: 4,
+  },
+  filterTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  filterTabActive: {
+    backgroundColor: '#960018',
+  },
+  filterTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  filterTabTextActive: {
+    color: '#fff',
+  },
+  // Approve Button
+  approveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 8,
+  },
+  approveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });
