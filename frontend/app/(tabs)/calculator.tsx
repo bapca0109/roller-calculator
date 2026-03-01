@@ -134,6 +134,8 @@ export default function CalculatorScreen() {
   
   // RFQ popup state for customers
   const [showRfqPopup, setShowRfqPopup] = useState(false);
+  const [showRfqSuccessPopup, setShowRfqSuccessPopup] = useState(false);
+  const [submittedRfqNumber, setSubmittedRfqNumber] = useState('');
   const [calculating, setCalculating] = useState(false);
   const [result, setResult] = useState<CostResult | null>(null);
   const [savingQuote, setSavingQuote] = useState(false);
