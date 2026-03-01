@@ -1292,21 +1292,31 @@ export default function CalculatorScreen() {
             {/* Save Quote/RFQ Buttons */}
             <View style={styles.quoteButtonsContainer}>
               {isCustomer ? (
-                // Customer: Single "Submit RFQ" button
-                <TouchableOpacity
-                  style={[styles.calculateButton, { marginHorizontal: 0, marginTop: 0 }]}
-                  onPress={saveQuote}
-                  disabled={savingQuote}
-                >
-                  {savingQuote ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="send" size={24} color="#fff" />
-                      <Text style={styles.calculateButtonText}>Submit RFQ</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                // Customer: Add to RFQ + Submit RFQ buttons
+                <>
+                  <TouchableOpacity
+                    style={styles.addToQuoteButton}
+                    onPress={addToQuote}
+                  >
+                    <Ionicons name="add-circle-outline" size={24} color="#fff" />
+                    <Text style={styles.addToQuoteButtonText}>Add to RFQ</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.saveQuoteButton}
+                    onPress={saveQuote}
+                    disabled={savingQuote}
+                  >
+                    {savingQuote ? (
+                      <ActivityIndicator color="#960018" />
+                    ) : (
+                      <>
+                        <Ionicons name="send" size={24} color="#960018" />
+                        <Text style={styles.saveQuoteButtonText}>Submit RFQ</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </>
               ) : (
                 // Admin: Add to Quote + Save Single buttons
                 <>
