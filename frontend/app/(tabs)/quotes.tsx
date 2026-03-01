@@ -256,9 +256,9 @@ export default function QuotesScreen() {
         <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
           <div class="info-box" style="width: 48%;">
             <div class="info-label">Quote Number</div>
-            <div class="info-value" style="color: #960018;">#${quote.id.slice(-6).toUpperCase()}</div>
+            <div class="info-value" style="color: #960018;">${quote.quote_number || `#${quote.id.slice(-6).toUpperCase()}`}</div>
             <div class="info-label" style="margin-top: 10px;">Date</div>
-            <div class="info-value">${formatDate(quote.created_at)}</div>
+            <div class="info-value">${quote.created_at_ist || formatDate(quote.created_at)}</div>
             <div class="info-label" style="margin-top: 10px;">Status</div>
             <div class="info-value">
               <span class="status-badge status-${quote.status?.toLowerCase()}">${quote.status?.toUpperCase()}</span>
