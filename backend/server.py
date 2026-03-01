@@ -881,6 +881,17 @@ async def get_quotes(current_user: dict = Depends(get_current_user)):
         quote.setdefault("customer_id", "")
         quote.setdefault("customer_name", "Unknown")
         quote.setdefault("customer_email", "")
+        
+        # Generate quote_number for legacy quotes that don't have one
+        if not quote.get("quote_number"):
+            quote["quote_number"] = f"QT-{quote['id'][-6:].upper()}"
+        
+        # Convert created_at to IST string for display
+        if quote.get("created_at"):
+            ist_time = utc_to_ist(quote["created_at"])
+            if ist_time:
+                quote["created_at_ist"] = ist_time.strftime("%d %b %Y, %I:%M %p IST")
+        
         result.append(quote)
     return result
 
