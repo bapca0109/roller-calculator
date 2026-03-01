@@ -162,6 +162,53 @@ export default function QuotesScreen() {
     }
   };
 
+  // Approve RFQ function
+  const approveRfq = async (quote: Quote) => {
+    Alert.alert(
+      'Approve RFQ',
+      `Are you sure you want to approve "${quote.quote_number}" and convert it to a Quote?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Approve',
+          style: 'default',
+          onPress: async () => {
+            setApprovingId(quote.id);
+            try {
+              const response = await api.post(`/quotes/${quote.id}/approve`);
+              Alert.alert(
+                'RFQ Approved!', 
+                `${quote.quote_number} has been converted to ${response.data.new_quote_number}\n\nApproval email sent to customer.`,
+                [{ text: 'OK' }]
+              );
+              fetchQuotes();
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.detail || 'Failed to approve RFQ');
+            } finally {
+              setApprovingId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Filter quotes based on active tab
+  const getFilteredQuotes = () => {
+    if (isCustomer) return quotes; // Customers see all their quotes
+    
+    switch (activeTab) {
+      case 'pending':
+        return quotes.filter(q => q.quote_number?.startsWith('RFQ') && q.status?.toLowerCase() !== 'approved');
+      case 'approved':
+        return quotes.filter(q => q.status?.toLowerCase() === 'approved' || q.quote_number?.startsWith('Q/'));
+      default:
+        return quotes;
+    }
+  };
+
+  const pendingRfqCount = quotes.filter(q => q.quote_number?.startsWith('RFQ') && q.status?.toLowerCase() !== 'approved').length;
+
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'approved':
