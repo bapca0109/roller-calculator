@@ -527,10 +527,10 @@ export default function QuotesScreen() {
         {!isCustomer && <Text style={styles.totalPrice}>Rs. {item.total_price?.toFixed(2) || '0.00'}</Text>}
       </View>
       
-      {/* Approve Button for RFQs */}
+      {/* Approve Button for RFQs - RED before approval */}
       {canApprove && (
         <TouchableOpacity 
-          style={styles.approveButton}
+          style={styles.approveButtonRed}
           onPress={() => approveRfq(item)}
           disabled={approvingId === item.id}
         >
@@ -543,6 +543,14 @@ export default function QuotesScreen() {
             </>
           )}
         </TouchableOpacity>
+      )}
+      
+      {/* Show Approved badge for approved quotes - GREEN */}
+      {isApproved && isRfq && (
+        <View style={styles.approvedBadge}>
+          <Ionicons name="checkmark-circle" size={18} color="#fff" />
+          <Text style={styles.approveButtonText}>Approved</Text>
+        </View>
       )}
     </TouchableOpacity>
     );
