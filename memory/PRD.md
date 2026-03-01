@@ -83,6 +83,19 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
   - PDF: Document title shows "REQUEST FOR QUOTATION" or "QUOTATION" based on quote_number prefix
   - Email notifications sent to admins when customers submit RFQs
 
+- **Price Hiding for Customers**: Customer users cannot see prices in any screen
+  - Calculator: Pricing, GST, Freight, and Grand Total sections hidden
+  - Search: Price column hidden, only product specs visible
+  - Quotes: Price totals hidden in list view
+  - "Calculate Price" button renamed to "Generate RFQ"
+
+- **RFQ Approval Workflow**:
+  - Admin sees filter tabs: All / Pending RFQ / Approved
+  - Admin can click "Approve & Generate Quote" on pending RFQs
+  - Approval converts RFQ number to Quote number
+  - Email sent to customer + info@convero.in + design@convero.in on approval
+  - Approved quotes visible to both customer and admin
+
 - **Security Fix**: Moved hardcoded admin emails to environment variables
   - `ADMIN_REGISTRATION_EMAILS` - Recipients for new customer registration alerts
   - `ADMIN_RFQ_EMAILS` - Recipients for new RFQ submissions
