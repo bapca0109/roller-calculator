@@ -437,7 +437,7 @@ export default function CalculatorScreen() {
 
     // If any errors, don't proceed
     if (pipeLengthError || quantityError || pincodeError) {
-      return;
+      return null;
     }
 
     setCalculating(true);
@@ -472,8 +472,10 @@ export default function CalculatorScreen() {
 
       const response = await api.post('/calculate-detailed-cost', payload);
       setResult(response.data);
+      return response.data; // Return the result for direct use
     } catch (error: any) {
       Alert.alert('Calculation Error', error.response?.data?.detail || 'Failed to calculate cost');
+      return null;
     } finally {
       setCalculating(false);
     }
