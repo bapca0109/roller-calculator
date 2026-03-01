@@ -131,6 +131,9 @@ export default function CalculatorScreen() {
   
   // Debug: Log user state on every render
   console.log('CalculatorScreen render - user:', user, 'role:', user?.role, 'isCustomer:', isCustomer);
+  
+  // RFQ popup state for customers
+  const [showRfqPopup, setShowRfqPopup] = useState(false);
   const [calculating, setCalculating] = useState(false);
   const [result, setResult] = useState<CostResult | null>(null);
   const [savingQuote, setSavingQuote] = useState(false);
