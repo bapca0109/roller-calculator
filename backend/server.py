@@ -62,6 +62,21 @@ async def generate_quote_number():
     seq_num = counter.get("seq", 1)
     return f"Q/{fy}/{seq_num:04d}"
 
+async def generate_rfq_number():
+    """Generate sequential RFQ number like RFQ/25-26/0001 for customer requests"""
+    fy = get_financial_year()
+    
+    # Get the counter collection for this financial year
+    counter = await db.quote_counters.find_one_and_update(
+        {"_id": f"rfq_{fy}"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True
+    )
+    
+    seq_num = counter.get("seq", 1)
+    return f"RFQ/{fy}/{seq_num:04d}"
+
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
