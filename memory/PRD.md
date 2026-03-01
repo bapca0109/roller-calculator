@@ -84,15 +84,22 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
   - Email notifications sent to admins when customers submit RFQs
 
 - **Price Hiding for Customers**: Customer users cannot see prices in any screen
-  - Calculator: Pricing, GST, Freight, and Grand Total sections hidden
+  - Calculator: Pricing, GST, Freight, Grand Total, and Configuration sections hidden
   - Search: Price column hidden, only product specs visible
   - Quotes: Price totals hidden in list view
   - "Calculate Price" button renamed to "Generate RFQ"
 
+- **Customer RFQ Popup Flow**:
+  - After clicking "Generate RFQ", a popup appears with two options:
+    - "Add More Items" - add current item to RFQ and continue adding
+    - "Submit RFQ" - submit the RFQ immediately
+  - Bottom "Add to RFQ" and "Submit RFQ" buttons removed for customers
+  - Product Configuration section hidden for customers
+
 - **RFQ Approval Workflow**:
   - Admin sees filter tabs: All / Pending RFQ / Approved
-  - Admin can click "Approve & Generate Quote" on pending RFQs
-  - Approval converts RFQ number to Quote number
+  - Admin can click "Approve & Generate Quote" (RED button) on pending RFQs
+  - After approval, shows "Approved" badge (GREEN)
   - Email sent to customer + info@convero.in + design@convero.in on approval
   - Approved quotes visible to both customer and admin
 
