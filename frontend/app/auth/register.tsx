@@ -18,15 +18,100 @@ import { API_URL } from '../../utils/api';
 export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [company, setCompany] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fetchingLocation, setFetchingLocation] = useState(false);
   const router = useRouter();
 
+  // Fetch city and state from pincode
+  const fetchLocationFromPincode = async (pin: string) => {
+    if (pin.length !== 6) return;
+    
+    setFetchingLocation(true);
+    try {
+      const response = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+      const data = await response.json();
+      
+      if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice && data[0].PostOffice.length > 0) {
+        const postOffice = data[0].PostOffice[0];
+        setCity(postOffice.District || postOffice.Name);
+        setState(postOffice.State);
+      } else {
+        Alert.alert('Invalid Pincode', 'Could not find location for this pincode');
+        setCity('');
+        setState('');
+      }
+    } catch (error) {
+      console.error('Error fetching pincode:', error);
+      Alert.alert('Error', 'Failed to fetch location from pincode');
+    } finally {
+      setFetchingLocation(false);
+    }
+  };
+
+  const handlePincodeChange = (value: string) => {
+    // Only allow numeric input
+    const numericValue = value.replace(/[^0-9]/g, '');
+    setPincode(numericValue);
+    
+    // Auto-fetch location when 6 digits entered
+    if (numericValue.length === 6) {
+      fetchLocationFromPincode(numericValue);
+    } else {
+      setCity('');
+      setState('');
+    }
+  };
+
   const handleRegister = async () => {
-    if (!name || !email || !password) {
-      Alert.alert('Error', 'Please fill in all required fields');
+    // Validate all required fields
+    if (!name.trim()) {
+      Alert.alert('Error', 'Please enter your name');
+      return;
+    }
+    
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter your email');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    if (!mobile.trim()) {
+      Alert.alert('Error', 'Please enter your mobile number');
+      return;
+    }
+
+    // Validate mobile number (10 digits)
+    const mobileRegex = /^[0-9]{10}$/;
+    if (!mobileRegex.test(mobile)) {
+      Alert.alert('Error', 'Please enter a valid 10-digit mobile number');
+      return;
+    }
+
+    if (!pincode.trim() || pincode.length !== 6) {
+      Alert.alert('Error', 'Please enter a valid 6-digit pincode');
+      return;
+    }
+
+    if (!city || !state) {
+      Alert.alert('Error', 'Please enter a valid pincode to auto-fill city and state');
+      return;
+    }
+
+    if (!password) {
+      Alert.alert('Error', 'Please enter a password');
       return;
     }
 
@@ -40,16 +125,9 @@ export default function Register() {
       return;
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-
     setLoading(true);
     try {
-      // Send OTP request
+      // Send OTP request with all fields
       const response = await fetch(`${API_URL}/api/auth/send-otp`, {
         method: 'POST',
         headers: {
@@ -58,6 +136,10 @@ export default function Register() {
         body: JSON.stringify({
           email,
           name,
+          mobile,
+          pincode,
+          city,
+          state,
           company: company || null,
           password,
         }),
@@ -75,6 +157,10 @@ export default function Register() {
         params: {
           email,
           name,
+          mobile,
+          pincode,
+          city,
+          state,
           company: company || '',
           password,
         },
@@ -101,11 +187,12 @@ export default function Register() {
         </View>
 
         <View style={styles.form}>
+          {/* Customer Name */}
           <View style={styles.inputContainer}>
             <Ionicons name="person-outline" size={20} color="#64748B" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Full Name *"
+              placeholder="Customer Name *"
               placeholderTextColor="#94A3B8"
               value={name}
               onChangeText={setName}
@@ -113,11 +200,12 @@ export default function Register() {
             />
           </View>
 
+          {/* Email */}
           <View style={styles.inputContainer}>
             <Ionicons name="mail-outline" size={20} color="#64748B" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Email *"
+              placeholder="Email ID *"
               placeholderTextColor="#94A3B8"
               value={email}
               onChangeText={setEmail}
@@ -127,6 +215,52 @@ export default function Register() {
             />
           </View>
 
+          {/* Mobile Number */}
+          <View style={styles.inputContainer}>
+            <Ionicons name="call-outline" size={20} color="#64748B" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Mobile Number *"
+              placeholderTextColor="#94A3B8"
+              value={mobile}
+              onChangeText={(text) => setMobile(text.replace(/[^0-9]/g, ''))}
+              keyboardType="phone-pad"
+              maxLength={10}
+            />
+          </View>
+
+          {/* Pincode */}
+          <View style={styles.inputContainer}>
+            <Ionicons name="location-outline" size={20} color="#64748B" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Pin Code *"
+              placeholderTextColor="#94A3B8"
+              value={pincode}
+              onChangeText={handlePincodeChange}
+              keyboardType="number-pad"
+              maxLength={6}
+            />
+            {fetchingLocation && (
+              <ActivityIndicator size="small" color="#960018" style={styles.inputLoader} />
+            )}
+          </View>
+
+          {/* City & State (Auto-filled) */}
+          {(city || state) && (
+            <View style={styles.locationContainer}>
+              <View style={styles.locationBox}>
+                <Text style={styles.locationLabel}>City</Text>
+                <Text style={styles.locationValue}>{city}</Text>
+              </View>
+              <View style={styles.locationBox}>
+                <Text style={styles.locationLabel}>State</Text>
+                <Text style={styles.locationValue}>{state}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Company (Optional) */}
           <View style={styles.inputContainer}>
             <Ionicons name="business-outline" size={20} color="#64748B" style={styles.inputIcon} />
             <TextInput
@@ -138,6 +272,7 @@ export default function Register() {
             />
           </View>
 
+          {/* Password */}
           <View style={styles.inputContainer}>
             <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.inputIcon} />
             <TextInput
@@ -151,6 +286,7 @@ export default function Register() {
             />
           </View>
 
+          {/* Confirm Password */}
           <View style={styles.inputContainer}>
             <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.inputIcon} />
             <TextInput
@@ -208,6 +344,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
+    paddingTop: 60,
+    paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
@@ -259,6 +397,35 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     fontSize: 16,
+    color: '#0F172A',
+  },
+  inputLoader: {
+    marginLeft: 8,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  locationBox: {
+    flex: 1,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  locationLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#059669',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  locationValue: {
+    fontSize: 15,
+    fontWeight: '600',
     color: '#0F172A',
   },
   infoBox: {
