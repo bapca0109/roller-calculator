@@ -30,6 +30,7 @@ interface QuoteProduct {
 
 interface Quote {
   id: string;
+  quote_number?: string;
   customer_name: string;
   customer_email: string;
   customer_details?: {
@@ -56,6 +57,7 @@ interface Quote {
   pricing_details?: any;
   freight_details?: any;
   created_at: string;
+  created_at_ist?: string;
   updated_at: string;
 }
 
