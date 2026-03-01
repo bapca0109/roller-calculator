@@ -559,7 +559,17 @@ export default function QuotesScreen() {
     );
   };
 
-  if ((loading || authLoading) && !refreshing) {
+  // Show loading until auth is ready
+  if (authLoading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#960018" />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (loading && !refreshing) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#960018" />
