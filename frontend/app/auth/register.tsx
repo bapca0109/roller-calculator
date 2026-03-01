@@ -110,6 +110,11 @@ export default function Register() {
       return;
     }
 
+    if (!company.trim()) {
+      Alert.alert('Error', 'Please enter your company name');
+      return;
+    }
+
     if (!password) {
       Alert.alert('Error', 'Please enter a password');
       return;
