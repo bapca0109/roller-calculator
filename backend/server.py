@@ -948,6 +948,7 @@ async def create_roller_quote(
     
     config = quote_data.configuration
     pricing = quote_data.pricing
+    is_customer = current_user.get("role") == UserRole.CUSTOMER
     
     # Create product entry from roller calculation
     product = {
@@ -969,12 +970,19 @@ async def create_roller_quote(
         "custom_premium": 0.0
     }
     
-    # Generate sequential quote number
-    quote_number = await generate_quote_number()
+    # Generate sequential quote/RFQ number based on user role
+    if is_customer:
+        quote_number = await generate_rfq_number()
+        quote_type = "rfq"
+    else:
+        quote_number = await generate_quote_number()
+        quote_type = "quote"
+    
     ist_now = get_ist_now()
     
     quote_dict = {
         "quote_number": quote_number,
+        "quote_type": quote_type,
         "customer_id": quote_data.customer_id or current_user["id"],
         "customer_name": quote_data.customer_name or current_user["name"],
         "customer_company": quote_data.customer_details.get("company", "") if quote_data.customer_details else current_user.get("company", ""),
@@ -999,9 +1007,13 @@ async def create_roller_quote(
     result = await db.quotes.insert_one(quote_dict)
     quote_dict["id"] = str(result.inserted_id)
     
+    # If customer created RFQ, send email to admins
+    if is_customer:
+        await send_rfq_notification_email(quote_dict, current_user)
+    
     return {
         "id": quote_dict["id"],
-        "message": "Quote created successfully",
+        "message": f"{'RFQ' if is_customer else 'Quote'} created successfully",
         "quote_number": quote_number,
         "total_price": quote_dict["total_price"]
     }
