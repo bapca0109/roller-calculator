@@ -33,6 +33,7 @@ interface Quote {
   quote_number?: string;
   customer_name: string;
   customer_email: string;
+  customer_company?: string;
   customer_details?: {
     name?: string;
     company?: string;
