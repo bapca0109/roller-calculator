@@ -515,11 +515,10 @@ export default function SearchScreen() {
           </View>
 
           {/* Direct Add to Quote Button - Always visible on card */}
-          <View style={styles.exactMatchActions}>
+          <View style={styles.cardActions}>
             <TouchableOpacity 
-              style={styles.addToQuoteBtn}
+              style={styles.actionBtn}
               onPress={() => {
-                // Use first length detail if available, otherwise create synthetic one
                 const lengthDetail: LengthDetail = (item.length_details && item.length_details.length > 0) 
                   ? item.length_details[0]
                   : {
@@ -533,11 +532,11 @@ export default function SearchScreen() {
               }}
               data-testid={`add-quote-${item.product_code}`}
             >
-              <Ionicons name="add-circle" size={20} color="#fff" />
-              <Text style={styles.addToQuoteBtnText}>Add to Quote</Text>
+              <Ionicons name="cart" size={18} color="#fff" />
+              <Text style={styles.actionBtnText}>Quote</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={styles.downloadBtn}
+              style={[styles.actionBtn, { backgroundColor: '#1A1A2E' }]}
               onPress={() => {
                 const lengthDetail: LengthDetail = (item.length_details && item.length_details.length > 0) 
                   ? item.length_details[0]
@@ -557,13 +556,13 @@ export default function SearchScreen() {
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="download" size={20} color="#fff" />
-                  <Text style={styles.downloadBtnText}>Download</Text>
+                  <Ionicons name="download" size={18} color="#fff" />
+                  <Text style={styles.actionBtnText}>PDF</Text>
                 </>
               )}
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.downloadBtn, { backgroundColor: '#4CAF50' }]}
+              style={[styles.actionBtn, { backgroundColor: '#4CAF50' }]}
               onPress={() => {
                 const lengthDetail: LengthDetail = (item.length_details && item.length_details.length > 0) 
                   ? item.length_details[0]
@@ -583,8 +582,8 @@ export default function SearchScreen() {
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="mail" size={20} color="#fff" />
-                  <Text style={styles.downloadBtnText}>Email</Text>
+                  <Ionicons name="mail" size={18} color="#fff" />
+                  <Text style={styles.actionBtnText}>Email</Text>
                 </>
               )}
             </TouchableOpacity>
