@@ -497,12 +497,16 @@ async def verify_otp(request: OTPVerify):
         "state": request.state,
         "pincode": request.pincode,
         "gstin": "",  # Can be updated later
-        "created_at": datetime.utcnow(),
-        "user_id": str(result.inserted_id)  # Link to user account
+        "created_at": get_ist_now(),
+        "user_id": str(result.inserted_id),  # Link to user account
+        "customer_type": "registered"  # Mark as registered customer
     }
     
     customer_result = await db.customers.insert_one(customer_dict)
     logging.info(f"Customer created with ID: {customer_result.inserted_id} for user: {request.email}")
+    
+    # Send registration notification email to admin
+    await send_registration_notification_email(request)
     
     # Delete OTP record
     await db.otp_verifications.delete_one({"email": request.email})
