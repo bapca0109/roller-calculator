@@ -252,6 +252,10 @@ import random
 class OTPRequest(BaseModel):
     email: EmailStr
     name: str
+    mobile: str
+    pincode: str
+    city: str
+    state: str
     company: Optional[str] = None
     password: str
 
@@ -259,6 +263,10 @@ class OTPVerify(BaseModel):
     email: EmailStr
     otp: str
     name: str
+    mobile: str
+    pincode: str
+    city: str
+    state: str
     company: Optional[str] = None
     password: str
 
