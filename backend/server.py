@@ -193,6 +193,11 @@ class ProductCreate(BaseModel):
     pricing_factors: Optional[PricingFactors] = None
     image: Optional[str] = None
 
+class ProductAttachment(BaseModel):
+    name: str
+    type: str
+    base64: Optional[str] = None
+
 class QuoteProduct(BaseModel):
     product_id: str
     product_name: str
@@ -201,6 +206,7 @@ class QuoteProduct(BaseModel):
     specifications: Optional[Dict[str, Any]] = None
     calculated_discount: float = 0.0  # Quantity discount applied
     custom_premium: float = 0.0  # Premium for custom specs
+    attachments: Optional[List[ProductAttachment]] = []
 
 class QuoteStatus:
     PENDING = "pending"
