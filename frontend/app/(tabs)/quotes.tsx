@@ -793,17 +793,19 @@ export default function QuotesScreen() {
                     )}
                   </TouchableOpacity>
                   
-                  {/* Edit Quote Button */}
-                  <TouchableOpacity 
-                    style={[styles.exportButton, { backgroundColor: '#FF9500', marginTop: 12 }]}
-                    onPress={() => {
-                      setSelectedQuote(null);
-                      openEditQuote(selectedQuote);
-                    }}
-                  >
-                    <Ionicons name="pencil" size={24} color="#fff" />
-                    <Text style={styles.exportButtonText}>Edit {docLabel}</Text>
-                  </TouchableOpacity>
+                  {/* Edit Quote Button - Admin Only */}
+                  {!isCustomer && (
+                    <TouchableOpacity 
+                      style={[styles.exportButton, { backgroundColor: '#FF9500', marginTop: 12 }]}
+                      onPress={() => {
+                        setSelectedQuote(null);
+                        openEditQuote(selectedQuote);
+                      }}
+                    >
+                      <Ionicons name="pencil" size={24} color="#fff" />
+                      <Text style={styles.exportButtonText}>Edit {docLabel}</Text>
+                    </TouchableOpacity>
+                  )}
                 </>
               )}
             </ScrollView>
