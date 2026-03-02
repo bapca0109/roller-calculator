@@ -1232,8 +1232,8 @@ export default function CalculatorScreen() {
               <Ionicons name="camera" size={24} color="#960018" />
               <Text style={styles.attachmentBtnText}>Camera</Text>
             </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.attachmentBtn} onPress={pickImage}>
+            
+            <TouchableOpacity style={styles.attachmentBtn} onPress={pickImage}>
               <Ionicons name="image" size={24} color="#960018" />
               <Text style={styles.attachmentBtnText}>Gallery</Text>
             </TouchableOpacity>
