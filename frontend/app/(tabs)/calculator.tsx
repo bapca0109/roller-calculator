@@ -1222,16 +1222,16 @@ export default function CalculatorScreen() {
         </View>
 
         {/* Attachment Section - Available for both Admin and Customer */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Attachments (Optional)</Text>
-            <Text style={styles.hint}>Attach drawing, photo, or document for this item</Text>
-            
-            {/* Attachment Buttons */}
-            <View style={styles.attachmentButtons}>
-              <TouchableOpacity style={styles.attachmentBtn} onPress={takePhoto}>
-                <Ionicons name="camera" size={24} color="#960018" />
-                <Text style={styles.attachmentBtnText}>Camera</Text>
-              </TouchableOpacity>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Attachments (Optional)</Text>
+          <Text style={styles.hint}>Attach drawing, photo, or document for this item</Text>
+          
+          {/* Attachment Buttons */}
+          <View style={styles.attachmentButtons}>
+            <TouchableOpacity style={styles.attachmentBtn} onPress={takePhoto}>
+              <Ionicons name="camera" size={24} color="#960018" />
+              <Text style={styles.attachmentBtnText}>Camera</Text>
+            </TouchableOpacity>
               
               <TouchableOpacity style={styles.attachmentBtn} onPress={pickImage}>
                 <Ionicons name="image" size={24} color="#960018" />
