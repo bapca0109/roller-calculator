@@ -907,18 +907,8 @@ export default function CalculatorScreen() {
         notes: `Multi-product quote with ${quoteItems.length} items`
       });
       
-      // For customers, don't show the default alert - let the caller handle it
-      if (!isCustomer) {
-        Alert.alert(
-          'Quote Saved!', 
-          `Quote ID: ${response.data.id}\nTotal Items: ${quoteItems.length}\nTotal: Rs. ${response.data.total_price.toFixed(2)}`,
-          [{ text: 'OK', onPress: () => {
-            setQuoteItems([]);
-            setShowQuoteBuilder(false);
-          }}]
-        );
-      }
-      
+      // Don't show alert - the popup flow will handle it
+      // Just return the response data
       return response.data; // Return the response for caller to use
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to save quote');
