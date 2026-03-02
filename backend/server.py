@@ -1773,6 +1773,149 @@ async def create_quote_revision(
         "email_sent": customer_email is not None
     }
 
+# ============= ATTACHMENT DOWNLOAD ROUTES =============
+
+@api_router.get("/quotes/{quote_id}/attachments")
+async def get_quote_attachments(
+    quote_id: str,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+):
+    """Get list of all attachments for a quote"""
+    try:
+        obj_id = ObjectId(quote_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid quote ID")
+    
+    quote = await db.quotes.find_one({"_id": obj_id})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    
+    attachments = []
+    products = quote.get("products", [])
+    for product_idx, product in enumerate(products):
+        product_attachments = product.get("attachments", [])
+        for att_idx, att in enumerate(product_attachments):
+            attachments.append({
+                "product_index": product_idx,
+                "product_name": product.get("product_name", f"Product {product_idx + 1}"),
+                "attachment_index": att_idx,
+                "name": att.get("name", f"attachment_{att_idx}"),
+                "type": att.get("type", "file"),
+                "has_data": bool(att.get("base64"))
+            })
+    
+    return {
+        "quote_id": quote_id,
+        "quote_number": quote.get("quote_number"),
+        "total_attachments": len(attachments),
+        "attachments": attachments
+    }
+
+@api_router.get("/quotes/{quote_id}/attachments/{product_idx}/{attachment_idx}/download")
+async def download_single_attachment(
+    quote_id: str,
+    product_idx: int,
+    attachment_idx: int,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+):
+    """Download a single attachment"""
+    try:
+        obj_id = ObjectId(quote_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid quote ID")
+    
+    quote = await db.quotes.find_one({"_id": obj_id})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    
+    products = quote.get("products", [])
+    if product_idx >= len(products):
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    attachments = products[product_idx].get("attachments", [])
+    if attachment_idx >= len(attachments):
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    
+    attachment = attachments[attachment_idx]
+    base64_data = attachment.get("base64")
+    if not base64_data:
+        raise HTTPException(status_code=404, detail="Attachment data not available")
+    
+    # Decode base64
+    file_data = base64.b64decode(base64_data)
+    filename = attachment.get("name", f"attachment_{attachment_idx}")
+    
+    # Determine content type
+    if filename.lower().endswith(('.jpg', '.jpeg')):
+        media_type = "image/jpeg"
+    elif filename.lower().endswith('.png'):
+        media_type = "image/png"
+    elif filename.lower().endswith('.pdf'):
+        media_type = "application/pdf"
+    elif filename.lower().endswith(('.doc', '.docx')):
+        media_type = "application/msword"
+    else:
+        media_type = "application/octet-stream"
+    
+    return StreamingResponse(
+        io.BytesIO(file_data),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@api_router.get("/quotes/{quote_id}/attachments/download-all")
+async def download_all_attachments_zip(
+    quote_id: str,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+):
+    """Download all attachments as a ZIP file"""
+    try:
+        obj_id = ObjectId(quote_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid quote ID")
+    
+    quote = await db.quotes.find_one({"_id": obj_id})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    
+    # Create ZIP file in memory
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        attachment_count = 0
+        products = quote.get("products", [])
+        
+        for product_idx, product in enumerate(products):
+            product_name = product.get("product_name", f"Product_{product_idx + 1}")
+            # Clean product name for folder
+            safe_product_name = "".join(c if c.isalnum() or c in " -_" else "_" for c in product_name)[:50]
+            
+            attachments = product.get("attachments", [])
+            for att_idx, att in enumerate(attachments):
+                base64_data = att.get("base64")
+                if base64_data:
+                    try:
+                        file_data = base64.b64decode(base64_data)
+                        filename = att.get("name", f"attachment_{att_idx}")
+                        # Create path inside ZIP: Product_Name/filename
+                        zip_path = f"{safe_product_name}/{filename}"
+                        zip_file.writestr(zip_path, file_data)
+                        attachment_count += 1
+                    except Exception as e:
+                        logging.error(f"Failed to add attachment to ZIP: {e}")
+    
+    if attachment_count == 0:
+        raise HTTPException(status_code=404, detail="No attachments found")
+    
+    zip_buffer.seek(0)
+    quote_number = quote.get("quote_number", quote_id).replace("/", "-")
+    
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={quote_number}_attachments.zip"}
+    )
+
 # ============= STATS ROUTES (Admin only) =============
 
 @api_router.get("/stats")
