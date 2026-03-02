@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../utils/api';
 
@@ -13,34 +13,66 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isAuthenticated: boolean;
   setUser: (user: User | null) => void;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, company?: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Wrapper for setUser that also updates isAuthenticated
+  const setUser = useCallback((newUser: User | null) => {
+    setUserState(newUser);
+    setIsAuthenticated(!!newUser);
+  }, []);
 
   useEffect(() => {
     loadUser();
   }, []);
 
   const loadUser = async () => {
+    console.log('[AuthContext] Starting loadUser...');
     try {
       const token = await AsyncStorage.getItem('token');
       const userData = await AsyncStorage.getItem('user');
       
+      console.log('[AuthContext] Token exists:', !!token, 'UserData exists:', !!userData);
+      
       if (token && userData) {
-        setUser(JSON.parse(userData));
+        const parsedUser = JSON.parse(userData);
+        console.log('[AuthContext] User loaded:', parsedUser.email, 'Role:', parsedUser.role);
+        setUserState(parsedUser);
+        setIsAuthenticated(true);
+      } else {
+        console.log('[AuthContext] No stored session found');
+        setUserState(null);
+        setIsAuthenticated(false);
       }
     } catch (error) {
-      console.error('Error loading user:', error);
+      console.error('[AuthContext] Error loading user:', error);
+      setUserState(null);
+      setIsAuthenticated(false);
     } finally {
+      console.log('[AuthContext] loadUser complete, setting loading=false');
       setLoading(false);
+    }
+  };
+
+  // Allow components to manually refresh user data
+  const refreshUser = async () => {
+    const userData = await AsyncStorage.getItem('user');
+    if (userData) {
+      const parsedUser = JSON.parse(userData);
+      setUserState(parsedUser);
+      setIsAuthenticated(true);
     }
   };
 
