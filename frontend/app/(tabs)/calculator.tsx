@@ -523,13 +523,41 @@ export default function CalculatorScreen() {
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
+        let base64Data = asset.base64;
+        
+        // If base64 is not available (web), try to fetch and convert
+        if (!base64Data && asset.uri) {
+          try {
+            if (Platform.OS === 'web') {
+              const response = await fetch(asset.uri);
+              const blob = await response.blob();
+              base64Data = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  const dataUrl = reader.result as string;
+                  resolve(dataUrl.split(',')[1]);
+                };
+                reader.readAsDataURL(blob);
+              });
+            } else {
+              const fileInfo = await FileSystem.readAsStringAsync(asset.uri, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+              base64Data = fileInfo;
+            }
+          } catch (e) {
+            console.log('Failed to convert to base64:', e);
+          }
+        }
+        
         const newAttachment: Attachment = {
           uri: asset.uri,
           name: `photo_${Date.now()}.jpg`,
           type: 'image',
-          base64: asset.base64,
+          base64: base64Data,
         };
         setCurrentAttachments([...currentAttachments, newAttachment]);
+        console.log('Photo added:', newAttachment.name, 'has base64:', !!base64Data);
       }
     } catch (error) {
       console.log('Camera error:', error);
