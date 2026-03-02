@@ -86,6 +86,84 @@ export default function QuotesScreen() {
   // Debug log
   console.log('QuotesScreen - user:', user, 'isCustomer:', isCustomer, 'isAdmin:', isAdmin, 'authLoading:', authLoading);
 
+  // Authenticated file download function
+  const downloadAttachment = async (quoteId: string, productIdx: number, attachmentIdx: number, filename: string) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const url = `${baseUrl}/api/quotes/${quoteId}/attachments/${productIdx}/${attachmentIdx}/download`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      
+      // Create download link
+      if (Platform.OS === 'web') {
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+      } else {
+        Alert.alert('Info', 'File download is available on web only');
+      }
+    } catch (error: any) {
+      console.error('Download error:', error);
+      Alert.alert('Download Failed', error.message || 'Failed to download attachment');
+    }
+  };
+
+  // Download all attachments as ZIP
+  const downloadAllAsZip = async (quoteId: string, quoteNumber: string) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const url = `${baseUrl}/api/quotes/${quoteId}/attachments/download-all`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      
+      // Create download link
+      if (Platform.OS === 'web') {
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `${quoteNumber.replace(/\//g, '-')}_attachments.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+      } else {
+        Alert.alert('Info', 'File download is available on web only');
+      }
+    } catch (error: any) {
+      console.error('Download error:', error);
+      Alert.alert('Download Failed', error.message || 'Failed to download attachments');
+    }
+  };
+
   useEffect(() => {
     // Only fetch quotes when auth is loaded and user exists
     if (!authLoading && user) {
