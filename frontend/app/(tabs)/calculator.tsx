@@ -152,6 +152,10 @@ export default function CalculatorScreen() {
   const [quoteItems, setQuoteItems] = useState<CostResult[]>([]);
   const [showQuoteBuilder, setShowQuoteBuilder] = useState(false);
   
+  // Customer attachment state
+  const [currentAttachments, setCurrentAttachments] = useState<Attachment[]>([]);
+  const [itemAttachments, setItemAttachments] = useState<{[key: number]: Attachment[]}>({});
+  
   // Customer selection state
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
