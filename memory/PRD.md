@@ -150,11 +150,14 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 
 ## Known Issues
 
+### ✅ Resolved (March 2, 2026)
+1. **Authentication Race Condition** - FIXED: Components no longer render before auth state is resolved. Splash screen blocks rendering until `loading=false`.
+
 ### P1 - In Progress
 1. **Expo Tunnel Instability** (ERR_NGROK_3200) - Environmental issue, use web preview as workaround
 2. **PDF Download on iOS** - Native share/download not working in Expo Go; workarounds available (browser tab, email)
 
-### P0 - Pending Verification
+### P2 - Minor
 1. **Email Button in Search Actions** - Added but needs user verification
 
 ## API Endpoints
