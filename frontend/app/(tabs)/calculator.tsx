@@ -1762,6 +1762,22 @@ export default function CalculatorScreen() {
                     {/* Hide price for customers */}
                     {!isCustomer && <Text style={styles.quoteItemPrice}>Rs. {item.grand_total.toFixed(2)}</Text>}
                   </View>
+                  {/* Show attachments if any */}
+                  {item.attachments && item.attachments.length > 0 && (
+                    <View style={styles.itemAttachmentRow}>
+                      <Ionicons name="attach" size={16} color="#64748B" />
+                      <Text style={styles.itemAttachmentText}>
+                        {item.attachments.length} attachment{item.attachments.length !== 1 ? 's' : ''}
+                      </Text>
+                      {item.attachments.map((att: Attachment, attIdx: number) => (
+                        att.type === 'image' && att.uri ? (
+                          <Image key={attIdx} source={{ uri: att.uri }} style={styles.miniThumbnail} />
+                        ) : (
+                          <Ionicons key={attIdx} name="document" size={20} color="#960018" style={{ marginLeft: 4 }} />
+                        )
+                      ))}
+                    </View>
+                  )}
                 </View>
               ))}
             </ScrollView>
