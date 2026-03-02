@@ -3072,6 +3072,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
   },
+  quotePopupTotal: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#960018',
+    marginTop: 12,
+    textAlign: 'center',
+  },
   rfqPopupButtons: {
     width: '100%',
     gap: 12,
