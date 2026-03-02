@@ -1144,6 +1144,14 @@ async def create_quote(
     result = await db.quotes.insert_one(quote_dict)
     quote_dict["id"] = str(result.inserted_id)
     
+    # Log attachment info for debugging
+    total_attachments = sum(len(p.attachments or []) for p in quote.products)
+    logging.info(f"Quote created with {total_attachments} attachments across {len(quote.products)} products")
+    for i, p in enumerate(quote.products):
+        if p.attachments:
+            for att in p.attachments:
+                logging.info(f"  Product {i}: attachment '{att.name}' has base64: {bool(att.base64)}")
+    
     # If customer created RFQ, send email to admins
     if is_customer:
         await send_rfq_notification_email(quote_dict, current_user)
