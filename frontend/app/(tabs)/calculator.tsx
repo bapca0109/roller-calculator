@@ -575,12 +575,38 @@ export default function CalculatorScreen() {
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
+        let base64Data: string | undefined;
+        
+        // Convert file to base64
+        try {
+          if (Platform.OS === 'web') {
+            const response = await fetch(asset.uri);
+            const blob = await response.blob();
+            base64Data = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                const dataUrl = reader.result as string;
+                resolve(dataUrl.split(',')[1]);
+              };
+              reader.readAsDataURL(blob);
+            });
+          } else {
+            base64Data = await FileSystem.readAsStringAsync(asset.uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          }
+        } catch (e) {
+          console.log('Failed to convert document to base64:', e);
+        }
+        
         const newAttachment: Attachment = {
           uri: asset.uri,
           name: asset.name,
           type: 'document',
+          base64: base64Data,
         };
         setCurrentAttachments([...currentAttachments, newAttachment]);
+        console.log('Document added:', newAttachment.name, 'has base64:', !!base64Data);
       }
     } catch (error) {
       console.log('Document picker error:', error);
