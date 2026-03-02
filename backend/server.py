@@ -687,7 +687,6 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
             for att in product_attachments:
                 if att.get('base64'):
                     try:
-                        import base64
                         attachment_data = base64.b64decode(att['base64'])
                         attachment_name = att.get('name', f'attachment_{attachment_count + 1}')
                         
