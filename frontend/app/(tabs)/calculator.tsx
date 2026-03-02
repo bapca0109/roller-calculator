@@ -19,6 +19,16 @@ import api from '../../utils/api';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+
+// Attachment interface
+interface Attachment {
+  uri: string;
+  name: string;
+  type: string;
+  base64?: string;
+}
 
 interface RollerStandards {
   pipe_diameters: number[];
