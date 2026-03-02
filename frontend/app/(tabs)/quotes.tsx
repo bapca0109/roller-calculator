@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface QuoteProduct {
   product_id: string;
