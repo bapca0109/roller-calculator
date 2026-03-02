@@ -439,6 +439,116 @@ export default function CalculatorScreen() {
     setErrors(prev => ({ ...prev, freightPincode: error }));
   };
 
+  // ========== ATTACHMENT FUNCTIONS ==========
+  
+  // Pick image from camera or gallery
+  const pickImage = async () => {
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please allow access to photos to attach images.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const newAttachment: Attachment = {
+          uri: asset.uri,
+          name: asset.fileName || `image_${Date.now()}.jpg`,
+          type: 'image',
+          base64: asset.base64,
+        };
+        setCurrentAttachments([...currentAttachments, newAttachment]);
+      }
+    } catch (error) {
+      console.log('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  // Take photo with camera
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please allow camera access to take photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: false,
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const newAttachment: Attachment = {
+          uri: asset.uri,
+          name: `photo_${Date.now()}.jpg`,
+          type: 'image',
+          base64: asset.base64,
+        };
+        setCurrentAttachments([...currentAttachments, newAttachment]);
+      }
+    } catch (error) {
+      console.log('Camera error:', error);
+      Alert.alert('Error', 'Failed to take photo');
+    }
+  };
+
+  // Pick document/file
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const newAttachment: Attachment = {
+          uri: asset.uri,
+          name: asset.name,
+          type: 'document',
+        };
+        setCurrentAttachments([...currentAttachments, newAttachment]);
+      }
+    } catch (error) {
+      console.log('Document picker error:', error);
+      Alert.alert('Error', 'Failed to pick document');
+    }
+  };
+
+  // Remove attachment
+  const removeAttachment = (index: number) => {
+    const updated = [...currentAttachments];
+    updated.splice(index, 1);
+    setCurrentAttachments(updated);
+  };
+
+  // Show attachment picker options
+  const showAttachmentOptions = () => {
+    Alert.alert(
+      'Attach File',
+      'Choose an option',
+      [
+        { text: 'Take Photo', onPress: takePhoto },
+        { text: 'Choose from Gallery', onPress: pickImage },
+        { text: 'Choose Document', onPress: pickDocument },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
   const calculateCost = async () => {
     // Validate all fields
     const pipeLengthError = validatePipeLength(pipeLength);
