@@ -1234,40 +1234,40 @@ export default function CalculatorScreen() {
             </TouchableOpacity>
               
               <TouchableOpacity style={styles.attachmentBtn} onPress={pickImage}>
-                <Ionicons name="image" size={24} color="#960018" />
-                <Text style={styles.attachmentBtnText}>Gallery</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.attachmentBtn} onPress={pickDocument}>
-                <Ionicons name="document" size={24} color="#960018" />
-                <Text style={styles.attachmentBtnText}>File</Text>
-              </TouchableOpacity>
-            </View>
+              <Ionicons name="image" size={24} color="#960018" />
+              <Text style={styles.attachmentBtnText}>Gallery</Text>
+            </TouchableOpacity>
             
-            {/* Display Attachments */}
-            {currentAttachments.length > 0 && (
-              <View style={styles.attachmentList}>
-                {currentAttachments.map((attachment, index) => (
-                  <View key={index} style={styles.attachmentItem}>
-                    {attachment.type === 'image' ? (
-                      <Image source={{ uri: attachment.uri }} style={styles.attachmentThumbnail} />
-                    ) : (
-                      <View style={styles.attachmentDocIcon}>
-                        <Ionicons name="document-text" size={32} color="#960018" />
-                      </View>
-                    )}
-                    <Text style={styles.attachmentName} numberOfLines={1}>{attachment.name}</Text>
-                    <TouchableOpacity 
-                      style={styles.removeAttachmentBtn}
-                      onPress={() => removeAttachment(index)}
-                    >
-                      <Ionicons name="close-circle" size={24} color="#E53935" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
+            <TouchableOpacity style={styles.attachmentBtn} onPress={pickDocument}>
+              <Ionicons name="document" size={24} color="#960018" />
+              <Text style={styles.attachmentBtnText}>File</Text>
+            </TouchableOpacity>
           </View>
+          
+          {/* Display Attachments */}
+          {currentAttachments.length > 0 && (
+            <View style={styles.attachmentList}>
+              {currentAttachments.map((attachment, index) => (
+                <View key={index} style={styles.attachmentItem}>
+                  {attachment.type === 'image' ? (
+                    <Image source={{ uri: attachment.uri }} style={styles.attachmentThumbnail} />
+                  ) : (
+                    <View style={styles.attachmentDocIcon}>
+                      <Ionicons name="document-text" size={32} color="#960018" />
+                    </View>
+                  )}
+                  <Text style={styles.attachmentName} numberOfLines={1}>{attachment.name}</Text>
+                  <TouchableOpacity 
+                    style={styles.removeAttachmentBtn}
+                    onPress={() => removeAttachment(index)}
+                  >
+                    <Ionicons name="close-circle" size={24} color="#E53935" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
 
         {/* Calculate Button */}
         <TouchableOpacity
