@@ -78,19 +78,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('[AuthContext] Login attempt for:', email);
       const response = await api.post('/auth/login', { email, password });
       const { access_token, user: userData } = response.data;
       
       await AsyncStorage.setItem('token', access_token);
       await AsyncStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
+      
+      console.log('[AuthContext] Login successful, user role:', userData.role);
+      setUserState(userData);
+      setIsAuthenticated(true);
     } catch (error: any) {
+      console.error('[AuthContext] Login failed:', error.response?.data?.detail);
       throw new Error(error.response?.data?.detail || 'Login failed');
     }
   };
 
   const register = async (email: string, password: string, name: string, company?: string) => {
     try {
+      console.log('[AuthContext] Register attempt for:', email);
       const response = await api.post('/auth/register', {
         email,
         password,
@@ -102,20 +108,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       await AsyncStorage.setItem('token', access_token);
       await AsyncStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
+      
+      console.log('[AuthContext] Registration successful, user role:', userData.role);
+      setUserState(userData);
+      setIsAuthenticated(true);
     } catch (error: any) {
+      console.error('[AuthContext] Registration failed:', error.response?.data?.detail);
       throw new Error(error.response?.data?.detail || 'Registration failed');
     }
   };
 
   const logout = async () => {
+    console.log('[AuthContext] Logging out...');
     await AsyncStorage.removeItem('token');
     await AsyncStorage.removeItem('user');
-    setUser(null);
+    setUserState(null);
+    setIsAuthenticated(false);
+    console.log('[AuthContext] Logout complete');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, setUser, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated, setUser, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
