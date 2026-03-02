@@ -1204,8 +1204,7 @@ export default function CalculatorScreen() {
           )}
         </View>
 
-        {/* Attachment Section - Customer Only */}
-        {isCustomer && (
+        {/* Attachment Section - Available for both Admin and Customer */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Attachments (Optional)</Text>
             <Text style={styles.hint}>Attach drawing, photo, or document for this item</Text>
@@ -1252,7 +1251,6 @@ export default function CalculatorScreen() {
               </View>
             )}
           </View>
-        )}
 
         {/* Calculate Button */}
         <TouchableOpacity
