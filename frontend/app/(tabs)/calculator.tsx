@@ -3006,4 +3006,24 @@ const styles = StyleSheet.create({
   removeAttachmentBtn: {
     padding: 4,
   },
+  itemAttachmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  itemAttachmentText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginLeft: 4,
+    marginRight: 8,
+  },
+  miniThumbnail: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    marginLeft: 4,
+  },
 });
