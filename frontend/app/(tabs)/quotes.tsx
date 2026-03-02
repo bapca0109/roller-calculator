@@ -793,6 +793,57 @@ export default function QuotesScreen() {
                     )}
                   </TouchableOpacity>
                   
+                  {/* Attachments Section - Admin Only */}
+                  {!isCustomer && selectedQuote.products?.some((p: any) => p.attachments?.length > 0) && (
+                    <View style={styles.attachmentsSection}>
+                      <Text style={styles.attachmentsSectionTitle}>
+                        <Ionicons name="attach" size={18} color="#1E293B" /> Attachments
+                      </Text>
+                      
+                      {selectedQuote.products.map((product: any, pIdx: number) => (
+                        product.attachments?.length > 0 && (
+                          <View key={pIdx} style={styles.productAttachments}>
+                            <Text style={styles.productAttachmentLabel}>{product.product_name || `Product ${pIdx + 1}`}</Text>
+                            {product.attachments.map((att: any, aIdx: number) => (
+                              <TouchableOpacity
+                                key={aIdx}
+                                style={styles.attachmentDownloadBtn}
+                                onPress={() => {
+                                  const url = `${process.env.EXPO_PUBLIC_BACKEND_URL || ''}/api/quotes/${selectedQuote.id}/attachments/${pIdx}/${aIdx}/download`;
+                                  window.open(url, '_blank');
+                                }}
+                              >
+                                <Ionicons 
+                                  name={att.type === 'image' ? 'image' : 'document'} 
+                                  size={16} 
+                                  color="#960018" 
+                                />
+                                <Text style={styles.attachmentDownloadText} numberOfLines={1}>
+                                  {att.name || `Attachment ${aIdx + 1}`}
+                                </Text>
+                                <Ionicons name="download" size={16} color="#960018" />
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        )
+                      ))}
+                      
+                      {/* Download All as ZIP */}
+                      {selectedQuote.products.reduce((sum: number, p: any) => sum + (p.attachments?.length || 0), 0) > 1 && (
+                        <TouchableOpacity
+                          style={styles.downloadAllZipBtn}
+                          onPress={() => {
+                            const url = `${process.env.EXPO_PUBLIC_BACKEND_URL || ''}/api/quotes/${selectedQuote.id}/attachments/download-all`;
+                            window.open(url, '_blank');
+                          }}
+                        >
+                          <Ionicons name="archive" size={20} color="#fff" />
+                          <Text style={styles.downloadAllZipText}>Download All as ZIP</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+                  
                   {/* Edit Quote Button - Admin Only */}
                   {!isCustomer && (
                     <TouchableOpacity 
