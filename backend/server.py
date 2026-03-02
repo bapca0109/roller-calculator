@@ -677,12 +677,46 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
         msg_alternative.attach(part2)
         msg.attach(msg_alternative)
         
+        # Attach any product attachments
+        attachment_count = 0
+        for product in products:
+            product_attachments = product.get('attachments', [])
+            for att in product_attachments:
+                if att.get('base64'):
+                    try:
+                        import base64
+                        attachment_data = base64.b64decode(att['base64'])
+                        attachment_name = att.get('name', f'attachment_{attachment_count + 1}')
+                        
+                        # Determine MIME type
+                        if att.get('type') == 'image' or attachment_name.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
+                            mime_type = 'image'
+                            mime_subtype = 'jpeg' if attachment_name.lower().endswith(('.jpg', '.jpeg')) else 'png'
+                        else:
+                            mime_type = 'application'
+                            mime_subtype = 'octet-stream'
+                        
+                        attachment_part = MIMEBase(mime_type, mime_subtype)
+                        attachment_part.set_payload(attachment_data)
+                        encoders.encode_base64(attachment_part)
+                        attachment_part.add_header(
+                            'Content-Disposition',
+                            f'attachment; filename="{attachment_name}"'
+                        )
+                        msg.attach(attachment_part)
+                        attachment_count += 1
+                    except Exception as att_error:
+                        logging.error(f"Failed to attach file {att.get('name')}: {str(att_error)}")
+        
+        if attachment_count > 0:
+            logging.info(f"Attached {attachment_count} files to RFQ email")
+        
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
             for admin_email in admin_emails:
                 server.sendmail(GMAIL_USER, admin_email, msg.as_string())
         
-        logging.info(f"RFQ notification sent to admins for RFQ: {rfq_data.get('quote_number')}")
+        logging.info(f"RFQ notification sent to admins for RFQ: {rfq_data.get('quote_number')} with {attachment_count} attachments")
         return True
     except Exception as e:
         logging.error(f"Failed to send RFQ notification email: {str(e)}")
