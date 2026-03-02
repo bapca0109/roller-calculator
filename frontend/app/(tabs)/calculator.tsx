@@ -1167,11 +1167,23 @@ export default function CalculatorScreen() {
           style={[styles.calculateButton, calculating && styles.calculateButtonDisabled]}
           onPress={async () => {
             if (isCustomer) {
-              // For customers: calculate, add to cart, and show popup directly
+              // For customers: calculate, add to cart with attachments, and show popup
               const calcResult = await calculateCost();
               if (calcResult) {
+                // Add attachments to the result
+                const itemWithAttachments = {
+                  ...calcResult,
+                  attachments: currentAttachments,
+                };
                 // Add the calculated item directly to quote items
-                setQuoteItems([...quoteItems, calcResult]);
+                setQuoteItems([...quoteItems, itemWithAttachments]);
+                // Store attachments by index
+                setItemAttachments({
+                  ...itemAttachments,
+                  [quoteItems.length]: currentAttachments
+                });
+                // Clear current attachments for next item
+                setCurrentAttachments([]);
                 setShowRfqPopup(true);
                 setResult(null); // Don't show result section
               }
