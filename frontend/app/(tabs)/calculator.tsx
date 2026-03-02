@@ -763,7 +763,7 @@ export default function CalculatorScreen() {
 
     setSavingQuote(true);
     try {
-      const products = quoteItems.map(item => ({
+      const products = quoteItems.map((item, index) => ({
         product_id: item.configuration.product_code,
         product_name: `${item.configuration.roller_type.charAt(0).toUpperCase() + item.configuration.roller_type.slice(1)} Roller - ${item.configuration.product_code}`,
         quantity: item.configuration.quantity,
@@ -779,7 +779,13 @@ export default function CalculatorScreen() {
           rubber_diameter: item.configuration.rubber_diameter_mm
         },
         calculated_discount: item.pricing.discount_amount,
-        custom_premium: 0
+        custom_premium: 0,
+        // Include attachments with base64 data
+        attachments: item.attachments?.map((att: Attachment) => ({
+          name: att.name,
+          type: att.type,
+          base64: att.base64 || null,
+        })) || []
       }));
 
       const response = await api.post('/quotes', {
