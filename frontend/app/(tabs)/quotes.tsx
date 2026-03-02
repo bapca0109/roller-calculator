@@ -908,10 +908,7 @@ export default function QuotesScreen() {
                       {selectedQuote.products.reduce((sum: number, p: any) => sum + (p.attachments?.length || 0), 0) > 1 && (
                         <TouchableOpacity
                           style={styles.downloadAllZipBtn}
-                          onPress={() => {
-                            const url = `${process.env.EXPO_PUBLIC_BACKEND_URL || ''}/api/quotes/${selectedQuote.id}/attachments/download-all`;
-                            window.open(url, '_blank');
-                          }}
+                          onPress={() => downloadAllAsZip(selectedQuote.id, selectedQuote.quote_number || selectedQuote.id)}
                         >
                           <Ionicons name="archive" size={20} color="#fff" />
                           <Text style={styles.downloadAllZipText}>Download All as ZIP</Text>
