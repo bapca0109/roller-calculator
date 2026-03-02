@@ -887,10 +887,7 @@ export default function QuotesScreen() {
                               <TouchableOpacity
                                 key={aIdx}
                                 style={styles.attachmentDownloadBtn}
-                                onPress={() => {
-                                  const url = `${process.env.EXPO_PUBLIC_BACKEND_URL || ''}/api/quotes/${selectedQuote.id}/attachments/${pIdx}/${aIdx}/download`;
-                                  window.open(url, '_blank');
-                                }}
+                                onPress={() => downloadAttachment(selectedQuote.id, pIdx, aIdx, att.name || `attachment_${aIdx}`)}
                               >
                                 <Ionicons 
                                   name={att.type === 'image' ? 'image' : 'document'} 
