@@ -75,7 +75,24 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 
 ## Completed Work
 
-### March 2026 (Latest)
+### March 2, 2026 (Latest Session)
+- **CRITICAL FIX: Authentication Race Condition** - Resolved the recurring bug where components rendered before auth state was fully loaded
+  - Root Layout (`_layout.tsx`): Added splash screen that blocks navigation until auth loading completes
+  - AuthContext: Enhanced with detailed logging, proper state management, `isAuthenticated` flag, and `refreshUser` method
+  - This fix ensures `isCustomer` and `isAdmin` always evaluate correctly before dependent components render
+  
+- **Attachment Download Feature Complete**:
+  - Backend endpoints: `/api/quotes/{id}/attachments/{pIdx}/{aIdx}/download` (single) and `/api/quotes/{id}/attachments/download-all` (ZIP)
+  - Frontend: Added authenticated download functions using `fetch` with Bearer token
+  - UI: Added proper styling for attachments section (was missing), showing attachment icons and download buttons
+  
+- **Testing Agent Verification**: All 5 role-based UI tests passed (100% success rate)
+  - Customer sees "Generate RFQ" button, Admin sees "Calculate Price" button
+  - Tab visibility works correctly (Admin: 6 tabs, Customer: 4 tabs)
+  - Filter tabs visible for admin only on Quotes page
+  - Attachments section visible in quote detail modal for admin
+
+### March 2026 (Previous Sessions)
 - **RFQ Feature Complete**: Customer users now generate RFQ (Request for Quote) while Admin users generate Quotes
   - Backend: `generate_rfq_number()` creates `RFQ/YY-YY/XXXX` for customers
   - Backend: `generate_quote_number()` creates `Q/YY-YY/XXXX` for admins  
