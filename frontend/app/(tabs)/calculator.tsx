@@ -146,6 +146,12 @@ export default function CalculatorScreen() {
   const [showRfqPopup, setShowRfqPopup] = useState(false);
   const [showRfqSuccessPopup, setShowRfqSuccessPopup] = useState(false);
   const [submittedRfqNumber, setSubmittedRfqNumber] = useState('');
+  
+  // Quote popup state for admin (similar to customer RFQ flow)
+  const [showQuotePopup, setShowQuotePopup] = useState(false);
+  const [showQuoteSuccessPopup, setShowQuoteSuccessPopup] = useState(false);
+  const [submittedQuoteNumber, setSubmittedQuoteNumber] = useState('');
+  
   const [calculating, setCalculating] = useState(false);
   const [result, setResult] = useState<CostResult | null>(null);
   const [savingQuote, setSavingQuote] = useState(false);
