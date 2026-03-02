@@ -832,9 +832,30 @@ export default function CalculatorScreen() {
 
   const addToQuote = () => {
     if (!result) return;
-    setQuoteItems([...quoteItems, result]);
-    Alert.alert('Added!', `${result.configuration.product_code} added to quote.\nItems in quote: ${quoteItems.length + 1}`);
-    setResult(null); // Clear current result to configure next item
+    
+    // Add attachments to the result (same as customer flow)
+    const itemWithAttachments = {
+      ...result,
+      attachments: currentAttachments,
+    };
+    
+    // Store attachments by index
+    setItemAttachments({
+      ...itemAttachments,
+      [quoteItems.length]: currentAttachments
+    });
+    
+    // Add to quote items
+    setQuoteItems([...quoteItems, itemWithAttachments]);
+    
+    // Clear current attachments for next item
+    setCurrentAttachments([]);
+    
+    // Show popup for admin to add more or submit
+    setShowQuotePopup(true);
+    
+    // Clear current result to configure next item
+    setResult(null);
   };
 
   const removeFromQuote = (index: number) => {
