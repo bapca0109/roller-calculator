@@ -84,13 +84,17 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 - **Attachment Download Feature Complete**:
   - Backend endpoints: `/api/quotes/{id}/attachments/{pIdx}/{aIdx}/download` (single) and `/api/quotes/{id}/attachments/download-all` (ZIP)
   - Frontend: Added authenticated download functions using `fetch` with Bearer token
-  - UI: Added proper styling for attachments section (was missing), showing attachment icons and download buttons
+  - UI: Added proper styling for attachments section, showing attachment icons and download buttons
   
-- **Testing Agent Verification**: All 5 role-based UI tests passed (100% success rate)
-  - Customer sees "Generate RFQ" button, Admin sees "Calculate Price" button
-  - Tab visibility works correctly (Admin: 6 tabs, Customer: 4 tabs)
-  - Filter tabs visible for admin only on Quotes page
-  - Attachments section visible in quote detail modal for admin
+- **Admin Portal Unified with Customer Portal**:
+  - Attachments section now available for admin users (previously customer-only)
+  - Admin gets popup flow after "Add to Quote" with "Add More" and "Generate Quote" options
+  - Green "Generate Quote" button (#4CAF50) with success popup showing "Quote Generated!"
+  - Admin retains all exclusive features: visible prices, Admin tab, Customer management, Quote approval/revision
+  
+- **Testing Agent Verification**: All tests passed (100% success rate across 2 test runs)
+  - Iteration 6: Role-based UI tests (customer vs admin views)
+  - Iteration 7: Admin portal changes (attachments, popup flow, green button, success popup)
 
 ### March 2026 (Previous Sessions)
 - **RFQ Feature Complete**: Customer users now generate RFQ (Request for Quote) while Admin users generate Quotes
