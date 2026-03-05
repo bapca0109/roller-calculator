@@ -114,9 +114,25 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-# Health check endpoint for deployment
+# Root endpoint for health checks and basic info
+@app.get("/")
+async def root():
+    """Root endpoint - confirms API is running"""
+    return {"status": "ok", "app": "Roller Price Calculator API", "version": "1.0.0"}
+
+# Health check endpoint for deployment (also at root level for K8s probes)
+@app.get("/health")
+async def root_health_check():
+    """Health check endpoint at root level for Kubernetes probes"""
+    try:
+        await db.command("ping")
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
+
+# Health check endpoint for deployment under /api
 @api_router.get("/health")
-async def health_check():
+async def api_health_check():
     """Health check endpoint for Kubernetes probes"""
     try:
         # Test database connection
