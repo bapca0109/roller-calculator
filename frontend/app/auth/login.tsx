@@ -47,7 +47,7 @@ export default function Login() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Image 
-            source={{ uri: 'https://static.wixstatic.com/media/d714c4_0d70a3cab7694564bc644161f285e30a~mv2.png/v1/fill/w_305,h_98,al_c,q_85,enc_auto/VISITING%20CARD%20LOGO.png' }} 
+            source={require('../../assets/images/logo.png')} 
             style={styles.logo}
             resizeMode="contain"
           />

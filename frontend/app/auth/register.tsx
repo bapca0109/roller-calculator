@@ -35,7 +35,8 @@ export default function Register() {
     
     setFetchingLocation(true);
     try {
-      const response = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+      const PINCODE_API_URL = process.env.EXPO_PUBLIC_PINCODE_API_URL || 'https://api.postalpincode.in';
+      const response = await fetch(`${PINCODE_API_URL}/pincode/${pin}`);
       const data = await response.json();
       
       if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice && data[0].PostOffice.length > 0) {
