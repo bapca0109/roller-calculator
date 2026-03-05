@@ -85,7 +85,14 @@ async def generate_rfq_number():
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+# Add connection options for Atlas compatibility
+client = AsyncIOMotorClient(
+    mongo_url,
+    serverSelectionTimeoutMS=5000,
+    connectTimeoutMS=10000,
+    retryWrites=True,
+    w='majority'
+)
 db = client[os.environ['DB_NAME']]
 
 # Gmail configuration
@@ -106,6 +113,17 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 # Create the main app
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+
+# Health check endpoint for deployment
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint for Kubernetes probes"""
+    try:
+        # Test database connection
+        await db.command("ping")
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
 
 # ============= MODELS =============
 

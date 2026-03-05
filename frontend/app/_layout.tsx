@@ -12,7 +12,7 @@ function RootLayoutNav() {
     return (
       <View style={styles.splashContainer}>
         <Image 
-          source={require('../../assets/images/logo.png')} 
+          source={require('../assets/images/logo.png')} 
           style={styles.logo}
           resizeMode="contain"
         />
