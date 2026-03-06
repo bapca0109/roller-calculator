@@ -76,6 +76,17 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Completed Work
 
 ### March 6, 2026 (Latest Session)
+- **Professional Quote PDF Redesign** - COMPLETED
+  - Clean, minimalist design with modern typography
+  - Header: Logo, Document type, Quote number, Date
+  - Info boxes: From (Convero) and Bill To (Customer) sections
+  - Product table with specifications and remarks
+  - Summary section aligned to right with clear breakdown
+  - **Commercial Terms**: Payment (25% advance, 75% before dispatch), Freight, Color charges (2%), 30-day validity
+  - **Technical Specs**: Pipe (IS-9295), Shaft (EN8), Bearing, Circlip (IS-3075), Housing (CRCA 3.15mm), Seal Set (Nylon-6), Rubber Ring (Shore 50-60), Painting (40 microns), TIR (1.6mm per IS-8598)
+  - Footer with authorized signatory space
+  - Print-optimized layout
+
 - **Export Search Results Feature** - COMPLETED
   - **Quotes Tab**: Export button appears when searching, exports filtered quotes to CSV
   - **Customers Tab**: Export button in header, exports customer list to CSV

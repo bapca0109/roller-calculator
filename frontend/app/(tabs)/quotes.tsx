@@ -492,22 +492,29 @@ export default function QuotesScreen() {
     
     const productsHtml = quote.products.map((product, index) => `
       <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #eee;">${index + 1}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee;">
-          <strong>${product.product_name || product.product_id}</strong>
+        <td class="cell-center">${index + 1}</td>
+        <td class="cell-left">
+          <div class="product-name">${product.product_name || product.product_id}</div>
           ${product.specifications ? `
-            <br><small style="color: #666;">
-              ${product.specifications.pipe_diameter ? `Pipe: ${product.specifications.pipe_diameter}mm` : ''}
+            <div class="product-specs">
+              ${product.specifications.roller_type ? `Type: ${product.specifications.roller_type}` : ''}
+              ${product.specifications.pipe_diameter ? ` | Pipe: ${product.specifications.pipe_diameter}mm` : ''}
               ${product.specifications.shaft_diameter ? ` | Shaft: ${product.specifications.shaft_diameter}mm` : ''}
               ${product.specifications.bearing ? ` | Bearing: ${product.specifications.bearing}` : ''}
-            </small>
+            </div>
           ` : ''}
+          ${product.remark ? `<div class="product-remark">Note: ${product.remark}</div>` : ''}
         </td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${product.quantity}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">Rs. ${product.unit_price?.toFixed(2)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">Rs. ${(product.unit_price * product.quantity)?.toFixed(2)}</td>
+        <td class="cell-center">${product.quantity}</td>
+        <td class="cell-right">Rs. ${product.unit_price?.toFixed(2)}</td>
+        <td class="cell-right"><strong>Rs. ${(product.unit_price * product.quantity)?.toFixed(2)}</strong></td>
       </tr>
     `).join('');
+
+    const taxableAmount = (quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0);
+    const cgst = taxableAmount * 0.09;
+    const sgst = taxableAmount * 0.09;
+    const grandTotal = (taxableAmount + (quote.shipping_cost || 0)) * 1.18;
 
     return `
       <!DOCTYPE html>
@@ -515,82 +522,329 @@ export default function QuotesScreen() {
       <head>
         <meta charset="UTF-8">
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #960018; padding-bottom: 20px; }
-          .logo { font-size: 28px; font-weight: bold; color: #000; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            color: #1a1a1a; 
+            font-size: 11px;
+            line-height: 1.4;
+            padding: 15px;
+          }
+          
+          /* Header */
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #960018;
+            margin-bottom: 15px;
+          }
+          .logo-section { }
+          .logo {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: #1a1a1a;
+          }
           .logo span { color: #960018; }
-          .company-name { font-size: 12px; color: #666; margin-top: 5px; }
-          .quote-title { font-size: 24px; color: #960018; margin-top: 15px; }
-          .quote-info { display: flex; justify-content: space-between; margin-bottom: 20px; }
-          .info-box { background: #f5f5f5; padding: 15px; border-radius: 8px; width: 48%; }
-          .info-label { font-size: 12px; color: #666; }
-          .info-value { font-size: 14px; font-weight: bold; margin-top: 5px; }
-          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th { background: #960018; color: white; padding: 12px; text-align: left; }
-          .summary { margin-top: 30px; }
-          .summary-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-          .summary-label { color: #666; }
-          .summary-value { font-weight: bold; }
-          .total-row { background: #960018; color: white; padding: 15px; border-radius: 8px; margin-top: 10px; }
-          .total-row .summary-label, .total-row .summary-value { color: white; }
-          .total-row .summary-value { font-size: 20px; }
-          .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px; }
-          .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-          .status-pending { background: #E3F2FD; color: #1976D2; }
-          .status-approved { background: #E8F5E9; color: #388E3C; }
-          .discount { color: #4CAF50; }
+          .company-tagline {
+            font-size: 9px;
+            color: #666;
+            letter-spacing: 3px;
+            margin-top: 2px;
+          }
+          .doc-type {
+            text-align: right;
+          }
+          .doc-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #960018;
+            letter-spacing: 1px;
+          }
+          .doc-number {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 3px;
+          }
+          .doc-date {
+            font-size: 10px;
+            color: #666;
+            margin-top: 2px;
+          }
+          
+          /* Info Boxes */
+          .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            gap: 15px;
+          }
+          .info-box {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            background: #fafafa;
+          }
+          .info-box-title {
+            font-size: 8px;
+            font-weight: 600;
+            color: #960018;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 4px;
+          }
+          .info-company {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1a1a1a;
+          }
+          .info-address {
+            font-size: 10px;
+            color: #555;
+            margin-top: 4px;
+            line-height: 1.5;
+          }
+          .info-gst {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 3px 8px;
+            background: #e8f4fc;
+            border-radius: 3px;
+            font-size: 9px;
+            color: #0066cc;
+            font-weight: 500;
+          }
+          .info-contact {
+            font-size: 9px;
+            color: #666;
+            margin-top: 6px;
+          }
+          
+          /* Products Table */
+          .section-title {
+            font-size: 10px;
+            font-weight: 600;
+            color: #960018;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 8px 0;
+            border-bottom: 1px solid #960018;
+            margin-bottom: 0;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+          }
+          th {
+            background: #960018;
+            color: white;
+            padding: 8px 10px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 10px;
+          }
+          .cell-center { text-align: center; }
+          .cell-right { text-align: right; }
+          .cell-left { text-align: left; }
+          .product-name { font-weight: 500; color: #1a1a1a; }
+          .product-specs { font-size: 9px; color: #666; margin-top: 3px; }
+          .product-remark { font-size: 9px; color: #0066cc; margin-top: 3px; font-style: italic; }
+          
+          /* Summary */
+          .summary-section {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 15px;
+          }
+          .summary-table {
+            width: 280px;
+          }
+          .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+          }
+          .summary-label { color: #555; font-size: 10px; }
+          .summary-value { font-weight: 500; font-size: 10px; }
+          .discount-row { color: #28a745; }
+          .total-row {
+            background: #960018;
+            color: white;
+            border-radius: 4px;
+            margin-top: 5px;
+            padding: 10px;
+          }
+          .total-row .summary-label,
+          .total-row .summary-value {
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+          }
+          
+          /* Delivery */
+          .delivery-box {
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 10px;
+          }
+          
+          /* Terms Section */
+          .terms-container {
+            margin-top: 20px;
+            page-break-inside: avoid;
+          }
+          .terms-section {
+            margin-bottom: 15px;
+          }
+          .terms-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #960018;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 8px 0;
+            border-bottom: 2px solid #960018;
+            margin-bottom: 10px;
+          }
+          .terms-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }
+          .term-item {
+            padding: 8px;
+            background: #fafafa;
+            border-left: 3px solid #960018;
+            font-size: 9px;
+            line-height: 1.5;
+          }
+          .term-item-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+          }
+          .term-item-text {
+            color: #555;
+          }
+          .terms-full-width {
+            grid-column: span 2;
+          }
+          
+          /* Footer */
+          .footer {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 2px solid #960018;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+          }
+          .footer-left {
+            font-size: 9px;
+            color: #666;
+          }
+          .footer-company {
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 11px;
+          }
+          .footer-right {
+            text-align: right;
+          }
+          .footer-signature {
+            border-top: 1px solid #333;
+            padding-top: 5px;
+            font-size: 9px;
+            color: #333;
+            font-weight: 500;
+          }
+          .footer-note {
+            font-size: 8px;
+            color: #999;
+            margin-top: 10px;
+            text-align: center;
+          }
+          
+          @media print {
+            body { padding: 10px; }
+            .terms-container { page-break-before: auto; }
+          }
         </style>
       </head>
       <body>
+        <!-- Header -->
         <div class="header">
-          <div class="logo">C<span>O</span>NVER<span>O</span></div>
-          <div class="company-name">SOLUTIONS</div>
-          <div class="quote-title">${pdfDocLabelFull}</div>
+          <div class="logo-section">
+            <div class="logo">C<span>O</span>NVER<span>O</span></div>
+            <div class="company-tagline">SOLUTIONS</div>
+          </div>
+          <div class="doc-type">
+            <div class="doc-title">${pdfDocLabelFull}</div>
+            <div class="doc-number">${quote.quote_number || `#${quote.id.slice(-6).toUpperCase()}`}</div>
+            <div class="doc-date">${quote.created_at_ist || formatDate(quote.created_at)}</div>
+          </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-          <div class="info-box" style="width: 48%;">
-            <div class="info-label">${pdfDocLabel} Number</div>
-            <div class="info-value" style="color: #960018;">${quote.quote_number || `#${quote.id.slice(-6).toUpperCase()}`}</div>
-            <div class="info-label" style="margin-top: 10px;">Date</div>
-            <div class="info-value">${quote.created_at_ist || formatDate(quote.created_at)}</div>
-            <div class="info-label" style="margin-top: 10px;">Status</div>
-            <div class="info-value">
-              <span class="status-badge status-${quote.status?.toLowerCase()}">${quote.status?.toUpperCase()}</span>
+        <!-- Info Section -->
+        <div class="info-section">
+          <div class="info-box">
+            <div class="info-box-title">From</div>
+            <div class="info-company">Convero Solutions</div>
+            <div class="info-address">
+              Conveyor Roller Manufacturer<br>
+              Ahmedabad, Gujarat - India
+            </div>
+            <div class="info-contact">
+              info@convero.in | www.convero.in
             </div>
           </div>
-          <div class="info-box" style="width: 48%;">
-            <div class="info-label">Bill To</div>
-            <div class="info-value">${quote.customer_details?.company || quote.customer_details?.name || quote.customer_name}</div>
+          <div class="info-box">
+            <div class="info-box-title">Bill To</div>
+            <div class="info-company">${quote.customer_details?.company || quote.customer_details?.name || quote.customer_name}</div>
             ${quote.customer_details?.address ? `
-              <div style="font-size: 12px; color: #555; margin-top: 5px; line-height: 1.5;">
+              <div class="info-address">
                 ${quote.customer_details.address}${quote.customer_details.city ? `<br>${quote.customer_details.city}` : ''}${quote.customer_details.state ? `, ${quote.customer_details.state}` : ''}${quote.customer_details.pincode ? ` - ${quote.customer_details.pincode}` : ''}
               </div>
             ` : ''}
             ${quote.customer_details?.gst_number ? `
-              <div style="margin-top: 8px; padding: 5px 10px; background: #E3F2FD; border-radius: 4px; display: inline-block;">
-                <span style="font-size: 11px; color: #1565C0;"><strong>GSTIN:</strong> ${quote.customer_details.gst_number}</span>
-              </div>
+              <div class="info-gst">GSTIN: ${quote.customer_details.gst_number}</div>
             ` : ''}
             ${quote.customer_details?.phone || quote.customer_details?.email ? `
-              <div style="font-size: 11px; color: #666; margin-top: 8px;">
-                ${quote.customer_details.phone ? `<span>Ph: ${quote.customer_details.phone}</span>` : ''}
+              <div class="info-contact">
+                ${quote.customer_details.phone ? `Ph: ${quote.customer_details.phone}` : ''}
                 ${quote.customer_details.phone && quote.customer_details.email ? ' | ' : ''}
-                ${quote.customer_details.email ? `<span>${quote.customer_details.email}</span>` : ''}
+                ${quote.customer_details.email || ''}
               </div>
             ` : ''}
           </div>
         </div>
 
-        <h3 style="color: #333; border-bottom: 2px solid #960018; padding-bottom: 10px;">Products</h3>
+        <!-- Products Table -->
+        <div class="section-title">Product Details</div>
         <table>
           <thead>
             <tr>
               <th style="width: 5%;">#</th>
-              <th style="width: 40%;">Product</th>
-              <th style="width: 15%; text-align: center;">Qty</th>
+              <th style="width: 45%; text-align: left;">Description</th>
+              <th style="width: 10%;">Qty</th>
               <th style="width: 20%; text-align: right;">Unit Price</th>
-              <th style="width: 20%; text-align: right;">Total</th>
+              <th style="width: 20%; text-align: right;">Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -598,65 +852,148 @@ export default function QuotesScreen() {
           </tbody>
         </table>
 
-        <div class="summary">
-          <h3 style="color: #333; border-bottom: 2px solid #960018; padding-bottom: 10px;">Summary</h3>
-          <div class="summary-row">
-            <span class="summary-label">Subtotal</span>
-            <span class="summary-value">Rs. ${quote.subtotal?.toFixed(2)}</span>
-          </div>
-          ${quote.total_discount > 0 ? `
+        <!-- Summary -->
+        <div class="summary-section">
+          <div class="summary-table">
             <div class="summary-row">
-              <span class="summary-label discount">Discount (${quote.subtotal > 0 ? ((quote.total_discount / quote.subtotal) * 100).toFixed(1) : 0}%)</span>
-              <span class="summary-value discount">- Rs. ${quote.total_discount?.toFixed(2)}</span>
+              <span class="summary-label">Subtotal</span>
+              <span class="summary-value">Rs. ${(quote.subtotal || 0).toFixed(2)}</span>
             </div>
-          ` : ''}
-          ${quote.packing_charges && quote.packing_charges > 0 ? `
+            ${quote.total_discount > 0 ? `
+              <div class="summary-row discount-row">
+                <span class="summary-label">Discount (${quote.subtotal > 0 ? ((quote.total_discount / quote.subtotal) * 100).toFixed(1) : 0}%)</span>
+                <span class="summary-value">- Rs. ${quote.total_discount?.toFixed(2)}</span>
+              </div>
+            ` : ''}
+            ${quote.packing_charges && quote.packing_charges > 0 ? `
+              <div class="summary-row">
+                <span class="summary-label">Packing Charges</span>
+                <span class="summary-value">Rs. ${quote.packing_charges?.toFixed(2)}</span>
+              </div>
+            ` : ''}
+            ${quote.shipping_cost > 0 ? `
+              <div class="summary-row">
+                <span class="summary-label">Freight Charges</span>
+                <span class="summary-value">Rs. ${quote.shipping_cost?.toFixed(2)}</span>
+              </div>
+            ` : ''}
+            <div class="summary-row" style="background: #f5f5f5;">
+              <span class="summary-label"><strong>Taxable Amount</strong></span>
+              <span class="summary-value"><strong>Rs. ${taxableAmount.toFixed(2)}</strong></span>
+            </div>
             <div class="summary-row">
-              <span class="summary-label">Packing Charges</span>
-              <span class="summary-value">Rs. ${quote.packing_charges?.toFixed(2)}</span>
+              <span class="summary-label">CGST @ 9%</span>
+              <span class="summary-value">Rs. ${cgst.toFixed(2)}</span>
             </div>
-          ` : ''}
-          ${quote.shipping_cost > 0 ? `
             <div class="summary-row">
-              <span class="summary-label">Freight Charges</span>
-              <span class="summary-value">Rs. ${quote.shipping_cost?.toFixed(2)}</span>
+              <span class="summary-label">SGST @ 9%</span>
+              <span class="summary-value">Rs. ${sgst.toFixed(2)}</span>
             </div>
-          ` : ''}
-          <div class="summary-row" style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
-            <span class="summary-label"><strong>Taxable Amount</strong></span>
-            <span class="summary-value"><strong>Rs. ${((quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0)).toFixed(2)}</strong></span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">CGST (9%)</span>
-            <span class="summary-value">Rs. ${(((quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0)) * 0.09).toFixed(2)}</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">SGST (9%)</span>
-            <span class="summary-value">Rs. ${(((quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0)) * 0.09).toFixed(2)}</span>
-          </div>
-          <div class="total-row" style="display: flex; justify-content: space-between;">
-            <span class="summary-label">GRAND TOTAL (Incl. GST)</span>
-            <span class="summary-value">Rs. ${(((quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0) + (quote.shipping_cost || 0)) * 1.18).toFixed(2)}</span>
+            <div class="total-row">
+              <span class="summary-label">GRAND TOTAL</span>
+              <span class="summary-value">Rs. ${grandTotal.toFixed(2)}</span>
+            </div>
           </div>
         </div>
 
         ${quote.delivery_location ? `
-          <div style="margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
-            <strong>Delivery Location:</strong> Pincode ${quote.delivery_location}
+          <div class="delivery-box">
+            <strong>Delivery Location:</strong> PIN Code ${quote.delivery_location}
           </div>
         ` : ''}
 
         ${quote.notes ? `
-          <div style="margin-top: 20px; padding: 15px; background: #FFE4E6; border-radius: 8px;">
+          <div class="delivery-box" style="background: #fff5f5; border-left: 3px solid #960018;">
             <strong>Notes:</strong> ${quote.notes}
           </div>
         ` : ''}
 
+        <!-- Terms & Conditions -->
+        <div class="terms-container">
+          <div class="terms-section">
+            <div class="terms-title">Commercial Terms</div>
+            <div class="terms-grid">
+              <div class="term-item">
+                <div class="term-item-title">Payment Terms</div>
+                <div class="term-item-text">25% advance payment required at order confirmation. Remaining 75% payable against Proforma Invoice prior to dispatch.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Freight</div>
+                <div class="term-item-text">Freight charges applicable as per selection. If no PIN code selected, delivery terms: Ex-Works – Convero Solutions, Ahmedabad.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Color Charges</div>
+                <div class="term-item-text">Any color other than black shall be charged extra at 2%.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Quotation Validity</div>
+                <div class="term-item-text">This quotation is valid for 30 days from date of issue.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="terms-section">
+            <div class="terms-title">Technical Specifications</div>
+            <div class="terms-grid">
+              <div class="term-item">
+                <div class="term-item-title">Pipe</div>
+                <div class="term-item-text">IS-9295 ERW steel tubes for idlers of belt conveyors. Tolerances as per relevant IS standards.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Shaft</div>
+                <div class="term-item-text">Material grade EN8.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Bearing</div>
+                <div class="term-item-text">As per selection made in the application.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Circlip</div>
+                <div class="term-item-text">Conforming to IS-3075 standard.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Housing</div>
+                <div class="term-item-text">Deep drawn CRCA sheet conforming to IS-513, thickness 3.15 mm.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Seal Set</div>
+                <div class="term-item-text">Self-designed Nylon-6 seal with metal cap, filled with EP-2 lithium-based grease for water/dust protection.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Rubber Ring</div>
+                <div class="term-item-text">Shore hardness: 50-60. Impact rubber ring thickness may vary from drawings.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Painting</div>
+                <div class="term-item-text">One coat black synthetic enamel (40 microns). Rust preventive coating on machined parts.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Packing</div>
+                <div class="term-item-text">As per selection made in the application.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">TIR (Total Indicated Runout)</div>
+                <div class="term-item-text">Shall not exceed 1.6 mm as per IS-8598.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
         <div class="footer">
-          <p><strong>CONVERO SOLUTIONS</strong></p>
-          <p>Conveyor Roller Manufacturer</p>
-          <p>www.convero.in</p>
-          <p style="margin-top: 15px; font-size: 10px;">This is a computer generated quotation.</p>
+          <div class="footer-left">
+            <div class="footer-company">CONVERO SOLUTIONS</div>
+            <div>Conveyor Roller Manufacturer</div>
+            <div>www.convero.in</div>
+          </div>
+          <div class="footer-right">
+            <div style="height: 40px;"></div>
+            <div class="footer-signature">Authorized Signatory</div>
+          </div>
+        </div>
+        
+        <div class="footer-note">
+          This is a computer-generated quotation. E&OE (Errors and Omissions Excepted)
         </div>
       </body>
       </html>
