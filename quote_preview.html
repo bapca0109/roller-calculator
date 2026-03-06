@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Quote Preview - Convero Solutions</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Arial, sans-serif; 
+      color: #1a1a1a; 
+      font-size: 11px;
+      line-height: 1.4;
+      padding: 15px;
+      max-width: 800px;
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+    .page {
+      background: white;
+      padding: 30px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #960018;
+      margin-bottom: 15px;
+    }
+    .logo-section { }
+    .logo {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #1a1a1a;
+    }
+    .logo span { color: #960018; }
+    .company-tagline {
+      font-size: 9px;
+      color: #666;
+      letter-spacing: 3px;
+      margin-top: 2px;
+    }
+    .doc-type {
+      text-align: right;
+    }
+    .doc-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #960018;
+      letter-spacing: 1px;
+    }
+    .doc-number {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      margin-top: 3px;
+    }
+    .doc-date {
+      font-size: 10px;
+      color: #666;
+      margin-top: 2px;
+    }
+    
+    /* Info Boxes */
+    .info-section {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      gap: 15px;
+    }
+    .info-box {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      background: #fafafa;
+    }
+    .info-box-title {
+      font-size: 8px;
+      font-weight: 600;
+      color: #960018;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 4px;
+    }
+    .info-company {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+    .info-address {
+      font-size: 10px;
+      color: #555;
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+    .info-gst {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 8px;
+      background: #e8f4fc;
+      border-radius: 3px;
+      font-size: 9px;
+      color: #0066cc;
+      font-weight: 500;
+    }
+    .info-contact {
+      font-size: 9px;
+      color: #666;
+      margin-top: 6px;
+    }
+    
+    /* Products Table */
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #960018;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 8px 0;
+      border-bottom: 1px solid #960018;
+      margin-bottom: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+    th {
+      background: #960018;
+      color: white;
+      padding: 8px 10px;
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #eee;
+      font-size: 10px;
+    }
+    .cell-center { text-align: center; }
+    .cell-right { text-align: right; }
+    .cell-left { text-align: left; }
+    .product-name { font-weight: 500; color: #1a1a1a; }
+    .product-specs { font-size: 9px; color: #666; margin-top: 3px; }
+    .product-remark { font-size: 9px; color: #0066cc; margin-top: 3px; font-style: italic; }
+    
+    /* Summary */
+    .summary-section {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 15px;
+    }
+    .summary-table {
+      width: 280px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .summary-label { color: #555; font-size: 10px; }
+    .summary-value { font-weight: 500; font-size: 10px; }
+    .discount-row { color: #28a745; }
+    .total-row {
+      background: #960018;
+      color: white;
+      border-radius: 4px;
+      margin-top: 5px;
+      padding: 10px;
+    }
+    .total-row .summary-label,
+    .total-row .summary-value {
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    /* Terms Section */
+    .terms-container {
+      margin-top: 20px;
+    }
+    .terms-section {
+      margin-bottom: 15px;
+    }
+    .terms-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #960018;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 8px 0;
+      border-bottom: 2px solid #960018;
+      margin-bottom: 10px;
+    }
+    .terms-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .term-item {
+      padding: 8px;
+      background: #fafafa;
+      border-left: 3px solid #960018;
+      font-size: 9px;
+      line-height: 1.5;
+    }
+    .term-item-title {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .term-item-text {
+      color: #555;
+    }
+    
+    /* Footer */
+    .footer {
+      margin-top: 25px;
+      padding-top: 15px;
+      border-top: 2px solid #960018;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .footer-left {
+      font-size: 9px;
+      color: #666;
+    }
+    .footer-company {
+      font-weight: 600;
+      color: #1a1a1a;
+      font-size: 11px;
+    }
+    .footer-right {
+      text-align: right;
+    }
+    .footer-signature {
+      border-top: 1px solid #333;
+      padding-top: 5px;
+      font-size: 9px;
+      color: #333;
+      font-weight: 500;
+    }
+    .footer-note {
+      font-size: 8px;
+      color: #999;
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-section">
+        <div class="logo">C<span>O</span>NVER<span>O</span></div>
+        <div class="company-tagline">SOLUTIONS</div>
+      </div>
+      <div class="doc-type">
+        <div class="doc-title">QUOTATION</div>
+        <div class="doc-number">Q/25-26/0031</div>
+        <div class="doc-date">02 Mar 2026, 06:40 PM IST</div>
+      </div>
+    </div>
+
+    <!-- Info Section -->
+    <div class="info-section">
+      <div class="info-box">
+        <div class="info-box-title">From</div>
+        <div class="info-company">Convero Solutions</div>
+        <div class="info-address">
+          Conveyor Roller Manufacturer<br>
+          Ahmedabad, Gujarat - India
+        </div>
+        <div class="info-contact">
+          info@convero.in | www.convero.in
+        </div>
+      </div>
+      <div class="info-box">
+        <div class="info-box-title">Bill To</div>
+        <div class="info-company">Acme Corp</div>
+        <div class="info-address">
+          123 Industrial Area<br>
+          Mumbai, Maharashtra - 400001
+        </div>
+        <div class="info-gst">GSTIN: 27AAECE1234F1Z5</div>
+        <div class="info-contact">
+          Ph: +91 98765 43210 | john@acmecorp.com
+        </div>
+      </div>
+    </div>
+
+    <!-- Products Table -->
+    <div class="section-title">Product Details</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 5%;">#</th>
+          <th style="width: 45%; text-align: left;">Description</th>
+          <th style="width: 10%;">Qty</th>
+          <th style="width: 20%; text-align: right;">Unit Price</th>
+          <th style="width: 20%; text-align: right;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="cell-center">1</td>
+          <td class="cell-left">
+            <div class="product-name">Carrying Roller - CR20 89 1000B 62C</div>
+            <div class="product-specs">Type: Carrying | Pipe: 89mm | Shaft: 20mm | Bearing: 6204</div>
+          </td>
+          <td class="cell-center">1</td>
+          <td class="cell-right">Rs. 1,778.60</td>
+          <td class="cell-right"><strong>Rs. 1,778.60</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Summary -->
+    <div class="summary-section">
+      <div class="summary-table">
+        <div class="summary-row">
+          <span class="summary-label">Subtotal</span>
+          <span class="summary-value">Rs. 1,778.60</span>
+        </div>
+        <div class="summary-row" style="background: #f5f5f5;">
+          <span class="summary-label"><strong>Taxable Amount</strong></span>
+          <span class="summary-value"><strong>Rs. 1,778.60</strong></span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">CGST @ 9%</span>
+          <span class="summary-value">Rs. 160.07</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">SGST @ 9%</span>
+          <span class="summary-value">Rs. 160.07</span>
+        </div>
+        <div class="total-row">
+          <span class="summary-label">GRAND TOTAL</span>
+          <span class="summary-value">Rs. 2,098.75</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Terms & Conditions -->
+    <div class="terms-container">
+      <div class="terms-section">
+        <div class="terms-title">Commercial Terms</div>
+        <div class="terms-grid">
+          <div class="term-item">
+            <div class="term-item-title">Payment Terms</div>
+            <div class="term-item-text">25% advance payment required at order confirmation. Remaining 75% payable against Proforma Invoice prior to dispatch.</div>
+          </div>
+          <div class="term-item">
+            <div class="term-item-title">Freight</div>
+            <div class="term-item-text">Freight charges applicable as per selection. If no PIN code selected, delivery terms: Ex-Works – Convero Solutions, Ahmedabad.</div>
+          </div>
+          <div class="term-item">
+            <div class="term-item-title">Color Charges</div>
+            <div class="term-item-text">Any color other than black shall be charged extra at 2%.</div>
+          </div>
+          <div class="term-item">
+            <div class="term-item-title">Quotation Validity</div>
+            <div class="term-item-text">This quotation is valid for 30 days from date of issue.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="terms-section">
+        <div class="terms-title">Technical Specifications</div>
+        <div class="terms-grid">
+          <div class="term-item">
+            <div class="term-item-title">Pipe</div>
+            <div class="term-item-text">IS-9295 ERW steel tubes for idlers of belt conveyors. Tolerances as per relevant IS standards.</div>
+          </div>
+          <div class="term-item">
+            <div class="term-item-title">Shaft</div>
+            <div class="term-item-text">Material grade EN8.</div>
+          </div>
+          <div class="term-item">
+            <div class="term-item-title">Bearing</div>
+            <div class="term-item-text">As per selection made in the application.</div>
+          </div>
+          <div class="term-item">
+            <div class="term-item-title">Circlip</div>
+            <div class="term-item-text">Conforming to IS-3075 standard.</div>
+          </div>
+          <div class="term-item">
+            <div class="term-item-title">Housing</div>
+            <div class="term-item-text">Deep drawn CRCA sheet conforming to IS-513, thickness 3.15 mm.</div>
+          </div>
+          <div class="term-item">
+            <div class="term-item-title">Seal Set</div>
+            <div class="term-item-text">Self-designed Nylon-6 seal with metal cap, filled with EP-2 lithium-based grease for water/dust protection.</div>
+          </div>
+          <div class="term-item">
+            <div class="term-item-title">Rubber Ring</div>
+            <div class="term-item-text">Shore hardness: 50-60. Impact rubber ring thickness may vary from drawings.</div>
+          </div>
+          <div class="term-item">
+            <div class="term-item-title">Painting</div>
+            <div class="term-item-text">One coat black synthetic enamel (40 microns). Rust preventive coating on machined parts.</div>
+          </div>
+          <div class="term-item">
+            <div class="term-item-title">Packing</div>
+            <div class="term-item-text">As per selection made in the application.</div>
+          </div>
+          <div class="term-item">
+            <div class="term-item-title">TIR (Total Indicated Runout)</div>
+            <div class="term-item-text">Shall not exceed 1.6 mm as per IS-8598.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-left">
+        <div class="footer-company">CONVERO SOLUTIONS</div>
+        <div>Conveyor Roller Manufacturer</div>
+        <div>www.convero.in</div>
+      </div>
+      <div class="footer-right">
+        <div style="height: 40px;"></div>
+        <div class="footer-signature">Authorized Signatory</div>
+      </div>
+    </div>
+    
+    <div class="footer-note">
+      This is a computer-generated quotation. E&OE (Errors and Omissions Excepted)
+    </div>
+  </div>
+</body>
+</html>
