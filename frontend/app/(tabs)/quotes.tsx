@@ -58,6 +58,7 @@ interface Quote {
   cost_breakdown?: any;
   pricing_details?: any;
   freight_details?: any;
+  read_by_admin?: boolean;
   created_at: string;
   created_at_ist?: string;
   updated_at: string;
@@ -183,6 +184,40 @@ export default function QuotesScreen() {
       setRefreshing(false);
     }
   };
+
+  // Mark RFQ as read by admin
+  const markAsRead = async (quoteId: string) => {
+    if (!isAdmin) return;
+    
+    try {
+      await api.post(`/quotes/${quoteId}/mark-read`);
+      // Update local state to reflect read status
+      setQuotes(prevQuotes => 
+        prevQuotes.map(q => 
+          q.id === quoteId ? { ...q, read_by_admin: true } : q
+        )
+      );
+    } catch (error) {
+      console.error('Error marking quote as read:', error);
+    }
+  };
+
+  // Open quote detail and mark as read
+  const openQuoteDetail = (quote: Quote) => {
+    setSelectedQuote(quote);
+    // Mark as read if admin and quote is pending RFQ and unread
+    const isRfq = quote.quote_number?.startsWith('RFQ/');
+    if (isAdmin && quote.status === 'pending' && isRfq && !quote.read_by_admin) {
+      markAsRead(quote.id);
+    }
+  };
+
+  // Get unread count for badge - only count RFQs (customer-generated)
+  const unreadCount = quotes.filter(q => 
+    q.status === 'pending' && 
+    q.quote_number?.startsWith('RFQ/') && 
+    !q.read_by_admin
+  ).length;
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -561,21 +596,35 @@ export default function QuotesScreen() {
   };
 
   const renderQuote = ({ item }: { item: Quote }) => {
-    const isRfq = item.quote_number?.startsWith('RFQ');
+    const isRfq = item.quote_number?.startsWith('RFQ/');
     const isApproved = item.status?.toLowerCase() === 'approved';
     const canApprove = isAdmin && isRfq && !isApproved;
     
     // Debug log for each quote card
     console.log(`Quote ${item.quote_number}: isRfq=${isRfq}, isApproved=${isApproved}, isAdmin=${isAdmin}, canApprove=${canApprove}`);
     
+    // Check if this is an unread pending RFQ (for admin) - only for customer RFQs
+    const isUnread = isAdmin && item.status === 'pending' && isRfq && item.read_by_admin !== true;
+    
+    // Debug log
+    if (isRfq) {
+      console.log(`RFQ ${item.quote_number}: isUnread=${isUnread}, read_by_admin=${item.read_by_admin}, isAdmin=${isAdmin}`);
+    }
+    
     return (
     <TouchableOpacity
-      style={styles.quoteCard}
-      onPress={() => setSelectedQuote(item)}
+      style={[styles.quoteCard, isUnread && styles.unreadQuoteCard]}
+      onPress={() => openQuoteDetail(item)}
     >
       <View style={styles.quoteHeader}>
         <View style={styles.quoteInfo}>
-          <Text style={styles.quoteId}>{item.quote_number || `${docLabel} #${item.id.slice(-6).toUpperCase()}`}</Text>
+          <View style={styles.quoteIdRow}>
+            {/* Unread indicator dot */}
+            {isUnread && (
+              <View style={styles.unreadDot} />
+            )}
+            <Text style={[styles.quoteId, isUnread && styles.unreadQuoteId]}>{item.quote_number || `${docLabel} #${item.id.slice(-6).toUpperCase()}`}</Text>
+          </View>
           <Text style={styles.quoteDate}>{item.created_at_ist || formatDate(item.created_at)}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status)}20` }]}>
@@ -693,9 +742,17 @@ export default function QuotesScreen() {
             style={[styles.filterTab, activeTab === 'pending' && styles.filterTabActive]}
             onPress={() => setActiveTab('pending')}
           >
-            <Text style={[styles.filterTabText, activeTab === 'pending' && styles.filterTabTextActive]}>
-              Pending RFQ {pendingRfqCount > 0 && `(${pendingRfqCount})`}
-            </Text>
+            <View style={styles.tabWithBadge}>
+              <Text style={[styles.filterTabText, activeTab === 'pending' && styles.filterTabTextActive]}>
+                Pending RFQ {pendingRfqCount > 0 && `(${pendingRfqCount})`}
+              </Text>
+              {/* Unread badge */}
+              {unreadCount > 0 && (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.filterTab, activeTab === 'approved' && styles.filterTabActive]}
@@ -1152,6 +1209,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#960018',
   },
+  quoteIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  unreadDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EF4444',
+  },
+  unreadQuoteCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#EF4444',
+  },
+  unreadQuoteId: {
+    fontWeight: '800',
+  },
   quoteDate: {
     fontSize: 12,
     color: '#666',
@@ -1509,6 +1584,25 @@ const styles = StyleSheet.create({
   },
   filterTabTextActive: {
     color: '#fff',
+  },
+  tabWithBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  unreadBadge: {
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  unreadBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
   // Approve Button - RED (before approval)
   approveButtonRed: {

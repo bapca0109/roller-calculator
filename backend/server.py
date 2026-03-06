@@ -275,6 +275,7 @@ class Quote(BaseModel):
     pricing_details: Optional[Dict[str, Any]] = None
     freight_details: Optional[Dict[str, Any]] = None
     packing_charges: Optional[float] = 0.0
+    read_by_admin: bool = False  # Track if admin has read the RFQ
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -1296,6 +1297,7 @@ async def get_quotes(current_user: dict = Depends(get_current_user)):
         quote.setdefault("customer_id", "")
         quote.setdefault("customer_name", "Unknown")
         quote.setdefault("customer_email", "")
+        quote.setdefault("read_by_admin", False)  # Default for legacy quotes
         
         # Generate quote_number for legacy quotes that don't have one
         if not quote.get("quote_number"):
@@ -1309,6 +1311,38 @@ async def get_quotes(current_user: dict = Depends(get_current_user)):
         
         result.append(quote)
     return result
+
+# Get unread RFQ count for admin notifications
+@api_router.get("/quotes/unread/count")
+async def get_unread_rfq_count(current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))):
+    """Get count of unread pending RFQs for admin notification badge"""
+    count = await db.quotes.count_documents({
+        "status": "pending",
+        "read_by_admin": {"$ne": True}
+    })
+    return {"unread_count": count}
+
+# Mark RFQ as read by admin
+@api_router.post("/quotes/{quote_id}/mark-read")
+async def mark_quote_as_read(
+    quote_id: str,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+):
+    """Mark an RFQ as read by admin"""
+    try:
+        obj_id = ObjectId(quote_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid quote ID")
+    
+    result = await db.quotes.update_one(
+        {"_id": obj_id},
+        {"$set": {"read_by_admin": True, "updated_at": datetime.utcnow()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    
+    return {"success": True, "message": "Quote marked as read"}
 
 @api_router.get("/quotes/{quote_id}", response_model=QuoteInDB)
 async def get_quote(quote_id: str, current_user: dict = Depends(get_current_user)):
