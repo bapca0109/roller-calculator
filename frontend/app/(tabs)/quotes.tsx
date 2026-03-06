@@ -764,7 +764,10 @@ export default function QuotesScreen() {
                         <Text style={styles.productName}>{product.product_name || product.product_id}</Text>
                         <View style={styles.productDetails}>
                           <Text style={styles.productQty}>Qty: {product.quantity}</Text>
-                          <Text style={styles.productPrice}>Rs. {(product.unit_price * product.quantity).toFixed(2)}</Text>
+                          {/* Hide price for customers unless quote is approved */}
+                          {(!isCustomer || selectedQuote.status === 'approved') && (
+                            <Text style={styles.productPrice}>Rs. {(product.unit_price * product.quantity).toFixed(2)}</Text>
+                          )}
                         </View>
                         {product.specifications && (
                           <View style={styles.specsContainer}>
@@ -783,7 +786,8 @@ export default function QuotesScreen() {
                     ))}
                   </View>
 
-                  {/* Pricing Summary */}
+                  {/* Pricing Summary - Hidden for customers on pending RFQs */}
+                  {(!isCustomer || selectedQuote.status === 'approved') && (
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>Pricing Summary</Text>
                     <View style={styles.pricingRow}>
@@ -834,6 +838,19 @@ export default function QuotesScreen() {
                       </Text>
                     </View>
                   </View>
+                  )}
+                  
+                  {/* Show message for customers on pending RFQs */}
+                  {isCustomer && selectedQuote.status === 'pending' && (
+                    <View style={styles.detailSection}>
+                      <View style={styles.pendingPriceMessage}>
+                        <Ionicons name="time-outline" size={24} color="#F59E0B" />
+                        <Text style={styles.pendingPriceText}>
+                          Pricing will be available once your RFQ is approved by admin
+                        </Text>
+                      </View>
+                    </View>
+                  )}
 
                   {/* Delivery */}
                   {selectedQuote.delivery_location && (
@@ -1592,5 +1609,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  pendingPriceMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+  },
+  pendingPriceText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#92400E',
+    lineHeight: 20,
   },
 });
