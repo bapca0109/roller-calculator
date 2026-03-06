@@ -13,7 +13,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
+import { CustomDropdown } from '../../components/CustomDropdown';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import * as FileSystem from 'expo-file-system';
@@ -1023,18 +1023,13 @@ export default function CalculatorScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pipe Configuration</Text>
           
-          <Text style={styles.label}>Pipe Diameter (IS-9295)</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={pipeDiameter}
-              onValueChange={(value) => setPipeDiameter(value)}
-              style={styles.picker}
-            >
-              {standards?.pipe_diameters.map((dia) => (
-                <Picker.Item key={dia} label={`${dia} mm`} value={dia} />
-              ))}
-            </Picker>
-          </View>
+          <CustomDropdown
+            label="Pipe Diameter (IS-9295)"
+            value={pipeDiameter}
+            onValueChange={(value) => setPipeDiameter(value)}
+            options={standards?.pipe_diameters.map((dia) => ({ label: `${dia} mm`, value: dia })) || []}
+            placeholder="Select pipe diameter"
+          />
 
           <Text style={styles.label}>Pipe Length (mm)</Text>
           <TextInput
@@ -1048,50 +1043,39 @@ export default function CalculatorScreen() {
             <Text style={styles.errorText}>{errors.pipeLength}</Text>
           ) : null}
 
-          <Text style={styles.label}>Pipe Thickness (IS-9295)</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={pipeType}
-              onValueChange={(value) => setPipeType(value)}
-              style={styles.picker}
-            >
-              {PIPE_TYPES.map((type) => (
-                <Picker.Item key={type.value} label={type.label} value={type.value} />
-              ))}
-            </Picker>
-          </View>
+          <CustomDropdown
+            label="Pipe Thickness (IS-9295)"
+            value={pipeType}
+            onValueChange={(value) => setPipeType(value)}
+            options={PIPE_TYPES.map((type) => ({ label: type.label, value: type.value }))}
+            placeholder="Select pipe thickness"
+          />
         </View>
 
         {/* Shaft & Bearing */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shaft & Bearing</Text>
 
-          <Text style={styles.label}>Shaft Diameter</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={shaftDiameter}
-              onValueChange={(value) => setShaftDiameter(value)}
-              style={styles.picker}
-            >
-              {standards?.shaft_diameters.map((dia) => (
-                <Picker.Item key={dia} label={`${dia} mm`} value={dia} />
-              ))}
-            </Picker>
-          </View>
+          <CustomDropdown
+            label="Shaft Diameter"
+            value={shaftDiameter}
+            onValueChange={(value) => setShaftDiameter(value)}
+            options={standards?.shaft_diameters.map((dia) => ({ label: `${dia} mm`, value: dia })) || []}
+            placeholder="Select shaft diameter"
+          />
 
-          <Text style={styles.label}>Shaft End Type</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={shaftEndType}
-              onValueChange={(value) => setShaftEndType(value)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Type A (+26mm)" value="A" />
-              <Picker.Item label="Type B (+36mm)" value="B" />
-              <Picker.Item label="Type C (+56mm)" value="C" />
-              <Picker.Item label="Custom" value="custom" />
-            </Picker>
-          </View>
+          <CustomDropdown
+            label="Shaft End Type"
+            value={shaftEndType}
+            onValueChange={(value) => setShaftEndType(value)}
+            options={[
+              { label: 'Type A (+26mm)', value: 'A' },
+              { label: 'Type B (+36mm)', value: 'B' },
+              { label: 'Type C (+56mm)', value: 'C' },
+              { label: 'Custom', value: 'custom' },
+            ]}
+            placeholder="Select shaft end type"
+          />
 
           {shaftEndType === 'custom' && (
             <View style={styles.inputRow}>
@@ -1118,50 +1102,35 @@ export default function CalculatorScreen() {
             </View>
           )}
 
-          <Text style={styles.label}>Bearing Number</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={bearingNumber}
-              onValueChange={(value) => setBearingNumber(value)}
-              style={styles.picker}
-            >
-              {availableBearings.map((bearing) => (
-                <Picker.Item key={bearing} label={bearing} value={bearing} />
-              ))}
-            </Picker>
-          </View>
+          <CustomDropdown
+            label="Bearing Number"
+            value={bearingNumber}
+            onValueChange={(value) => setBearingNumber(value)}
+            options={availableBearings.map((bearing) => ({ label: bearing, value: bearing }))}
+            placeholder="Select bearing number"
+          />
 
-          <Text style={styles.label}>Bearing Make</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={bearingMake}
-              onValueChange={(value) => setBearingMake(value)}
-              style={styles.picker}
-            >
-              {BEARING_MAKES.map((make) => (
-                <Picker.Item key={make.value} label={make.label} value={make.value} />
-              ))}
-            </Picker>
-          </View>
+          <CustomDropdown
+            label="Bearing Make"
+            value={bearingMake}
+            onValueChange={(value) => setBearingMake(value)}
+            options={BEARING_MAKES.map((make) => ({ label: make.label, value: make.value }))}
+            placeholder="Select bearing make"
+          />
         </View>
 
         {/* Impact Roller Options - Always show when Impact is selected */}
         {rollerType === 'impact' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Rubber Lagging</Text>
-            <Text style={styles.label}>Rubber Diameter</Text>
             {availableRubberDiameters.length > 0 ? (
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={rubberDiameter}
-                  onValueChange={(value) => setRubberDiameter(value)}
-                  style={styles.picker}
-                >
-                  {availableRubberDiameters.map((dia) => (
-                    <Picker.Item key={dia} label={`${dia} mm`} value={dia} />
-                  ))}
-                </Picker>
-              </View>
+              <CustomDropdown
+                label="Rubber Diameter"
+                value={rubberDiameter}
+                onValueChange={(value) => setRubberDiameter(value)}
+                options={availableRubberDiameters.map((dia) => ({ label: `${dia} mm`, value: dia }))}
+                placeholder="Select rubber diameter"
+              />
             ) : (
               <View style={styles.noOptionsContainer}>
                 <Text style={styles.noOptionsText}>
@@ -1188,18 +1157,13 @@ export default function CalculatorScreen() {
             <Text style={styles.errorText}>{errors.quantity}</Text>
           ) : null}
 
-          <Text style={styles.label}>Packing Type</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={packingType}
-              onValueChange={(value) => setPackingType(value)}
-              style={styles.picker}
-            >
-              {PACKING_TYPES.map((type) => (
-                <Picker.Item key={type.value} label={type.label} value={type.value} />
-              ))}
-            </Picker>
-          </View>
+          <CustomDropdown
+            label="Packing Type"
+            value={packingType}
+            onValueChange={(value) => setPackingType(value)}
+            options={PACKING_TYPES.map((type) => ({ label: type.label, value: type.value }))}
+            placeholder="Select packing type"
+          />
         </View>
 
         {/* Freight */}
