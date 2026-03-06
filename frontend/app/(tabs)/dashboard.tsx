@@ -62,11 +62,52 @@ interface RecentQuote {
   created_at: string;
 }
 
+type DateFilterType = '7d' | '30d' | '3m' | '6m' | '1y' | 'all';
+
+const DATE_FILTERS: { key: DateFilterType; label: string }[] = [
+  { key: '7d', label: '7 Days' },
+  { key: '30d', label: '30 Days' },
+  { key: '3m', label: '3 Months' },
+  { key: '6m', label: '6 Months' },
+  { key: '1y', label: '1 Year' },
+  { key: 'all', label: 'All Time' },
+];
+
+const getDateRange = (filter: DateFilterType): { start_date?: string; end_date?: string } => {
+  const now = new Date();
+  const end_date = now.toISOString().split('T')[0];
+  let start_date: string | undefined;
+
+  switch (filter) {
+    case '7d':
+      start_date = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      break;
+    case '30d':
+      start_date = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      break;
+    case '3m':
+      start_date = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      break;
+    case '6m':
+      start_date = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      break;
+    case '1y':
+      start_date = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      break;
+    case 'all':
+    default:
+      return {};
+  }
+
+  return { start_date, end_date };
+};
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('6m');
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [revenueTrend, setRevenueTrend] = useState<RevenueTrend[]>([]);
   const [topCustomers, setTopCustomers] = useState<TopCustomer[]>([]);
@@ -74,8 +115,11 @@ export default function Dashboard() {
   const [recentQuotes, setRecentQuotes] = useState<RecentQuote[]>([]);
   const [quoteStatus, setQuoteStatus] = useState<{approved: number, pending: number}>({approved: 0, pending: 0});
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (filter: DateFilterType = dateFilter) => {
     try {
+      const { start_date, end_date } = getDateRange(filter);
+      const dateParams = start_date ? `&start_date=${start_date}&end_date=${end_date}` : '';
+      
       const [
         summaryRes,
         trendRes,
@@ -84,12 +128,12 @@ export default function Dashboard() {
         rollerRes,
         activityRes
       ] = await Promise.all([
-        api.get('/analytics/dashboard'),
-        api.get('/analytics/revenue-trend?months=6'),
-        api.get('/analytics/top-customers?limit=5'),
-        api.get('/analytics/quote-status'),
-        api.get('/analytics/roller-type-distribution'),
-        api.get('/analytics/recent-activity?limit=5')
+        api.get(`/analytics/dashboard?${dateParams.replace('&', '')}`),
+        api.get(`/analytics/revenue-trend?months=6${dateParams}`),
+        api.get(`/analytics/top-customers?limit=5${dateParams}`),
+        api.get(`/analytics/quote-status?${dateParams.replace('&', '')}`),
+        api.get(`/analytics/roller-type-distribution?${dateParams.replace('&', '')}`),
+        api.get(`/analytics/recent-activity?limit=5${dateParams}`)
       ]);
 
       setSummary(summaryRes.data.summary);
@@ -104,15 +148,20 @@ export default function Dashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [dateFilter]);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    fetchDashboardData(dateFilter);
+  }, [dateFilter]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchDashboardData();
+    fetchDashboardData(dateFilter);
+  };
+
+  const handleFilterChange = (filter: DateFilterType) => {
+    setDateFilter(filter);
+    setLoading(true);
   };
 
   const handleExport = async (format: 'pdf' | 'excel') => {
@@ -296,6 +345,32 @@ export default function Dashboard() {
             </TouchableOpacity>
           </View>
         </View>
+        
+        {/* Date Filter Pills */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScrollView}
+          contentContainerStyle={styles.filterContainer}
+        >
+          {DATE_FILTERS.map((filter) => (
+            <TouchableOpacity
+              key={filter.key}
+              style={[
+                styles.filterPill,
+                dateFilter === filter.key && styles.filterPillActive
+              ]}
+              onPress={() => handleFilterChange(filter.key)}
+            >
+              <Text style={[
+                styles.filterPillText,
+                dateFilter === filter.key && styles.filterPillTextActive
+              ]}>
+                {filter.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       {/* Summary Cards Row 1 */}
@@ -603,6 +678,34 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  filterScrollView: {
+    marginTop: 16,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 16,
+  },
+  filterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  filterPillActive: {
+    backgroundColor: '#960018',
+    borderColor: '#960018',
+  },
+  filterPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  filterPillTextActive: {
+    color: '#FFFFFF',
   },
   cardsRow: {
     flexDirection: 'row',

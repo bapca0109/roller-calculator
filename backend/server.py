@@ -3571,12 +3571,26 @@ Convero Solutions
 # ============= ANALYTICS & DASHBOARD =============
 
 @api_router.get("/analytics/dashboard")
-async def get_dashboard_analytics(current_user: dict = Depends(get_current_user)):
+async def get_dashboard_analytics(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
     """Get comprehensive dashboard analytics (admin only)"""
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
     try:
+        # Parse date filters
+        date_filter = {}
+        if start_date and end_date:
+            try:
+                start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+                date_filter = {"created_at": {"$gte": start_dt, "$lte": end_dt}}
+            except ValueError:
+                pass
+        
         # Get current date info
         now = get_ist_now()
         current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -3589,15 +3603,19 @@ async def get_dashboard_analytics(current_user: dict = Depends(get_current_user)
             fy_start = now.replace(year=now.year-1, month=4, day=1, hour=0, minute=0, second=0, microsecond=0)
         
         # Total quotes count
-        total_quotes = await db.quotes.count_documents({})
+        quotes_filter = {**date_filter} if date_filter else {}
+        total_quotes = await db.quotes.count_documents(quotes_filter)
         
         # Approved quotes count
-        approved_quotes = await db.quotes.count_documents({"status": "approved"})
+        approved_filter = {"status": "approved", **date_filter} if date_filter else {"status": "approved"}
+        approved_quotes = await db.quotes.count_documents(approved_filter)
         
         # Pending RFQs count
-        pending_rfqs = await db.quotes.count_documents({"status": {"$ne": "approved"}})
+        pending_filter = {"status": {"$ne": "approved"}, **date_filter} if date_filter else {"status": {"$ne": "approved"}}
+        pending_rfqs = await db.quotes.count_documents(pending_filter)
         
         # Total customers
+        customer_filter = {"role": "customer", **date_filter} if date_filter else {"role": "customer"}
         total_customers = await db.users.count_documents({"role": "customer"})
         
         # New customers this month
@@ -3607,8 +3625,9 @@ async def get_dashboard_analytics(current_user: dict = Depends(get_current_user)
         })
         
         # Calculate total revenue from approved quotes
+        revenue_match = {"status": "approved", **date_filter} if date_filter else {"status": "approved"}
         revenue_pipeline = [
-            {"$match": {"status": "approved"}},
+            {"$match": revenue_match},
             {"$group": {"_id": None, "total": {"$sum": "$total_price"}}}
         ]
         revenue_result = await db.quotes.aggregate(revenue_pipeline).to_list(1)

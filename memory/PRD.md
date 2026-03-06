@@ -76,6 +76,12 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Completed Work
 
 ### March 6, 2026 (Latest Session)
+- **Dashboard Date Range Filters** - COMPLETED
+  - Added filter pills: 7 Days, 30 Days, 3 Months, 6 Months, 1 Year, All Time
+  - Dashboard data refreshes based on selected filter
+  - Backend APIs updated to accept start_date and end_date parameters
+  - Active filter highlighted in carmine red
+
 - **Dashboard Export to PDF/Excel** - COMPLETED
   - Added PDF and Excel export buttons to Dashboard header
   - PDF report: Summary metrics, Top Customers table, Recent Quotes table
