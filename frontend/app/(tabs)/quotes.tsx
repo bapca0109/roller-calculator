@@ -83,6 +83,7 @@ export default function QuotesScreen() {
   const [savingRevision, setSavingRevision] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Approval success popup state
   const [showApprovalSuccess, setShowApprovalSuccess] = useState(false);
@@ -350,20 +351,53 @@ export default function QuotesScreen() {
     );
   };
 
-  // Filter quotes based on active tab
+  // Filter quotes based on active tab and search query
   const getFilteredQuotes = () => {
-    if (isCustomer) return quotes; // Customers see all their quotes
+    let filtered = quotes;
     
-    switch (activeTab) {
-      case 'pending':
-        // Show RFQs that are not approved (pending for admin review)
-        return quotes.filter(q => q.quote_number?.startsWith('RFQ') && q.status?.toLowerCase() !== 'approved');
-      case 'approved':
-        // Show only approved quotes (both original quotes and approved RFQs)
-        return quotes.filter(q => q.status?.toLowerCase() === 'approved');
-      default:
-        return quotes;
+    // First filter by tab
+    if (!isCustomer) {
+      switch (activeTab) {
+        case 'pending':
+          filtered = filtered.filter(q => q.quote_number?.startsWith('RFQ') && q.status?.toLowerCase() !== 'approved');
+          break;
+        case 'approved':
+          filtered = filtered.filter(q => q.status?.toLowerCase() === 'approved');
+          break;
+        default:
+          break;
+      }
     }
+    
+    // Then filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(q => {
+        // Search by quote number
+        if (q.quote_number?.toLowerCase().includes(query)) return true;
+        // Search by customer name
+        if (q.customer_name?.toLowerCase().includes(query)) return true;
+        // Search by company
+        if (q.customer_company?.toLowerCase().includes(query)) return true;
+        if (q.customer_details?.company?.toLowerCase().includes(query)) return true;
+        // Search by email
+        if (q.customer_email?.toLowerCase().includes(query)) return true;
+        // Search by phone
+        if (q.customer_details?.phone?.toLowerCase().includes(query)) return true;
+        // Search by GST
+        if (q.customer_details?.gst_number?.toLowerCase().includes(query)) return true;
+        // Search by city/state
+        if (q.customer_details?.city?.toLowerCase().includes(query)) return true;
+        if (q.customer_details?.state?.toLowerCase().includes(query)) return true;
+        // Search by product names
+        if (q.products?.some(p => p.product_name?.toLowerCase().includes(query))) return true;
+        // Search by status
+        if (q.status?.toLowerCase().includes(query)) return true;
+        return false;
+      });
+    }
+    
+    return filtered;
   };
 
   const pendingRfqCount = quotes.filter(q => q.quote_number?.startsWith('RFQ') && q.status?.toLowerCase() !== 'approved').length;
@@ -755,6 +789,34 @@ export default function QuotesScreen() {
           <Ionicons name="refresh" size={24} color="#960018" />
         </TouchableOpacity>
       </View>
+
+      {/* Search Bar - Admin Only */}
+      {isAdmin && (
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputWrapper}>
+            <Ionicons name="search-outline" size={20} color="#94A3B8" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by name, quote #, company, GST..."
+              placeholderTextColor="#94A3B8"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.searchClearBtn}>
+                <Ionicons name="close-circle" size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
+          </View>
+          {searchQuery.length > 0 && (
+            <Text style={styles.searchResultCount}>
+              {getFilteredQuotes().length} result{getFilteredQuotes().length !== 1 ? 's' : ''} found
+            </Text>
+          )}
+        </View>
+      )}
 
       {/* Admin Filter Tabs */}
       {isAdmin && (
@@ -1885,5 +1947,37 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Search Bar Styles
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    height: 44,
+    fontSize: 15,
+    color: '#0F172A',
+  },
+  searchClearBtn: {
+    padding: 4,
+  },
+  searchResultCount: {
+    marginTop: 8,
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
   },
 });

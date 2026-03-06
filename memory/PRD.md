@@ -76,6 +76,13 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Completed Work
 
 ### March 6, 2026 (Latest Session)
+- **Quote Search Feature** - COMPLETED
+  - Added search bar in Quotes tab (admin only)
+  - Search by: quote number, customer name, company, email, phone, GST, city, state, product names, status
+  - Real-time filtering with result count display
+  - Clear button to reset search
+  - Works across all tabs (All, RFQ, Approved)
+
 - **Customer Quote Management** - COMPLETED
   - Customers automatically move to "Quoted" tab after receiving an approved quote
   - Admin can click on any customer to see all their quotes in a modal
