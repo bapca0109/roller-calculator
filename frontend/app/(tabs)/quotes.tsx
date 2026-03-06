@@ -771,7 +771,7 @@ export default function QuotesScreen() {
           >
             <View style={styles.tabWithBadge}>
               <Text style={[styles.filterTabText, activeTab === 'pending' && styles.filterTabTextActive]}>
-                Pending RFQ {pendingRfqCount > 0 && `(${pendingRfqCount})`}
+                RFQ {pendingRfqCount > 0 && `(${pendingRfqCount})`}
               </Text>
               {/* Unread badge */}
               {unreadCount > 0 && (
