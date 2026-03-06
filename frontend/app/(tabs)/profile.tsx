@@ -16,12 +16,16 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  const handleLogout = () => {
-    // Clear storage directly
-    AsyncStorage.removeItem('token');
-    AsyncStorage.removeItem('user');
-    // Force navigation to login
-    window.location.href = '/auth/login';
+  const handleLogout = async () => {
+    try {
+      // Use the logout function from AuthContext
+      await logout();
+      // Navigate to login using expo-router (works on all platforms)
+      router.replace('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+    }
   };
 
   const getRoleLabel = (role: string) => {
