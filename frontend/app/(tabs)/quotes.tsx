@@ -304,7 +304,10 @@ export default function QuotesScreen() {
         notes: `Revised by admin`
       });
       
-      window.alert(`Quote Revised Successfully!\n\n${response.data.revision}\nNew Total: Rs. ${response.data.new_total_price.toFixed(2)}\n\nEmail sent to customer and admin.`);
+      Alert.alert(
+        'Quote Revised Successfully!',
+        `${response.data.revision}\nNew Total: Rs. ${response.data.new_total_price.toFixed(2)}\n\nEmail sent to customer and admin.`
+      );
       setEditingQuote(null);
       fetchQuotes();
     } catch (error: any) {
@@ -316,23 +319,35 @@ export default function QuotesScreen() {
 
   // Approve RFQ function
   const approveRfq = async (quote: Quote) => {
-    // Use window.confirm for web compatibility
-    const confirmed = window.confirm(`Are you sure you want to approve "${quote.quote_number}" and convert it to a Quote?`);
-    
-    if (confirmed) {
-      setApprovingId(quote.id);
-      try {
-        const response = await api.post(`/quotes/${quote.id}/approve`);
-        // Show success popup instead of window.alert
-        setApprovedQuoteNumber(response.data.new_quote_number || quote.quote_number);
-        setShowApprovalSuccess(true);
-        fetchQuotes();
-      } catch (error: any) {
-        window.alert(`Error: ${error.response?.data?.detail || 'Failed to approve RFQ'}`);
-      } finally {
-        setApprovingId(null);
-      }
-    }
+    // Use Alert.alert for cross-platform compatibility (iOS, Android, Web)
+    Alert.alert(
+      'Approve RFQ',
+      `Are you sure you want to approve "${quote.quote_number}" and convert it to a Quote?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Approve',
+          style: 'default',
+          onPress: async () => {
+            setApprovingId(quote.id);
+            try {
+              const response = await api.post(`/quotes/${quote.id}/approve`);
+              // Show success popup
+              setApprovedQuoteNumber(response.data.new_quote_number || quote.quote_number);
+              setShowApprovalSuccess(true);
+              fetchQuotes();
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.detail || 'Failed to approve RFQ');
+            } finally {
+              setApprovingId(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Filter quotes based on active tab
