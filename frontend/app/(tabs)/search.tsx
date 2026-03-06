@@ -170,6 +170,50 @@ export default function SearchScreen() {
     setHasSearched(false);
   };
 
+  // Export search results to CSV
+  const exportSearchResults = () => {
+    if (results.length === 0) {
+      Alert.alert('No Data', 'No products to export');
+      return;
+    }
+
+    // Create CSV content
+    const headers = ['Product Code', 'Roller Type', 'Pipe Diameter', 'Shaft Diameter', 'Pipe Type', 'Bearing', 'Bearing Make', 'Housing', 'Base Price', 'Description'];
+    const rows = results.map(p => [
+      p.product_code || '',
+      p.roller_type || '',
+      (p.pipe_diameter || '').toString(),
+      (p.shaft_diameter || '').toString(),
+      p.pipe_type || '',
+      p.bearing || '',
+      p.bearing_make || '',
+      p.housing || '',
+      `Rs. ${(p.base_price || 0).toFixed(2)}`,
+      p.description || ''
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Download CSV
+    if (Platform.OS === 'web') {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `products_search_${searchQuery}_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      Alert.alert('Success', `Exported ${results.length} products to CSV`);
+    } else {
+      Alert.alert('Export', 'CSV export is available on web. Please use the web version for exports.');
+    }
+  };
+
   // Quote functions
   const openAddToQuote = (product: ProductResult, length: LengthDetail) => {
     setSelectedLength({ product, length });
@@ -778,11 +822,22 @@ export default function SearchScreen() {
       {hasSearched && (
         <View style={styles.resultsContainer}>
           <View style={styles.resultsHeader}>
-            <Text style={styles.resultsCount}>
-              {results.length} {results.length === 1 ? 'product' : 'products'} found
-            </Text>
+            <View>
+              <Text style={styles.resultsCount}>
+                {results.length} {results.length === 1 ? 'product' : 'products'} found
+              </Text>
+              {results.length > 0 && (
+                <Text style={styles.searchedFor}>for "{searchQuery.toUpperCase()}"</Text>
+              )}
+            </View>
             {results.length > 0 && (
-              <Text style={styles.searchedFor}>for "{searchQuery.toUpperCase()}"</Text>
+              <TouchableOpacity 
+                style={styles.exportResultsBtn}
+                onPress={exportSearchResults}
+              >
+                <Ionicons name="download-outline" size={16} color="#960018" />
+                <Text style={styles.exportResultsBtnText}>Export</Text>
+              </TouchableOpacity>
             )}
           </View>
 
@@ -1243,13 +1298,13 @@ const styles = StyleSheet.create({
   },
   resultsHeader: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
-    gap: 8,
   },
   resultsCount: {
     fontSize: 15,
@@ -1259,6 +1314,22 @@ const styles = StyleSheet.create({
   searchedFor: {
     fontSize: 14,
     color: '#94A3B8',
+  },
+  exportResultsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF5F5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#960018',
+  },
+  exportResultsBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#960018',
   },
   resultsList: {
     padding: 16,

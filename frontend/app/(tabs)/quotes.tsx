@@ -400,6 +400,48 @@ export default function QuotesScreen() {
     return filtered;
   };
 
+  // Export search results to CSV
+  const exportSearchResults = (type: string) => {
+    const filteredQuotes = getFilteredQuotes();
+    if (filteredQuotes.length === 0) {
+      Alert.alert('No Data', 'No results to export');
+      return;
+    }
+
+    // Create CSV content
+    const headers = ['Quote Number', 'Customer Name', 'Company', 'Status', 'Total Price', 'Items', 'Date'];
+    const rows = filteredQuotes.map(q => [
+      q.quote_number || '',
+      q.customer_name || '',
+      q.customer_company || q.customer_details?.company || '',
+      q.status || 'Pending',
+      `Rs. ${(q.total_price || 0).toFixed(2)}`,
+      (q.products?.length || 0).toString(),
+      q.created_at ? new Date(q.created_at).toLocaleDateString('en-IN') : ''
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Download CSV
+    if (Platform.OS === 'web') {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quotes_export_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      Alert.alert('Success', `Exported ${filteredQuotes.length} quotes to CSV`);
+    } else {
+      Alert.alert('Export', 'CSV export is available on web. Please use the web version for exports.');
+    }
+  };
+
   const pendingRfqCount = quotes.filter(q => q.quote_number?.startsWith('RFQ') && q.status?.toLowerCase() !== 'approved').length;
 
   const getStatusColor = (status: string) => {
@@ -811,9 +853,20 @@ export default function QuotesScreen() {
             )}
           </View>
           {searchQuery.length > 0 && (
-            <Text style={styles.searchResultCount}>
-              {getFilteredQuotes().length} result{getFilteredQuotes().length !== 1 ? 's' : ''} found
-            </Text>
+            <View style={styles.searchResultsRow}>
+              <Text style={styles.searchResultCount}>
+                {getFilteredQuotes().length} result{getFilteredQuotes().length !== 1 ? 's' : ''} found
+              </Text>
+              {getFilteredQuotes().length > 0 && (
+                <TouchableOpacity 
+                  style={styles.exportResultsBtn}
+                  onPress={() => exportSearchResults('quotes')}
+                >
+                  <Ionicons name="download-outline" size={16} color="#960018" />
+                  <Text style={styles.exportResultsBtnText}>Export</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
       )}
@@ -1979,5 +2032,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
+  },
+  searchResultsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  exportResultsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF5F5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#960018',
+  },
+  exportResultsBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#960018',
   },
 });

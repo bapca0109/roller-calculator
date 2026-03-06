@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Modal,
   Image,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -361,6 +362,48 @@ export default function CustomersScreen() {
       c.phone?.includes(searchQuery)
   );
 
+  // Export search results to CSV
+  const exportCustomers = () => {
+    if (filteredCustomers.length === 0) {
+      Alert.alert('No Data', 'No customers to export');
+      return;
+    }
+
+    // Create CSV content
+    const headers = ['Name', 'Company', 'Email', 'Phone', 'City', 'State', 'GST Number', 'Type'];
+    const rows = filteredCustomers.map(c => [
+      c.name || '',
+      c.company || '',
+      c.email || '',
+      c.phone || '',
+      c.city || '',
+      c.state || '',
+      c.gst_number || '',
+      c.customer_type || 'registered'
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Download CSV
+    if (Platform.OS === 'web') {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `customers_export_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      Alert.alert('Success', `Exported ${filteredCustomers.length} customers to CSV`);
+    } else {
+      Alert.alert('Export', 'CSV export is available on web. Please use the web version for exports.');
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -374,7 +417,16 @@ export default function CustomersScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Customers</Text>
-        <Text style={styles.headerSubtitle}>{customers.length} customers</Text>
+        <View style={styles.headerRight}>
+          <Text style={styles.headerSubtitle}>{customers.length} customers</Text>
+          <TouchableOpacity 
+            style={styles.exportBtn}
+            onPress={exportCustomers}
+          >
+            <Ionicons name="download-outline" size={18} color="#960018" />
+            <Text style={styles.exportBtnText}>Export</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchContainer}>
@@ -391,6 +443,12 @@ export default function CustomersScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {searchQuery.length > 0 && (
+        <Text style={styles.searchResultText}>
+          {filteredCustomers.length} result{filteredCustomers.length !== 1 ? 's' : ''} found
+        </Text>
+      )}
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
@@ -870,6 +928,9 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: '#960018',
     paddingTop: 60,
     paddingBottom: 20,
@@ -880,10 +941,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
+  headerRight: {
+    alignItems: 'flex-end',
+  },
   headerSubtitle: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
+  },
+  exportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+    marginTop: 6,
+  },
+  exportBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -898,6 +976,13 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     fontSize: 16,
+  },
+  searchResultText: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
   content: {
     flex: 1,
