@@ -3565,6 +3565,315 @@ Convero Solutions
         raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
 
 
+# ============= ANALYTICS & DASHBOARD =============
+
+@api_router.get("/analytics/dashboard")
+async def get_dashboard_analytics(current_user: dict = Depends(get_current_user)):
+    """Get comprehensive dashboard analytics (admin only)"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        # Get current date info
+        now = get_ist_now()
+        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_month_start = (current_month_start - timedelta(days=1)).replace(day=1)
+        
+        # Get financial year dates
+        if now.month >= 4:
+            fy_start = now.replace(month=4, day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:
+            fy_start = now.replace(year=now.year-1, month=4, day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        # Total quotes count
+        total_quotes = await db.quotes.count_documents({})
+        
+        # Approved quotes count
+        approved_quotes = await db.quotes.count_documents({"status": "approved"})
+        
+        # Pending RFQs count
+        pending_rfqs = await db.quotes.count_documents({"status": {"$ne": "approved"}})
+        
+        # Total customers
+        total_customers = await db.users.count_documents({"role": "customer"})
+        
+        # New customers this month
+        new_customers_this_month = await db.users.count_documents({
+            "role": "customer",
+            "created_at": {"$gte": current_month_start.replace(tzinfo=None)}
+        })
+        
+        # Calculate total revenue from approved quotes
+        revenue_pipeline = [
+            {"$match": {"status": "approved"}},
+            {"$group": {"_id": None, "total": {"$sum": "$total_price"}}}
+        ]
+        revenue_result = await db.quotes.aggregate(revenue_pipeline).to_list(1)
+        total_revenue = revenue_result[0]["total"] if revenue_result else 0
+        
+        # Revenue this month
+        monthly_revenue_pipeline = [
+            {"$match": {
+                "status": "approved",
+                "created_at": {"$gte": current_month_start.replace(tzinfo=None)}
+            }},
+            {"$group": {"_id": None, "total": {"$sum": "$total_price"}}}
+        ]
+        monthly_revenue_result = await db.quotes.aggregate(monthly_revenue_pipeline).to_list(1)
+        monthly_revenue = monthly_revenue_result[0]["total"] if monthly_revenue_result else 0
+        
+        # Revenue last month for comparison
+        last_month_revenue_pipeline = [
+            {"$match": {
+                "status": "approved",
+                "created_at": {
+                    "$gte": last_month_start.replace(tzinfo=None),
+                    "$lt": current_month_start.replace(tzinfo=None)
+                }
+            }},
+            {"$group": {"_id": None, "total": {"$sum": "$total_price"}}}
+        ]
+        last_month_revenue_result = await db.quotes.aggregate(last_month_revenue_pipeline).to_list(1)
+        last_month_revenue = last_month_revenue_result[0]["total"] if last_month_revenue_result else 0
+        
+        # Calculate revenue growth percentage
+        if last_month_revenue > 0:
+            revenue_growth = ((monthly_revenue - last_month_revenue) / last_month_revenue) * 100
+        else:
+            revenue_growth = 100 if monthly_revenue > 0 else 0
+        
+        # Average quote value
+        avg_quote_value = total_revenue / approved_quotes if approved_quotes > 0 else 0
+        
+        # Conversion rate (approved / total)
+        conversion_rate = (approved_quotes / total_quotes * 100) if total_quotes > 0 else 0
+        
+        return {
+            "summary": {
+                "total_quotes": total_quotes,
+                "approved_quotes": approved_quotes,
+                "pending_rfqs": pending_rfqs,
+                "total_customers": total_customers,
+                "new_customers_this_month": new_customers_this_month,
+                "total_revenue": round(total_revenue, 2),
+                "monthly_revenue": round(monthly_revenue, 2),
+                "revenue_growth": round(revenue_growth, 1),
+                "avg_quote_value": round(avg_quote_value, 2),
+                "conversion_rate": round(conversion_rate, 1)
+            }
+        }
+    except Exception as e:
+        logging.error(f"Dashboard analytics error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch analytics: {str(e)}")
+
+
+@api_router.get("/analytics/revenue-trend")
+async def get_revenue_trend(
+    months: int = 6,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get monthly revenue trend for the last N months"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        now = get_ist_now()
+        trends = []
+        
+        for i in range(months - 1, -1, -1):
+            # Calculate month start and end
+            target_date = now - timedelta(days=30 * i)
+            month_start = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            if month_start.month == 12:
+                month_end = month_start.replace(year=month_start.year + 1, month=1)
+            else:
+                month_end = month_start.replace(month=month_start.month + 1)
+            
+            # Get revenue for this month
+            pipeline = [
+                {"$match": {
+                    "status": "approved",
+                    "created_at": {
+                        "$gte": month_start.replace(tzinfo=None),
+                        "$lt": month_end.replace(tzinfo=None)
+                    }
+                }},
+                {"$group": {"_id": None, "total": {"$sum": "$total_price"}}}
+            ]
+            result = await db.quotes.aggregate(pipeline).to_list(1)
+            revenue = result[0]["total"] if result else 0
+            
+            # Get quote count for this month
+            quote_count = await db.quotes.count_documents({
+                "created_at": {
+                    "$gte": month_start.replace(tzinfo=None),
+                    "$lt": month_end.replace(tzinfo=None)
+                }
+            })
+            
+            trends.append({
+                "month": month_start.strftime("%b"),
+                "year": month_start.year,
+                "revenue": round(revenue, 2),
+                "quotes": quote_count
+            })
+        
+        return {"trends": trends}
+    except Exception as e:
+        logging.error(f"Revenue trend error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch revenue trend: {str(e)}")
+
+
+@api_router.get("/analytics/top-customers")
+async def get_top_customers(
+    limit: int = 5,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get top customers by revenue"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        pipeline = [
+            {"$match": {"status": "approved"}},
+            {"$group": {
+                "_id": "$customer_id",
+                "total_revenue": {"$sum": "$total_price"},
+                "quote_count": {"$sum": 1},
+                "customer_name": {"$first": "$customer_name"},
+                "company": {"$first": "$company"}
+            }},
+            {"$sort": {"total_revenue": -1}},
+            {"$limit": limit}
+        ]
+        
+        results = await db.quotes.aggregate(pipeline).to_list(limit)
+        
+        customers = []
+        for r in results:
+            customers.append({
+                "customer_id": r["_id"],
+                "customer_name": r.get("customer_name", "Unknown"),
+                "company": r.get("company", "N/A"),
+                "total_revenue": round(r["total_revenue"], 2),
+                "quote_count": r["quote_count"]
+            })
+        
+        return {"top_customers": customers}
+    except Exception as e:
+        logging.error(f"Top customers error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch top customers: {str(e)}")
+
+
+@api_router.get("/analytics/quote-status")
+async def get_quote_status_distribution(current_user: dict = Depends(get_current_user)):
+    """Get distribution of quotes by status"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        pipeline = [
+            {"$group": {
+                "_id": {"$ifNull": ["$status", "pending"]},
+                "count": {"$sum": 1}
+            }}
+        ]
+        
+        results = await db.quotes.aggregate(pipeline).to_list(10)
+        
+        distribution = {}
+        for r in results:
+            status = r["_id"] if r["_id"] else "pending"
+            distribution[status] = r["count"]
+        
+        # Ensure both statuses exist
+        if "approved" not in distribution:
+            distribution["approved"] = 0
+        if "pending" not in distribution:
+            distribution["pending"] = 0
+            
+        return {"distribution": distribution}
+    except Exception as e:
+        logging.error(f"Quote status error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch quote status: {str(e)}")
+
+
+@api_router.get("/analytics/recent-activity")
+async def get_recent_activity(
+    limit: int = 10,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get recent quotes and customer activity"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        # Recent quotes
+        recent_quotes = await db.quotes.find(
+            {},
+            {"_id": 0, "quote_number": 1, "customer_name": 1, "company": 1, 
+             "total_price": 1, "status": 1, "created_at": 1}
+        ).sort("created_at", -1).limit(limit).to_list(limit)
+        
+        # Format dates
+        for quote in recent_quotes:
+            if quote.get("created_at"):
+                quote["created_at"] = quote["created_at"].isoformat()
+        
+        # Recent customers
+        recent_customers = await db.users.find(
+            {"role": "customer"},
+            {"_id": 0, "name": 1, "email": 1, "company": 1, "created_at": 1}
+        ).sort("created_at", -1).limit(5).to_list(5)
+        
+        # Format dates
+        for customer in recent_customers:
+            if customer.get("created_at"):
+                customer["created_at"] = customer["created_at"].isoformat()
+        
+        return {
+            "recent_quotes": recent_quotes,
+            "recent_customers": recent_customers
+        }
+    except Exception as e:
+        logging.error(f"Recent activity error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch recent activity: {str(e)}")
+
+
+@api_router.get("/analytics/roller-type-distribution")
+async def get_roller_type_distribution(current_user: dict = Depends(get_current_user)):
+    """Get distribution of roller types in quotes"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        pipeline = [
+            {"$unwind": "$products"},
+            {"$group": {
+                "_id": "$products.roller_type",
+                "count": {"$sum": 1},
+                "total_value": {"$sum": "$products.price"}
+            }},
+            {"$sort": {"count": -1}}
+        ]
+        
+        results = await db.quotes.aggregate(pipeline).to_list(10)
+        
+        distribution = []
+        for r in results:
+            if r["_id"]:
+                distribution.append({
+                    "roller_type": r["_id"],
+                    "count": r["count"],
+                    "total_value": round(r.get("total_value", 0), 2)
+                })
+        
+        return {"distribution": distribution}
+    except Exception as e:
+        logging.error(f"Roller type distribution error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch roller type distribution: {str(e)}")
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
