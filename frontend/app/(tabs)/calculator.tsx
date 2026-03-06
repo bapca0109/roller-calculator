@@ -192,7 +192,7 @@ export default function CalculatorScreen() {
   const [freightPincode, setFreightPincode] = useState<string>('');
   
   // Shaft end type state
-  const [shaftEndType, setShaftEndType] = useState<string>('B');
+  const [shaftEndType, setShaftEndType] = useState<string>('A');
   const [customShaftExtension, setCustomShaftExtension] = useState<string>('');
   
   // Custom discount state

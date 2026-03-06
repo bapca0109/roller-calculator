@@ -21,7 +21,10 @@ export default function ProfileScreen() {
       // Use the logout function from AuthContext
       await logout();
       // Navigate to login using expo-router (works on all platforms)
-      router.replace('/auth/login');
+      // Use setTimeout to ensure state updates complete before navigation
+      setTimeout(() => {
+        router.replace('/auth/login');
+      }, 100);
     } catch (error) {
       console.error('Logout error:', error);
       Alert.alert('Error', 'Failed to logout. Please try again.');
