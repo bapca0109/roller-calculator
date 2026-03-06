@@ -27,6 +27,12 @@ interface QuoteProduct {
   unit_price: number;
   specifications?: any;
   calculated_discount?: number;
+  remark?: string;
+  attachments?: Array<{
+    name: string;
+    type: string;
+    base64?: string;
+  }>;
 }
 
 interface Quote {
@@ -839,6 +845,13 @@ export default function QuotesScreen() {
                             )}
                           </View>
                         )}
+                        {/* Product Remark */}
+                        {product.remark && (
+                          <View style={styles.remarkContainer}>
+                            <Ionicons name="chatbubble-outline" size={14} color="#64748B" />
+                            <Text style={styles.remarkText}>{product.remark}</Text>
+                          </View>
+                        )}
                       </View>
                     ))}
                   </View>
@@ -1410,6 +1423,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
+  },
+  remarkContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+  },
+  remarkText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400E',
+    lineHeight: 18,
   },
   pricingRow: {
     flexDirection: 'row',

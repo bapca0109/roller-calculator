@@ -162,6 +162,9 @@ export default function CalculatorScreen() {
   const [currentAttachments, setCurrentAttachments] = useState<Attachment[]>([]);
   const [itemAttachments, setItemAttachments] = useState<{[key: number]: Attachment[]}>({});
   
+  // Product remark state
+  const [productRemark, setProductRemark] = useState<string>('');
+  
   // Customer selection state
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
@@ -833,10 +836,11 @@ export default function CalculatorScreen() {
   const addToQuote = () => {
     if (!result) return;
     
-    // Add attachments to the result (same as customer flow)
+    // Add attachments and remark to the result
     const itemWithAttachments = {
       ...result,
       attachments: currentAttachments,
+      remark: productRemark.trim() || null,
     };
     
     // Store attachments by index
@@ -848,8 +852,9 @@ export default function CalculatorScreen() {
     // Add to quote items
     setQuoteItems([...quoteItems, itemWithAttachments]);
     
-    // Clear current attachments for next item
+    // Clear current attachments and remark for next item
     setCurrentAttachments([]);
+    setProductRemark('');
     
     // Show popup for admin to add more or submit
     setShowQuotePopup(true);
@@ -893,6 +898,8 @@ export default function CalculatorScreen() {
         },
         calculated_discount: item.pricing.discount_amount,
         custom_premium: 0,
+        // Include remark for this product
+        remark: item.remark || null,
         // Include attachments with base64 data
         attachments: item.attachments?.map((att: Attachment) => ({
           name: att.name,
@@ -1164,6 +1171,18 @@ export default function CalculatorScreen() {
             options={PACKING_TYPES.map((type) => ({ label: type.label, value: type.value }))}
             placeholder="Select packing type"
           />
+
+          {/* Product Remark */}
+          <Text style={styles.label}>Remark (Optional)</Text>
+          <TextInput
+            style={[styles.input, styles.remarkInput]}
+            value={productRemark}
+            onChangeText={setProductRemark}
+            placeholder="Add specific comment or requirement for this product"
+            multiline={true}
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
         </View>
 
         {/* Freight */}
@@ -1241,10 +1260,11 @@ export default function CalculatorScreen() {
               // For customers: calculate, add to cart with attachments, and show popup
               const calcResult = await calculateCost();
               if (calcResult) {
-                // Add attachments to the result
+                // Add attachments and remark to the result
                 const itemWithAttachments = {
                   ...calcResult,
                   attachments: currentAttachments,
+                  remark: productRemark.trim() || null,
                 };
                 // Add the calculated item directly to quote items
                 setQuoteItems([...quoteItems, itemWithAttachments]);
@@ -1253,8 +1273,9 @@ export default function CalculatorScreen() {
                   ...itemAttachments,
                   [quoteItems.length]: currentAttachments
                 });
-                // Clear current attachments for next item
+                // Clear current attachments and remark for next item
                 setCurrentAttachments([]);
+                setProductRemark('');
                 setShowRfqPopup(true);
                 setResult(null); // Don't show result section
               }
@@ -2150,6 +2171,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#FFFFFF',
     color: '#0F172A',
+  },
+  remarkInput: {
+    minHeight: 80,
+    paddingTop: 12,
   },
   inputError: {
     borderColor: '#EF4444',

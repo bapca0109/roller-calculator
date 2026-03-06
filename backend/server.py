@@ -248,6 +248,7 @@ class QuoteProduct(BaseModel):
     specifications: Optional[Dict[str, Any]] = None
     calculated_discount: float = 0.0  # Quantity discount applied
     custom_premium: float = 0.0  # Premium for custom specs
+    remark: Optional[str] = None  # Customer remark for this product
     attachments: Optional[List[ProductAttachment]] = []
 
 class QuoteStatus:
