@@ -65,6 +65,9 @@ interface Quote {
   pricing_details?: any;
   freight_details?: any;
   read_by_admin?: boolean;
+  original_rfq_number?: string;
+  approved_at?: string;
+  approved_by?: string;
   created_at: string;
   created_at_ist?: string;
   updated_at: string;
@@ -574,6 +577,12 @@ export default function QuotesScreen() {
             color: #666;
             margin-top: 2px;
           }
+          .doc-ref {
+            font-size: 10px;
+            color: #0066cc;
+            margin-top: 3px;
+            font-weight: 500;
+          }
           
           /* Info Boxes */
           .info-section {
@@ -797,6 +806,7 @@ export default function QuotesScreen() {
           <div class="doc-type">
             <div class="doc-title">${pdfDocLabelFull}</div>
             <div class="doc-number">${quote.quote_number || `#${quote.id.slice(-6).toUpperCase()}`}</div>
+            ${quote.original_rfq_number ? `<div class="doc-ref">Ref: ${quote.original_rfq_number}</div>` : ''}
             <div class="doc-date">${quote.created_at_ist || formatDate(quote.created_at)}</div>
           </div>
         </div>
@@ -1064,6 +1074,9 @@ export default function QuotesScreen() {
               <View style={styles.unreadDot} />
             )}
             <Text style={[styles.quoteId, isUnread && styles.unreadQuoteId]}>{item.quote_number || `${docLabel} #${item.id.slice(-6).toUpperCase()}`}</Text>
+            {item.original_rfq_number && (
+              <Text style={styles.rfqRefInCard}>({item.original_rfq_number})</Text>
+            )}
           </View>
           <Text style={styles.quoteDate}>{item.created_at_ist || formatDate(item.created_at)}</Text>
         </View>
@@ -1271,9 +1284,14 @@ export default function QuotesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {selectedQuote?.quote_number || `${docLabel} #${selectedQuote?.id.slice(-6).toUpperCase()}`}
-              </Text>
+              <View>
+                <Text style={styles.modalTitle}>
+                  {selectedQuote?.quote_number || `${docLabel} #${selectedQuote?.id.slice(-6).toUpperCase()}`}
+                </Text>
+                {selectedQuote?.original_rfq_number && (
+                  <Text style={styles.rfqReference}>Ref: {selectedQuote.original_rfq_number}</Text>
+                )}
+              </View>
               <TouchableOpacity onPress={() => setSelectedQuote(null)}>
                 <Ionicons name="close" size={28} color="#333" />
               </TouchableOpacity>
@@ -1738,6 +1756,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexWrap: 'wrap',
+  },
+  rfqRefInCard: {
+    fontSize: 11,
+    color: '#0066cc',
+    fontWeight: '500',
   },
   unreadDot: {
     width: 10,
@@ -1871,6 +1895,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#960018',
+  },
+  rfqReference: {
+    fontSize: 12,
+    color: '#0066cc',
+    marginTop: 2,
+    fontWeight: '500',
   },
   modalScroll: {
     padding: 16,

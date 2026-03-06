@@ -76,6 +76,12 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Completed Work
 
 ### March 6, 2026 (Latest Session)
+- **RFQ Traceability in Quotes** - COMPLETED
+  - Added original RFQ number reference in Quote PDF (e.g., "Ref: RFQ/25-26/0045")
+  - RFQ reference shown in quote detail modal
+  - RFQ reference displayed in quote card list view (in blue)
+  - Enables tracking which RFQ was converted to which Quote
+
 - **Professional Quote PDF Redesign** - COMPLETED
   - Clean, minimalist design with modern typography
   - Header: Logo, Document type, Quote number, Date
