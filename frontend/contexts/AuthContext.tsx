@@ -1,6 +1,11 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState, AppStateStatus } from 'react-native';
 import api from '../utils/api';
+
+// Auto-logout after 7 days of inactivity (in milliseconds)
+const INACTIVITY_TIMEOUT_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const LAST_ACTIVITY_KEY = 'last_activity_timestamp';
 
 interface User {
   id: string;
@@ -19,6 +24,7 @@ interface AuthContextType {
   register: (email: string, password: string, name: string, company?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateLastActivity: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,6 +40,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(!!newUser);
   }, []);
 
+  // Update last activity timestamp
+  const updateLastActivity = async () => {
+    try {
+      await AsyncStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+    } catch (error) {
+      console.error('[AuthContext] Error updating last activity:', error);
+    }
+  };
+
+  // Check if session has expired due to inactivity
+  const checkInactivityTimeout = async (): Promise<boolean> => {
+    try {
+      const lastActivity = await AsyncStorage.getItem(LAST_ACTIVITY_KEY);
+      if (!lastActivity) {
+        // No last activity recorded, session is valid
+        return false;
+      }
+
+      const lastActivityTime = parseInt(lastActivity, 10);
+      const currentTime = Date.now();
+      const timeSinceLastActivity = currentTime - lastActivityTime;
+
+      if (timeSinceLastActivity > INACTIVITY_TIMEOUT_MS) {
+        console.log('[AuthContext] Session expired due to inactivity (7 days)');
+        return true; // Session expired
+      }
+
+      return false; // Session still valid
+    } catch (error) {
+      console.error('[AuthContext] Error checking inactivity timeout:', error);
+      return false;
+    }
+  };
+
+  // Handle app state changes (foreground/background)
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active' && isAuthenticated) {
+        // App came to foreground, check inactivity
+        const expired = await checkInactivityTimeout();
+        if (expired) {
+          await logout();
+        } else {
+          // Update last activity when app becomes active
+          await updateLastActivity();
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, [isAuthenticated]);
+
   useEffect(() => {
     loadUser();
   }, []);
@@ -47,10 +106,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[AuthContext] Token exists:', !!token, 'UserData exists:', !!userData);
       
       if (token && userData) {
-        const parsedUser = JSON.parse(userData);
-        console.log('[AuthContext] User loaded:', parsedUser.email, 'Role:', parsedUser.role);
-        setUserState(parsedUser);
-        setIsAuthenticated(true);
+        // Check if session expired due to inactivity
+        const expired = await checkInactivityTimeout();
+        if (expired) {
+          console.log('[AuthContext] Auto-logout: 7 days of inactivity');
+          await AsyncStorage.removeItem('token');
+          await AsyncStorage.removeItem('user');
+          await AsyncStorage.removeItem(LAST_ACTIVITY_KEY);
+          setUserState(null);
+          setIsAuthenticated(false);
+        } else {
+          const parsedUser = JSON.parse(userData);
+          console.log('[AuthContext] User loaded:', parsedUser.email, 'Role:', parsedUser.role);
+          setUserState(parsedUser);
+          setIsAuthenticated(true);
+          // Update last activity on successful load
+          await updateLastActivity();
+        }
       } else {
         console.log('[AuthContext] No stored session found');
         setUserState(null);
@@ -73,6 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const parsedUser = JSON.parse(userData);
       setUserState(parsedUser);
       setIsAuthenticated(true);
+      await updateLastActivity();
     }
   };
 
@@ -84,6 +157,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       await AsyncStorage.setItem('token', access_token);
       await AsyncStorage.setItem('user', JSON.stringify(userData));
+      // Set last activity on login
+      await updateLastActivity();
       
       console.log('[AuthContext] Login successful, user role:', userData.role);
       setUserState(userData);
@@ -108,6 +183,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       await AsyncStorage.setItem('token', access_token);
       await AsyncStorage.setItem('user', JSON.stringify(userData));
+      // Set last activity on registration
+      await updateLastActivity();
       
       console.log('[AuthContext] Registration successful, user role:', userData.role);
       setUserState(userData);
@@ -122,13 +199,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('[AuthContext] Logging out...');
     await AsyncStorage.removeItem('token');
     await AsyncStorage.removeItem('user');
+    await AsyncStorage.removeItem(LAST_ACTIVITY_KEY);
     setUserState(null);
     setIsAuthenticated(false);
     console.log('[AuthContext] Logout complete');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated, setUser, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated, setUser, login, register, logout, refreshUser, updateLastActivity }}>
       {children}
     </AuthContext.Provider>
   );
