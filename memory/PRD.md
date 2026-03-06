@@ -76,6 +76,13 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Completed Work
 
 ### March 6, 2026 (Latest Session)
+- **Dashboard Export to PDF/Excel** - COMPLETED
+  - Added PDF and Excel export buttons to Dashboard header
+  - PDF report: Summary metrics, Top Customers table, Recent Quotes table
+  - Excel report: 4 sheets (Summary, Top Customers, Recent Quotes, Roller Types)
+  - Professional formatting with company branding (Carmine Red theme)
+  - Download functionality working on web
+
 - **Dashboard & Analytics** - COMPLETED
   - Created new Dashboard tab (admin-only)
   - Summary cards: Total Revenue, Total Quotes, Customers, Conversion Rate

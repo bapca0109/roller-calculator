@@ -24,6 +24,9 @@ import base64
 import zipfile
 import io
 import tempfile
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -3872,6 +3875,389 @@ async def get_roller_type_distribution(current_user: dict = Depends(get_current_
     except Exception as e:
         logging.error(f"Roller type distribution error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch roller type distribution: {str(e)}")
+
+
+@api_router.get("/analytics/export/excel")
+async def export_analytics_excel(current_user: dict = Depends(get_current_user)):
+    """Export dashboard analytics to Excel file"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        # Fetch all analytics data
+        now = get_ist_now()
+        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        # Summary stats
+        total_quotes = await db.quotes.count_documents({})
+        approved_quotes = await db.quotes.count_documents({"status": "approved"})
+        pending_rfqs = await db.quotes.count_documents({"status": {"$ne": "approved"}})
+        total_customers = await db.users.count_documents({"role": "customer"})
+        
+        revenue_pipeline = [
+            {"$match": {"status": "approved"}},
+            {"$group": {"_id": None, "total": {"$sum": "$total_price"}}}
+        ]
+        revenue_result = await db.quotes.aggregate(revenue_pipeline).to_list(1)
+        total_revenue = revenue_result[0]["total"] if revenue_result else 0
+        
+        # Top customers
+        top_customers_pipeline = [
+            {"$match": {"status": "approved"}},
+            {"$group": {
+                "_id": "$customer_id",
+                "total_revenue": {"$sum": "$total_price"},
+                "quote_count": {"$sum": 1},
+                "customer_name": {"$first": "$customer_name"},
+                "company": {"$first": "$company"}
+            }},
+            {"$sort": {"total_revenue": -1}},
+            {"$limit": 10}
+        ]
+        top_customers = await db.quotes.aggregate(top_customers_pipeline).to_list(10)
+        
+        # Recent quotes
+        recent_quotes = await db.quotes.find(
+            {},
+            {"_id": 0, "quote_number": 1, "customer_name": 1, "company": 1, 
+             "total_price": 1, "status": 1, "created_at": 1}
+        ).sort("created_at", -1).limit(20).to_list(20)
+        
+        # Roller type distribution
+        roller_pipeline = [
+            {"$unwind": "$products"},
+            {"$group": {
+                "_id": "$products.roller_type",
+                "count": {"$sum": 1},
+                "total_value": {"$sum": "$products.price"}
+            }},
+            {"$sort": {"count": -1}}
+        ]
+        roller_types = await db.quotes.aggregate(roller_pipeline).to_list(10)
+        
+        # Create Excel workbook
+        wb = Workbook()
+        
+        # Define styles
+        header_font = Font(bold=True, color="FFFFFF", size=12)
+        header_fill = PatternFill(start_color="960018", end_color="960018", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center")
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        
+        # Sheet 1: Summary
+        ws_summary = wb.active
+        ws_summary.title = "Summary"
+        
+        summary_data = [
+            ["Dashboard Analytics Report", ""],
+            ["Generated on", now.strftime("%d %b %Y, %I:%M %p IST")],
+            ["", ""],
+            ["Metric", "Value"],
+            ["Total Revenue", f"₹{total_revenue:,.2f}"],
+            ["Total Quotes", total_quotes],
+            ["Approved Quotes", approved_quotes],
+            ["Pending RFQs", pending_rfqs],
+            ["Total Customers", total_customers],
+            ["Conversion Rate", f"{(approved_quotes/total_quotes*100) if total_quotes > 0 else 0:.1f}%"],
+            ["Average Quote Value", f"₹{(total_revenue/approved_quotes) if approved_quotes > 0 else 0:,.2f}"],
+        ]
+        
+        for row_idx, row_data in enumerate(summary_data, 1):
+            for col_idx, value in enumerate(row_data, 1):
+                cell = ws_summary.cell(row=row_idx, column=col_idx, value=value)
+                if row_idx == 1:
+                    cell.font = Font(bold=True, size=16, color="960018")
+                elif row_idx == 4:
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = header_alignment
+                cell.border = thin_border
+        
+        ws_summary.column_dimensions['A'].width = 25
+        ws_summary.column_dimensions['B'].width = 25
+        
+        # Sheet 2: Top Customers
+        ws_customers = wb.create_sheet("Top Customers")
+        customer_headers = ["Rank", "Customer Name", "Company", "Total Revenue", "Quote Count"]
+        
+        for col_idx, header in enumerate(customer_headers, 1):
+            cell = ws_customers.cell(row=1, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+        
+        for row_idx, customer in enumerate(top_customers, 2):
+            ws_customers.cell(row=row_idx, column=1, value=row_idx-1).border = thin_border
+            ws_customers.cell(row=row_idx, column=2, value=customer.get("customer_name", "Unknown")).border = thin_border
+            ws_customers.cell(row=row_idx, column=3, value=customer.get("company", "N/A")).border = thin_border
+            ws_customers.cell(row=row_idx, column=4, value=f"₹{customer['total_revenue']:,.2f}").border = thin_border
+            ws_customers.cell(row=row_idx, column=5, value=customer["quote_count"]).border = thin_border
+        
+        for col_idx in range(1, 6):
+            ws_customers.column_dimensions[get_column_letter(col_idx)].width = 20
+        
+        # Sheet 3: Recent Quotes
+        ws_quotes = wb.create_sheet("Recent Quotes")
+        quote_headers = ["Quote Number", "Customer", "Company", "Total Price", "Status", "Date"]
+        
+        for col_idx, header in enumerate(quote_headers, 1):
+            cell = ws_quotes.cell(row=1, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+        
+        for row_idx, quote in enumerate(recent_quotes, 2):
+            ws_quotes.cell(row=row_idx, column=1, value=quote.get("quote_number", "")).border = thin_border
+            ws_quotes.cell(row=row_idx, column=2, value=quote.get("customer_name", "")).border = thin_border
+            ws_quotes.cell(row=row_idx, column=3, value=quote.get("company", "")).border = thin_border
+            ws_quotes.cell(row=row_idx, column=4, value=f"₹{quote.get('total_price', 0):,.2f}").border = thin_border
+            ws_quotes.cell(row=row_idx, column=5, value=quote.get("status", "pending").title()).border = thin_border
+            created_at = quote.get("created_at")
+            date_str = created_at.strftime("%d %b %Y") if created_at else ""
+            ws_quotes.cell(row=row_idx, column=6, value=date_str).border = thin_border
+        
+        for col_idx in range(1, 7):
+            ws_quotes.column_dimensions[get_column_letter(col_idx)].width = 18
+        
+        # Sheet 4: Roller Type Distribution
+        ws_rollers = wb.create_sheet("Roller Types")
+        roller_headers = ["Roller Type", "Count", "Total Value"]
+        
+        for col_idx, header in enumerate(roller_headers, 1):
+            cell = ws_rollers.cell(row=1, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+        
+        for row_idx, roller in enumerate(roller_types, 2):
+            if roller["_id"]:
+                ws_rollers.cell(row=row_idx, column=1, value=roller["_id"]).border = thin_border
+                ws_rollers.cell(row=row_idx, column=2, value=roller["count"]).border = thin_border
+                ws_rollers.cell(row=row_idx, column=3, value=f"₹{roller.get('total_value', 0):,.2f}").border = thin_border
+        
+        for col_idx in range(1, 4):
+            ws_rollers.column_dimensions[get_column_letter(col_idx)].width = 20
+        
+        # Save to bytes
+        excel_buffer = io.BytesIO()
+        wb.save(excel_buffer)
+        excel_buffer.seek(0)
+        
+        filename = f"Dashboard_Report_{now.strftime('%Y%m%d_%H%M')}.xlsx"
+        
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except Exception as e:
+        logging.error(f"Excel export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to export Excel: {str(e)}")
+
+
+@api_router.get("/analytics/export/pdf")
+async def export_analytics_pdf(current_user: dict = Depends(get_current_user)):
+    """Export dashboard analytics to PDF file"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        from fpdf import FPDF
+        
+        # Fetch all analytics data
+        now = get_ist_now()
+        
+        # Summary stats
+        total_quotes = await db.quotes.count_documents({})
+        approved_quotes = await db.quotes.count_documents({"status": "approved"})
+        pending_rfqs = await db.quotes.count_documents({"status": {"$ne": "approved"}})
+        total_customers = await db.users.count_documents({"role": "customer"})
+        
+        revenue_pipeline = [
+            {"$match": {"status": "approved"}},
+            {"$group": {"_id": None, "total": {"$sum": "$total_price"}}}
+        ]
+        revenue_result = await db.quotes.aggregate(revenue_pipeline).to_list(1)
+        total_revenue = revenue_result[0]["total"] if revenue_result else 0
+        
+        # Top customers
+        top_customers_pipeline = [
+            {"$match": {"status": "approved"}},
+            {"$group": {
+                "_id": "$customer_id",
+                "total_revenue": {"$sum": "$total_price"},
+                "quote_count": {"$sum": 1},
+                "customer_name": {"$first": "$customer_name"},
+                "company": {"$first": "$company"}
+            }},
+            {"$sort": {"total_revenue": -1}},
+            {"$limit": 5}
+        ]
+        top_customers = await db.quotes.aggregate(top_customers_pipeline).to_list(5)
+        
+        # Recent quotes
+        recent_quotes = await db.quotes.find(
+            {},
+            {"_id": 0, "quote_number": 1, "customer_name": 1, "total_price": 1, "status": 1, "created_at": 1}
+        ).sort("created_at", -1).limit(10).to_list(10)
+        
+        # Create PDF
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        
+        # Header
+        pdf.set_fill_color(150, 0, 24)  # Carmine Red
+        pdf.rect(0, 0, 210, 35, 'F')
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font('Helvetica', 'B', 20)
+        pdf.set_xy(10, 10)
+        pdf.cell(0, 10, 'Dashboard Analytics Report', align='C')
+        pdf.set_font('Helvetica', '', 10)
+        pdf.set_xy(10, 22)
+        pdf.cell(0, 8, f'Generated on {now.strftime("%d %b %Y, %I:%M %p IST")}', align='C')
+        
+        # Reset text color
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_y(45)
+        
+        # Summary Section
+        pdf.set_font('Helvetica', 'B', 14)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.cell(0, 10, 'Summary', fill=True, ln=True)
+        pdf.ln(5)
+        
+        # Summary metrics in a grid
+        pdf.set_font('Helvetica', '', 11)
+        col_width = 95
+        
+        def format_currency(val):
+            if val >= 10000000:
+                return f"Rs. {val/10000000:.2f} Cr"
+            elif val >= 100000:
+                return f"Rs. {val/100000:.2f} L"
+            return f"Rs. {val:,.2f}"
+        
+        metrics = [
+            ("Total Revenue", format_currency(total_revenue)),
+            ("Total Quotes", str(total_quotes)),
+            ("Approved Quotes", str(approved_quotes)),
+            ("Pending RFQs", str(pending_rfqs)),
+            ("Total Customers", str(total_customers)),
+            ("Conversion Rate", f"{(approved_quotes/total_quotes*100) if total_quotes > 0 else 0:.1f}%"),
+        ]
+        
+        for i, (label, value) in enumerate(metrics):
+            if i % 2 == 0:
+                x = 10
+            else:
+                x = 105
+            
+            pdf.set_x(x)
+            pdf.set_font('Helvetica', '', 10)
+            pdf.set_text_color(100, 100, 100)
+            pdf.cell(col_width, 6, label)
+            
+            if i % 2 == 1:
+                pdf.ln()
+            
+            pdf.set_x(x)
+            pdf.set_font('Helvetica', 'B', 12)
+            pdf.set_text_color(0, 0, 0)
+            pdf.cell(col_width, 8, value)
+            
+            if i % 2 == 1:
+                pdf.ln(5)
+        
+        pdf.ln(10)
+        
+        # Top Customers Section
+        pdf.set_font('Helvetica', 'B', 14)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.cell(0, 10, 'Top Customers by Revenue', fill=True, ln=True)
+        pdf.ln(3)
+        
+        # Table header
+        pdf.set_font('Helvetica', 'B', 10)
+        pdf.set_fill_color(150, 0, 24)
+        pdf.set_text_color(255, 255, 255)
+        pdf.cell(10, 8, '#', border=1, fill=True, align='C')
+        pdf.cell(60, 8, 'Customer', border=1, fill=True, align='C')
+        pdf.cell(60, 8, 'Company', border=1, fill=True, align='C')
+        pdf.cell(40, 8, 'Revenue', border=1, fill=True, align='C')
+        pdf.cell(20, 8, 'Quotes', border=1, fill=True, align='C')
+        pdf.ln()
+        
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font('Helvetica', '', 9)
+        for idx, customer in enumerate(top_customers, 1):
+            pdf.cell(10, 7, str(idx), border=1, align='C')
+            pdf.cell(60, 7, customer.get("customer_name", "Unknown")[:25], border=1)
+            pdf.cell(60, 7, (customer.get("company", "N/A") or "N/A")[:25], border=1)
+            pdf.cell(40, 7, f"Rs. {customer['total_revenue']:,.0f}", border=1, align='R')
+            pdf.cell(20, 7, str(customer["quote_count"]), border=1, align='C')
+            pdf.ln()
+        
+        pdf.ln(10)
+        
+        # Recent Quotes Section
+        pdf.set_font('Helvetica', 'B', 14)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.cell(0, 10, 'Recent Quotes', fill=True, ln=True)
+        pdf.ln(3)
+        
+        # Table header
+        pdf.set_font('Helvetica', 'B', 10)
+        pdf.set_fill_color(150, 0, 24)
+        pdf.set_text_color(255, 255, 255)
+        pdf.cell(40, 8, 'Quote #', border=1, fill=True, align='C')
+        pdf.cell(50, 8, 'Customer', border=1, fill=True, align='C')
+        pdf.cell(40, 8, 'Amount', border=1, fill=True, align='C')
+        pdf.cell(30, 8, 'Status', border=1, fill=True, align='C')
+        pdf.cell(30, 8, 'Date', border=1, fill=True, align='C')
+        pdf.ln()
+        
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font('Helvetica', '', 9)
+        for quote in recent_quotes:
+            pdf.cell(40, 7, quote.get("quote_number", "")[:15], border=1)
+            pdf.cell(50, 7, (quote.get("customer_name", "")[:20]), border=1)
+            pdf.cell(40, 7, f"Rs. {quote.get('total_price', 0):,.0f}", border=1, align='R')
+            status = quote.get("status", "pending").title()
+            pdf.cell(30, 7, status, border=1, align='C')
+            created_at = quote.get("created_at")
+            date_str = created_at.strftime("%d %b") if created_at else ""
+            pdf.cell(30, 7, date_str, border=1, align='C')
+            pdf.ln()
+        
+        # Footer
+        pdf.set_y(-20)
+        pdf.set_font('Helvetica', 'I', 8)
+        pdf.set_text_color(128, 128, 128)
+        pdf.cell(0, 10, 'Convero Solutions - Roller Price Calculator', align='C')
+        
+        # Output PDF
+        pdf_bytes = pdf.output()
+        filename = f"Dashboard_Report_{now.strftime('%Y%m%d_%H%M')}.pdf"
+        
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except Exception as e:
+        logging.error(f"PDF export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to export PDF: {str(e)}")
 
 
 # Include the router in the main app

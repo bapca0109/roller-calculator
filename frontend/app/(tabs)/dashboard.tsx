@@ -8,11 +8,14 @@ import {
   Dimensions,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -63,6 +66,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [revenueTrend, setRevenueTrend] = useState<RevenueTrend[]>([]);
   const [topCustomers, setTopCustomers] = useState<TopCustomer[]>([]);
@@ -109,6 +113,51 @@ export default function Dashboard() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchDashboardData();
+  };
+
+  const handleExport = async (format: 'pdf' | 'excel') => {
+    setExporting(format);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const endpoint = format === 'pdf' ? '/analytics/export/pdf' : '/analytics/export/excel';
+      
+      const response = await fetch(`${api.defaults.baseURL}${endpoint}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      const blob = await response.blob();
+      const filename = format === 'pdf' 
+        ? `Dashboard_Report_${new Date().toISOString().slice(0,10)}.pdf`
+        : `Dashboard_Report_${new Date().toISOString().slice(0,10)}.xlsx`;
+
+      if (Platform.OS === 'web') {
+        // Web: Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        Alert.alert('Success', `${format.toUpperCase()} report downloaded successfully!`);
+      } else {
+        // Mobile: Use sharing
+        Alert.alert('Export', `${format.toUpperCase()} export is available on web. For mobile, please use the web version.`);
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      Alert.alert('Error', `Failed to export ${format.toUpperCase()} report`);
+    } finally {
+      setExporting(null);
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -211,8 +260,42 @@ export default function Dashboard() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dashboard</Text>
-        <Text style={styles.headerSubtitle}>Analytics & Insights</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.headerTitle}>Dashboard</Text>
+            <Text style={styles.headerSubtitle}>Analytics & Insights</Text>
+          </View>
+          <View style={styles.exportButtons}>
+            <TouchableOpacity 
+              style={[styles.exportButton, styles.exportPdf]}
+              onPress={() => handleExport('pdf')}
+              disabled={exporting !== null}
+            >
+              {exporting === 'pdf' ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="document-outline" size={16} color="#fff" />
+                  <Text style={styles.exportButtonText}>PDF</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.exportButton, styles.exportExcel]}
+              onPress={() => handleExport('excel')}
+              disabled={exporting !== null}
+            >
+              {exporting === 'excel' ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="grid-outline" size={16} color="#fff" />
+                  <Text style={styles.exportButtonText}>Excel</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
 
       {/* Summary Cards Row 1 */}
@@ -483,6 +566,11 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 20,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   headerTitle: {
     fontSize: 28,
     fontWeight: '800',
@@ -492,6 +580,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     marginTop: 4,
+  },
+  exportButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  exportPdf: {
+    backgroundColor: '#960018',
+  },
+  exportExcel: {
+    backgroundColor: '#217346',
+  },
+  exportButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   cardsRow: {
     flexDirection: 'row',
