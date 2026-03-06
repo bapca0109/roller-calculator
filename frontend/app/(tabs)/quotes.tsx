@@ -83,6 +83,10 @@ export default function QuotesScreen() {
   const [savingRevision, setSavingRevision] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved'>('all');
+  
+  // Approval success popup state
+  const [showApprovalSuccess, setShowApprovalSuccess] = useState(false);
+  const [approvedQuoteNumber, setApprovedQuoteNumber] = useState('');
   const { user, loading: authLoading } = useAuth();
   
   // Check if user is customer - show RFQ terminology
@@ -319,7 +323,9 @@ export default function QuotesScreen() {
       setApprovingId(quote.id);
       try {
         const response = await api.post(`/quotes/${quote.id}/approve`);
-        window.alert(`RFQ Approved!\n\n${quote.quote_number} has been converted to ${response.data.new_quote_number}\n\nApproval email sent to customer.`);
+        // Show success popup instead of window.alert
+        setApprovedQuoteNumber(response.data.new_quote_number || quote.quote_number);
+        setShowApprovalSuccess(true);
         fetchQuotes();
       } catch (error: any) {
         window.alert(`Error: ${error.response?.data?.detail || 'Failed to approve RFQ'}`);
@@ -1020,6 +1026,45 @@ export default function QuotesScreen() {
                 </>
               )}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Approval Success Popup Modal */}
+      <Modal
+        visible={showApprovalSuccess}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowApprovalSuccess(false)}
+      >
+        <View style={styles.successModalOverlay}>
+          <View style={styles.successModalContent}>
+            <View style={styles.successIconContainer}>
+              <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
+            </View>
+            <Text style={styles.successTitle}>Approved & Submitted!</Text>
+            <Text style={styles.successMessage}>
+              RFQ has been converted to Quote
+            </Text>
+            <Text style={styles.successQuoteNumber}>{approvedQuoteNumber}</Text>
+            <Text style={styles.successSubtext}>
+              The customer has been notified via email.
+            </Text>
+            <TouchableOpacity 
+              style={styles.successButton}
+              onPress={() => {
+                setShowApprovalSuccess(false);
+                setActiveTab('approved'); // Switch to approved tab
+              }}
+            >
+              <Text style={styles.successButtonText}>View Approved Quotes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.successCloseButton}
+              onPress={() => setShowApprovalSuccess(false)}
+            >
+              <Text style={styles.successCloseText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1747,5 +1792,83 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#92400E',
     lineHeight: 20,
+  },
+  // Approval Success Modal Styles
+  successModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  successModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 30,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  successIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#4CAF50',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  successQuoteNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#960018',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  successSubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginBottom: 25,
+    textAlign: 'center',
+  },
+  successButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+    width: '100%',
+    marginBottom: 12,
+  },
+  successButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  successCloseButton: {
+    paddingVertical: 10,
+  },
+  successCloseText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
