@@ -1009,6 +1009,190 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         "company": current_user.get("company")
     }
 
+# ============= FORGOT PASSWORD =============
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+
+async def send_password_reset_otp_email(email: str, otp: str, name: str):
+    """Send OTP email for password reset"""
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        raise HTTPException(status_code=500, detail="Email service not configured")
+    
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"Password Reset Code - {otp}"
+        msg['From'] = GMAIL_USER
+        msg['To'] = email
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: #960018; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }}
+                .otp-box {{ background-color: #1E293B; color: white; font-size: 32px; font-weight: bold; letter-spacing: 8px; padding: 20px 40px; text-align: center; border-radius: 8px; margin: 20px 0; }}
+                .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
+                .warning {{ background-color: #FEF3C7; padding: 15px; border-radius: 8px; margin-top: 15px; color: #92400E; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="margin: 0;">Password Reset</h1>
+                    <p style="margin: 5px 0 0 0;">Convero Solutions - Roller Price Calculator</p>
+                </div>
+                <div class="content">
+                    <p>Hello {name},</p>
+                    <p>We received a request to reset your password. Use the code below to reset it:</p>
+                    <div class="otp-box">{otp}</div>
+                    <p>This code will expire in <strong>10 minutes</strong>.</p>
+                    <div class="warning">
+                        <strong>Security Notice:</strong> If you didn't request a password reset, please ignore this email. Your password will remain unchanged.
+                    </div>
+                </div>
+                <div class="footer">
+                    <p>&copy; 2026 Convero Solutions. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        Hello {name},
+        
+        We received a request to reset your password.
+        
+        Your password reset code is: {otp}
+        
+        This code will expire in 10 minutes.
+        
+        If you didn't request a password reset, please ignore this email.
+        
+        - Convero Solutions
+        """
+        
+        part1 = MIMEText(text_content, 'plain')
+        part2 = MIMEText(html_content, 'html')
+        msg.attach(part1)
+        msg.attach(part2)
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            server.sendmail(GMAIL_USER, email, msg.as_string())
+        
+        return True
+    except Exception as e:
+        logging.error(f"Failed to send password reset OTP email: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to send password reset email")
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """Send OTP for password reset"""
+    # Check if user exists
+    user = await db.users.find_one({"email": request.email})
+    if not user:
+        # Don't reveal if email exists or not for security
+        return {
+            "message": "If the email exists, you will receive a password reset code",
+            "email": request.email
+        }
+    
+    # Check cooldown
+    existing_otp = await db.password_reset_otps.find_one({"email": request.email})
+    if existing_otp:
+        last_sent = existing_otp.get("created_at")
+        if last_sent:
+            time_diff = (datetime.utcnow() - last_sent).total_seconds()
+            if time_diff < OTP_COOLDOWN_SECONDS:
+                remaining = int(OTP_COOLDOWN_SECONDS - time_diff)
+                raise HTTPException(
+                    status_code=429, 
+                    detail=f"Please wait {remaining} seconds before requesting a new code"
+                )
+    
+    # Generate OTP
+    otp = generate_otp()
+    
+    # Store OTP
+    otp_data = {
+        "email": request.email,
+        "otp": otp,
+        "created_at": datetime.utcnow(),
+        "expires_at": datetime.utcnow() + timedelta(minutes=OTP_EXPIRY_MINUTES),
+        "used": False
+    }
+    
+    await db.password_reset_otps.replace_one(
+        {"email": request.email},
+        otp_data,
+        upsert=True
+    )
+    
+    # Send OTP email
+    await send_password_reset_otp_email(request.email, otp, user.get("name", "User"))
+    
+    return {
+        "message": "Password reset code sent to your email",
+        "email": request.email,
+        "expires_in_minutes": OTP_EXPIRY_MINUTES
+    }
+
+@api_router.post("/auth/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """Verify OTP and reset password"""
+    # Find OTP record
+    otp_record = await db.password_reset_otps.find_one({"email": request.email})
+    
+    if not otp_record:
+        raise HTTPException(status_code=400, detail="No reset code found. Please request a new one.")
+    
+    # Check if OTP is expired
+    if datetime.utcnow() > otp_record["expires_at"]:
+        await db.password_reset_otps.delete_one({"email": request.email})
+        raise HTTPException(status_code=400, detail="Reset code has expired. Please request a new one.")
+    
+    # Check if OTP was already used
+    if otp_record.get("used"):
+        raise HTTPException(status_code=400, detail="This reset code has already been used.")
+    
+    # Verify OTP
+    if otp_record["otp"] != request.otp:
+        raise HTTPException(status_code=400, detail="Invalid reset code. Please try again.")
+    
+    # Validate new password
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
+    
+    # Update password
+    hashed_password = get_password_hash(request.new_password)
+    result = await db.users.update_one(
+        {"email": request.email},
+        {"$set": {"hashed_password": hashed_password, "updated_at": datetime.utcnow()}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Mark OTP as used and delete it
+    await db.password_reset_otps.delete_one({"email": request.email})
+    
+    logging.info(f"Password reset successful for: {request.email}")
+    
+    return {
+        "message": "Password reset successful. You can now login with your new password.",
+        "success": True
+    }
+
 # ============= PRODUCT ROUTES =============
 
 @api_router.get("/products", response_model=List[ProductInDB])

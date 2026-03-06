@@ -76,11 +76,32 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Completed Work
 
 ### March 6, 2026 (Latest Session)
+- **Forgot Password Feature** - COMPLETED
+  - Added "Forgot Password?" link on login page
+  - Created forgot-password screen with 3-step flow: Email → OTP → Success
+  - Backend endpoints: `/api/auth/forgot-password` and `/api/auth/reset-password`
+  - OTP sent via email with 10-minute expiry
+  - Password reset with validation (min 6 chars)
+  - Cooldown timer for OTP resend (60 seconds)
+
+- **RFQ Tab Rename** - COMPLETED
+  - Changed "Pending RFQ" to "RFQ" in quotes tab
+
+- **iOS/Android Fixes** - COMPLETED  
+  - Fixed approval popup not working (replaced `window.confirm` with `Alert.alert`)
+  - Fixed logout crash (added navigation delay)
+  - Shaft end type now defaults to 'A'
+
+- **Auto-logout Feature** - COMPLETED
+  - Customers auto-logout after 7 days of inactivity
+  - Activity tracking stored in AsyncStorage
+  - Checked on app load and when app returns from background
+
 - **RFQ Approval Success Popup** - COMPLETED
   - Added success popup modal that appears when admin clicks "Approve & Generate Quote"
   - Popup displays: green checkmark, "Approved & Submitted!" title, new quote number, "View Approved Quotes" button
   - Clicking "View Approved Quotes" automatically switches to the Approved tab
-  - Approved RFQs are automatically moved from "Pending RFQ" tab to "Approved" tab
+  - Approved RFQs are automatically moved from "RFQ" tab to "Approved" tab
   - Testing agent verified 100% success rate across all 7 test scenarios
 
 ### March 2, 2026 (Previous Session)
