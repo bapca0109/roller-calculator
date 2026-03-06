@@ -30,6 +30,15 @@ interface Customer {
   customer_type?: string;
 }
 
+interface Quote {
+  id: string;
+  quote_number: string;
+  status: string;
+  total_price: number;
+  created_at: string;
+  products?: any[];
+}
+
 interface GSTCaptcha {
   session_id: string;
   captcha_image: string;
@@ -76,6 +85,12 @@ export default function CustomersScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'registered' | 'quoted'>('all');
   
+  // Customer Quotes Modal state
+  const [quotesModalVisible, setQuotesModalVisible] = useState(false);
+  const [selectedCustomerForQuotes, setSelectedCustomerForQuotes] = useState<Customer | null>(null);
+  const [customerQuotes, setCustomerQuotes] = useState<Quote[]>([]);
+  const [quotesLoading, setQuotesLoading] = useState(false);
+  
   // GST Lookup state
   const [gstModalVisible, setGstModalVisible] = useState(false);
   const [gstinInput, setGstinInput] = useState('');
@@ -98,6 +113,35 @@ export default function CustomersScreen() {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to fetch customers');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCustomerQuotes = async (customer: Customer) => {
+    setSelectedCustomerForQuotes(customer);
+    setQuotesModalVisible(true);
+    setQuotesLoading(true);
+    
+    try {
+      const response = await api.get(`/customers/${customer.id}/quotes`);
+      setCustomerQuotes(response.data.quotes || []);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to fetch customer quotes');
+      setCustomerQuotes([]);
+    } finally {
+      setQuotesLoading(false);
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+      return dateStr;
     }
   };
 
@@ -396,8 +440,20 @@ export default function CustomersScreen() {
         ) : (
           filteredCustomers.map((customer) => (
             <View key={customer.id} style={styles.customerCard}>
-              <View style={styles.customerInfo}>
-                <Text style={styles.customerName}>{customer.name}</Text>
+              <TouchableOpacity 
+                style={styles.customerInfo}
+                onPress={() => customer.customer_type === 'quoted' ? fetchCustomerQuotes(customer) : null}
+                activeOpacity={customer.customer_type === 'quoted' ? 0.7 : 1}
+              >
+                <View style={styles.customerHeader}>
+                  <Text style={styles.customerName}>{customer.name}</Text>
+                  {customer.customer_type === 'quoted' && (
+                    <View style={styles.quotedBadge}>
+                      <Ionicons name="checkmark-circle" size={12} color="#4CAF50" />
+                      <Text style={styles.quotedBadgeText}>Quoted</Text>
+                    </View>
+                  )}
+                </View>
                 {customer.company && (
                   <Text style={styles.customerCompany}>{customer.company}</Text>
                 )}
@@ -427,7 +483,16 @@ export default function CustomersScreen() {
                     <Text style={styles.infoText}>GST: {customer.gst_number}</Text>
                   </View>
                 )}
-              </View>
+                {customer.customer_type === 'quoted' && (
+                  <TouchableOpacity 
+                    style={styles.viewQuotesBtn}
+                    onPress={() => fetchCustomerQuotes(customer)}
+                  >
+                    <Ionicons name="document-text" size={16} color="#960018" />
+                    <Text style={styles.viewQuotesBtnText}>View Quotes</Text>
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
               <View style={styles.customerActions}>
                 <TouchableOpacity
                   style={styles.actionBtn}
@@ -703,6 +768,82 @@ export default function CustomersScreen() {
                 numberOfLines={3}
               />
             </View>
+
+            <View style={styles.modalBottomSpacer} />
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Customer Quotes Modal */}
+      <Modal
+        visible={quotesModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setQuotesModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setQuotesModalVisible(false)}>
+              <Text style={styles.cancelBtn}>Close</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Customer Quotes</Text>
+            <View style={{ width: 50 }} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {selectedCustomerForQuotes && (
+              <View style={styles.customerQuotesHeader}>
+                <Text style={styles.customerQuotesName}>{selectedCustomerForQuotes.name}</Text>
+                {selectedCustomerForQuotes.company && (
+                  <Text style={styles.customerQuotesCompany}>{selectedCustomerForQuotes.company}</Text>
+                )}
+              </View>
+            )}
+
+            {quotesLoading ? (
+              <View style={styles.quotesLoadingContainer}>
+                <ActivityIndicator size="large" color="#960018" />
+                <Text style={styles.quotesLoadingText}>Loading quotes...</Text>
+              </View>
+            ) : customerQuotes.length === 0 ? (
+              <View style={styles.noQuotesContainer}>
+                <Ionicons name="document-text-outline" size={48} color="#ccc" />
+                <Text style={styles.noQuotesText}>No quotes found for this customer</Text>
+              </View>
+            ) : (
+              customerQuotes.map((quote) => (
+                <View key={quote.id} style={styles.quoteCard}>
+                  <View style={styles.quoteCardHeader}>
+                    <Text style={styles.quoteNumber}>{quote.quote_number}</Text>
+                    <View style={[
+                      styles.quoteStatusBadge,
+                      quote.status === 'approved' ? styles.quoteStatusApproved : styles.quoteStatusPending
+                    ]}>
+                      <Text style={[
+                        styles.quoteStatusText,
+                        quote.status === 'approved' ? styles.quoteStatusTextApproved : styles.quoteStatusTextPending
+                      ]}>
+                        {quote.status === 'approved' ? 'Approved' : 'Pending'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.quoteCardBody}>
+                    <View style={styles.quoteDetail}>
+                      <Text style={styles.quoteDetailLabel}>Amount</Text>
+                      <Text style={styles.quoteDetailValue}>{formatCurrency(quote.total_price || 0)}</Text>
+                    </View>
+                    <View style={styles.quoteDetail}>
+                      <Text style={styles.quoteDetailLabel}>Date</Text>
+                      <Text style={styles.quoteDetailValue}>{formatDate(quote.created_at)}</Text>
+                    </View>
+                    <View style={styles.quoteDetail}>
+                      <Text style={styles.quoteDetailLabel}>Items</Text>
+                      <Text style={styles.quoteDetailValue}>{quote.products?.length || 0} products</Text>
+                    </View>
+                  </View>
+                </View>
+              ))
+            )}
 
             <View style={styles.modalBottomSpacer} />
           </ScrollView>
@@ -1159,5 +1300,134 @@ const styles = StyleSheet.create({
   },
   filterTabTextActive: {
     color: '#FFFFFF',
+  },
+  // Customer Header with Badge
+  customerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  quotedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    gap: 4,
+  },
+  quotedBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4CAF50',
+  },
+  viewQuotesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 6,
+    backgroundColor: '#FFF5F5',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  viewQuotesBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#960018',
+  },
+  // Customer Quotes Modal Styles
+  customerQuotesHeader: {
+    backgroundColor: '#F8FAFC',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  customerQuotesName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  customerQuotesCompany: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
+  },
+  quotesLoadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  quotesLoadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: '#64748B',
+  },
+  noQuotesContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  noQuotesText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#94A3B8',
+  },
+  quoteCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  quoteCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  quoteNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#960018',
+  },
+  quoteStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  quoteStatusApproved: {
+    backgroundColor: '#DCFCE7',
+  },
+  quoteStatusPending: {
+    backgroundColor: '#FEF3C7',
+  },
+  quoteStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  quoteStatusTextApproved: {
+    color: '#4CAF50',
+  },
+  quoteStatusTextPending: {
+    color: '#F59E0B',
+  },
+  quoteCardBody: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  quoteDetail: {
+    flex: 1,
+  },
+  quoteDetailLabel: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginBottom: 2,
+  },
+  quoteDetailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
   },
 });

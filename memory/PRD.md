@@ -76,6 +76,13 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Completed Work
 
 ### March 6, 2026 (Latest Session)
+- **Customer Quote Management** - COMPLETED
+  - Customers automatically move to "Quoted" tab after receiving an approved quote
+  - Admin can click on any customer to see all their quotes in a modal
+  - "View Quotes" button shows on customers in the Quoted tab
+  - Quote modal displays: quote number, status (Approved/Pending), amount, date, item count
+  - Backend endpoint: GET /api/customers/{customer_id}/quotes
+
 - **Dashboard Date Range Filters** - COMPLETED
   - Added filter pills: 7 Days, 30 Days, 3 Months, 6 Months, 1 Year, All Time
   - Dashboard data refreshes based on selected filter

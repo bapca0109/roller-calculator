@@ -1746,6 +1746,22 @@ async def approve_rfq(
     if update_result.modified_count == 0:
         raise HTTPException(status_code=500, detail="Failed to update quote")
     
+    # Update customer type to "quoted" if they were "registered"
+    customer_id = quote.get("customer_id")
+    if customer_id:
+        try:
+            # Find user by customer_id
+            user = await db.users.find_one({"_id": ObjectId(customer_id)})
+            if user and user.get("email"):
+                # Find and update customer record by email
+                await db.customers.update_one(
+                    {"email": user.get("email"), "customer_type": "registered"},
+                    {"$set": {"customer_type": "quoted"}}
+                )
+                logging.info(f"Updated customer {user.get('email')} type to 'quoted'")
+        except Exception as e:
+            logging.warning(f"Could not update customer type: {str(e)}")
+    
     # Get updated quote
     updated_quote = await db.quotes.find_one({"_id": obj_id})
     updated_quote["id"] = str(updated_quote["_id"])
@@ -3264,6 +3280,62 @@ async def search_customer_by_gstin(gstin: str, current_user: dict = Depends(get_
         return {"found": True, "customer": customer}
     
     return {"found": False, "customer": None}
+
+
+@api_router.get("/customers/{customer_id}/quotes")
+async def get_customer_quotes(customer_id: str, current_user: dict = Depends(get_current_user)):
+    """Get all quotes for a specific customer"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        # Verify customer exists
+        customer = await db.customers.find_one({"_id": ObjectId(customer_id)})
+        if not customer:
+            raise HTTPException(status_code=404, detail="Customer not found")
+        
+        # Get customer's email (quotes are linked by customer_id which is user_id)
+        customer_email = customer.get("email")
+        
+        # Find user by email to get their user_id
+        user = await db.users.find_one({"email": customer_email})
+        user_id = str(user["_id"]) if user else None
+        
+        # Find quotes either by customer_id (user_id) or by customer email/company match
+        query = {
+            "$or": [
+                {"customer_id": user_id} if user_id else {"customer_id": None},
+                {"customer_email": customer_email} if customer_email else {"customer_email": None},
+                {"customer_name": customer.get("name"), "company": customer.get("company")}
+            ]
+        }
+        
+        quotes = await db.quotes.find(query).sort("created_at", -1).to_list(100)
+        
+        result = []
+        for quote in quotes:
+            quote["id"] = str(quote["_id"])
+            del quote["_id"]
+            if quote.get("created_at"):
+                quote["created_at"] = quote["created_at"].isoformat()
+            if quote.get("approved_at"):
+                quote["approved_at"] = quote["approved_at"].isoformat()
+            result.append(quote)
+        
+        return {
+            "customer": {
+                "id": str(customer["_id"]),
+                "name": customer.get("name"),
+                "company": customer.get("company"),
+                "email": customer.get("email")
+            },
+            "quotes": result,
+            "total_count": len(result)
+        }
+    except Exception as e:
+        logging.error(f"Error fetching customer quotes: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch customer quotes: {str(e)}")
+
 
 # ============= GSTIN FORMAT VALIDATION (Local utility) =============
 
