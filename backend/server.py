@@ -3148,17 +3148,19 @@ async def approve_rfq(
     # Send approval email to customer and admins with COMPLETE quote data
     customer_email = quote.get("customer_email")
     if customer_email:
-        # Pass the complete updated quote for PDF generation
+        # Pass the complete updated quote for PDF generation - include ALL fields
         await send_quote_approval_email({
             "quote_number": new_quote_number,
             "original_rfq_number": old_number,
             "customer_name": quote.get("customer_name"),
             "customer_company": quote.get("customer_company"),
             "customer_code": quote.get("customer_code"),
-            "customer_details": quote.get("customer_details", {}),
+            "customer_details": quote.get("customer_details") or {},
             "products": quote.get("products", []),
             "subtotal": quote.get("subtotal", 0),
             "total_discount": quote.get("total_discount", 0),
+            "use_item_discounts": quote.get("use_item_discounts", False),
+            "discount_percent": quote.get("discount_percent", 0),
             "packing_charges": quote.get("packing_charges", 0),
             "shipping_cost": quote.get("shipping_cost", 0),
             "delivery_location": quote.get("delivery_location"),
@@ -3444,11 +3446,12 @@ async def create_quote_revision(
             "customer_name": quote.get("customer_name"),
             "customer_company": quote.get("customer_company"),
             "customer_code": quote.get("customer_code"),
-            "customer_details": quote.get("customer_details", {}),
+            "customer_details": quote.get("customer_details") or {},
             "products": quote.get("products", []),
             "subtotal": quote.get("subtotal", 0),
             "discount_percent": revision_data.discount_percent,
             "total_discount": discount_amount,
+            "use_item_discounts": quote.get("use_item_discounts", False),
             "packing_charges": quote.get("packing_charges", 0),
             "shipping_cost": quote.get("shipping_cost", 0),
             "delivery_location": quote.get("delivery_location"),
