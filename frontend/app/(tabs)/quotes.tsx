@@ -92,6 +92,10 @@ export default function QuotesScreen() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingRevision, setSavingRevision] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [approveModalQuote, setApproveModalQuote] = useState<Quote | null>(null);
+  const [freightPercent, setFreightPercent] = useState<string>('0');
+  const [customFreightAmount, setCustomFreightAmount] = useState<string>('');
+  const [useCustomFreight, setUseCustomFreight] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -379,37 +383,57 @@ export default function QuotesScreen() {
     }
   };
 
-  // Approve RFQ function
+  // Calculate freight amount from percentage
+  const calculateFreightAmount = () => {
+    if (!approveModalQuote) return 0;
+    if (useCustomFreight) {
+      return parseFloat(customFreightAmount) || 0;
+    }
+    const percent = parseFloat(freightPercent) || 0;
+    const taxableAmount = (approveModalQuote.subtotal || 0) - (approveModalQuote.total_discount || 0) + (approveModalQuote.packing_charges || 0);
+    return taxableAmount * (percent / 100);
+  };
+
+  // Approve RFQ with freight
+  const confirmApproveRfq = async () => {
+    if (!approveModalQuote) return;
+    
+    setApprovingId(approveModalQuote.id);
+    try {
+      const freightAmount = calculateFreightAmount();
+      const freightPct = useCustomFreight ? 0 : (parseFloat(freightPercent) || 0);
+      
+      // First update the quote with freight details
+      await api.put(`/quotes/${approveModalQuote.id}`, {
+        shipping_cost: freightAmount,
+        freight_details: {
+          freight_percent: freightPct,
+          freight_amount: freightAmount,
+          use_custom_amount: useCustomFreight
+        }
+      });
+      
+      // Then approve
+      const response = await api.post(`/quotes/${approveModalQuote.id}/approve`);
+      setApprovedQuoteNumber(response.data.new_quote_number || approveModalQuote.quote_number);
+      setShowApprovalSuccess(true);
+      setApproveModalQuote(null);
+      fetchQuotes();
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to approve RFQ');
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  // Approve RFQ function - open modal for freight input
   const approveRfq = async (quote: Quote) => {
-    // Use Alert.alert for cross-platform compatibility (iOS, Android, Web)
-    Alert.alert(
-      'Approve RFQ',
-      `Are you sure you want to approve "${quote.quote_number}" and convert it to a Quote?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Approve',
-          style: 'default',
-          onPress: async () => {
-            setApprovingId(quote.id);
-            try {
-              const response = await api.post(`/quotes/${quote.id}/approve`);
-              // Show success popup
-              setApprovedQuoteNumber(response.data.new_quote_number || quote.quote_number);
-              setShowApprovalSuccess(true);
-              fetchQuotes();
-            } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.detail || 'Failed to approve RFQ');
-            } finally {
-              setApprovingId(null);
-            }
-          },
-        },
-      ]
-    );
+    console.log('Opening approve modal for:', quote.quote_number);
+    setApproveModalQuote(quote);
+    const existingFreightPercent = quote.freight_details?.freight_percent || 0;
+    setFreightPercent(existingFreightPercent.toString());
+    setCustomFreightAmount(quote.shipping_cost?.toString() || '0');
+    setUseCustomFreight(false);
   };
 
   // Filter quotes based on active tab and search query
@@ -1021,12 +1045,10 @@ export default function QuotesScreen() {
                 <span class="summary-value">Rs. ${quote.packing_charges?.toFixed(2)}</span>
               </div>
             ` : ''}
-            ${quote.shipping_cost > 0 ? `
-              <div class="summary-row">
-                <span class="summary-label">Freight Charges</span>
-                <span class="summary-value">Rs. ${quote.shipping_cost?.toFixed(2)}</span>
-              </div>
-            ` : ''}
+            <div class="summary-row">
+              <span class="summary-label">Freight Charges (${quote.freight_details?.freight_percent?.toFixed(1) || '0.0'}%)</span>
+              <span class="summary-value">Rs. ${(quote.shipping_cost || 0).toFixed(2)}</span>
+            </div>
             <div class="summary-row" style="background: #f5f5f5;">
               <span class="summary-label"><strong>Taxable Amount</strong></span>
               <span class="summary-value"><strong>Rs. ${taxableAmount.toFixed(2)}</strong></span>
@@ -1278,7 +1300,11 @@ export default function QuotesScreen() {
       {canApprove && (
         <TouchableOpacity 
           style={styles.approveButtonRed}
-          onPress={() => approveRfq(item)}
+          data-testid="approve-rfq-button"
+          onPress={(e) => {
+            e.stopPropagation();
+            approveRfq(item);
+          }}
           disabled={approvingId === item.id}
         >
           {approvingId === item.id ? (
@@ -1661,6 +1687,116 @@ export default function QuotesScreen() {
                       <Text style={styles.exportButtonText}>Edit {docLabel}</Text>
                     </TouchableOpacity>
                   )}
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Approve RFQ Modal with Freight Options */}
+      <Modal
+        visible={!!approveModalQuote}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setApproveModalQuote(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Approve RFQ</Text>
+              <TouchableOpacity onPress={() => setApproveModalQuote(null)}>
+                <Ionicons name="close" size={28} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalScroll}>
+              {approveModalQuote && (
+                <>
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>RFQ Details</Text>
+                    <Text style={styles.approveQuoteNumber}>{approveModalQuote.quote_number}</Text>
+                    <Text style={styles.approveCustomerName}>{approveModalQuote.customer_name}</Text>
+                    <Text style={styles.approveSubtotal}>Subtotal: Rs. {approveModalQuote.subtotal?.toFixed(2)}</Text>
+                  </View>
+
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Freight Charges</Text>
+                    
+                    {/* Freight Mode Toggle */}
+                    <View style={styles.discountModeToggle}>
+                      <TouchableOpacity 
+                        style={[styles.modeButton, !useCustomFreight && styles.modeButtonActive]}
+                        onPress={() => setUseCustomFreight(false)}
+                      >
+                        <Ionicons name="calculator-outline" size={18} color={!useCustomFreight ? "#fff" : "#666"} />
+                        <Text style={[styles.modeButtonText, !useCustomFreight && styles.modeButtonTextActive]}>
+                          Freight %
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[styles.modeButton, useCustomFreight && styles.modeButtonActive]}
+                        onPress={() => setUseCustomFreight(true)}
+                      >
+                        <Ionicons name="cash-outline" size={18} color={useCustomFreight ? "#fff" : "#666"} />
+                        <Text style={[styles.modeButtonText, useCustomFreight && styles.modeButtonTextActive]}>
+                          Custom Amount
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Freight Input */}
+                    {!useCustomFreight ? (
+                      <View style={styles.freightInputRow}>
+                        <Text style={styles.freightInputLabel}>Freight Percentage:</Text>
+                        <View style={styles.freightInputWrapper}>
+                          <TextInput
+                            style={styles.freightInput}
+                            value={freightPercent}
+                            onChangeText={setFreightPercent}
+                            keyboardType="numeric"
+                            placeholder="0"
+                          />
+                          <Text style={styles.freightInputSuffix}>%</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.freightInputRow}>
+                        <Text style={styles.freightInputLabel}>Custom Amount:</Text>
+                        <View style={styles.freightInputWrapper}>
+                          <Text style={styles.freightInputPrefix}>Rs.</Text>
+                          <TextInput
+                            style={styles.freightInput}
+                            value={customFreightAmount}
+                            onChangeText={setCustomFreightAmount}
+                            keyboardType="numeric"
+                            placeholder="0"
+                          />
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Calculated Freight */}
+                    <View style={styles.calculatedFreightRow}>
+                      <Text style={styles.calculatedFreightLabel}>Freight Amount:</Text>
+                      <Text style={styles.calculatedFreightValue}>Rs. {calculateFreightAmount().toFixed(2)}</Text>
+                    </View>
+                  </View>
+
+                  {/* Approve Button */}
+                  <TouchableOpacity 
+                    style={styles.approveConfirmButton}
+                    onPress={confirmApproveRfq}
+                    disabled={approvingId === approveModalQuote.id}
+                  >
+                    {approvingId === approveModalQuote.id ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                        <Text style={styles.approveConfirmButtonText}>Approve & Convert to Quote</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
                 </>
               )}
             </ScrollView>
@@ -2807,6 +2943,99 @@ const styles = StyleSheet.create({
   },
   bulkApplyButtonText: {
     fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // Approve Modal Styles
+  approveQuoteNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#960018',
+    marginBottom: 4,
+  },
+  approveCustomerName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 4,
+  },
+  approveSubtotal: {
+    fontSize: 14,
+    color: '#666',
+  },
+  freightInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  freightInputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  freightInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  freightInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0F172A',
+    width: 100,
+    textAlign: 'center',
+  },
+  freightInputSuffix: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#960018',
+  },
+  freightInputPrefix: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+    marginRight: 4,
+  },
+  calculatedFreightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F1F5F9',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  calculatedFreightLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  calculatedFreightValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#960018',
+  },
+  approveConfirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4CAF50',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  approveConfirmButtonText: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#fff',
   },

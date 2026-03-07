@@ -1116,13 +1116,24 @@ def generate_quote_html(quote_data: dict) -> str:
             </div>
         '''
     
-    # Shipping row
-    shipping_html = ""
+    # Shipping/Freight row - ALWAYS show freight (0% if no pincode)
+    delivery_pincode = quote_data.get('delivery_location')
+    freight_details = quote_data.get('freight_details', {}) or {}
+    freight_percent = freight_details.get('freight_percent', 0) if freight_details else 0
+    
     if shipping > 0:
         shipping_html = f'''
             <div class="summary-row">
-              <span class="summary-label">Freight Charges</span>
+              <span class="summary-label">Freight Charges ({freight_percent:.1f}%)</span>
               <span class="summary-value">Rs. {shipping:,.2f}</span>
+            </div>
+        '''
+    else:
+        # Show 0% freight if no pincode selected
+        shipping_html = f'''
+            <div class="summary-row">
+              <span class="summary-label">Freight Charges (0.0%)</span>
+              <span class="summary-value">Rs. 0.00</span>
             </div>
         '''
     

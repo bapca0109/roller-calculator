@@ -76,6 +76,21 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Completed Work
 
 ### March 7, 2026 (Latest Session - Current)
+- **Freight Charges Feature** - COMPLETED ✅
+  - PDF now always shows Freight Charges row (0.0% if no pincode)
+  - Admin Approve RFQ modal with freight options:
+    - Toggle between "Freight %" and "Custom Amount" modes
+    - Input freight percentage or enter custom amount
+    - Real-time calculation of freight amount
+    - "Approve & Convert to Quote" button saves freight and approves
+  - Freight details stored in `freight_details` field (percent, amount, custom flag)
+
+- **PDF Format Standardization** - COMPLETED ✅
+  - ALL PDFs now use per-item discount format: SR. | ITEM CODE | QTY | RATE | DISC % | VALUE AFTER DISC | TOTAL
+  - Uppercase headers to match exact export format
+  - IST timestamp (converted from UTC)
+  - Freight row always shown with percentage
+
 - **Email PDF Matching Frontend PDF - FINAL FIX** - COMPLETED ✅
   - Root cause: `use_item_discounts` flag was not being passed to email functions
   - Fixed `send_quote_approval_email` call (line 3162) to include `use_item_discounts`
