@@ -917,23 +917,23 @@ def generate_rfq_pdf_fallback(rfq_data: dict) -> bytes:
     return pdf.output()
 
 def generate_quote_html(quote_data: dict) -> str:
-    """Generate HTML content for Quote PDF that matches frontend export exactly"""
+    """Generate HTML content for Quote PDF - EXACT MATCH with frontend export"""
     from datetime import datetime
     
     # Use approved_at date if available, else use current time
-    quote_date = quote_data.get('approved_at') or get_ist_now()
+    quote_date = quote_data.get('approved_at') or quote_data.get('created_at') or get_ist_now()
     if isinstance(quote_date, str):
         try:
             quote_date = datetime.fromisoformat(quote_date.replace('Z', '+00:00'))
         except:
             quote_date = get_ist_now()
     
-    display_date = quote_date.strftime("%d %b %Y")
+    display_date = quote_date.strftime("%d %b %Y, %I:%M %p")
     
     # Determine if RFQ or Quote
     quote_number = quote_data.get('quote_number', 'N/A')
     is_rfq = quote_number.startswith('RFQ')
-    doc_label = 'REQUEST FOR QUOTATION' if is_rfq else 'QUOTATION'
+    doc_label_full = 'REQUEST FOR QUOTATION' if is_rfq else 'QUOTATION'
     
     # Generate products HTML
     products = quote_data.get('products', [])
@@ -952,24 +952,24 @@ def generate_quote_html(quote_data: dict) -> str:
             if specs.get('shaft_diameter'): spec_parts.append(f"Shaft: {specs['shaft_diameter']}mm")
             if specs.get('bearing'): spec_parts.append(f"Bearing: {specs['bearing']}")
             if spec_parts:
-                specs_html = f'<div style="font-size: 9px; color: #666; margin-top: 3px;">{" | ".join(spec_parts)}</div>'
+                specs_html = f'<div class="product-specs">{" | ".join(spec_parts)}</div>'
         
         remark_html = ""
         if product.get('remark'):
-            remark_html = f'<div style="font-size: 9px; color: #0066cc; margin-top: 3px; font-style: italic;">Note: {product["remark"]}</div>'
+            remark_html = f'<div class="product-remark">Note: {product["remark"]}</div>'
         
         products_html += f"""
-        <tr>
-            <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: center;">{idx}</td>
-            <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left;">
-                <div style="font-weight: 500; color: #1a1a1a;">{product.get('product_name', product.get('product_id', 'N/A'))}</div>
+            <tr>
+              <td class="cell-center">{idx}</td>
+              <td class="cell-left">
+                <div class="product-name">{product.get('product_name', product.get('product_id', 'N/A'))}</div>
                 {specs_html}
                 {remark_html}
-            </td>
-            <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: center;">{qty}</td>
-            <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right;">Rs. {unit_price:,.2f}</td>
-            <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right;"><strong>Rs. {amount:,.2f}</strong></td>
-        </tr>
+              </td>
+              <td class="cell-center">{qty}</td>
+              <td class="cell-right">Rs. {unit_price:,.2f}</td>
+              <td class="cell-right"><strong>Rs. {amount:,.2f}</strong></td>
+            </tr>
         """
     
     # Calculate totals
@@ -988,264 +988,529 @@ def generate_quote_html(quote_data: dict) -> str:
     customer_company = quote_data.get('customer_company', '')
     customer_details = quote_data.get('customer_details', {})
     
-    customer_code_html = f'<div style="color: #960018; font-weight: bold; margin-bottom: 4px;">Customer Code: {customer_code}</div>' if customer_code else ''
+    customer_code_html = f'<div class="customer-code" style="color: #960018; font-weight: bold; margin-bottom: 4px;">Customer Code: {customer_code}</div>' if customer_code else ''
     
     address_html = ""
     if customer_details.get('address'):
         address_parts = [customer_details['address']]
-        if customer_details.get('city'): address_parts.append(customer_details['city'])
-        if customer_details.get('state'): address_parts.append(customer_details['state'])
-        if customer_details.get('pincode'): address_parts.append(f"- {customer_details['pincode']}")
-        address_html = f'<div style="font-size: 10px; color: #555; margin-top: 4px; line-height: 1.5;">{", ".join(address_parts)}</div>'
+        if customer_details.get('city'): address_parts.append(f"<br>{customer_details['city']}")
+        if customer_details.get('state'): address_parts.append(f", {customer_details['state']}")
+        if customer_details.get('pincode'): address_parts.append(f" - {customer_details['pincode']}")
+        address_html = f'<div class="info-address">{"".join(address_parts)}</div>'
     
-    gst_html = f'<div style="display: inline-block; margin-top: 6px; padding: 3px 8px; background: #e8f4fc; border-radius: 3px; font-size: 9px; color: #0066cc; font-weight: 500;">GSTIN: {customer_details.get("gst_number")}</div>' if customer_details.get('gst_number') else ''
+    gst_html = f'<div class="info-gst">GSTIN: {customer_details.get("gst_number")}</div>' if customer_details.get('gst_number') else ''
     
     contact_parts = []
     if customer_details.get('phone'): contact_parts.append(f"Ph: {customer_details['phone']}")
     if customer_details.get('email'): contact_parts.append(customer_details['email'])
-    contact_html = f'<div style="font-size: 9px; color: #666; margin-top: 6px;">{" | ".join(contact_parts)}</div>' if contact_parts else ''
+    contact_html = f'<div class="info-contact">{" | ".join(contact_parts)}</div>' if contact_parts else ''
     
     # Original RFQ reference
-    rfq_ref_html = f'<div style="font-size: 10px; color: #0066cc; margin-top: 3px; font-weight: 500;">Ref: {quote_data.get("original_rfq_number")}</div>' if quote_data.get('original_rfq_number') else ''
+    rfq_ref_html = f'<div class="doc-ref">Ref: {quote_data.get("original_rfq_number")}</div>' if quote_data.get('original_rfq_number') else ''
     
     # Delivery location
-    delivery_html = f'<div style="padding: 10px; background: #f5f5f5; border-radius: 4px; margin-bottom: 15px; font-size: 10px;"><strong>Delivery Location:</strong> PIN Code {quote_data.get("delivery_location")}</div>' if quote_data.get('delivery_location') else ''
+    delivery_html = f'''
+          <div class="delivery-box">
+            <strong>Delivery Location:</strong> PIN Code {quote_data.get("delivery_location")}
+          </div>
+    ''' if quote_data.get('delivery_location') else ''
     
     # Notes
-    notes_html = f'<div style="padding: 10px; background: #fff5f5; border-left: 3px solid #960018; border-radius: 4px; margin-bottom: 15px; font-size: 10px;"><strong>Notes:</strong> {quote_data.get("notes")}</div>' if quote_data.get('notes') else ''
+    notes_html = f'''
+          <div class="delivery-box" style="background: #fff5f5; border-left: 3px solid #960018;">
+            <strong>Notes:</strong> {quote_data.get("notes")}
+          </div>
+    ''' if quote_data.get('notes') else ''
+    
+    # Discount row
+    discount_html = ""
+    if discount > 0:
+        discount_percent = (discount / subtotal * 100) if subtotal > 0 else 0
+        discount_html = f'''
+            <div class="summary-row discount-row">
+              <span class="summary-label">Discount ({discount_percent:.1f}%)</span>
+              <span class="summary-value">- Rs. {discount:,.2f}</span>
+            </div>
+        '''
+    
+    # Packing row
+    packing_html = ""
+    if packing > 0:
+        packing_html = f'''
+            <div class="summary-row">
+              <span class="summary-label">Packing Charges</span>
+              <span class="summary-value">Rs. {packing:,.2f}</span>
+            </div>
+        '''
+    
+    # Shipping row
+    shipping_html = ""
+    if shipping > 0:
+        shipping_html = f'''
+            <div class="summary-row">
+              <span class="summary-label">Freight Charges</span>
+              <span class="summary-value">Rs. {shipping:,.2f}</span>
+            </div>
+        '''
     
     html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
+      <!DOCTYPE html>
+      <html>
+      <head>
         <meta charset="UTF-8">
         <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{ 
-                font-family: 'Segoe UI', Arial, sans-serif; 
-                color: #1a1a1a; 
-                font-size: 11px;
-                line-height: 1.4;
-                padding: 15px;
-            }}
-            .header {{
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                padding-bottom: 15px;
-                border-bottom: 2px solid #960018;
-                margin-bottom: 15px;
-            }}
-            .logo {{ font-size: 26px; font-weight: 800; letter-spacing: -1px; color: #1a1a1a; }}
-            .logo span {{ color: #960018; }}
-            .company-tagline {{ font-size: 9px; color: #666; letter-spacing: 3px; margin-top: 2px; }}
-            .doc-type {{ text-align: right; }}
-            .doc-title {{ font-size: 18px; font-weight: 700; color: #960018; letter-spacing: 1px; }}
-            .doc-number {{ font-size: 13px; font-weight: 600; color: #333; margin-top: 3px; }}
-            .doc-date {{ font-size: 10px; color: #666; margin-top: 2px; }}
-            .info-section {{ display: flex; justify-content: space-between; margin-bottom: 15px; gap: 15px; }}
-            .info-box {{ flex: 1; padding: 12px; border: 1px solid #e0e0e0; border-radius: 4px; background: #fafafa; }}
-            .info-box-title {{ font-size: 8px; font-weight: 600; color: #960018; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; border-bottom: 1px solid #e0e0e0; padding-bottom: 4px; }}
-            .info-company {{ font-size: 12px; font-weight: 600; color: #1a1a1a; }}
-            .section-title {{ font-size: 10px; font-weight: 600; color: #960018; text-transform: uppercase; letter-spacing: 1px; padding: 8px 0; border-bottom: 1px solid #960018; margin-bottom: 0; }}
-            table {{ width: 100%; border-collapse: collapse; margin-bottom: 15px; }}
-            th {{ background: #960018; color: white; padding: 8px 10px; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }}
-            .summary-section {{ display: flex; justify-content: flex-end; margin-bottom: 15px; }}
-            .summary-table {{ width: 280px; }}
-            .summary-row {{ display: flex; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid #eee; }}
-            .summary-label {{ color: #555; font-size: 10px; }}
-            .summary-value {{ font-weight: 500; font-size: 10px; }}
-            .discount-row {{ color: #28a745; }}
-            .total-row {{ background: #960018; color: white; border-radius: 4px; margin-top: 5px; padding: 10px; }}
-            .total-row .summary-label, .total-row .summary-value {{ color: white; font-size: 12px; font-weight: 600; }}
-            .terms-container {{ margin-top: 20px; page-break-inside: avoid; }}
-            .terms-title {{ font-size: 11px; font-weight: 700; color: #960018; text-transform: uppercase; letter-spacing: 1px; padding: 8px 0; border-bottom: 2px solid #960018; margin-bottom: 10px; }}
-            .terms-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
-            .term-item {{ padding: 8px; background: #fafafa; border-left: 3px solid #960018; font-size: 9px; line-height: 1.5; }}
-            .term-item-title {{ font-weight: 600; color: #333; margin-bottom: 4px; }}
-            .term-item-text {{ color: #555; }}
-            .footer {{ margin-top: 25px; padding-top: 15px; border-top: 2px solid #960018; display: flex; justify-content: space-between; align-items: flex-end; }}
-            .footer-left {{ font-size: 9px; color: #666; }}
-            .footer-company {{ font-weight: 600; color: #1a1a1a; font-size: 11px; }}
-            .footer-signature {{ border-top: 1px solid #333; padding-top: 5px; font-size: 9px; color: #333; font-weight: 500; }}
-            .footer-note {{ font-size: 8px; color: #999; margin-top: 10px; text-align: center; }}
+          * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+          body {{ 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            color: #1a1a1a; 
+            font-size: 11px;
+            line-height: 1.4;
+            padding: 15px;
+          }}
+          
+          /* Header */
+          .header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #960018;
+            margin-bottom: 15px;
+          }}
+          .logo-section {{ }}
+          .logo {{
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: #1a1a1a;
+          }}
+          .logo span {{ color: #960018; }}
+          .company-tagline {{
+            font-size: 9px;
+            color: #666;
+            letter-spacing: 3px;
+            margin-top: 2px;
+          }}
+          .doc-type {{
+            text-align: right;
+          }}
+          .doc-title {{
+            font-size: 18px;
+            font-weight: 700;
+            color: #960018;
+            letter-spacing: 1px;
+          }}
+          .doc-number {{
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 3px;
+          }}
+          .doc-date {{
+            font-size: 10px;
+            color: #666;
+            margin-top: 2px;
+          }}
+          .doc-ref {{
+            font-size: 10px;
+            color: #0066cc;
+            margin-top: 3px;
+            font-weight: 500;
+          }}
+          
+          /* Info Boxes */
+          .info-section {{
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            gap: 15px;
+          }}
+          .info-box {{
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            background: #fafafa;
+          }}
+          .info-box-title {{
+            font-size: 8px;
+            font-weight: 600;
+            color: #960018;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 4px;
+          }}
+          .info-company {{
+            font-size: 12px;
+            font-weight: 600;
+            color: #1a1a1a;
+          }}
+          .info-address {{
+            font-size: 10px;
+            color: #555;
+            margin-top: 4px;
+            line-height: 1.5;
+          }}
+          .info-gst {{
+            display: inline-block;
+            margin-top: 6px;
+            padding: 3px 8px;
+            background: #e8f4fc;
+            border-radius: 3px;
+            font-size: 9px;
+            color: #0066cc;
+            font-weight: 500;
+          }}
+          .info-contact {{
+            font-size: 9px;
+            color: #666;
+            margin-top: 6px;
+          }}
+          
+          /* Products Table */
+          .section-title {{
+            font-size: 10px;
+            font-weight: 600;
+            color: #960018;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 8px 0;
+            border-bottom: 1px solid #960018;
+            margin-bottom: 0;
+          }}
+          table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+          }}
+          th {{
+            background: #960018;
+            color: white;
+            padding: 8px 10px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }}
+          td {{
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 10px;
+          }}
+          .cell-center {{ text-align: center; }}
+          .cell-right {{ text-align: right; }}
+          .cell-left {{ text-align: left; }}
+          .product-name {{ font-weight: 500; color: #1a1a1a; }}
+          .product-specs {{ font-size: 9px; color: #666; margin-top: 3px; }}
+          .product-remark {{ font-size: 9px; color: #0066cc; margin-top: 3px; font-style: italic; }}
+          
+          /* Summary */
+          .summary-section {{
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 15px;
+          }}
+          .summary-table {{
+            width: 280px;
+          }}
+          .summary-row {{
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+          }}
+          .summary-label {{ color: #555; font-size: 10px; }}
+          .summary-value {{ font-weight: 500; font-size: 10px; }}
+          .discount-row {{ color: #28a745; }}
+          .total-row {{
+            background: #960018;
+            color: white;
+            border-radius: 4px;
+            margin-top: 5px;
+            padding: 10px;
+          }}
+          .total-row .summary-label,
+          .total-row .summary-value {{
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+          }}
+          
+          /* Delivery */
+          .delivery-box {{
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 10px;
+          }}
+          
+          /* Terms Section */
+          .terms-container {{
+            margin-top: 20px;
+            page-break-inside: avoid;
+          }}
+          .terms-section {{
+            margin-bottom: 15px;
+          }}
+          .terms-title {{
+            font-size: 11px;
+            font-weight: 700;
+            color: #960018;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 8px 0;
+            border-bottom: 2px solid #960018;
+            margin-bottom: 10px;
+          }}
+          .terms-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }}
+          .term-item {{
+            padding: 8px;
+            background: #fafafa;
+            border-left: 3px solid #960018;
+            font-size: 9px;
+            line-height: 1.5;
+          }}
+          .term-item-title {{
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+          }}
+          .term-item-text {{
+            color: #555;
+          }}
+          .terms-full-width {{
+            grid-column: span 2;
+          }}
+          
+          /* Footer */
+          .footer {{
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 2px solid #960018;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+          }}
+          .footer-left {{
+            font-size: 9px;
+            color: #666;
+          }}
+          .footer-company {{
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 11px;
+          }}
+          .footer-right {{
+            text-align: right;
+          }}
+          .footer-signature {{
+            border-top: 1px solid #333;
+            padding-top: 5px;
+            font-size: 9px;
+            color: #333;
+            font-weight: 500;
+          }}
+          .footer-note {{
+            font-size: 8px;
+            color: #999;
+            margin-top: 10px;
+            text-align: center;
+          }}
+          
+          @media print {{
+            body {{ padding: 10px; }}
+            .terms-container {{ page-break-before: auto; }}
+          }}
         </style>
-    </head>
-    <body>
+      </head>
+      <body>
+        <!-- Header -->
         <div class="header">
-            <div>
-                <div class="logo">C<span>O</span>NVER<span>O</span></div>
-                <div class="company-tagline">SOLUTIONS</div>
-            </div>
-            <div class="doc-type">
-                <div class="doc-title">{doc_label}</div>
-                <div class="doc-number">{quote_number}</div>
-                {rfq_ref_html}
-                <div class="doc-date">{display_date}</div>
-            </div>
+          <div class="logo-section">
+            <div class="logo">C<span>O</span>NVER<span>O</span></div>
+            <div class="company-tagline">SOLUTIONS</div>
+          </div>
+          <div class="doc-type">
+            <div class="doc-title">{doc_label_full}</div>
+            <div class="doc-number">{quote_number}</div>
+            {rfq_ref_html}
+            <div class="doc-date">{display_date}</div>
+          </div>
         </div>
 
+        <!-- Info Section -->
         <div class="info-section">
-            <div class="info-box">
-                <div class="info-box-title">From</div>
-                <div class="info-company">Convero Solutions</div>
-                <div style="font-size: 10px; color: #555; margin-top: 4px; line-height: 1.5;">
-                    Conveyor Roller Manufacturer<br>
-                    Ahmedabad, Gujarat - India
-                </div>
-                <div style="font-size: 9px; color: #666; margin-top: 6px;">
-                    info@convero.in | www.convero.in
-                </div>
+          <div class="info-box">
+            <div class="info-box-title">From</div>
+            <div class="info-company">Convero Solutions</div>
+            <div class="info-address">
+              Conveyor Roller Manufacturer<br>
+              Ahmedabad, Gujarat - India
             </div>
-            <div class="info-box">
-                <div class="info-box-title">Bill To</div>
-                {customer_code_html}
-                <div class="info-company">{customer_company or customer_name}</div>
-                {address_html}
-                {gst_html}
-                {contact_html}
+            <div class="info-contact">
+              info@convero.in | www.convero.in
             </div>
+          </div>
+          <div class="info-box">
+            <div class="info-box-title">Bill To</div>
+            {customer_code_html}
+            <div class="info-company">{customer_details.get('company') or customer_details.get('name') or customer_name}</div>
+            {address_html}
+            {gst_html}
+            {contact_html}
+          </div>
         </div>
 
+        <!-- Products Table -->
         <div class="section-title">Product Details</div>
         <table>
-            <thead>
-                <tr>
-                    <th style="width: 5%;">#</th>
-                    <th style="width: 45%; text-align: left;">Description</th>
-                    <th style="width: 10%;">Qty</th>
-                    <th style="width: 20%; text-align: right;">Unit Price</th>
-                    <th style="width: 20%; text-align: right;">Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                {products_html}
-            </tbody>
+          <thead>
+            <tr>
+              <th style="width: 5%;">#</th>
+              <th style="width: 45%; text-align: left;">Description</th>
+              <th style="width: 10%;">Qty</th>
+              <th style="width: 20%; text-align: right;">Unit Price</th>
+              <th style="width: 20%; text-align: right;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products_html}
+          </tbody>
         </table>
 
+        <!-- Summary -->
         <div class="summary-section">
-            <div class="summary-table">
-                <div class="summary-row">
-                    <span class="summary-label">Subtotal</span>
-                    <span class="summary-value">Rs. {subtotal:,.2f}</span>
-                </div>
-                {'<div class="summary-row discount-row"><span class="summary-label">Discount (' + str(round((discount/subtotal)*100, 1) if subtotal > 0 else 0) + '%)</span><span class="summary-value">- Rs. ' + f'{discount:,.2f}' + '</span></div>' if discount > 0 else ''}
-                {'<div class="summary-row"><span class="summary-label">Packing Charges</span><span class="summary-value">Rs. ' + f'{packing:,.2f}' + '</span></div>' if packing > 0 else ''}
-                {'<div class="summary-row"><span class="summary-label">Freight Charges</span><span class="summary-value">Rs. ' + f'{shipping:,.2f}' + '</span></div>' if shipping > 0 else ''}
-                <div class="summary-row" style="background: #f5f5f5;">
-                    <span class="summary-label"><strong>Taxable Amount</strong></span>
-                    <span class="summary-value"><strong>Rs. {taxable_amount:,.2f}</strong></span>
-                </div>
-                <div class="summary-row">
-                    <span class="summary-label">CGST @ 9%</span>
-                    <span class="summary-value">Rs. {cgst:,.2f}</span>
-                </div>
-                <div class="summary-row">
-                    <span class="summary-label">SGST @ 9%</span>
-                    <span class="summary-value">Rs. {sgst:,.2f}</span>
-                </div>
-                <div class="total-row">
-                    <span class="summary-label">GRAND TOTAL</span>
-                    <span class="summary-value">Rs. {grand_total:,.2f}</span>
-                </div>
+          <div class="summary-table">
+            <div class="summary-row">
+              <span class="summary-label">Subtotal</span>
+              <span class="summary-value">Rs. {subtotal:,.2f}</span>
             </div>
+            {discount_html}
+            {packing_html}
+            {shipping_html}
+            <div class="summary-row" style="background: #f5f5f5;">
+              <span class="summary-label"><strong>Taxable Amount</strong></span>
+              <span class="summary-value"><strong>Rs. {taxable_amount:,.2f}</strong></span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">CGST @ 9%</span>
+              <span class="summary-value">Rs. {cgst:,.2f}</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">SGST @ 9%</span>
+              <span class="summary-value">Rs. {sgst:,.2f}</span>
+            </div>
+            <div class="total-row">
+              <span class="summary-label">GRAND TOTAL</span>
+              <span class="summary-value">Rs. {grand_total:,.2f}</span>
+            </div>
+          </div>
         </div>
 
         {delivery_html}
         {notes_html}
 
+        <!-- Terms & Conditions -->
         <div class="terms-container">
-            <div style="margin-bottom: 15px;">
-                <div class="terms-title">Commercial Terms</div>
-                <div class="terms-grid">
-                    <div class="term-item">
-                        <div class="term-item-title">Payment Terms</div>
-                        <div class="term-item-text">25% advance payment required at order confirmation. Remaining 75% payable against Proforma Invoice prior to dispatch.</div>
-                    </div>
-                    <div class="term-item">
-                        <div class="term-item-title">Freight</div>
-                        <div class="term-item-text">Freight charges applicable as per selection. If no PIN code selected, delivery terms: Ex-Works – Convero Solutions, Ahmedabad.</div>
-                    </div>
-                    <div class="term-item">
-                        <div class="term-item-title">Color Charges</div>
-                        <div class="term-item-text">Any color other than black shall be charged extra at 2%.</div>
-                    </div>
-                    <div class="term-item">
-                        <div class="term-item-title">Quotation Validity</div>
-                        <div class="term-item-text">This quotation is valid for 30 days from date of issue.</div>
-                    </div>
-                </div>
+          <div class="terms-section">
+            <div class="terms-title">Commercial Terms</div>
+            <div class="terms-grid">
+              <div class="term-item">
+                <div class="term-item-title">Payment Terms</div>
+                <div class="term-item-text">25% advance payment required at order confirmation. Remaining 75% payable against Proforma Invoice prior to dispatch.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Freight</div>
+                <div class="term-item-text">Freight charges applicable as per selection. If no PIN code selected, delivery terms: Ex-Works – Convero Solutions, Ahmedabad.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Color Charges</div>
+                <div class="term-item-text">Any color other than black shall be charged extra at 2%.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Quotation Validity</div>
+                <div class="term-item-text">This quotation is valid for 30 days from date of issue.</div>
+              </div>
             </div>
+          </div>
 
-            <div style="margin-bottom: 15px;">
-                <div class="terms-title">Technical Specifications</div>
-                <div class="terms-grid">
-                    <div class="term-item">
-                        <div class="term-item-title">Pipe</div>
-                        <div class="term-item-text">IS-9295 ERW steel tubes for idlers of belt conveyors. Tolerances as per relevant IS standards.</div>
-                    </div>
-                    <div class="term-item">
-                        <div class="term-item-title">Shaft</div>
-                        <div class="term-item-text">Material grade EN8.</div>
-                    </div>
-                    <div class="term-item">
-                        <div class="term-item-title">Bearing</div>
-                        <div class="term-item-text">As per selection made in the application.</div>
-                    </div>
-                    <div class="term-item">
-                        <div class="term-item-title">Circlip</div>
-                        <div class="term-item-text">Conforming to IS-3075 standard.</div>
-                    </div>
-                    <div class="term-item">
-                        <div class="term-item-title">Housing</div>
-                        <div class="term-item-text">Deep drawn CRCA sheet conforming to IS-513, thickness 3.15 mm.</div>
-                    </div>
-                    <div class="term-item">
-                        <div class="term-item-title">Seal Set</div>
-                        <div class="term-item-text">Self-designed Nylon-6 seal with metal cap, filled with EP-2 lithium-based grease for water/dust protection.</div>
-                    </div>
-                    <div class="term-item">
-                        <div class="term-item-title">Rubber Ring</div>
-                        <div class="term-item-text">Shore hardness: 50-60. Impact rubber ring thickness may vary from drawings.</div>
-                    </div>
-                    <div class="term-item">
-                        <div class="term-item-title">Painting</div>
-                        <div class="term-item-text">One coat black synthetic enamel (40 microns). Rust preventive coating on machined parts.</div>
-                    </div>
-                    <div class="term-item">
-                        <div class="term-item-title">Packing</div>
-                        <div class="term-item-text">As per selection made in the application.</div>
-                    </div>
-                    <div class="term-item">
-                        <div class="term-item-title">TIR (Total Indicated Runout)</div>
-                        <div class="term-item-text">Shall not exceed 1.6 mm as per IS-8598.</div>
-                    </div>
-                </div>
+          <div class="terms-section">
+            <div class="terms-title">Technical Specifications</div>
+            <div class="terms-grid">
+              <div class="term-item">
+                <div class="term-item-title">Pipe</div>
+                <div class="term-item-text">IS-9295 ERW steel tubes for idlers of belt conveyors. Tolerances as per relevant IS standards.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Shaft</div>
+                <div class="term-item-text">Material grade EN8.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Bearing</div>
+                <div class="term-item-text">As per selection made in the application.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Circlip</div>
+                <div class="term-item-text">Conforming to IS-3075 standard.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Housing</div>
+                <div class="term-item-text">Deep drawn CRCA sheet conforming to IS-513, thickness 3.15 mm.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Seal Set</div>
+                <div class="term-item-text">Self-designed Nylon-6 seal with metal cap, filled with EP-2 lithium-based grease for water/dust protection.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Rubber Ring</div>
+                <div class="term-item-text">Shore hardness: 50-60. Impact rubber ring thickness may vary from drawings.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Painting</div>
+                <div class="term-item-text">One coat black synthetic enamel (40 microns). Rust preventive coating on machined parts.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Packing</div>
+                <div class="term-item-text">As per selection made in the application.</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">TIR (Total Indicated Runout)</div>
+                <div class="term-item-text">Shall not exceed 1.6 mm as per IS-8598.</div>
+              </div>
             </div>
+          </div>
         </div>
 
+        <!-- Footer -->
         <div class="footer">
-            <div class="footer-left">
-                <div class="footer-company">CONVERO SOLUTIONS</div>
-                <div>Conveyor Roller Manufacturer</div>
-                <div>www.convero.in</div>
-            </div>
-            <div style="text-align: right;">
-                <div style="height: 40px;"></div>
-                <div class="footer-signature">Authorized Signatory</div>
-            </div>
+          <div class="footer-left">
+            <div class="footer-company">CONVERO SOLUTIONS</div>
+            <div>Conveyor Roller Manufacturer</div>
+            <div>www.convero.in</div>
+          </div>
+          <div class="footer-right">
+            <div style="height: 40px;"></div>
+            <div class="footer-signature">Authorized Signatory</div>
+          </div>
         </div>
         
         <div class="footer-note">
-            This is a computer-generated quotation. E&amp;OE (Errors and Omissions Excepted)
+          This is a computer-generated quotation. E&amp;OE (Errors and Omissions Excepted)
         </div>
-    </body>
-    </html>
+      </body>
+      </html>
     """
     return html
 
 def generate_quote_pdf(quote_data: dict) -> bytes:
-    """Generate PDF for Quote using weasyprint with HTML template matching frontend"""
+    """Generate PDF for Quote using weasyprint with HTML template matching frontend exactly"""
     try:
         from weasyprint import HTML
         html_content = generate_quote_html(quote_data)
