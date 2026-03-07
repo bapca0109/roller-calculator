@@ -88,6 +88,7 @@ export default function QuotesScreen() {
   const [editedProducts, setEditedProducts] = useState<QuoteProduct[]>([]);
   const [editedDiscount, setEditedDiscount] = useState<string>('0');
   const [useItemDiscounts, setUseItemDiscounts] = useState(false);
+  const [bulkDiscountPercent, setBulkDiscountPercent] = useState<string>('0');
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingRevision, setSavingRevision] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -267,6 +268,16 @@ export default function QuotesScreen() {
     const discount = parseFloat(newDiscount) || 0;
     const updated = [...editedProducts];
     updated[index] = { ...updated[index], item_discount_percent: Math.min(100, Math.max(0, discount)) };
+    setEditedProducts(updated);
+  };
+
+  const applyDiscountToAllItems = () => {
+    const discount = parseFloat(bulkDiscountPercent) || 0;
+    const clampedDiscount = Math.min(100, Math.max(0, discount));
+    const updated = editedProducts.map(p => ({
+      ...p,
+      item_discount_percent: clampedDiscount
+    }));
     setEditedProducts(updated);
   };
 
@@ -1728,6 +1739,30 @@ export default function QuotesScreen() {
                     </View>
                   </View>
 
+                  {/* Bulk Apply Discount - Only visible in Per-Item mode */}
+                  {useItemDiscounts && (
+                    <View style={styles.bulkDiscountSection}>
+                      <Text style={styles.bulkDiscountLabel}>Apply to All Items:</Text>
+                      <View style={styles.bulkDiscountRow}>
+                        <TextInput
+                          style={styles.bulkDiscountInput}
+                          value={bulkDiscountPercent}
+                          onChangeText={setBulkDiscountPercent}
+                          keyboardType="numeric"
+                          placeholder="0"
+                        />
+                        <Text style={styles.bulkDiscountPercent}>%</Text>
+                        <TouchableOpacity 
+                          style={styles.bulkApplyButton}
+                          onPress={applyDiscountToAllItems}
+                        >
+                          <Ionicons name="copy-outline" size={16} color="#fff" />
+                          <Text style={styles.bulkApplyButtonText}>Apply to All</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
                   {/* Products with editable quantity and item discount */}
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>Products</Text>
@@ -2710,5 +2745,58 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
     paddingVertical: 8,
+  },
+  // Bulk discount styles
+  bulkDiscountSection: {
+    backgroundColor: '#FFF5F5',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#960018',
+  },
+  bulkDiscountLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#960018',
+    marginBottom: 8,
+  },
+  bulkDiscountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bulkDiscountInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0F172A',
+    width: 70,
+    textAlign: 'center',
+  },
+  bulkDiscountPercent: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#960018',
+  },
+  bulkApplyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#960018',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+    marginLeft: 'auto',
+  },
+  bulkApplyButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

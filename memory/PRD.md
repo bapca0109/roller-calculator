@@ -83,6 +83,7 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
     - Each product has editable Discount % input
     - Total Discount input is hidden
     - Summary shows "Item Discounts (Total)" instead of percentage
+    - **"Apply to All Items"** feature: Enter discount % and apply to all products at once
   - Backend updates:
     - `QuoteProduct` model: Added `item_discount_percent` field
     - `Quote` model: Added `use_item_discounts` boolean flag
@@ -91,8 +92,9 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
   - Frontend updates:
     - Edit Quote modal with Discount Mode toggle
     - Per-product discount inputs with live total calculation
+    - Bulk "Apply to All" discount feature
     - PDF generation respects discount mode
-  - Testing: Backend 100% (9/9), Frontend fix applied and verified
+  - Testing: Backend 100% (9/9), Frontend verified with screenshots
 
 - **Email PDF Matching Frontend PDF** - COMPLETED ✅
   - Fixed critical issue where PDFs attached to quote approval emails didn't match frontend-exported PDFs
