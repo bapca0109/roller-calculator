@@ -1,0 +1,50 @@
+{
+  "summary": "Tested per-item discount feature for quotes. Backend API (9/9 tests PASSED) - use_item_discounts flag and item_discount_percent work correctly. CRITICAL FRONTEND BUG: Discount Mode toggle (Total Discount / Per-Item Discount) is NOT visible in Edit Quote modal despite code being present. Users cannot switch between discount modes in the UI.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Edit Quote Modal - Discount Mode Toggle",
+        "issue": "The Discount Mode toggle (Total Discount vs Per-Item Discount) is NOT visible in the Edit Quote modal. Code exists at lines 1706-1729 in quotes.tsx but doesn't render. Modal only shows Products, Discount %, Totals, and Save Changes button - missing the Discount Mode section at the top.",
+        "priority": "CRITICAL",
+        "expected": "Modal should show: 1) Discount Mode section with two toggle buttons (Total Discount / Per-Item Discount), 2) Products section, 3) Conditional Disc % inputs per item when Per-Item mode selected",
+        "actual": "Modal only shows: Products, single Discount % input, Totals, Save Changes - Discount Mode toggle is completely missing"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_per_item_discounts.py",
+    "/app/test_reports/pytest/pytest_per_item_discounts.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Debug why Discount Mode toggle (lines 1706-1729 in quotes.tsx) is not rendering in the Edit Quote modal",
+    "Check if Expo web build has layout/rendering issues with the discountModeToggle View",
+    "Possible causes: 1) ScrollView not showing content at top, 2) Build/cache issue, 3) Style issues hiding the section",
+    "After fixing, test: Toggle to Per-Item mode, add item discounts, save, verify PDF shows correct table format"
+  ],
+  "critical_code_review_comments": [
+    "Code for Discount Mode toggle exists at lines 1706-1729 but not rendering - investigate React Native Web/Expo rendering",
+    "Backend correctly handles use_item_discounts and item_discount_percent - API is working",
+    "PDF generation code at lines 550-650 has correct logic for per-item discount table format"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_per_item_discounts.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "50% - Discount Mode toggle not visible"
+  },
+  "test_credentials": {
+    "admin": "test@test.com / test123"
+  },
+  "seed_data_creation": "None - used existing quotes Q/25-26/0030 (Pending)",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend APIs for per-item discounts work correctly. The critical issue is the Discount Mode toggle UI not rendering in Edit Quote modal. Code exists at lines 1706-1729 in quotes.tsx. After fix, test full flow: Login > Quotes > Click pending quote > Edit > Toggle to Per-Item Discount > Enter item discounts > Save > Verify totals update > Check PDF",
+  "rca_of_the_issue": "The Discount Mode toggle code exists in quotes.tsx (lines 1706-1729) with proper styles defined (lines 2631-2658), but the UI element is not rendering in the Edit Quote modal. This appears to be a rendering/layout issue where the ScrollView content is cut off or the detailSection containing Discount Mode is not displaying. The modal shows Products section immediately after the header, skipping the Discount Mode section entirely."
+}

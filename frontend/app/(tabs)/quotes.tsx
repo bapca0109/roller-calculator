@@ -27,6 +27,7 @@ interface QuoteProduct {
   unit_price: number;
   specifications?: any;
   calculated_discount?: number;
+  item_discount_percent?: number;  // Per-item discount percentage
   remark?: string;
   attachments?: Array<{
     name: string;
@@ -57,6 +58,8 @@ interface Quote {
   products: QuoteProduct[];
   subtotal: number;
   total_discount: number;
+  use_item_discounts?: boolean;  // Toggle for per-item vs total discount
+  discount_percent?: number;  // Overall discount percentage
   packing_charges?: number;
   shipping_cost: number;
   delivery_location?: string;
@@ -84,6 +87,7 @@ export default function QuotesScreen() {
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [editedProducts, setEditedProducts] = useState<QuoteProduct[]>([]);
   const [editedDiscount, setEditedDiscount] = useState<string>('0');
+  const [useItemDiscounts, setUseItemDiscounts] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingRevision, setSavingRevision] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -244,6 +248,7 @@ export default function QuotesScreen() {
   const openEditQuote = (quote: Quote) => {
     setEditingQuote(quote);
     setEditedProducts([...quote.products]);
+    setUseItemDiscounts(quote.use_item_discounts || false);
     // Calculate current discount percentage from the quote
     const discountPercent = quote.subtotal > 0 
       ? ((quote.total_discount / quote.subtotal) * 100).toFixed(1)
@@ -258,20 +263,54 @@ export default function QuotesScreen() {
     setEditedProducts(updated);
   };
 
+  const updateProductItemDiscount = (index: number, newDiscount: string) => {
+    const discount = parseFloat(newDiscount) || 0;
+    const updated = [...editedProducts];
+    updated[index] = { ...updated[index], item_discount_percent: Math.min(100, Math.max(0, discount)) };
+    setEditedProducts(updated);
+  };
+
   const calculateEditedTotal = () => {
-    const subtotal = editedProducts.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0);
-    const discountAmount = (subtotal * (parseFloat(editedDiscount) || 0)) / 100;
-    const afterDiscount = subtotal - discountAmount;
-    const packingCharges = editingQuote?.packing_charges || 0;
-    const packingPercent = editingQuote?.subtotal > 0 ? (packingCharges / editingQuote.subtotal * 100) : 0;
-    const newPacking = afterDiscount * packingPercent / 100;
-    return {
-      subtotal,
-      discountAmount,
-      afterDiscount,
-      packingCharges: newPacking,
-      total: afterDiscount + newPacking + (editingQuote?.shipping_cost || 0)
-    };
+    let subtotal = 0;
+    let totalItemDiscount = 0;
+    
+    if (useItemDiscounts) {
+      // Calculate with item-level discounts
+      editedProducts.forEach(p => {
+        const itemDiscountPercent = p.item_discount_percent || 0;
+        const lineOriginal = p.unit_price * p.quantity;
+        const lineDiscounted = lineOriginal * (1 - itemDiscountPercent / 100);
+        subtotal += lineOriginal; // Subtotal is before discounts
+        totalItemDiscount += (lineOriginal - lineDiscounted);
+      });
+      
+      const afterDiscount = subtotal - totalItemDiscount;
+      const packingCharges = editingQuote?.packing_charges || 0;
+      const packingPercent = editingQuote?.subtotal > 0 ? (packingCharges / editingQuote.subtotal * 100) : 0;
+      const newPacking = afterDiscount * packingPercent / 100;
+      return {
+        subtotal,
+        discountAmount: totalItemDiscount,
+        afterDiscount,
+        packingCharges: newPacking,
+        total: afterDiscount + newPacking + (editingQuote?.shipping_cost || 0)
+      };
+    } else {
+      // Use total discount percentage
+      subtotal = editedProducts.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0);
+      const discountAmount = (subtotal * (parseFloat(editedDiscount) || 0)) / 100;
+      const afterDiscount = subtotal - discountAmount;
+      const packingCharges = editingQuote?.packing_charges || 0;
+      const packingPercent = editingQuote?.subtotal > 0 ? (packingCharges / editingQuote.subtotal * 100) : 0;
+      const newPacking = afterDiscount * packingPercent / 100;
+      return {
+        subtotal,
+        discountAmount,
+        afterDiscount,
+        packingCharges: newPacking,
+        total: afterDiscount + newPacking + (editingQuote?.shipping_cost || 0)
+      };
+    }
   };
 
   const saveEditedQuote = async () => {
@@ -280,13 +319,19 @@ export default function QuotesScreen() {
     setSavingEdit(true);
     try {
       const totals = calculateEditedTotal();
-      const updateData = {
+      const updateData: any = {
         products: editedProducts,
         subtotal: totals.subtotal,
         total_discount: totals.discountAmount,
+        use_item_discounts: useItemDiscounts,
         packing_charges: totals.packingCharges,
         total_price: totals.total,
       };
+      
+      // Only include discount_percent if using total discount mode
+      if (!useItemDiscounts) {
+        updateData.discount_percent = parseFloat(editedDiscount) || 0;
+      }
       
       await api.put(`/quotes/${editingQuote.id}`, updateData);
       Alert.alert('Success', `${docLabel} updated successfully`);
@@ -501,31 +546,101 @@ export default function QuotesScreen() {
       ? formatDate(quote.approved_at)
       : (quote.created_at_ist || formatDate(quote.created_at));
     
-    const productsHtml = quote.products.map((product, index) => `
-      <tr>
-        <td class="cell-center">${index + 1}</td>
-        <td class="cell-left">
-          <div class="product-name">${product.product_name || product.product_id}</div>
-          ${product.specifications ? `
-            <div class="product-specs">
-              ${product.specifications.roller_type ? `Type: ${product.specifications.roller_type}` : ''}
-              ${product.specifications.pipe_diameter ? ` | Pipe: ${product.specifications.pipe_diameter}mm` : ''}
-              ${product.specifications.shaft_diameter ? ` | Shaft: ${product.specifications.shaft_diameter}mm` : ''}
-              ${product.specifications.bearing ? ` | Bearing: ${product.specifications.bearing}` : ''}
-            </div>
-          ` : ''}
-          ${product.remark ? `<div class="product-remark">Note: ${product.remark}</div>` : ''}
-        </td>
-        <td class="cell-center">${product.quantity}</td>
-        <td class="cell-right">Rs. ${product.unit_price?.toFixed(2)}</td>
-        <td class="cell-right"><strong>Rs. ${(product.unit_price * product.quantity)?.toFixed(2)}</strong></td>
-      </tr>
-    `).join('');
+    // Check if using item-level discounts
+    const useItemDiscounts = quote.use_item_discounts || false;
+    
+    // Calculate totals with item discounts
+    let calculatedSubtotal = 0;
+    let totalItemDiscount = 0;
+    
+    const productsHtml = quote.products.map((product, index) => {
+      const itemDiscountPercent = useItemDiscounts ? (product.item_discount_percent || 0) : 0;
+      const valueAfterDiscount = product.unit_price * (1 - itemDiscountPercent / 100);
+      const lineTotal = product.quantity * valueAfterDiscount;
+      const originalAmount = product.quantity * product.unit_price;
+      const itemDiscountAmount = originalAmount - lineTotal;
+      
+      calculatedSubtotal += lineTotal;
+      totalItemDiscount += itemDiscountAmount;
+      
+      if (useItemDiscounts) {
+        return `
+          <tr>
+            <td class="cell-center">${index + 1}</td>
+            <td class="cell-left">
+              <div class="product-name">${product.product_id}</div>
+              ${product.specifications ? `
+                <div class="product-specs">
+                  ${product.specifications.roller_type ? `Type: ${product.specifications.roller_type}` : ''}
+                  ${product.specifications.pipe_diameter ? ` | Pipe: ${product.specifications.pipe_diameter}mm` : ''}
+                  ${product.specifications.shaft_diameter ? ` | Shaft: ${product.specifications.shaft_diameter}mm` : ''}
+                  ${product.specifications.bearing ? ` | Bearing: ${product.specifications.bearing}` : ''}
+                </div>
+              ` : ''}
+              ${product.remark ? `<div class="product-remark">Note: ${product.remark}</div>` : ''}
+            </td>
+            <td class="cell-center">${product.quantity}</td>
+            <td class="cell-right">Rs. ${product.unit_price?.toFixed(2)}</td>
+            <td class="cell-center">${itemDiscountPercent.toFixed(1)}%</td>
+            <td class="cell-right">Rs. ${valueAfterDiscount.toFixed(2)}</td>
+            <td class="cell-right"><strong>Rs. ${lineTotal.toFixed(2)}</strong></td>
+          </tr>
+        `;
+      } else {
+        return `
+          <tr>
+            <td class="cell-center">${index + 1}</td>
+            <td class="cell-left">
+              <div class="product-name">${product.product_name || product.product_id}</div>
+              ${product.specifications ? `
+                <div class="product-specs">
+                  ${product.specifications.roller_type ? `Type: ${product.specifications.roller_type}` : ''}
+                  ${product.specifications.pipe_diameter ? ` | Pipe: ${product.specifications.pipe_diameter}mm` : ''}
+                  ${product.specifications.shaft_diameter ? ` | Shaft: ${product.specifications.shaft_diameter}mm` : ''}
+                  ${product.specifications.bearing ? ` | Bearing: ${product.specifications.bearing}` : ''}
+                </div>
+              ` : ''}
+              ${product.remark ? `<div class="product-remark">Note: ${product.remark}</div>` : ''}
+            </td>
+            <td class="cell-center">${product.quantity}</td>
+            <td class="cell-right">Rs. ${product.unit_price?.toFixed(2)}</td>
+            <td class="cell-right"><strong>Rs. ${(product.unit_price * product.quantity)?.toFixed(2)}</strong></td>
+          </tr>
+        `;
+      }
+    }).join('');
 
-    const taxableAmount = (quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0);
+    // Calculate discount based on mode
+    const discount = useItemDiscounts ? totalItemDiscount : (quote.total_discount || 0);
+    const subtotalAfterDiscount = useItemDiscounts ? calculatedSubtotal : ((quote.subtotal || 0) - (quote.total_discount || 0));
+    const taxableAmount = subtotalAfterDiscount + (quote.packing_charges || 0);
     const cgst = taxableAmount * 0.09;
     const sgst = taxableAmount * 0.09;
     const grandTotal = (taxableAmount + (quote.shipping_cost || 0)) * 1.18;
+    
+    // Dynamic table header
+    const tableHeader = useItemDiscounts ? `
+      <tr>
+        <th style="width: 5%;">Sr.</th>
+        <th style="width: 25%; text-align: left;">Item Code</th>
+        <th style="width: 8%;">Qty</th>
+        <th style="width: 15%; text-align: right;">Rate</th>
+        <th style="width: 12%;">Disc %</th>
+        <th style="width: 17%; text-align: right;">Value After Disc</th>
+        <th style="width: 18%; text-align: right;">Total</th>
+      </tr>
+    ` : `
+      <tr>
+        <th style="width: 5%;">#</th>
+        <th style="width: 45%; text-align: left;">Description</th>
+        <th style="width: 10%;">Qty</th>
+        <th style="width: 20%; text-align: right;">Unit Price</th>
+        <th style="width: 20%; text-align: right;">Amount</th>
+      </tr>
+    `;
+    
+    // Discount label
+    const discountLabel = useItemDiscounts ? 'Item Discounts (Total)' : `Discount (${quote.subtotal > 0 ? ((quote.total_discount / quote.subtotal) * 100).toFixed(1) : 0}%)`;
 
     return `
       <!DOCTYPE html>
@@ -858,13 +973,7 @@ export default function QuotesScreen() {
         <div class="section-title">Product Details</div>
         <table>
           <thead>
-            <tr>
-              <th style="width: 5%;">#</th>
-              <th style="width: 45%; text-align: left;">Description</th>
-              <th style="width: 10%;">Qty</th>
-              <th style="width: 20%; text-align: right;">Unit Price</th>
-              <th style="width: 20%; text-align: right;">Amount</th>
-            </tr>
+            ${tableHeader}
           </thead>
           <tbody>
             ${productsHtml}
@@ -878,10 +987,10 @@ export default function QuotesScreen() {
               <span class="summary-label">Subtotal</span>
               <span class="summary-value">Rs. ${(quote.subtotal || 0).toFixed(2)}</span>
             </div>
-            ${quote.total_discount > 0 ? `
+            ${discount > 0 ? `
               <div class="summary-row discount-row">
-                <span class="summary-label">Discount (${quote.subtotal > 0 ? ((quote.total_discount / quote.subtotal) * 100).toFixed(1) : 0}%)</span>
-                <span class="summary-value">- Rs. ${quote.total_discount?.toFixed(2)}</span>
+                <span class="summary-label">${discountLabel}</span>
+                <span class="summary-value">- Rs. ${discount.toFixed(2)}</span>
               </div>
             ` : ''}
             ${quote.packing_charges && quote.packing_charges > 0 ? `
@@ -1594,52 +1703,115 @@ export default function QuotesScreen() {
             <ScrollView style={styles.modalBody}>
               {editingQuote && (
                 <>
-                  {/* Products with editable quantity */}
+                  {/* Discount Mode Toggle */}
                   <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>Products</Text>
-                    {editedProducts.map((product, index) => (
-                      <View key={index} style={styles.editProductRow}>
-                        <View style={styles.editProductInfo}>
-                          <Text style={styles.editProductName}>{product.product_name || product.product_id}</Text>
-                          <Text style={styles.editProductPrice}>Rs. {product.unit_price?.toFixed(2)}/unit</Text>
-                        </View>
-                        <View style={styles.qtyInputContainer}>
-                          <Text style={styles.qtyLabel}>Qty:</Text>
-                          <TextInput
-                            style={styles.qtyInput}
-                            value={product.quantity.toString()}
-                            onChangeText={(text) => updateProductQuantity(index, text)}
-                            keyboardType="numeric"
-                          />
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-
-                  {/* Editable Discount */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>Discount</Text>
-                    <View style={styles.discountInputRow}>
-                      <TextInput
-                        style={styles.discountInput}
-                        value={editedDiscount}
-                        onChangeText={setEditedDiscount}
-                        keyboardType="numeric"
-                        placeholder="0"
-                      />
-                      <Text style={styles.discountPercent}>%</Text>
+                    <Text style={styles.sectionTitle}>Discount Mode</Text>
+                    <View style={styles.discountModeToggle}>
+                      <TouchableOpacity 
+                        style={[styles.modeButton, !useItemDiscounts && styles.modeButtonActive]}
+                        onPress={() => setUseItemDiscounts(false)}
+                      >
+                        <Ionicons name="calculator-outline" size={18} color={!useItemDiscounts ? "#fff" : "#666"} />
+                        <Text style={[styles.modeButtonText, !useItemDiscounts && styles.modeButtonTextActive]}>
+                          Total Discount
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[styles.modeButton, useItemDiscounts && styles.modeButtonActive]}
+                        onPress={() => setUseItemDiscounts(true)}
+                      >
+                        <Ionicons name="list-outline" size={18} color={useItemDiscounts ? "#fff" : "#666"} />
+                        <Text style={[styles.modeButtonText, useItemDiscounts && styles.modeButtonTextActive]}>
+                          Per-Item Discount
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
 
+                  {/* Products with editable quantity and item discount */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Products</Text>
+                    {editedProducts.map((product, index) => {
+                      const itemDiscount = product.item_discount_percent || 0;
+                      const valueAfterDiscount = product.unit_price * (1 - itemDiscount / 100);
+                      const lineTotal = product.quantity * valueAfterDiscount;
+                      
+                      return (
+                        <View key={index} style={styles.editProductCard}>
+                          <View style={styles.editProductHeader}>
+                            <Text style={styles.editProductName}>{product.product_name || product.product_id}</Text>
+                            <Text style={styles.editProductPrice}>Rs. {product.unit_price?.toFixed(2)}/unit</Text>
+                          </View>
+                          
+                          <View style={styles.editProductInputs}>
+                            <View style={styles.inputGroup}>
+                              <Text style={styles.inputLabel}>Qty</Text>
+                              <TextInput
+                                style={styles.smallInput}
+                                value={product.quantity.toString()}
+                                onChangeText={(text) => updateProductQuantity(index, text)}
+                                keyboardType="numeric"
+                              />
+                            </View>
+                            
+                            {useItemDiscounts && (
+                              <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Disc %</Text>
+                                <TextInput
+                                  style={styles.smallInput}
+                                  value={itemDiscount.toString()}
+                                  onChangeText={(text) => updateProductItemDiscount(index, text)}
+                                  keyboardType="numeric"
+                                  placeholder="0"
+                                />
+                              </View>
+                            )}
+                            
+                            {useItemDiscounts && (
+                              <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>After Disc</Text>
+                                <Text style={styles.calculatedValue}>Rs. {valueAfterDiscount.toFixed(2)}</Text>
+                              </View>
+                            )}
+                            
+                            <View style={styles.inputGroup}>
+                              <Text style={styles.inputLabel}>Total</Text>
+                              <Text style={styles.calculatedValueBold}>Rs. {lineTotal.toFixed(2)}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  {/* Total Discount - Only show if not using item discounts */}
+                  {!useItemDiscounts && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.sectionTitle}>Total Discount</Text>
+                      <View style={styles.discountInputRow}>
+                        <TextInput
+                          style={styles.discountInput}
+                          value={editedDiscount}
+                          onChangeText={setEditedDiscount}
+                          keyboardType="numeric"
+                          placeholder="0"
+                        />
+                        <Text style={styles.discountPercent}>%</Text>
+                      </View>
+                    </View>
+                  )}
+
                   {/* Calculated Totals */}
                   <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>Totals</Text>
+                    <Text style={styles.sectionTitle}>Summary</Text>
                     <View style={styles.pricingRow}>
                       <Text style={styles.pricingLabel}>Subtotal</Text>
                       <Text style={styles.pricingValue}>Rs. {calculateEditedTotal().subtotal.toFixed(2)}</Text>
                     </View>
                     <View style={styles.pricingRow}>
-                      <Text style={styles.pricingLabelGreen}>Discount ({editedDiscount}%)</Text>
+                      <Text style={styles.pricingLabelGreen}>
+                        {useItemDiscounts ? 'Item Discounts (Total)' : `Discount (${editedDiscount}%)`}
+                      </Text>
                       <Text style={styles.pricingValueGreen}>- Rs. {calculateEditedTotal().discountAmount.toFixed(2)}</Text>
                     </View>
                     {calculateEditedTotal().packingCharges > 0 && (
@@ -2454,5 +2626,89 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#960018',
+  },
+  // Discount mode toggle styles
+  discountModeToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
+  },
+  modeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  modeButtonActive: {
+    backgroundColor: '#960018',
+  },
+  modeButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  modeButtonTextActive: {
+    color: '#fff',
+  },
+  // Edit product card styles
+  editProductCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  editProductHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  editProductInputs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  inputGroup: {
+    flex: 1,
+    minWidth: 70,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  smallInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  calculatedValue: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#475569',
+    paddingVertical: 8,
+  },
+  calculatedValueBold: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    paddingVertical: 8,
   },
 });

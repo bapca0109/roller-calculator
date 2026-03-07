@@ -278,6 +278,7 @@ class QuoteProduct(BaseModel):
     specifications: Optional[Dict[str, Any]] = None
     calculated_discount: float = 0.0  # Quantity discount applied
     custom_premium: float = 0.0  # Premium for custom specs
+    item_discount_percent: float = 0.0  # Per-item discount percentage (editable by admin)
     remark: Optional[str] = None  # Customer remark for this product
     attachments: Optional[List[ProductAttachment]] = []
 
@@ -299,6 +300,8 @@ class Quote(BaseModel):
     products: List[QuoteProduct]
     subtotal: float
     total_discount: float = 0.0
+    use_item_discounts: bool = False  # If True, use per-item discounts instead of total discount
+    discount_percent: Optional[float] = 0.0  # Overall discount percentage
     shipping_cost: float = 0.0
     delivery_location: Optional[str] = None
     total_price: float
@@ -330,6 +333,8 @@ class QuoteUpdate(BaseModel):
     products: Optional[List[QuoteProduct]] = None
     subtotal: Optional[float] = None
     total_discount: Optional[float] = None
+    use_item_discounts: Optional[bool] = None  # Toggle between item discounts and total discount
+    discount_percent: Optional[float] = None  # Overall discount percentage
     packing_charges: Optional[float] = None
     total_price: Optional[float] = None
 
@@ -940,13 +945,28 @@ def generate_quote_html(quote_data: dict) -> str:
     is_rfq = quote_number.startswith('RFQ')
     doc_label_full = 'REQUEST FOR QUOTATION' if is_rfq else 'QUOTATION'
     
-    # Generate products HTML
+    # Check if using item-level discounts
+    use_item_discounts = quote_data.get('use_item_discounts', False)
+    
+    # Generate products HTML with new table format
     products = quote_data.get('products', [])
     products_html = ""
+    calculated_subtotal = 0
+    total_item_discount = 0
+    
     for idx, product in enumerate(products, 1):
         qty = product.get('quantity', 0)
         unit_price = product.get('unit_price', 0)
-        amount = qty * unit_price
+        item_discount_percent = product.get('item_discount_percent', 0) if use_item_discounts else 0
+        
+        # Calculate values
+        value_after_discount = unit_price * (1 - item_discount_percent / 100)
+        line_total = qty * value_after_discount
+        original_amount = qty * unit_price
+        item_discount_amount = original_amount - line_total
+        
+        calculated_subtotal += line_total
+        total_item_discount += item_discount_amount
         
         specs = product.get('specifications', {})
         specs_html = ""
@@ -963,26 +983,54 @@ def generate_quote_html(quote_data: dict) -> str:
         if product.get('remark'):
             remark_html = f'<div class="product-remark">Note: {product["remark"]}</div>'
         
-        products_html += f"""
-            <tr>
-              <td class="cell-center">{idx}</td>
-              <td class="cell-left">
-                <div class="product-name">{product.get('product_name', product.get('product_id', 'N/A'))}</div>
-                {specs_html}
-                {remark_html}
-              </td>
-              <td class="cell-center">{qty}</td>
-              <td class="cell-right">Rs. {unit_price:,.2f}</td>
-              <td class="cell-right"><strong>Rs. {amount:,.2f}</strong></td>
-            </tr>
-        """
+        # Show discount column only if using item discounts
+        discount_col = f'<td class="cell-center">{item_discount_percent:.1f}%</td>' if use_item_discounts else ''
+        value_after_col = f'<td class="cell-right">Rs. {value_after_discount:,.2f}</td>' if use_item_discounts else ''
+        
+        if use_item_discounts:
+            products_html += f"""
+                <tr>
+                  <td class="cell-center">{idx}</td>
+                  <td class="cell-left">
+                    <div class="product-name">{product.get('product_id', 'N/A')}</div>
+                    {specs_html}
+                    {remark_html}
+                  </td>
+                  <td class="cell-center">{qty}</td>
+                  <td class="cell-right">Rs. {unit_price:,.2f}</td>
+                  <td class="cell-center">{item_discount_percent:.1f}%</td>
+                  <td class="cell-right">Rs. {value_after_discount:,.2f}</td>
+                  <td class="cell-right"><strong>Rs. {line_total:,.2f}</strong></td>
+                </tr>
+            """
+        else:
+            products_html += f"""
+                <tr>
+                  <td class="cell-center">{idx}</td>
+                  <td class="cell-left">
+                    <div class="product-name">{product.get('product_name', product.get('product_id', 'N/A'))}</div>
+                    {specs_html}
+                    {remark_html}
+                  </td>
+                  <td class="cell-center">{qty}</td>
+                  <td class="cell-right">Rs. {unit_price:,.2f}</td>
+                  <td class="cell-right"><strong>Rs. {original_amount:,.2f}</strong></td>
+                </tr>
+            """
     
-    # Calculate totals
+    # Calculate totals - use item-level discounts if enabled
     subtotal = quote_data.get('subtotal', 0)
-    discount = quote_data.get('total_discount', 0)
+    if use_item_discounts:
+        # Subtotal is before item discounts, discount is sum of item discounts
+        discount = total_item_discount
+        subtotal_after_discount = calculated_subtotal
+    else:
+        discount = quote_data.get('total_discount', 0)
+        subtotal_after_discount = subtotal - discount
+    
     packing = quote_data.get('packing_charges', 0)
     shipping = quote_data.get('shipping_cost', 0)
-    taxable_amount = subtotal - discount + packing
+    taxable_amount = subtotal_after_discount + packing
     cgst = taxable_amount * 0.09
     sgst = taxable_amount * 0.09
     grand_total = (taxable_amount + shipping) * 1.18
@@ -1027,16 +1075,24 @@ def generate_quote_html(quote_data: dict) -> str:
           </div>
     ''' if quote_data.get('notes') else ''
     
-    # Discount row
+    # Discount row - show item discount summary if using item discounts
     discount_html = ""
     if discount > 0:
-        discount_percent = (discount / subtotal * 100) if subtotal > 0 else 0
-        discount_html = f'''
-            <div class="summary-row discount-row">
-              <span class="summary-label">Discount ({discount_percent:.1f}%)</span>
-              <span class="summary-value">- Rs. {discount:,.2f}</span>
-            </div>
-        '''
+        if use_item_discounts:
+            discount_html = f'''
+                <div class="summary-row discount-row">
+                  <span class="summary-label">Item Discounts (Total)</span>
+                  <span class="summary-value">- Rs. {discount:,.2f}</span>
+                </div>
+            '''
+        else:
+            discount_percent = (discount / subtotal * 100) if subtotal > 0 else 0
+            discount_html = f'''
+                <div class="summary-row discount-row">
+                  <span class="summary-label">Discount ({discount_percent:.1f}%)</span>
+                  <span class="summary-value">- Rs. {discount:,.2f}</span>
+                </div>
+            '''
     
     # Packing row
     packing_html = ""
@@ -1056,6 +1112,30 @@ def generate_quote_html(quote_data: dict) -> str:
               <span class="summary-label">Freight Charges</span>
               <span class="summary-value">Rs. {shipping:,.2f}</span>
             </div>
+        '''
+    
+    # Dynamic table header based on discount mode
+    if use_item_discounts:
+        table_header = '''
+            <tr>
+              <th style="width: 5%;">Sr.</th>
+              <th style="width: 25%; text-align: left;">Item Code</th>
+              <th style="width: 8%;">Qty</th>
+              <th style="width: 15%; text-align: right;">Rate</th>
+              <th style="width: 12%;">Disc %</th>
+              <th style="width: 17%; text-align: right;">Value After Disc</th>
+              <th style="width: 18%; text-align: right;">Total</th>
+            </tr>
+        '''
+    else:
+        table_header = '''
+            <tr>
+              <th style="width: 5%;">#</th>
+              <th style="width: 45%; text-align: left;">Description</th>
+              <th style="width: 10%;">Qty</th>
+              <th style="width: 20%; text-align: right;">Unit Price</th>
+              <th style="width: 20%; text-align: right;">Amount</th>
+            </tr>
         '''
     
     html = f"""
@@ -1377,13 +1457,7 @@ def generate_quote_html(quote_data: dict) -> str:
         <div class="section-title">Product Details</div>
         <table>
           <thead>
-            <tr>
-              <th style="width: 5%;">#</th>
-              <th style="width: 45%; text-align: left;">Description</th>
-              <th style="width: 10%;">Qty</th>
-              <th style="width: 20%; text-align: right;">Unit Price</th>
-              <th style="width: 20%; text-align: right;">Amount</th>
-            </tr>
+            {table_header}
           </thead>
           <tbody>
             {products_html}
