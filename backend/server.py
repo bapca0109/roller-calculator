@@ -585,21 +585,17 @@ async def send_registration_notification_email(customer_data):
         return False  # Don't raise exception, just log the error
 
 async def send_rfq_notification_email(rfq_data: dict, customer: dict):
-    """Send RFQ notification email with PDF to admins"""
+    """Send RFQ notification email to admins and confirmation to customer - WITHOUT PRICES"""
     if not GMAIL_USER or not GMAIL_APP_PASSWORD:
         logging.warning("Email service not configured, skipping RFQ notification")
         return False
     
     admin_emails = ADMIN_RFQ_EMAILS
+    customer_email = rfq_data.get('customer_email') or customer.get('email')
     ist_now = get_ist_now()
     
     try:
-        msg = MIMEMultipart('mixed')
-        msg['Subject'] = f"New RFQ Received - {rfq_data.get('quote_number')} from {rfq_data.get('customer_name')}"
-        msg['From'] = GMAIL_USER
-        msg['To'] = ", ".join(admin_emails)
-        
-        # Get product details
+        # Get product details - WITHOUT PRICES for RFQ
         products = rfq_data.get('products', [])
         products_html = ""
         products_text = ""
@@ -610,17 +606,22 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
                 <td>{product.get('product_id', 'N/A')}</td>
                 <td>{product.get('product_name', 'N/A')}</td>
                 <td>{product.get('quantity', 0)}</td>
-                <td>Rs. {product.get('unit_price', 0):,.2f}</td>
             </tr>
             """
             products_text += f"{idx}. {product.get('product_id', 'N/A')} - {product.get('product_name', 'N/A')} x {product.get('quantity', 0)}\n"
         
-        html_content = f"""
+        # ===== ADMIN EMAIL (internal notification) =====
+        admin_msg = MIMEMultipart('mixed')
+        admin_msg['Subject'] = f"New RFQ Received - {rfq_data.get('quote_number')} from {rfq_data.get('customer_name')}"
+        admin_msg['From'] = GMAIL_USER
+        admin_msg['To'] = ", ".join(admin_emails)
+        
+        admin_html_content = f"""
         <!DOCTYPE html>
         <html>
         <head>
             <style>
-                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                body {{ font-family: Calibri, Arial, sans-serif; line-height: 1.6; color: #333; }}
                 .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
                 .header {{ background-color: #960018; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
                 .content {{ background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }}
@@ -633,7 +634,6 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
                 .products-table th {{ background-color: #1E293B; color: white; padding: 12px; text-align: left; }}
                 .products-table td {{ padding: 12px; border-bottom: 1px solid #ddd; }}
                 .products-table tr:nth-child(even) {{ background-color: #f9f9f9; }}
-                .total-box {{ background: #960018; color: white; padding: 15px; border-radius: 8px; text-align: right; margin-top: 20px; }}
                 .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
             </style>
         </head>
@@ -673,15 +673,9 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
                             <th>Product Code</th>
                             <th>Description</th>
                             <th>Qty</th>
-                            <th>Unit Price</th>
                         </tr>
                         {products_html}
                     </table>
-                    
-                    <div class="total-box">
-                        <span style="font-size: 14px;">Total Value:</span>
-                        <span style="font-size: 24px; font-weight: bold; margin-left: 10px;">Rs. {rfq_data.get('total_price', 0):,.2f}</span>
-                    </div>
                     
                     {f'<p style="margin-top: 20px;"><strong>Notes:</strong> {rfq_data.get("notes")}</p>' if rfq_data.get("notes") else ''}
                 </div>
@@ -693,7 +687,7 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
         </html>
         """
         
-        text_content = f"""
+        admin_text_content = f"""
         New RFQ Received - Convero Solutions
         
         RFQ Number: {rfq_data.get('quote_number')}
@@ -709,22 +703,20 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
         -------------------
         {products_text}
         
-        Total Value: Rs. {rfq_data.get('total_price', 0):,.2f}
-        
         {f'Notes: {rfq_data.get("notes")}' if rfq_data.get("notes") else ''}
         
         - Convero Solutions
         """
         
-        # Create the email body
-        msg_alternative = MIMEMultipart('alternative')
-        part1 = MIMEText(text_content, 'plain')
-        part2 = MIMEText(html_content, 'html')
-        msg_alternative.attach(part1)
-        msg_alternative.attach(part2)
-        msg.attach(msg_alternative)
+        # Create the admin email body
+        admin_msg_alternative = MIMEMultipart('alternative')
+        admin_part1 = MIMEText(admin_text_content, 'plain')
+        admin_part2 = MIMEText(admin_html_content, 'html')
+        admin_msg_alternative.attach(admin_part1)
+        admin_msg_alternative.attach(admin_part2)
+        admin_msg.attach(admin_msg_alternative)
         
-        # Attach any product attachments
+        # Attach any product attachments to admin email
         attachment_count = 0
         for product in products:
             product_attachments = product.get('attachments', [])
@@ -749,20 +741,131 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
                             'Content-Disposition',
                             f'attachment; filename="{attachment_name}"'
                         )
-                        msg.attach(attachment_part)
+                        admin_msg.attach(attachment_part)
                         attachment_count += 1
                     except Exception as att_error:
                         logging.error(f"Failed to attach file {att.get('name')}: {str(att_error)}")
         
         if attachment_count > 0:
-            logging.info(f"Attached {attachment_count} files to RFQ email")
+            logging.info(f"Attached {attachment_count} files to admin RFQ email")
         
+        # ===== CUSTOMER EMAIL (confirmation without prices) =====
+        customer_msg = MIMEMultipart('mixed')
+        customer_msg['Subject'] = f"RFQ Submitted Successfully - {rfq_data.get('quote_number')}"
+        customer_msg['From'] = GMAIL_USER
+        customer_msg['To'] = customer_email
+        
+        customer_html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Calibri, Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: #960018; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }}
+                .rfq-number {{ font-size: 24px; font-weight: bold; color: #960018; }}
+                .info-box {{ background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #960018; margin: 15px 0; }}
+                .info-label {{ font-size: 12px; color: #666; text-transform: uppercase; }}
+                .info-value {{ font-size: 16px; font-weight: bold; color: #333; margin-top: 5px; }}
+                .products-table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+                .products-table th {{ background-color: #1E293B; color: white; padding: 12px; text-align: left; }}
+                .products-table td {{ padding: 12px; border-bottom: 1px solid #ddd; }}
+                .products-table tr:nth-child(even) {{ background-color: #f9f9f9; }}
+                .note-box {{ background: #FFF3CD; border: 1px solid #FFEEBA; padding: 15px; border-radius: 8px; margin-top: 20px; }}
+                .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="margin: 0;">RFQ Submitted Successfully</h1>
+                    <p style="margin: 5px 0 0 0;">Convero Solutions - Roller Price Calculator</p>
+                </div>
+                <div class="content">
+                    <p>Dear {rfq_data.get('customer_name')},</p>
+                    <p>Thank you for submitting your Request for Quotation. We have received your request and our team will review it shortly.</p>
+                    
+                    <div class="info-box">
+                        <div class="info-label">Your RFQ Number</div>
+                        <div class="info-value">{rfq_data.get('quote_number')}</div>
+                    </div>
+                    
+                    <div class="info-box">
+                        <div class="info-label">Submission Time</div>
+                        <div class="info-value">{ist_now.strftime("%d %b %Y, %I:%M %p IST")}</div>
+                    </div>
+                    
+                    <h3>Products Requested</h3>
+                    <table class="products-table">
+                        <tr>
+                            <th>#</th>
+                            <th>Product Code</th>
+                            <th>Description</th>
+                            <th>Qty</th>
+                        </tr>
+                        {products_html}
+                    </table>
+                    
+                    {f'<p><strong>Your Notes:</strong> {rfq_data.get("notes")}</p>' if rfq_data.get("notes") else ''}
+                    
+                    <div class="note-box">
+                        <strong>What happens next?</strong><br/>
+                        Our team will review your request and send you a formal quotation with pricing details via email. This typically takes 1-2 business days.
+                    </div>
+                </div>
+                <div class="footer">
+                    <p>If you have any questions, please contact us at info@convero.in</p>
+                    <p>&copy; 2026 Convero Solutions. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        customer_text_content = f"""
+        RFQ Submitted Successfully - Convero Solutions
+        
+        Dear {rfq_data.get('customer_name')},
+        
+        Thank you for submitting your Request for Quotation. We have received your request and our team will review it shortly.
+        
+        Your RFQ Number: {rfq_data.get('quote_number')}
+        Submission Time: {ist_now.strftime("%d %b %Y, %I:%M %p IST")}
+        
+        Products Requested:
+        -------------------
+        {products_text}
+        
+        {f'Your Notes: {rfq_data.get("notes")}' if rfq_data.get("notes") else ''}
+        
+        What happens next?
+        Our team will review your request and send you a formal quotation with pricing details via email. This typically takes 1-2 business days.
+        
+        If you have any questions, please contact us at info@convero.in
+        
+        - Convero Solutions
+        """
+        
+        # Create the customer email body
+        customer_msg_alternative = MIMEMultipart('alternative')
+        customer_part1 = MIMEText(customer_text_content, 'plain')
+        customer_part2 = MIMEText(customer_html_content, 'html')
+        customer_msg_alternative.attach(customer_part1)
+        customer_msg_alternative.attach(customer_part2)
+        customer_msg.attach(customer_msg_alternative)
+        
+        # Send emails
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            # Send to admins
             for admin_email in admin_emails:
-                server.sendmail(GMAIL_USER, admin_email, msg.as_string())
+                server.sendmail(GMAIL_USER, admin_email, admin_msg.as_string())
+            # Send to customer
+            if customer_email:
+                server.sendmail(GMAIL_USER, customer_email, customer_msg.as_string())
         
-        logging.info(f"RFQ notification sent to admins for RFQ: {rfq_data.get('quote_number')} with {attachment_count} attachments")
+        logging.info(f"RFQ notification sent to admins and confirmation to customer for RFQ: {rfq_data.get('quote_number')}")
         return True
     except Exception as e:
         logging.error(f"Failed to send RFQ notification email: {str(e)}")
