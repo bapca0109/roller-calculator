@@ -29,6 +29,7 @@ interface Customer {
   gst_number?: string;
   notes?: string;
   customer_type?: string;
+  customer_code?: string;
 }
 
 interface Quote {
@@ -504,7 +505,14 @@ export default function CustomersScreen() {
                 activeOpacity={customer.customer_type === 'quoted' ? 0.7 : 1}
               >
                 <View style={styles.customerHeader}>
-                  <Text style={styles.customerName}>{customer.name}</Text>
+                  <View style={styles.customerNameRow}>
+                    {customer.customer_code && (
+                      <View style={styles.customerCodeBadge}>
+                        <Text style={styles.customerCodeText}>{customer.customer_code}</Text>
+                      </View>
+                    )}
+                    <Text style={styles.customerName}>{customer.name}</Text>
+                  </View>
                   {customer.customer_type === 'quoted' && (
                     <View style={styles.quotedBadge}>
                       <Ionicons name="checkmark-circle" size={12} color="#4CAF50" />
@@ -1014,10 +1022,28 @@ const styles = StyleSheet.create({
   customerInfo: {
     flex: 1,
   },
+  customerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  customerCodeBadge: {
+    backgroundColor: '#960018',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  customerCodeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   customerName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    flex: 1,
   },
   customerCompany: {
     fontSize: 14,

@@ -189,12 +189,34 @@ class Customer(BaseModel):
     pincode: Optional[str] = None
     gst_number: Optional[str] = None
     notes: Optional[str] = None
+    customer_code: Optional[str] = None  # Auto-generated code like C0001, C0002
 
 class CustomerInDB(Customer):
     id: str
     created_by: str
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+async def generate_customer_code() -> str:
+    """Generate next customer code in sequence (C0001, C0002, etc.)"""
+    # Find the highest customer code
+    last_customer = await db.users.find_one(
+        {"role": "customer", "customer_code": {"$exists": True, "$ne": None}},
+        sort=[("customer_code", -1)]
+    )
+    
+    if last_customer and last_customer.get("customer_code"):
+        # Extract number from code like "C0001" -> 1
+        try:
+            last_num = int(last_customer["customer_code"][1:])
+            next_num = last_num + 1
+        except (ValueError, IndexError):
+            next_num = 1
+    else:
+        next_num = 1
+    
+    # Format as C0001, C0002, etc. (4 digits with leading zeros)
+    return f"C{next_num:04d}"
 
 class RollerSpecs(BaseModel):
     diameter: float  # mm
@@ -1278,6 +1300,9 @@ async def verify_otp(request: OTPVerify):
         await db.otp_verifications.delete_one({"email": request.email})
         raise HTTPException(status_code=400, detail="Email already registered")
     
+    # Generate customer code
+    customer_code = await generate_customer_code()
+    
     # Create user with stored password hash
     user_dict = {
         "email": request.email,
@@ -1290,7 +1315,8 @@ async def verify_otp(request: OTPVerify):
         "role": UserRole.CUSTOMER,
         "hashed_password": otp_record["password_hash"],
         "created_at": datetime.utcnow(),
-        "email_verified": True
+        "email_verified": True,
+        "customer_code": customer_code
     }
     
     result = await db.users.insert_one(user_dict)
@@ -1309,11 +1335,12 @@ async def verify_otp(request: OTPVerify):
         "gstin": "",  # Can be updated later
         "created_at": get_ist_now(),
         "user_id": str(result.inserted_id),  # Link to user account
-        "customer_type": "registered"  # Mark as registered customer
+        "customer_type": "registered",  # Mark as registered customer
+        "customer_code": customer_code  # Same code as user
     }
     
     customer_result = await db.customers.insert_one(customer_dict)
-    logging.info(f"Customer created with ID: {customer_result.inserted_id} for user: {request.email}")
+    logging.info(f"Customer created with ID: {customer_result.inserted_id} for user: {request.email} with code: {customer_code}")
     
     # Send registration notification email to admin
     await send_registration_notification_email(request)
@@ -1332,7 +1359,8 @@ async def verify_otp(request: OTPVerify):
             "email": request.email,
             "name": request.name,
             "role": UserRole.CUSTOMER,
-            "company": request.company
+            "company": request.company,
+            "customer_code": customer_code
         }
     }
 
@@ -1394,6 +1422,10 @@ async def register(user: UserRegister):
     user_dict["hashed_password"] = hashed_password
     user_dict["created_at"] = datetime.utcnow()
     
+    # Generate customer code for customer role
+    if user.role == "customer":
+        user_dict["customer_code"] = await generate_customer_code()
+    
     result = await db.users.insert_one(user_dict)
     user_dict["id"] = str(result.inserted_id)
     
@@ -1408,7 +1440,8 @@ async def register(user: UserRegister):
             "email": user.email,
             "name": user.name,
             "role": user.role,
-            "company": user.company
+            "company": user.company,
+            "customer_code": user_dict.get("customer_code")
         }
     }
 
@@ -1428,7 +1461,8 @@ async def login(credentials: UserLogin):
             "email": user["email"],
             "name": user["name"],
             "role": user["role"],
-            "company": user.get("company")
+            "company": user.get("company"),
+            "customer_code": user.get("customer_code")
         }
     }
 
@@ -1439,7 +1473,8 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         "email": current_user["email"],
         "name": current_user["name"],
         "role": current_user["role"],
-        "company": current_user.get("company")
+        "company": current_user.get("company"),
+        "customer_code": current_user.get("customer_code")
     }
 
 # ============= FORGOT PASSWORD =============
@@ -4817,6 +4852,71 @@ async def export_analytics_pdf(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         logging.error(f"PDF export error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to export PDF: {str(e)}")
+
+@api_router.post("/admin/migrate-customer-codes")
+async def migrate_customer_codes(current_user: dict = Depends(get_current_user)):
+    """Migrate existing customers to have customer codes - Admin only"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can run migrations")
+    
+    updated_count = 0
+    
+    # Find all users with role=customer and no customer_code
+    users_cursor = db.users.find({
+        "role": "customer",
+        "$or": [
+            {"customer_code": {"$exists": False}},
+            {"customer_code": None}
+        ]
+    }).sort("created_at", 1)  # Sort by creation date to maintain order
+    
+    async for user in users_cursor:
+        customer_code = await generate_customer_code()
+        
+        # Update user
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"customer_code": customer_code}}
+        )
+        
+        # Also update corresponding customer record
+        await db.customers.update_one(
+            {"email": user["email"]},
+            {"$set": {"customer_code": customer_code}}
+        )
+        
+        updated_count += 1
+        logging.info(f"Assigned customer code {customer_code} to user {user['email']}")
+    
+    # Also update customers collection entries that don't have codes
+    customers_cursor = db.customers.find({
+        "$or": [
+            {"customer_code": {"$exists": False}},
+            {"customer_code": None}
+        ]
+    }).sort("created_at", 1)
+    
+    async for customer in customers_cursor:
+        # Check if this customer's email has a user with a code
+        user = await db.users.find_one({"email": customer.get("email"), "customer_code": {"$exists": True}})
+        
+        if user and user.get("customer_code"):
+            # Use the same code as the user
+            await db.customers.update_one(
+                {"_id": customer["_id"]},
+                {"$set": {"customer_code": user["customer_code"]}}
+            )
+        else:
+            # Generate a new code
+            customer_code = await generate_customer_code()
+            await db.customers.update_one(
+                {"_id": customer["_id"]},
+                {"$set": {"customer_code": customer_code}}
+            )
+            updated_count += 1
+            logging.info(f"Assigned customer code {customer_code} to customer {customer.get('email', customer.get('name'))}")
+    
+    return {"message": f"Migration complete. Updated {updated_count} customers with codes."}
 
 
 # Include the router in the main app
