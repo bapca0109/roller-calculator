@@ -6,10 +6,15 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import warnings
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta, timezone
+
+# Suppress passlib bcrypt version warning
+warnings.filterwarnings("ignore", message=".*error reading bcrypt version.*")
+
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from bson import ObjectId
