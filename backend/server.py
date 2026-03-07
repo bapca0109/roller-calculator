@@ -584,6 +584,314 @@ async def send_registration_notification_email(customer_data):
         logging.error(f"Failed to send registration notification email: {str(e)}")
         return False  # Don't raise exception, just log the error
 
+def generate_rfq_pdf(rfq_data: dict) -> bytes:
+    """Generate PDF for RFQ - WITHOUT PRICES"""
+    from fpdf import FPDF
+    
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    ist_now = get_ist_now()
+    
+    # Header with Carmine Red background
+    pdf.set_fill_color(150, 0, 24)
+    pdf.rect(0, 0, 210, 40, 'F')
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font('Helvetica', 'B', 18)
+    pdf.set_xy(10, 8)
+    pdf.cell(0, 10, 'REQUEST FOR QUOTATION', align='C')
+    pdf.set_font('Helvetica', '', 12)
+    pdf.set_xy(10, 20)
+    pdf.cell(0, 8, f'{rfq_data.get("quote_number", "N/A")}', align='C')
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_xy(10, 30)
+    pdf.cell(0, 6, f'Date: {ist_now.strftime("%d %b %Y, %I:%M %p IST")}', align='C')
+    
+    # Reset text color
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_y(50)
+    
+    # Customer Details Section
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_fill_color(240, 240, 240)
+    pdf.cell(0, 8, 'Customer Details', fill=True, ln=True)
+    pdf.ln(3)
+    
+    pdf.set_font('Helvetica', '', 10)
+    details = [
+        ('Name', rfq_data.get('customer_name', 'N/A')),
+        ('Company', rfq_data.get('customer_company', 'N/A')),
+        ('Email', rfq_data.get('customer_email', 'N/A')),
+    ]
+    
+    # Add customer details from customer_details if available
+    customer_details = rfq_data.get('customer_details', {})
+    if customer_details:
+        if customer_details.get('mobile'):
+            details.append(('Mobile', customer_details.get('mobile')))
+        if customer_details.get('gst'):
+            details.append(('GST No.', customer_details.get('gst')))
+        if customer_details.get('address'):
+            details.append(('Address', customer_details.get('address')))
+    
+    for label, value in details:
+        pdf.set_font('Helvetica', 'B', 9)
+        pdf.set_text_color(100, 100, 100)
+        pdf.cell(40, 6, f'{label}:')
+        pdf.set_font('Helvetica', '', 10)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(0, 6, str(value), ln=True)
+    
+    pdf.ln(5)
+    
+    # Products Table - WITHOUT PRICES
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_fill_color(240, 240, 240)
+    pdf.cell(0, 8, 'Products Requested', fill=True, ln=True)
+    pdf.ln(3)
+    
+    # Table header
+    pdf.set_fill_color(30, 41, 59)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font('Helvetica', 'B', 9)
+    pdf.cell(15, 8, '#', fill=True, border=1, align='C')
+    pdf.cell(45, 8, 'Product Code', fill=True, border=1, align='C')
+    pdf.cell(90, 8, 'Description', fill=True, border=1, align='C')
+    pdf.cell(30, 8, 'Quantity', fill=True, border=1, align='C')
+    pdf.ln()
+    
+    # Table rows
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font('Helvetica', '', 9)
+    products = rfq_data.get('products', [])
+    for idx, product in enumerate(products, 1):
+        pdf.cell(15, 7, str(idx), border=1, align='C')
+        pdf.cell(45, 7, str(product.get('product_id', 'N/A'))[:20], border=1, align='C')
+        pdf.cell(90, 7, str(product.get('product_name', 'N/A'))[:45], border=1)
+        pdf.cell(30, 7, str(product.get('quantity', 0)), border=1, align='C')
+        pdf.ln()
+    
+    pdf.ln(5)
+    
+    # Notes section if any
+    if rfq_data.get('notes'):
+        pdf.set_font('Helvetica', 'B', 10)
+        pdf.cell(0, 6, 'Notes:', ln=True)
+        pdf.set_font('Helvetica', '', 9)
+        pdf.multi_cell(0, 5, rfq_data.get('notes'))
+    
+    pdf.ln(10)
+    
+    # Footer note
+    pdf.set_font('Helvetica', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.multi_cell(0, 5, 'This is a Request for Quotation. Pricing will be provided upon review by our team.')
+    
+    # Footer
+    pdf.set_y(-20)
+    pdf.set_font('Helvetica', '', 8)
+    pdf.set_text_color(128, 128, 128)
+    pdf.cell(0, 5, 'Convero Solutions | info@convero.in', align='C')
+    
+    return pdf.output()
+
+def generate_quote_pdf(quote_data: dict) -> bytes:
+    """Generate PDF for Approved Quote - WITH PRICES"""
+    from fpdf import FPDF
+    
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    # Use approved_at date if available, else use current time
+    quote_date = quote_data.get('approved_at') or get_ist_now()
+    if isinstance(quote_date, str):
+        try:
+            quote_date = datetime.fromisoformat(quote_date.replace('Z', '+00:00'))
+        except:
+            quote_date = get_ist_now()
+    
+    # Header with Carmine Red background
+    pdf.set_fill_color(150, 0, 24)
+    pdf.rect(0, 0, 210, 40, 'F')
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font('Helvetica', 'B', 18)
+    pdf.set_xy(10, 8)
+    pdf.cell(0, 10, 'QUOTATION', align='C')
+    pdf.set_font('Helvetica', '', 12)
+    pdf.set_xy(10, 20)
+    pdf.cell(0, 8, f'{quote_data.get("quote_number", "N/A")}', align='C')
+    
+    # Show original RFQ reference if available
+    original_rfq = quote_data.get('original_rfq_number')
+    if original_rfq:
+        pdf.set_font('Helvetica', '', 9)
+        pdf.set_xy(10, 28)
+        pdf.cell(0, 6, f'(Reference: {original_rfq})', align='C')
+    
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_xy(10, 34)
+    pdf.cell(0, 6, f'Date: {quote_date.strftime("%d %b %Y")}', align='C')
+    
+    # Reset text color
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_y(50)
+    
+    # Customer Details Section
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_fill_color(240, 240, 240)
+    pdf.cell(0, 8, 'Customer Details', fill=True, ln=True)
+    pdf.ln(3)
+    
+    pdf.set_font('Helvetica', '', 10)
+    details = [
+        ('Name', quote_data.get('customer_name', 'N/A')),
+        ('Company', quote_data.get('customer_company', 'N/A')),
+        ('Email', quote_data.get('customer_email', 'N/A')),
+    ]
+    
+    customer_details = quote_data.get('customer_details', {})
+    if customer_details:
+        if customer_details.get('mobile'):
+            details.append(('Mobile', customer_details.get('mobile')))
+        if customer_details.get('gst'):
+            details.append(('GST No.', customer_details.get('gst')))
+        if customer_details.get('address'):
+            details.append(('Address', customer_details.get('address')))
+    
+    for label, value in details:
+        pdf.set_font('Helvetica', 'B', 9)
+        pdf.set_text_color(100, 100, 100)
+        pdf.cell(40, 6, f'{label}:')
+        pdf.set_font('Helvetica', '', 10)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(0, 6, str(value), ln=True)
+    
+    pdf.ln(5)
+    
+    # Products Table - WITH PRICES
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_fill_color(240, 240, 240)
+    pdf.cell(0, 8, 'Products', fill=True, ln=True)
+    pdf.ln(3)
+    
+    # Table header
+    pdf.set_fill_color(30, 41, 59)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font('Helvetica', 'B', 8)
+    pdf.cell(10, 8, '#', fill=True, border=1, align='C')
+    pdf.cell(35, 8, 'Product Code', fill=True, border=1, align='C')
+    pdf.cell(60, 8, 'Description', fill=True, border=1, align='C')
+    pdf.cell(15, 8, 'Qty', fill=True, border=1, align='C')
+    pdf.cell(30, 8, 'Unit Price', fill=True, border=1, align='C')
+    pdf.cell(35, 8, 'Amount', fill=True, border=1, align='C')
+    pdf.ln()
+    
+    # Table rows
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font('Helvetica', '', 8)
+    products = quote_data.get('products', [])
+    subtotal = 0
+    for idx, product in enumerate(products, 1):
+        qty = product.get('quantity', 0)
+        unit_price = product.get('unit_price', 0)
+        amount = qty * unit_price
+        subtotal += amount
+        
+        pdf.cell(10, 7, str(idx), border=1, align='C')
+        pdf.cell(35, 7, str(product.get('product_id', 'N/A'))[:18], border=1, align='C')
+        pdf.cell(60, 7, str(product.get('product_name', 'N/A'))[:32], border=1)
+        pdf.cell(15, 7, str(qty), border=1, align='C')
+        pdf.cell(30, 7, f'Rs. {unit_price:,.2f}', border=1, align='R')
+        pdf.cell(35, 7, f'Rs. {amount:,.2f}', border=1, align='R')
+        pdf.ln()
+    
+    pdf.ln(3)
+    
+    # Pricing Summary
+    pdf.set_font('Helvetica', '', 10)
+    x_label = 130
+    x_value = 160
+    
+    # Subtotal
+    pdf.set_x(x_label)
+    pdf.cell(30, 6, 'Subtotal:', align='R')
+    pdf.cell(35, 6, f'Rs. {quote_data.get("subtotal", subtotal):,.2f}', align='R')
+    pdf.ln()
+    
+    # Discount if any
+    discount = quote_data.get('total_discount', 0)
+    if discount > 0:
+        pdf.set_x(x_label)
+        pdf.set_text_color(0, 128, 0)
+        pdf.cell(30, 6, 'Discount:', align='R')
+        pdf.cell(35, 6, f'- Rs. {discount:,.2f}', align='R')
+        pdf.set_text_color(0, 0, 0)
+        pdf.ln()
+    
+    # Packing charges if any
+    packing = quote_data.get('packing_charges', 0)
+    if packing > 0:
+        pdf.set_x(x_label)
+        pdf.cell(30, 6, 'Packing:', align='R')
+        pdf.cell(35, 6, f'Rs. {packing:,.2f}', align='R')
+        pdf.ln()
+    
+    # Shipping if any
+    shipping = quote_data.get('shipping_cost', 0)
+    if shipping > 0:
+        pdf.set_x(x_label)
+        pdf.cell(30, 6, 'Freight:', align='R')
+        pdf.cell(35, 6, f'Rs. {shipping:,.2f}', align='R')
+        pdf.ln()
+    
+    # Total
+    pdf.ln(2)
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_x(x_label)
+    pdf.cell(30, 8, 'Total:', align='R')
+    pdf.set_fill_color(150, 0, 24)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(35, 8, f'Rs. {quote_data.get("total_price", 0):,.2f}', align='R', fill=True)
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln()
+    
+    # Notes section if any
+    if quote_data.get('notes'):
+        pdf.ln(5)
+        pdf.set_font('Helvetica', 'B', 10)
+        pdf.cell(0, 6, 'Notes:', ln=True)
+        pdf.set_font('Helvetica', '', 9)
+        pdf.multi_cell(0, 5, quote_data.get('notes'))
+    
+    # Terms & Conditions
+    pdf.ln(8)
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_fill_color(240, 240, 240)
+    pdf.cell(0, 7, 'Terms & Conditions', fill=True, ln=True)
+    pdf.set_font('Helvetica', '', 8)
+    pdf.ln(2)
+    
+    terms = [
+        "1. Prices are valid for 30 days from the date of quotation.",
+        "2. Payment terms: 100% advance or as mutually agreed.",
+        "3. Delivery: Ex-works, subject to availability.",
+        "4. GST extra as applicable.",
+        "5. Any disputes subject to Pune jurisdiction.",
+    ]
+    
+    for term in terms:
+        pdf.cell(0, 4, term, ln=True)
+    
+    # Footer
+    pdf.set_y(-20)
+    pdf.set_font('Helvetica', '', 8)
+    pdf.set_text_color(128, 128, 128)
+    pdf.cell(0, 5, 'Convero Solutions | info@convero.in | www.convero.in', align='C')
+    
+    return pdf.output()
+
 async def send_rfq_notification_email(rfq_data: dict, customer: dict):
     """Send RFQ notification email to admins and confirmation to customer - WITHOUT PRICES"""
     if not GMAIL_USER or not GMAIL_APP_PASSWORD:
@@ -854,6 +1162,25 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
         customer_msg_alternative.attach(customer_part1)
         customer_msg_alternative.attach(customer_part2)
         customer_msg.attach(customer_msg_alternative)
+        
+        # Generate RFQ PDF (without prices) and attach to both emails
+        try:
+            rfq_pdf_bytes = generate_rfq_pdf(rfq_data)
+            pdf_filename = f"{rfq_data.get('quote_number', 'RFQ').replace('/', '-')}.pdf"
+            
+            # Attach PDF to admin email
+            admin_pdf_attachment = MIMEApplication(rfq_pdf_bytes, _subtype='pdf')
+            admin_pdf_attachment.add_header('Content-Disposition', 'attachment', filename=pdf_filename)
+            admin_msg.attach(admin_pdf_attachment)
+            
+            # Attach PDF to customer email
+            customer_pdf_attachment = MIMEApplication(rfq_pdf_bytes, _subtype='pdf')
+            customer_pdf_attachment.add_header('Content-Disposition', 'attachment', filename=pdf_filename)
+            customer_msg.attach(customer_pdf_attachment)
+            
+            logging.info(f"RFQ PDF attached to emails: {pdf_filename}")
+        except Exception as pdf_error:
+            logging.error(f"Failed to generate/attach RFQ PDF: {str(pdf_error)}")
         
         # Send emails
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
@@ -1688,7 +2015,7 @@ async def update_quote(
 # ============= RFQ APPROVAL WORKFLOW =============
 
 async def send_quote_approval_email(quote_data: dict, customer_email: str):
-    """Send approved quote email to customer and admins"""
+    """Send approved quote email to customer and admins WITH PDF ATTACHMENT"""
     if not GMAIL_USER or not GMAIL_APP_PASSWORD:
         logging.warning("Email service not configured, skipping quote approval notification")
         return False
@@ -1697,7 +2024,7 @@ async def send_quote_approval_email(quote_data: dict, customer_email: str):
     recipient_emails = [customer_email] + ADMIN_RFQ_EMAILS
     
     try:
-        msg = MIMEMultipart('alternative')
+        msg = MIMEMultipart('mixed')
         msg['From'] = f"Convero Solutions <{GMAIL_USER}>"
         msg['To'] = ', '.join(recipient_emails)
         msg['Subject'] = f"Quotation Approved - {quote_data.get('quote_number')} | Convero Solutions"
@@ -1719,7 +2046,7 @@ async def send_quote_approval_email(quote_data: dict, customer_email: str):
         <html>
         <head>
             <style>
-                body {{ font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }}
+                body {{ font-family: Calibri, Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }}
                 .container {{ max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
                 .header {{ background: #960018; color: white; padding: 20px; text-align: center; }}
                 .quote-number {{ font-size: 24px; font-weight: bold; color: #960018; }}
@@ -1776,6 +2103,9 @@ async def send_quote_approval_email(quote_data: dict, customer_email: str):
                             This quotation has been approved and is ready for processing.
                         </p>
                         <p style="margin: 10px 0 0 0; color: #666;">
+                            Please find the detailed quotation PDF attached.
+                        </p>
+                        <p style="margin: 10px 0 0 0; color: #666;">
                             For any queries, please contact us at info@convero.in
                         </p>
                     </div>
@@ -1785,14 +2115,30 @@ async def send_quote_approval_email(quote_data: dict, customer_email: str):
         </html>
         """
         
-        msg.attach(MIMEText(html_content, 'html'))
+        # Create message body
+        msg_alternative = MIMEMultipart('alternative')
+        msg_alternative.attach(MIMEText(html_content, 'html'))
+        msg.attach(msg_alternative)
+        
+        # Generate and attach Quote PDF (with prices)
+        try:
+            quote_pdf_bytes = generate_quote_pdf(quote_data)
+            pdf_filename = f"{quote_data.get('quote_number', 'Quote').replace('/', '-')}.pdf"
+            
+            pdf_attachment = MIMEApplication(quote_pdf_bytes, _subtype='pdf')
+            pdf_attachment.add_header('Content-Disposition', 'attachment', filename=pdf_filename)
+            msg.attach(pdf_attachment)
+            
+            logging.info(f"Quote PDF attached to approval email: {pdf_filename}")
+        except Exception as pdf_error:
+            logging.error(f"Failed to generate/attach Quote PDF: {str(pdf_error)}")
         
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
             server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
             server.sendmail(GMAIL_USER, recipient_emails, msg.as_string())
         
-        logging.info(f"Quote approval email sent for: {quote_data.get('quote_number')}")
+        logging.info(f"Quote approval email sent with PDF for: {quote_data.get('quote_number')}")
         return True
         
     except Exception as e:
@@ -1933,7 +2279,7 @@ async def update_quote_discount(
 # ============= QUOTE REVISION SYSTEM =============
 
 async def send_quote_revision_email(quote_data: dict, customer_email: str, revision_number: str):
-    """Send revised quote email to customer and admins"""
+    """Send revised quote email to customer and admins WITH PDF ATTACHMENT"""
     if not GMAIL_USER or not GMAIL_APP_PASSWORD:
         logging.warning("Email service not configured, skipping revision notification")
         return False
@@ -1942,7 +2288,7 @@ async def send_quote_revision_email(quote_data: dict, customer_email: str, revis
     recipient_emails = [customer_email] + ADMIN_RFQ_EMAILS
     
     try:
-        msg = MIMEMultipart('alternative')
+        msg = MIMEMultipart('mixed')
         msg['From'] = f"Convero Solutions <{GMAIL_USER}>"
         msg['To'] = ', '.join(recipient_emails)
         msg['Subject'] = f"Revised Quotation - {quote_data.get('quote_number')} | Convero Solutions"
@@ -1967,7 +2313,7 @@ async def send_quote_revision_email(quote_data: dict, customer_email: str, revis
         <html>
         <head>
             <style>
-                body {{ font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }}
+                body {{ font-family: Calibri, Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }}
                 .container {{ max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
                 .header {{ background: #960018; color: white; padding: 20px; text-align: center; }}
                 .revision-badge {{ display: inline-block; background: #FF9500; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; }}
@@ -2030,6 +2376,9 @@ async def send_quote_revision_email(quote_data: dict, customer_email: str, revis
                             This is a revised quotation. Please review the updated pricing.
                         </p>
                         <p style="margin: 10px 0 0 0; color: #666;">
+                            Please find the detailed revised quotation PDF attached.
+                        </p>
+                        <p style="margin: 10px 0 0 0; color: #666;">
                             For any queries, please contact us at info@convero.in
                         </p>
                     </div>
@@ -2039,14 +2388,30 @@ async def send_quote_revision_email(quote_data: dict, customer_email: str, revis
         </html>
         """
         
-        msg.attach(MIMEText(html_content, 'html'))
+        # Create message body
+        msg_alternative = MIMEMultipart('alternative')
+        msg_alternative.attach(MIMEText(html_content, 'html'))
+        msg.attach(msg_alternative)
+        
+        # Generate and attach Quote PDF (with prices)
+        try:
+            quote_pdf_bytes = generate_quote_pdf(quote_data)
+            pdf_filename = f"{quote_data.get('quote_number', 'Quote').replace('/', '-')}-{revision_number.replace(' ', '-')}.pdf"
+            
+            pdf_attachment = MIMEApplication(quote_pdf_bytes, _subtype='pdf')
+            pdf_attachment.add_header('Content-Disposition', 'attachment', filename=pdf_filename)
+            msg.attach(pdf_attachment)
+            
+            logging.info(f"Revised Quote PDF attached: {pdf_filename}")
+        except Exception as pdf_error:
+            logging.error(f"Failed to generate/attach revised Quote PDF: {str(pdf_error)}")
         
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
             server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
             server.sendmail(GMAIL_USER, recipient_emails, msg.as_string())
         
-        logging.info(f"Quote revision email sent for: {quote_data.get('quote_number')} - {revision_number}")
+        logging.info(f"Quote revision email sent with PDF for: {quote_data.get('quote_number')} - {revision_number}")
         return True
         
     except Exception as e:
