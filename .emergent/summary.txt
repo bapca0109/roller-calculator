@@ -1,0 +1,219 @@
+<analysis>**original_problem_statement**: The user wants to create a mobile application to calculate the price of belt conveyor rollers, serving as an engineering and quoting tool. The scope has expanded to include a product catalog search, a full admin panel for price management, a customer database, and a complete quote/RFQ generation and approval workflow with file attachments and product-specific remarks.
+
+**PRODUCT REQUIREMENTS**:
+- **Core Function**: Calculate prices for Carrying, Impact, and Return belt conveyor rollers.
+- **Admin Panel**: Secure interface for CRUD operations, customer management, and sales analytics.
+- **Customer Management**: System to manage customers, with filters for 'Registered' vs. 'Quoted'. Admins can view all quotes for a specific customer.
+- **Professional UI**: A corporate look and feel with a Carmine Red color scheme.
+- **Authentication**: Secure OTP-based signup, Forgot Password functionality, and auto-logout after 7 days of inactivity.
+- **Role-Based Access Control (RBAC)**: Distinct UIs for Customers and Admins. Prices are hidden from customers until a quote is formally approved.
+- **RFQ & Quote Workflow**:
+    - A full lifecycle from customer RFQ submission (with remarks/attachments) to admin review and approval.
+    - Approved RFQs become official Quotes, with the quote date reflecting the approval time.
+    - Quotes are traceable back to the original RFQ number.
+- **Admin Dashboard & Analytics**: A comprehensive dashboard showing KPIs (revenue, quotes, customers), charts, and top customer lists, with date-range filters and export to PDF/Excel.
+- **Search & Export**: Search functionality across quotes, customers, and the product catalog, with the ability to export search results.
+- **Professional PDF Quotes**: A redesigned, minimalist quote PDF that includes detailed commercial and technical terms and conditions.
+
+**User's preferred language**: English
+
+**what currently exists?**
+A full-stack Expo (React Native for web/mobile) and FastAPI application with a MongoDB database. The app provides a complete RFQ-to-Quote workflow, a comprehensive admin dashboard with analytics and data export capabilities, and advanced customer management features. It has undergone significant UI/UX enhancements and bug fixes, including a redesigned professional quote PDF.
+
+**Last working item**:
+- Last item agent was working: The user pointed out that approved quotes were displaying the original RFQ creation date instead of the correct approval date. The agent implemented a fix to use the  field, which is already stored in the database, for the date of approved quotes in both the UI and the generated PDF.
+- Status: IN PROGRESS
+- Agent Testing Done: N
+- Which testing method agent to use? Frontend testing agent. The agent should log in as an admin, navigate to the Approved quotes tab, and verify that the date displayed on the quote card and within the generated PDF corresponds to the approval date, not the original creation date.
+- User Testing Done: N
+
+**All Pending/In progress Issue list**:
+  Issue 1:  Verify that approved quotes show the approval date, not the RFQ date. (P0)
+  Issue 2:  Logout functionality is still reported as not working on iOS. (P1)
+  Issue 3:  The Export search results button is not reliably visible after being added. (P2)
+  Issue 4:  Unstable Expo Tunnel (). (P2)
+  Issue 5:  Native PDF download/sharing does not work in the Expo Go mobile app. (P3)
+  
+  Issues Detail:
+  - Issue 1: 
+     - Attempted fixes: The agent modified  to conditionally use the  date for approved quotes and  for pending RFQs in the UI and PDF generation logic.
+     - Next debug checklist: 
+        1. Log in as an admin.
+        2. Go to the Quotes tab and select the Approved filter.
+        3. Verify the date shown on a quote card is the approval date.
+        4. Open the quote and export it to PDF.
+        5. Verify the date in the PDF header is the approval date.
+     - Why fix this issue and what will be achieved with the fix? It ensures that official quotes reflect the correct date of issue, which is critical for validity and record-keeping.
+     - Status:  IN PROGRESS
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Frontend
+     - Blocked on other issue: None
+  - Issue 2: 
+     - Attempted fixes: The agent added a 100ms delay in the  function in  before redirecting. The agent noted this may not be a robust fix.
+     - Next debug checklist: 
+        1. Test logout on a physical iOS device or simulator.
+        2. If it fails, investigate a more robust solution like using  to reset the navigation stack before redirecting.
+     - Why fix this issue and what will be achieved with the fix? Ensures users can securely log out of the application on all platforms.
+     - Status:  USER VERIFICATION PENDING
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? Frontend
+     - Blocked on other issue: None
+  - Issue 3: 
+     - Attempted fixes: The agent added the export buttons to the , , and  files. When screenshots showed they were missing, the agent restarted the Expo server, assuming it was a hot-reload issue, but did not visually re-verify.
+     - Next debug checklist: Take screenshots of the Quotes, Customers, and Search tabs after performing a search to confirm the Export button is visible and correctly positioned next to the search results count.
+     - Why fix this issue and what will be achieved with the fix? Enables a key feature allowing admins to export filtered data for external analysis.
+     - Status:  USER VERIFICATION PENDING
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Frontend
+     - Blocked on other issue: None
+  - Issue 4: 
+     - Attempted fixes: None in this session. This is an environmental issue.
+     - Next debug checklist: This is an  or networking issue within the preview environment. The agent can try restarting services, but it's not a code-level bug.
+     - Why fix this issue and what will be achieved with the fix? A stable preview tunnel is essential for reliable user testing.
+     - Status:  NOT STARTED
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? NA
+     - Blocked on other issue: None
+
+**In progress Task List**:
+  - Task 1:  Stabilize and verify recent features end-to-end. (P0)
+  
+ Task Detail:
+  - Task 1: 
+     - Where to resume: After verifying the quote date fix (Pending Issue #1), a full regression test should be performed on all recently added features: Dashboard functionality, customer management flow, search & export visibility, and the iOS logout fix.
+     - What will be achieved with this? A stable, fully functional, and verified application ready for user acceptance testing.
+     - Status:  IN PROGRESS
+     - Should Test frontend/backend/both after fix? Both
+     - Blocked on something: Pending Issue #1.
+
+**Upcoming and Future Tasks**
+    Upcoming Tasks:
+    - **Task 1: User Acceptance Testing (P1)**: Once the application is stabilized, the user needs to test the entire suite of new features: Dashboard, Analytics, Exports, Customer Management, and Search.
+    
+    Future Tasks:
+    - **Task 1: Update Raw Material Costs from Excel (P2)**: Build a feature to update database prices by uploading an Excel file.
+    - **Task 2: Enhance Quote Status (P3)**: Add more statuses to the workflow, such as 'Rejected'.
+
+**Completed work in this session**
+- **Dashboard & Analytics**:
+    - Implemented a full admin dashboard () with KPIs, revenue charts, and top customer lists.
+    - Added date-range filters (7 days, 30 days, etc.) to the dashboard.
+    - Implemented backend-driven export to PDF and Excel for dashboard data ().
+- **Customer Management**:
+    - Customers are now automatically moved from Registered to Quoted status when their first quote is approved.
+    - Admins can now view all quotes for a specific customer in a modal from the  tab.
+- **Search & Export**:
+    - Added a comprehensive search bar to the  tab.
+    - Added functionality to export search results to CSV in the , , and  tabs.
+- **Authentication & Security**:
+    - Implemented a Forgot Password flow with email OTP, including new backend endpoints (, ) and a new frontend screen ().
+    - Implemented an automatic logout feature after 7 days of inactivity using AsyncStorage.
+- **Quote PDF Redesign**:
+    - Completely redesigned the quote PDF generation in  to a professional, minimalist layout using .
+    - Added extensive, user-provided commercial and technical terms and conditions to the PDF.
+    - Added the original RFQ number to the quote PDF and UI for traceability.
+- **UI/UX & Bug Fixes**:
+    - Fixed a critical bug by replacing web-specific / with React Native's  for native compatibility.
+    - Renamed the Pending RFQ tab to RFQ.
+    - Changed the default Shaft End Type in the calculator to 'A'.
+
+**Earlier issues found/mentioned but not fixed**
+   - Issue 1: Unstable Expo Tunnel (). This is a recurring environment issue that impacts testing but is not a code-level bug.
+   - Issue 2: Native PDF download/sharing on mobile. This is a known limitation of  in the Expo Go app.
+
+**Known issue recurrence from previous fork**
+  - Issue recurrence in previous fork: Authentication state race condition.
+  - Recurrence count: Multiple.
+  - Status: RESOLVED. The fix from the previous session (splash screen guard) has held, and the issue has not recurred.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- **Data Visualization**:  for dashboard charts.
+- **Backend Data Aggregation**: Complex MongoDB aggregation pipelines in  for analytics.
+- **File Generation (Backend)**:  for Excel and  for PDF reports.
+- **File Generation (Frontend)**:  and  for the client-side quote PDF redesign.
+- **State Management**: Use of , , and  for managing complex UI states for the dashboard, filters, and modals.
+- **Async Storage**:  used for persisting session activity timestamps for the auto-logout feature.
+- **Platform-Specific APIs**: Replaced web-specific / with React Native's  for cross-platform compatibility.
+
+**key DB schema**
+  - **quotes**:
+    -  (datetime): Timestamp of when an RFQ was approved. Used for the official quote date.
+    -  (string): Stores the quote number of the original RFQ for traceability.
+  - **users**:
+    -  (string): Automatically updated from registered to quoted upon first quote approval.
+    - ,  (string, datetime): Fields added to support the forgot password flow.
+
+**All files of reference**
+- : Contains all API logic, including new dashboard and auth endpoints.
+- : New file for the admin analytics dashboard.
+- : Manages the quote list, detail modals, search, export, and PDF generation.
+- : Manages the customer list, filters, and viewing customer-specific quotes.
+- : Manages authentication state, including the new auto-logout logic.
+- : New UI for the password reset process.
+
+**Areas that need refactoring**:
+- The , , and now  files are becoming very large and complex. They should be broken down into smaller, reusable components (e.g., , , , ) to improve readability and maintainability.
+
+**key api endpoints**
+- : Fetches all data for the admin dashboard, accepts  and  query params.
+- : Generates and returns a PDF of the dashboard analytics.
+- : Generates and returns an Excel file of the dashboard analytics.
+- : Sends a password reset OTP to a user's email.
+- : Verifies OTP and resets the user's password.
+- : Gets all quotes associated with a specific customer ID.
+
+**Critical Info for New Agent**
+- The immediate priority is to test and verify the fix for the quote date display (Last working item).
+- The iOS logout fix (adding a delay) is a temporary solution and may not be reliable. Be prepared to implement a more robust fix, such as resetting the navigation stack, if the user reports it still fails.
+- The visibility of the Export search results buttons needs to be confirmed via screenshots across all relevant tabs (Quotes, Customers, Search), as it was not properly verified in the last session.
+
+**documents and test reports created in this job**
+-  (updated multiple times)
+
+**Last 10 User Messages and any pending HUMAN messages** 
+- 10. Customer should move to Quoted tab after getting a quote, and admin should be able to see all quotes for a customer. - **COMPLETED**
+- 9. Add a search tab in the quote tab for admins. - **COMPLETED**
+- 8. Add export functionality for all search results. - **COMPLETED** (Verification pending)
+- 7. Redesign the quote PDF to be professional/minimalist and add specific T&Cs. - **COMPLETED**
+- 6. Send me the Safari link to test. - **COMPLETED**
+- 5. Send me a PDF of a quote with the new design. - **COMPLETED**
+- 4. Add the RFQ number in the quote for traceability. - **COMPLETED**
+- 3. The generated quote has the same date as the RFQ; it should be the actual generation date. - **IN PROGRESS**
+- 2. User asked to add filter in the dashboard. - **COMPLETED**
+- 1. User asked to export dashboard reports to PDF and Excel. - **COMPLETED**
+
+**Project Health Check:**
+- **Broken**:
+    - The Expo preview tunnel () is intermittently unstable.
+    - Logout on native iOS may still be broken; the current fix is not guaranteed.
+- **Fixed/Stable**:
+    - The core RFQ-to-Quote workflow is stable.
+    - The admin dashboard, analytics, and data export features are functionally complete.
+    - The Forgot Password and Auto-Logout security features are implemented.
+    - The professional quote PDF is generated correctly with all required terms.
+
+**3rd Party Integrations**
+- **api.postalpincode.in**: Address lookup.
+- **FPDF2 / openpyxl**: Server-side PDF & Excel generation.
+- **Gmail SMTP**: Email notifications.
+- **Expo Image Picker / Document Picker**: Frontend file attachments.
+- **react-native-chart-kit**: For dashboard charts.
+- **jspdf / jspdf-autotable**: For client-side quote PDF generation.
+- **@react-native-async-storage/async-storage**: For client-side persistence.
+
+**Testing status**
+  - Testing agent used after significant changes: YES (for an early fix in the session).
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: []
+  - Known regressions: Logout on iOS was reported as a regression and the fix is pending verification.
+
+**Credentials to test flow:**
+- **Admin User**:  / 
+- **Customer User**:  / 
+
+**What agent forgot to execute**
+- The agent did not test the final implementation for the quote date fix before finishing the job.
+- The agent did not visually verify that the Export search results buttons were correctly appearing in the UI after implementation. It relied on a server restart to fix a display issue without confirming with a final screenshot.</analysis>

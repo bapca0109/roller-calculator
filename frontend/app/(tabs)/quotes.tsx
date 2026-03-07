@@ -493,6 +493,12 @@ export default function QuotesScreen() {
     const pdfDocLabel = isRfq ? 'RFQ' : 'Quotation';
     const pdfDocLabelFull = isRfq ? 'REQUEST FOR QUOTATION' : 'QUOTATION';
     
+    // Use approval date for approved quotes, otherwise use created date
+    const isApproved = quote.status?.toLowerCase() === 'approved';
+    const displayDate = isApproved && quote.approved_at 
+      ? formatDate(quote.approved_at)
+      : (quote.created_at_ist || formatDate(quote.created_at));
+    
     const productsHtml = quote.products.map((product, index) => `
       <tr>
         <td class="cell-center">${index + 1}</td>
@@ -807,7 +813,7 @@ export default function QuotesScreen() {
             <div class="doc-title">${pdfDocLabelFull}</div>
             <div class="doc-number">${quote.quote_number || `#${quote.id.slice(-6).toUpperCase()}`}</div>
             ${quote.original_rfq_number ? `<div class="doc-ref">Ref: ${quote.original_rfq_number}</div>` : ''}
-            <div class="doc-date">${quote.created_at_ist || formatDate(quote.created_at)}</div>
+            <div class="doc-date">${displayDate}</div>
           </div>
         </div>
 
@@ -1078,7 +1084,11 @@ export default function QuotesScreen() {
               <Text style={styles.rfqRefInCard}>({item.original_rfq_number})</Text>
             )}
           </View>
-          <Text style={styles.quoteDate}>{item.created_at_ist || formatDate(item.created_at)}</Text>
+          <Text style={styles.quoteDate}>
+            {isApproved && item.approved_at 
+              ? formatDate(item.approved_at)
+              : (item.created_at_ist || formatDate(item.created_at))}
+          </Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status)}20` }]}>
           <Ionicons name={getStatusIcon(item.status)} size={16} color={getStatusColor(item.status)} />
@@ -1431,7 +1441,11 @@ export default function QuotesScreen() {
 
                   {/* Date */}
                   <View style={styles.detailSection}>
-                    <Text style={styles.dateText}>Created: {formatDate(selectedQuote.created_at)}</Text>
+                    <Text style={styles.dateText}>
+                      {selectedQuote.status?.toLowerCase() === 'approved' && selectedQuote.approved_at 
+                        ? `Approved: ${formatDate(selectedQuote.approved_at)}`
+                        : `Created: ${formatDate(selectedQuote.created_at)}`}
+                    </Text>
                   </View>
 
                   {/* Export PDF Button */}
