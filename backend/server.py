@@ -938,6 +938,9 @@ def generate_quote_html(quote_data: dict) -> str:
         except:
             quote_date = get_ist_now()
     
+    # Convert to IST if not already
+    quote_date = utc_to_ist(quote_date) if quote_date else get_ist_now()
+    
     display_date = quote_date.strftime("%d %b %Y, %I:%M %p")
     
     # Determine if RFQ or Quote
@@ -1615,6 +1618,9 @@ def generate_quote_pdf_fallback(quote_data: dict) -> bytes:
             quote_date = datetime.fromisoformat(quote_date.replace('Z', '+00:00'))
         except:
             quote_date = get_ist_now()
+    
+    # Convert to IST if not already
+    quote_date = utc_to_ist(quote_date) if quote_date else get_ist_now()
     
     # Header with Carmine Red background
     pdf.set_fill_color(150, 0, 24)
