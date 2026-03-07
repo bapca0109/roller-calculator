@@ -1700,7 +1700,7 @@ export default function QuotesScreen() {
                 <Ionicons name="close" size={28} color="#333" />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.modalBody}>
+            <ScrollView style={styles.modalScroll}>
               {editingQuote && (
                 <>
                   {/* Discount Mode Toggle */}

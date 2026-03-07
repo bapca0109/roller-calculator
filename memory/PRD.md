@@ -76,6 +76,24 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Completed Work
 
 ### March 7, 2026 (Latest Session - Current)
+- **Per-Item Discounts Feature** - COMPLETED ✅
+  - Added per-item discount capability with new PDF table format: Sr. No. | Item Code | Qty | Rate | Disc % | Value After Disc | Total
+  - Admin can toggle between "Total Discount" and "Per-Item Discount" modes per quote
+  - When Per-Item Discount enabled:
+    - Each product has editable Discount % input
+    - Total Discount input is hidden
+    - Summary shows "Item Discounts (Total)" instead of percentage
+  - Backend updates:
+    - `QuoteProduct` model: Added `item_discount_percent` field
+    - `Quote` model: Added `use_item_discounts` boolean flag
+    - `QuoteUpdate` model: Added `use_item_discounts` and `discount_percent` fields
+    - `generate_quote_html`: Dynamic table header/format based on discount mode
+  - Frontend updates:
+    - Edit Quote modal with Discount Mode toggle
+    - Per-product discount inputs with live total calculation
+    - PDF generation respects discount mode
+  - Testing: Backend 100% (9/9), Frontend fix applied and verified
+
 - **Email PDF Matching Frontend PDF** - COMPLETED ✅
   - Fixed critical issue where PDFs attached to quote approval emails didn't match frontend-exported PDFs
   - Root causes identified and fixed:
