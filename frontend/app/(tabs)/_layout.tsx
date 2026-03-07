@@ -1,11 +1,15 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function TabsLayout() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
+  
+  // If user is not authenticated, don't render tabs (prevent crash during logout)
+  // The navigation to login will be handled by the logout function
+  const isAdmin = isAuthenticated && user?.role === 'admin';
 
   return (
     <Tabs

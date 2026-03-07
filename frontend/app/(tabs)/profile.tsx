@@ -18,13 +18,19 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      // Use the logout function from AuthContext
-      await logout();
-      // Navigate to login using expo-router (works on all platforms)
-      // Use setTimeout to ensure state updates complete before navigation
-      setTimeout(() => {
-        router.replace('/auth/login');
-      }, 100);
+      // Navigate FIRST to prevent accessing null user in tabs layout
+      // Using dismissAll to clear the entire navigation stack
+      if (router.canDismiss()) {
+        router.dismissAll();
+      }
+      // Replace with login screen immediately
+      router.replace('/auth/login');
+      
+      // Then clear the auth state after navigation has started
+      // This prevents the tabs layout from accessing null user
+      setTimeout(async () => {
+        await logout();
+      }, 50);
     } catch (error) {
       console.error('Logout error:', error);
       Alert.alert('Error', 'Failed to logout. Please try again.');
@@ -142,11 +148,7 @@ export default function ProfileScreen() {
 
         {Platform.OS === 'web' ? (
           <button
-            onClick={() => {
-              localStorage.clear();
-              sessionStorage.clear();
-              window.location.href = '/auth/login';
-            }}
+            onClick={handleLogout}
             style={{
               display: 'flex',
               flexDirection: 'row',
@@ -169,11 +171,7 @@ export default function ProfileScreen() {
         ) : (
           <TouchableOpacity 
             style={styles.logoutButton} 
-            onPress={() => {
-              AsyncStorage.removeItem('token');
-              AsyncStorage.removeItem('user');
-              router.replace('/auth/login');
-            }}
+            onPress={handleLogout}
           >
             <Ionicons name="log-out-outline" size={20} color="#fff" />
             <Text style={styles.logoutButtonText}>Logout</Text>
