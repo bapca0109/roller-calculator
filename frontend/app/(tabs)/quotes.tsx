@@ -835,7 +835,7 @@ export default function QuotesScreen() {
           <div class="info-box">
             <div class="info-box-title">Bill To</div>
             ${quote.customer_code ? `<div class="customer-code" style="color: #960018; font-weight: bold; margin-bottom: 4px;">Customer Code: ${quote.customer_code}</div>` : ''}
-            <div class="info-company">${quote.customer_details?.company || quote.customer_details?.name || quote.customer_name}</div>
+            <div class="info-company">${quote.customer_company || quote.customer_details?.company || quote.customer_details?.name || quote.customer_name}</div>
             ${quote.customer_details?.address ? `
               <div class="info-address">
                 ${quote.customer_details.address}${quote.customer_details.city ? `<br>${quote.customer_details.city}` : ''}${quote.customer_details.state ? `, ${quote.customer_details.state}` : ''}${quote.customer_details.pincode ? ` - ${quote.customer_details.pincode}` : ''}

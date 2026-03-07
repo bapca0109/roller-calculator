@@ -293,6 +293,8 @@ class Quote(BaseModel):
     customer_id: str
     customer_name: str
     customer_email: str
+    customer_code: Optional[str] = None  # Customer code like C0001
+    customer_company: Optional[str] = None  # Customer company name
     customer_details: Optional[Dict[str, Any]] = None  # Full customer details for PDF
     products: List[QuoteProduct]
     subtotal: float
@@ -307,6 +309,9 @@ class Quote(BaseModel):
     freight_details: Optional[Dict[str, Any]] = None
     packing_charges: Optional[float] = 0.0
     read_by_admin: bool = False  # Track if admin has read the RFQ
+    original_rfq_number: Optional[str] = None  # Original RFQ number if approved
+    approved_at: Optional[datetime] = None  # When the RFQ was approved
+    approved_by: Optional[str] = None  # Admin who approved
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -986,7 +991,7 @@ def generate_quote_html(quote_data: dict) -> str:
     customer_code = quote_data.get('customer_code', '')
     customer_name = quote_data.get('customer_name', 'N/A')
     customer_company = quote_data.get('customer_company', '')
-    customer_details = quote_data.get('customer_details', {})
+    customer_details = quote_data.get('customer_details') or {}
     
     customer_code_html = f'<div class="customer-code" style="color: #960018; font-weight: bold; margin-bottom: 4px;">Customer Code: {customer_code}</div>' if customer_code else ''
     
@@ -1361,7 +1366,7 @@ def generate_quote_html(quote_data: dict) -> str:
           <div class="info-box">
             <div class="info-box-title">Bill To</div>
             {customer_code_html}
-            <div class="info-company">{customer_details.get('company') or customer_details.get('name') or customer_name}</div>
+            <div class="info-company">{customer_company or (customer_details.get('company') if customer_details else None) or (customer_details.get('name') if customer_details else None) or customer_name}</div>
             {address_html}
             {gst_html}
             {contact_html}
@@ -3066,16 +3071,29 @@ async def approve_rfq(
     updated_quote = await db.quotes.find_one({"_id": obj_id})
     updated_quote["id"] = str(updated_quote["_id"])
     
-    # Send approval email to customer and admins
+    # Send approval email to customer and admins with COMPLETE quote data
     customer_email = quote.get("customer_email")
     if customer_email:
+        # Pass the complete updated quote for PDF generation
         await send_quote_approval_email({
             "quote_number": new_quote_number,
             "original_rfq_number": old_number,
             "customer_name": quote.get("customer_name"),
             "customer_company": quote.get("customer_company"),
+            "customer_code": quote.get("customer_code"),
+            "customer_details": quote.get("customer_details", {}),
             "products": quote.get("products", []),
-            "total_price": quote.get("total_price", 0)
+            "subtotal": quote.get("subtotal", 0),
+            "total_discount": quote.get("total_discount", 0),
+            "packing_charges": quote.get("packing_charges", 0),
+            "shipping_cost": quote.get("shipping_cost", 0),
+            "delivery_location": quote.get("delivery_location"),
+            "total_price": quote.get("total_price", 0),
+            "notes": quote.get("notes"),
+            "approved_at": updated_quote.get("approved_at"),
+            "cost_breakdown": quote.get("cost_breakdown"),
+            "pricing_details": quote.get("pricing_details"),
+            "freight_details": quote.get("freight_details")
         }, customer_email)
     
     return {
@@ -3343,17 +3361,26 @@ async def create_quote_revision(
     # Get updated quote
     updated_quote = await db.quotes.find_one({"_id": obj_id})
     
-    # Send revision email to customer and admins
+    # Send revision email to customer and admins with COMPLETE quote data
     customer_email = quote.get("customer_email")
     if customer_email:
         await send_quote_revision_email({
             "quote_number": quote.get("quote_number"),
+            "original_rfq_number": quote.get("original_rfq_number"),
             "customer_name": quote.get("customer_name"),
             "customer_company": quote.get("customer_company"),
+            "customer_code": quote.get("customer_code"),
+            "customer_details": quote.get("customer_details", {}),
             "products": quote.get("products", []),
+            "subtotal": quote.get("subtotal", 0),
             "discount_percent": revision_data.discount_percent,
             "total_discount": discount_amount,
-            "total_price": new_total
+            "packing_charges": quote.get("packing_charges", 0),
+            "shipping_cost": quote.get("shipping_cost", 0),
+            "delivery_location": quote.get("delivery_location"),
+            "total_price": new_total,
+            "notes": quote.get("notes"),
+            "approved_at": quote.get("approved_at")
         }, customer_email, revision_label)
     
     return {

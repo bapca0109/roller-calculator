@@ -11,7 +11,7 @@ from io import BytesIO
 # Get backend URL from environment
 BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://quote-flow-admin.preview.emergentagent.com"
+    BASE_URL = "https://roller-quote-tool.preview.emergentagent.com"
 
 # Test credentials
 TEST_EMAIL = "test@test.com"
