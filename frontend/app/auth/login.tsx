@@ -14,7 +14,6 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { FONT_FAMILY, FONT_FAMILY_BOLD } from '../_layout';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -135,7 +134,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    fontFamily: FONT_FAMILY_BOLD,
     color: '#0F172A',
     marginTop: 16,
     letterSpacing: -0.5,
@@ -145,7 +143,6 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 8,
     fontWeight: '400',
-    fontFamily: FONT_FAMILY,
   },
   form: {
     width: '100%',
@@ -173,7 +170,6 @@ const styles = StyleSheet.create({
     height: 52,
     fontSize: 16,
     color: '#0F172A',
-    fontFamily: FONT_FAMILY,
   },
   button: {
     backgroundColor: '#960018',
@@ -196,7 +192,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: FONT_FAMILY_BOLD,
   },
   linkButton: {
     marginTop: 24,
@@ -206,7 +201,6 @@ const styles = StyleSheet.create({
     color: '#960018',
     fontSize: 14,
     fontWeight: '500',
-    fontFamily: FONT_FAMILY,
   },
   forgotButton: {
     marginTop: 16,
@@ -216,6 +210,5 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 14,
     fontWeight: '500',
-    fontFamily: FONT_FAMILY,
   },
 });

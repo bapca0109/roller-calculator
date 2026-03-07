@@ -1,15 +1,23 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabsLayout() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   
   // If user is not authenticated, don't render tabs (prevent crash during logout)
   // The navigation to login will be handled by the logout function
   const isAdmin = isAuthenticated && user?.role === 'admin';
+
+  // Calculate bottom padding for Android navigation bar
+  // On Android, we need extra padding to avoid overlap with system navigation
+  const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 10) + 10 : 10;
+  const tabBarHeight = Platform.OS === 'android' ? 64 + Math.max(insets.bottom, 0) : 64;
 
   return (
     <Tabs
@@ -21,8 +29,8 @@ export default function TabsLayout() {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E2E8F0',
-          height: 64,
-          paddingBottom: 10,
+          height: tabBarHeight,
+          paddingBottom: bottomPadding,
           paddingTop: 8,
           shadowColor: '#0F172A',
           shadowOffset: { width: 0, height: -2 },

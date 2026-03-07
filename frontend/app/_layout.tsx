@@ -1,32 +1,21 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Stack } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet, Text, Image, Platform } from 'react-native';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
-import { useFonts } from 'expo-font';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-// Global font family constant
+// Global font family constant - Calibri with fallbacks
+// On web, Calibri will be used if available, otherwise fallback fonts
+// On native, system font will be used
 export const FONT_FAMILY = Platform.select({
   web: 'Calibri, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  default: 'Calibri',
+  default: 'System',
 });
 
 export const FONT_FAMILY_BOLD = Platform.select({
   web: 'Calibri, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  default: 'CalibriBold',
+  default: 'System',
 });
-
-// Set default Text font globally
-const setDefaultFontFamily = () => {
-  // @ts-ignore
-  const oldTextRender = Text.render;
-  // @ts-ignore
-  Text.render = function(...args) {
-    const origin = oldTextRender.call(this, ...args);
-    return React.cloneElement(origin, {
-      style: [{ fontFamily: FONT_FAMILY }, origin.props.style],
-    });
-  };
-};
 
 // Inner layout component that uses the auth context
 function RootLayoutNav() {
@@ -42,7 +31,7 @@ function RootLayoutNav() {
           resizeMode="contain"
         />
         <ActivityIndicator size="large" color="#960018" style={styles.spinner} />
-        <Text style={[styles.loadingText, { fontFamily: FONT_FAMILY }]}>Loading...</Text>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -59,32 +48,12 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  // Load custom fonts
-  const [fontsLoaded] = useFonts({
-    'Calibri': require('../assets/fonts/Calibri-Regular.ttf'),
-    'CalibriBold': require('../assets/fonts/Calibri-Bold.ttf'),
-  });
-
-  // Apply global font when fonts are loaded
-  useEffect(() => {
-    if (fontsLoaded) {
-      setDefaultFontFamily();
-    }
-  }, [fontsLoaded]);
-
-  // Show loading while fonts are loading
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.splashContainer}>
-        <ActivityIndicator size="large" color="#960018" />
-      </View>
-    );
-  }
-
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 
