@@ -75,7 +75,16 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 
 ## Completed Work
 
-### March 6, 2026 (Latest Session)
+### March 7, 2026 (Latest Session)
+- **Quote Date Fix** - COMPLETED
+  - Approved quotes now show the approval date (`approved_at`) instead of the RFQ creation date
+  - Fixed in 3 locations:
+    1. Quote card display - shows approval date for approved quotes
+    2. Quote detail modal - shows "Approved: [date]" instead of "Created: [date]"
+    3. PDF generation - uses approval date in the header
+  - Testing agent verified 100% success rate
+
+### March 6, 2026 (Previous Session)
 - **RFQ Traceability in Quotes** - COMPLETED
   - Added original RFQ number reference in Quote PDF (e.g., "Ref: RFQ/25-26/0045")
   - RFQ reference shown in quote detail modal
@@ -246,15 +255,18 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 
 ## Known Issues
 
+### ✅ Resolved (March 7, 2026)
+1. **Quote Date Display** - FIXED: Approved quotes now show approval date (`approved_at`) instead of RFQ creation date (`created_at`) in cards, modals, and PDFs.
+
 ### ✅ Resolved (March 2, 2026)
 1. **Authentication Race Condition** - FIXED: Components no longer render before auth state is resolved. Splash screen blocks rendering until `loading=false`.
 
-### P1 - In Progress
+### P1 - Pending User Verification
+1. **iOS Logout** - May still have issues. The fix (navigation delay) needs user verification on physical iOS device.
+
+### P2 - Environmental/Known Limitations
 1. **Expo Tunnel Instability** (ERR_NGROK_3200) - Environmental issue, use web preview as workaround
 2. **PDF Download on iOS** - Native share/download not working in Expo Go; workarounds available (browser tab, email)
-
-### P2 - Minor
-1. **Email Button in Search Actions** - Added but needs user verification
 
 ## API Endpoints
 
