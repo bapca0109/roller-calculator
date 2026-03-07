@@ -948,8 +948,9 @@ def generate_quote_html(quote_data: dict) -> str:
     is_rfq = quote_number.startswith('RFQ')
     doc_label_full = 'REQUEST FOR QUOTATION' if is_rfq else 'QUOTATION'
     
-    # Check if using item-level discounts
-    use_item_discounts = quote_data.get('use_item_discounts', False)
+    # ALWAYS use item-level discount format for PDF display
+    # This shows: SR. | ITEM CODE | QTY | RATE | DISC % | VALUE AFTER DISC | TOTAL
+    use_item_discounts = True  # Always show per-item discount columns in PDF
     
     # Generate products HTML with new table format
     products = quote_data.get('products', [])
@@ -957,10 +958,21 @@ def generate_quote_html(quote_data: dict) -> str:
     calculated_subtotal = 0
     total_item_discount = 0
     
+    # Calculate overall discount percentage for items without individual discounts
+    subtotal_raw = quote_data.get('subtotal', 0)
+    total_discount_raw = quote_data.get('total_discount', 0)
+    overall_discount_percent = (total_discount_raw / subtotal_raw * 100) if subtotal_raw > 0 else 0
+    has_per_item_discounts = quote_data.get('use_item_discounts', False)
+    
     for idx, product in enumerate(products, 1):
         qty = product.get('quantity', 0)
         unit_price = product.get('unit_price', 0)
-        item_discount_percent = product.get('item_discount_percent', 0) if use_item_discounts else 0
+        
+        # Use individual item discount if available, otherwise use overall discount percentage
+        if has_per_item_discounts and product.get('item_discount_percent') is not None:
+            item_discount_percent = product.get('item_discount_percent', 0)
+        else:
+            item_discount_percent = overall_discount_percent
         
         # Calculate values
         value_after_discount = unit_price * (1 - item_discount_percent / 100)
@@ -986,10 +998,7 @@ def generate_quote_html(quote_data: dict) -> str:
         if product.get('remark'):
             remark_html = f'<div class="product-remark">Note: {product["remark"]}</div>'
         
-        # Show discount column only if using item discounts
-        discount_col = f'<td class="cell-center">{item_discount_percent:.1f}%</td>' if use_item_discounts else ''
-        value_after_col = f'<td class="cell-right">Rs. {value_after_discount:,.2f}</td>' if use_item_discounts else ''
-        
+        # Always show discount columns (use_item_discounts is always True for PDF)
         if use_item_discounts:
             products_html += f"""
                 <tr>
@@ -1121,13 +1130,13 @@ def generate_quote_html(quote_data: dict) -> str:
     if use_item_discounts:
         table_header = '''
             <tr>
-              <th style="width: 5%;">Sr.</th>
-              <th style="width: 25%; text-align: left;">Item Code</th>
-              <th style="width: 8%;">Qty</th>
-              <th style="width: 15%; text-align: right;">Rate</th>
-              <th style="width: 12%;">Disc %</th>
-              <th style="width: 17%; text-align: right;">Value After Disc</th>
-              <th style="width: 18%; text-align: right;">Total</th>
+              <th style="width: 5%;">SR.</th>
+              <th style="width: 25%; text-align: left;">ITEM CODE</th>
+              <th style="width: 8%;">QTY</th>
+              <th style="width: 15%; text-align: right;">RATE</th>
+              <th style="width: 12%;">DISC %</th>
+              <th style="width: 17%; text-align: right;">VALUE AFTER DISC</th>
+              <th style="width: 18%; text-align: right;">TOTAL</th>
             </tr>
         '''
     else:

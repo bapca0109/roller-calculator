@@ -557,15 +557,26 @@ export default function QuotesScreen() {
       ? formatDate(quote.approved_at)
       : (quote.created_at_ist || formatDate(quote.created_at));
     
-    // Check if using item-level discounts
-    const useItemDiscounts = quote.use_item_discounts || false;
+    // ALWAYS use item-level discount format for PDF display
+    // This shows: SR. | ITEM CODE | QTY | RATE | DISC % | VALUE AFTER DISC | TOTAL
+    const useItemDiscounts = true;  // Always show per-item discount columns in PDF
     
     // Calculate totals with item discounts
     let calculatedSubtotal = 0;
     let totalItemDiscount = 0;
     
     const productsHtml = quote.products.map((product, index) => {
-      const itemDiscountPercent = useItemDiscounts ? (product.item_discount_percent || 0) : 0;
+      // Use actual item discount if available, otherwise calculate from total discount
+      const hasItemDiscounts = quote.use_item_discounts && product.item_discount_percent !== undefined;
+      let itemDiscountPercent = 0;
+      
+      if (hasItemDiscounts) {
+        itemDiscountPercent = product.item_discount_percent || 0;
+      } else if (quote.total_discount > 0 && quote.subtotal > 0) {
+        // Calculate per-item discount from total discount percentage
+        itemDiscountPercent = (quote.total_discount / quote.subtotal) * 100;
+      }
+      
       const valueAfterDiscount = product.unit_price * (1 - itemDiscountPercent / 100);
       const lineTotal = product.quantity * valueAfterDiscount;
       const originalAmount = product.quantity * product.unit_price;
@@ -629,16 +640,16 @@ export default function QuotesScreen() {
     const sgst = taxableAmount * 0.09;
     const grandTotal = (taxableAmount + (quote.shipping_cost || 0)) * 1.18;
     
-    // Dynamic table header
+    // Dynamic table header - ALWAYS uppercase to match PDF export
     const tableHeader = useItemDiscounts ? `
       <tr>
-        <th style="width: 5%;">Sr.</th>
-        <th style="width: 25%; text-align: left;">Item Code</th>
-        <th style="width: 8%;">Qty</th>
-        <th style="width: 15%; text-align: right;">Rate</th>
-        <th style="width: 12%;">Disc %</th>
-        <th style="width: 17%; text-align: right;">Value After Disc</th>
-        <th style="width: 18%; text-align: right;">Total</th>
+        <th style="width: 5%;">SR.</th>
+        <th style="width: 25%; text-align: left;">ITEM CODE</th>
+        <th style="width: 8%;">QTY</th>
+        <th style="width: 15%; text-align: right;">RATE</th>
+        <th style="width: 12%;">DISC %</th>
+        <th style="width: 17%; text-align: right;">VALUE AFTER DISC</th>
+        <th style="width: 18%; text-align: right;">TOTAL</th>
       </tr>
     ` : `
       <tr>
