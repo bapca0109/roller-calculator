@@ -76,6 +76,17 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Completed Work
 
 ### March 7, 2026 (Latest Session)
+- **Customer Codes Feature** - COMPLETED
+  - Auto-generated customer codes (C0001, C0002, etc.) for all customers
+  - Customer codes displayed in:
+    1. Customers list with red badge
+    2. Quotes list with red badge next to customer name
+    3. RFQ and Quote PDFs (backend generated)
+    4. Frontend Quote PDF exports
+    5. Email templates (RFQ and Quote approval)
+  - Migration endpoint to assign codes to existing customers and quotes
+  - Customer codes stored in users, customers, and quotes collections
+
 - **Quote Date Fix** - COMPLETED
   - Approved quotes now show the approval date (`approved_at`) instead of the RFQ creation date
   - Fixed in 3 locations:

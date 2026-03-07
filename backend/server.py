@@ -642,6 +642,7 @@ def generate_rfq_pdf(rfq_data: dict) -> bytes:
     
     pdf.set_font('Helvetica', '', 10)
     details = [
+        ('Customer Code', rfq_data.get('customer_code', 'N/A')),
         ('Name', rfq_data.get('customer_name', 'N/A')),
         ('Company', rfq_data.get('customer_company', 'N/A')),
         ('Email', rfq_data.get('customer_email', 'N/A')),
@@ -768,6 +769,7 @@ def generate_quote_pdf(quote_data: dict) -> bytes:
     
     pdf.set_font('Helvetica', '', 10)
     details = [
+        ('Customer Code', quote_data.get('customer_code', 'N/A')),
         ('Name', quote_data.get('customer_name', 'N/A')),
         ('Company', quote_data.get('customer_company', 'N/A')),
         ('Email', quote_data.get('customer_email', 'N/A')),
@@ -1815,10 +1817,14 @@ async def create_quote(
     
     ist_now = get_ist_now()
     
+    # Get customer code from current user
+    customer_code = current_user.get("customer_code")
+    
     quote_dict = {
         "quote_number": quote_number,
         "quote_type": quote_type,
         "customer_id": current_user["id"],
+        "customer_code": customer_code,
         "customer_name": current_user["name"],
         "customer_company": current_user.get("company", ""),
         "customer_email": current_user["email"],
@@ -1892,10 +1898,18 @@ async def create_roller_quote(
     
     ist_now = get_ist_now()
     
+    # Get customer code - try from customer_details first, then from current user
+    customer_code = None
+    if quote_data.customer_details:
+        customer_code = quote_data.customer_details.get("customer_code")
+    if not customer_code:
+        customer_code = current_user.get("customer_code")
+    
     quote_dict = {
         "quote_number": quote_number,
         "quote_type": quote_type,
         "customer_id": quote_data.customer_id or current_user["id"],
+        "customer_code": customer_code,
         "customer_name": quote_data.customer_name or current_user["name"],
         "customer_company": quote_data.customer_details.get("company", "") if quote_data.customer_details else current_user.get("company", ""),
         "customer_email": current_user["email"],
@@ -4916,7 +4930,49 @@ async def migrate_customer_codes(current_user: dict = Depends(get_current_user))
             updated_count += 1
             logging.info(f"Assigned customer code {customer_code} to customer {customer.get('email', customer.get('name'))}")
     
-    return {"message": f"Migration complete. Updated {updated_count} customers with codes."}
+    # Also update quotes that don't have customer_code
+    quotes_updated = 0
+    quotes_cursor = db.quotes.find({
+        "$or": [
+            {"customer_code": {"$exists": False}},
+            {"customer_code": None}
+        ]
+    })
+    
+    async for quote in quotes_cursor:
+        # Try to find customer_code from customer_id or customer_email
+        customer_code = None
+        
+        # First check by customer_id in users
+        if quote.get("customer_id"):
+            try:
+                from bson import ObjectId
+                user = await db.users.find_one({"_id": ObjectId(quote["customer_id"])})
+                if user:
+                    customer_code = user.get("customer_code")
+            except:
+                pass
+        
+        # If not found, try by email
+        if not customer_code and quote.get("customer_email"):
+            user = await db.users.find_one({"email": quote["customer_email"]})
+            if user:
+                customer_code = user.get("customer_code")
+        
+        # If still not found, check customers collection
+        if not customer_code and quote.get("customer_email"):
+            customer = await db.customers.find_one({"email": quote["customer_email"]})
+            if customer:
+                customer_code = customer.get("customer_code")
+        
+        if customer_code:
+            await db.quotes.update_one(
+                {"_id": quote["_id"]},
+                {"$set": {"customer_code": customer_code}}
+            )
+            quotes_updated += 1
+    
+    return {"message": f"Migration complete. Updated {updated_count} customers and {quotes_updated} quotes with codes."}
 
 
 # Include the router in the main app

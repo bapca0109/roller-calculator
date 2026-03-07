@@ -38,6 +38,7 @@ interface QuoteProduct {
 interface Quote {
   id: string;
   quote_number?: string;
+  customer_code?: string;
   customer_name: string;
   customer_email: string;
   customer_company?: string;
@@ -51,6 +52,7 @@ interface Quote {
     state?: string;
     pincode?: string;
     gst_number?: string;
+    customer_code?: string;
   };
   products: QuoteProduct[];
   subtotal: number;
@@ -832,6 +834,7 @@ export default function QuotesScreen() {
           </div>
           <div class="info-box">
             <div class="info-box-title">Bill To</div>
+            ${quote.customer_code ? `<div class="customer-code" style="color: #960018; font-weight: bold; margin-bottom: 4px;">Customer Code: ${quote.customer_code}</div>` : ''}
             <div class="info-company">${quote.customer_details?.company || quote.customer_details?.name || quote.customer_name}</div>
             ${quote.customer_details?.address ? `
               <div class="info-address">
@@ -1100,6 +1103,11 @@ export default function QuotesScreen() {
 
       {/* Customer & Company Name */}
       <View style={styles.customerRow}>
+        {item.customer_code && (
+          <View style={styles.customerCodeBadge}>
+            <Text style={styles.customerCodeText}>{item.customer_code}</Text>
+          </View>
+        )}
         <Ionicons name="person-outline" size={16} color="#64748B" />
         <Text style={styles.customerName}>{item.customer_name || 'Unknown Customer'}</Text>
       </View>
@@ -1825,6 +1833,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 4,
+  },
+  customerCodeBadge: {
+    backgroundColor: '#960018',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  customerCodeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
   },
   customerName: {
     fontSize: 14,
