@@ -1841,22 +1841,17 @@ export default function QuotesScreen() {
         </View>
       </Modal>
 
-      {/* Approve RFQ Modal with Freight Options */}
-      <Modal
-        visible={!!approveModalQuote}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setApproveModalQuote(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
+      {/* Approve RFQ Full Screen Modal with Freight Options */}
+      {approveModalQuote && (
+        <View style={styles.fullScreenOverlay}>
+          <SafeAreaView style={styles.editQuoteModalContainer}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Quote</Text>
               <TouchableOpacity onPress={() => setApproveModalQuote(null)}>
                 <Ionicons name="close" size={28} color="#333" />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.modalScroll}>
+            <ScrollView style={styles.modalScroll} contentContainerStyle={{paddingBottom: 100}}>
               {approveModalQuote && (
                 <>
                   {/* RFQ Info */}
@@ -2037,26 +2032,25 @@ export default function QuotesScreen() {
                 </>
               )}
             </ScrollView>
-          </View>
+          </SafeAreaView>
         </View>
-      </Modal>
+      )}
 
       {/* Reject Reason Modal */}
       <Modal
         visible={showRejectModal}
         animationType="fade"
-        transparent={true}
+        transparent={false}
         onRequestClose={() => setShowRejectModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { maxHeight: '60%' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Reject RFQ</Text>
-              <TouchableOpacity onPress={() => setShowRejectModal(false)}>
-                <Ionicons name="close" size={28} color="#333" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalScroll}>
+        <View style={styles.editQuoteModalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Reject RFQ</Text>
+            <TouchableOpacity onPress={() => setShowRejectModal(false)}>
+              <Ionicons name="close" size={28} color="#333" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalScroll}>
               {rejectingQuote && (
                 <>
                   <Text style={styles.rejectModalSubtitle}>
@@ -2142,7 +2136,6 @@ export default function QuotesScreen() {
               )}
             </ScrollView>
           </View>
-        </View>
       </Modal>
 
       {/* Approval Success Popup Modal */}
@@ -2602,8 +2595,35 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 600,
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  editQuoteModalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  fullScreenOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#fff',
+    zIndex: 9999,
   },
   modalContent: {
     backgroundColor: '#fff',
