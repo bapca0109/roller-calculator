@@ -581,6 +581,9 @@ export default function QuotesScreen() {
       ? formatDate(quote.approved_at)
       : (quote.created_at_ist || formatDate(quote.created_at));
     
+    // Check if prices should be hidden (for customers viewing unapproved quotes)
+    const shouldHidePrices = isCustomer && !isApproved;
+    
     // ALWAYS use item-level discount format for PDF display
     // This shows: SR. | ITEM CODE | QTY | RATE | DISC % | VALUE AFTER DISC | TOTAL
     const useItemDiscounts = true;  // Always show per-item discount columns in PDF
@@ -608,6 +611,28 @@ export default function QuotesScreen() {
       
       calculatedSubtotal += lineTotal;
       totalItemDiscount += itemDiscountAmount;
+      
+      // For customers with unapproved quotes, hide all pricing
+      if (shouldHidePrices) {
+        return `
+          <tr>
+            <td class="cell-center">${index + 1}</td>
+            <td class="cell-left">
+              <div class="product-name">${product.product_id}</div>
+              ${product.specifications ? `
+                <div class="product-specs">
+                  ${product.specifications.roller_type ? `Type: ${product.specifications.roller_type}` : ''}
+                  ${product.specifications.pipe_diameter ? ` | Pipe: ${product.specifications.pipe_diameter}mm` : ''}
+                  ${product.specifications.shaft_diameter ? ` | Shaft: ${product.specifications.shaft_diameter}mm` : ''}
+                  ${product.specifications.bearing ? ` | Bearing: ${product.specifications.bearing}` : ''}
+                </div>
+              ` : ''}
+              ${product.remark ? `<div class="product-remark">Note: ${product.remark}</div>` : ''}
+            </td>
+            <td class="cell-center">${product.quantity}</td>
+          </tr>
+        `;
+      }
       
       if (useItemDiscounts) {
         return `
@@ -664,8 +689,14 @@ export default function QuotesScreen() {
     const sgst = taxableAmount * 0.09;
     const grandTotal = (taxableAmount + (quote.shipping_cost || 0)) * 1.18;
     
-    // Dynamic table header - ALWAYS uppercase to match PDF export
-    const tableHeader = useItemDiscounts ? `
+    // Dynamic table header - for customers with unapproved quotes, hide pricing columns
+    const tableHeader = shouldHidePrices ? `
+      <tr>
+        <th style="width: 8%;">SR.</th>
+        <th style="width: 72%; text-align: left;">ITEM CODE / DESCRIPTION</th>
+        <th style="width: 20%;">QTY</th>
+      </tr>
+    ` : (useItemDiscounts ? `
       <tr>
         <th style="width: 5%;">SR.</th>
         <th style="width: 25%; text-align: left;">ITEM CODE</th>
@@ -683,7 +714,7 @@ export default function QuotesScreen() {
         <th style="width: 20%; text-align: right;">Unit Price</th>
         <th style="width: 20%; text-align: right;">Amount</th>
       </tr>
-    `;
+    `);
     
     // Discount label
     const discountLabel = useItemDiscounts ? 'Item Discounts (Total)' : `Discount (${quote.subtotal > 0 ? ((quote.total_discount / quote.subtotal) * 100).toFixed(1) : 0}%)`;
@@ -1026,6 +1057,15 @@ export default function QuotesScreen() {
           </tbody>
         </table>
 
+        ${shouldHidePrices ? `
+        <!-- Pricing Pending Notice for Customers -->
+        <div class="delivery-box" style="background: #fff5f5; border-left: 3px solid #960018; text-align: center; padding: 20px;">
+          <strong style="color: #960018; font-size: 14px;">Pricing Pending Approval</strong>
+          <div style="margin-top: 8px; color: #666; font-size: 11px;">
+            Pricing details will be available once your RFQ is reviewed and approved by our team.
+          </div>
+        </div>
+        ` : `
         <!-- Summary -->
         <div class="summary-section">
           <div class="summary-table">
@@ -1067,6 +1107,7 @@ export default function QuotesScreen() {
             </div>
           </div>
         </div>
+        `}
 
         ${quote.delivery_location ? `
           <div class="delivery-box">
