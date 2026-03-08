@@ -1533,7 +1533,7 @@ export default function CalculatorScreen() {
                   roller_type: calcResult.configuration.roller_type,
                   quantity: calcResult.configuration.quantity,
                   unit_price: calcResult.pricing.unit_price,
-                  weight_kg: calcResult.freight?.single_roller_weight_kg || 0,
+                  weight_kg: calcResult.cost_breakdown?.single_roller_weight_kg || 0,
                   specifications: {
                     pipe_diameter: calcResult.configuration.pipe_diameter_mm,
                     pipe_length: calcResult.configuration.pipe_length_mm,
