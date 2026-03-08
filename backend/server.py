@@ -296,6 +296,7 @@ class Quote(BaseModel):
     customer_email: str
     customer_code: Optional[str] = None  # Customer code like C0001
     customer_company: Optional[str] = None  # Customer company name
+    customer_rfq_no: Optional[str] = None  # Customer's own reference number (optional)
     customer_details: Optional[Dict[str, Any]] = None  # Full customer details for PDF
     products: List[QuoteProduct]
     subtotal: float
@@ -325,6 +326,7 @@ class QuoteCreate(BaseModel):
     products: List[QuoteProduct]
     delivery_location: Optional[str] = None
     notes: Optional[str] = None
+    customer_rfq_no: Optional[str] = None  # Customer's own reference number (optional)
 
 class QuoteUpdate(BaseModel):
     status: Optional[str] = None
@@ -1055,6 +1057,10 @@ def generate_quote_html(quote_data: dict) -> str:
     
     customer_code_html = f'<div class="customer-code" style="color: #960018; font-weight: bold; margin-bottom: 4px;">Customer Code: {customer_code}</div>' if customer_code else ''
     
+    # Customer RFQ Reference Number
+    customer_rfq_no = quote_data.get('customer_rfq_no')
+    customer_rfq_no_html = f'<div style="color: #1565C0; font-weight: bold; margin-bottom: 4px;">Customer Ref: {customer_rfq_no}</div>' if customer_rfq_no else ''
+    
     address_html = ""
     if customer_details.get('address'):
         address_parts = [customer_details['address']]
@@ -1469,6 +1475,7 @@ def generate_quote_html(quote_data: dict) -> str:
           <div class="info-box">
             <div class="info-box-title">Bill To</div>
             {customer_code_html}
+            {customer_rfq_no_html}
             <div class="info-company">{customer_company or (customer_details.get('company') if customer_details else None) or (customer_details.get('name') if customer_details else None) or customer_name}</div>
             {address_html}
             {gst_html}
@@ -1838,6 +1845,11 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
         products = rfq_data.get('products', [])
         products_html = ""
         products_text = ""
+        
+        # Build attachment list grouped by product for the email
+        attachments_by_product_html = ""
+        has_attachments = False
+        
         for idx, product in enumerate(products, 1):
             products_html += f"""
             <tr>
@@ -1848,10 +1860,52 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
             </tr>
             """
             products_text += f"{idx}. {product.get('product_id', 'N/A')} - {product.get('product_name', 'N/A')} x {product.get('quantity', 0)}\n"
+            
+            # Group attachments by product
+            product_attachments = product.get('attachments', [])
+            if product_attachments:
+                has_attachments = True
+                attachment_names = [att.get('name', 'Unnamed') for att in product_attachments if att.get('base64')]
+                if attachment_names:
+                    attachments_by_product_html += f"""
+                    <div style="margin-bottom: 10px;">
+                        <strong>Item {idx} - {product.get('product_id', 'N/A')}:</strong>
+                        <ul style="margin: 5px 0;">
+                            {''.join(f'<li>{name}</li>' for name in attachment_names)}
+                        </ul>
+                    </div>
+                    """
+        
+        # Build attachments section HTML
+        attachments_section_html = ""
+        if has_attachments:
+            attachments_section_html = f"""
+                <div style="background: #E3F2FD; border: 1px solid #90CAF9; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                    <h4 style="margin-top: 0; color: #1565C0;">Attachments by Product</h4>
+                    {attachments_by_product_html}
+                </div>
+            """
+        
+        # Get customer reference number if provided
+        customer_rfq_no = rfq_data.get('customer_rfq_no')
+        customer_ref_html = ""
+        customer_ref_text = ""
+        if customer_rfq_no:
+            customer_ref_html = f"""
+                        <div class="info-box">
+                            <div class="info-label">Customer Ref. No.</div>
+                            <div class="info-value">{customer_rfq_no}</div>
+                        </div>
+            """
+            customer_ref_text = f"Customer Ref. No.: {customer_rfq_no}\n"
         
         # ===== ADMIN EMAIL (internal notification) =====
         admin_msg = MIMEMultipart('mixed')
-        admin_msg['Subject'] = f"New RFQ Received - {rfq_data.get('quote_number')} from {rfq_data.get('customer_name')}"
+        admin_subject = f"New RFQ Received - {rfq_data.get('quote_number')}"
+        if customer_rfq_no:
+            admin_subject += f" (Ref: {customer_rfq_no})"
+        admin_subject += f" from {rfq_data.get('customer_name')}"
+        admin_msg['Subject'] = admin_subject
         admin_msg['From'] = GMAIL_USER
         admin_msg['To'] = ", ".join(admin_emails)
         
@@ -1903,6 +1957,7 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
                             <div class="info-label">Submission Time</div>
                             <div class="info-value">{ist_now.strftime("%d %b %Y, %I:%M %p IST")}</div>
                         </div>
+                        {customer_ref_html}
                     </div>
                     
                     <h3>Products Requested</h3>
@@ -1915,6 +1970,8 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
                         </tr>
                         {products_html}
                     </table>
+                    
+                    {attachments_section_html}
                     
                     {f'<p style="margin-top: 20px;"><strong>Notes:</strong> {rfq_data.get("notes")}</p>' if rfq_data.get("notes") else ''}
                 </div>
@@ -1930,7 +1987,7 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
         New RFQ Received - Convero Solutions
         
         RFQ Number: {rfq_data.get('quote_number')}
-        
+        {customer_ref_text}
         Customer Details:
         -----------------
         Customer Name: {rfq_data.get('customer_name')}
@@ -2735,6 +2792,7 @@ async def create_quote(
         "customer_name": current_user["name"],
         "customer_company": current_user.get("company", ""),
         "customer_email": current_user["email"],
+        "customer_rfq_no": quote.customer_rfq_no,  # Customer's own reference number (optional)
         "products": processed_products,
         "subtotal": subtotal,
         "total_discount": total_discount,

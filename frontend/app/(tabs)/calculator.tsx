@@ -117,7 +117,6 @@ const BEARING_MAKES = [
 ];
 
 const PACKING_TYPES = [
-  { label: 'No Packing', value: 'none' },
   { label: 'Standard (1%)', value: 'standard' },
   { label: 'Pallet (4%)', value: 'pallet' },
   { label: 'Wooden Box (8%)', value: 'wooden_box' },
@@ -165,6 +164,9 @@ export default function CalculatorScreen() {
   // Product remark state
   const [productRemark, setProductRemark] = useState<string>('');
   
+  // Customer RFQ Reference Number (optional)
+  const [customerRfqNo, setCustomerRfqNo] = useState<string>('');
+  
   // Customer selection state
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
@@ -188,7 +190,7 @@ export default function CalculatorScreen() {
   const [bearingMake, setBearingMake] = useState<string>('china');
   const [rubberDiameter, setRubberDiameter] = useState<number | null>(null);
   const [quantity, setQuantity] = useState<string>('1');
-  const [packingType, setPackingType] = useState<string>('none');
+  const [packingType, setPackingType] = useState<string>('standard');
   const [freightPincode, setFreightPincode] = useState<string>('');
   
   // Shaft end type state
@@ -911,7 +913,8 @@ export default function CalculatorScreen() {
       const response = await api.post('/quotes', {
         products,
         delivery_location: quoteItems[0].freight?.destination_pincode || null,
-        notes: `Multi-product quote with ${quoteItems.length} items`
+        notes: `Multi-product quote with ${quoteItems.length} items`,
+        customer_rfq_no: customerRfqNo || null  // Optional customer reference number
       });
       
       // Don't show alert - the popup flow will handle it
@@ -1906,6 +1909,18 @@ export default function CalculatorScreen() {
               <Text style={styles.rfqPopupSubtitle}>
                 {quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''} in your RFQ
               </Text>
+            </View>
+            
+            {/* Customer RFQ Reference Number (Optional) */}
+            <View style={styles.customerRfqNoSection}>
+              <Text style={styles.customerRfqNoLabel}>Your Reference No. (Optional)</Text>
+              <TextInput
+                style={styles.customerRfqNoInput}
+                value={customerRfqNo}
+                onChangeText={setCustomerRfqNo}
+                placeholder="e.g., PO-12345, REQ-001"
+                placeholderTextColor="#999"
+              />
             </View>
             
             <View style={styles.rfqPopupButtons}>
@@ -3214,5 +3229,27 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 4,
     marginLeft: 4,
+  },
+  // Customer RFQ No. styles
+  customerRfqNoSection: {
+    width: '100%',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  customerRfqNoLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  customerRfqNoInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#1E293B',
   },
 });

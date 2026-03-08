@@ -75,7 +75,15 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 
 ## Completed Work
 
-### March 7, 2026 (Latest Session - Current)
+### March 8, 2026 (Latest Session - Current)
+- **5 New Feature Requests** - COMPLETED ✅
+  1. **Customer RFQ No. (Optional)**: Added optional reference field for customers in Calculator and Search tabs. Displays in emails and PDFs as "Customer Ref: XXX"
+  2. **Hide Prices from Customers**: Prices hidden in Search tab for customers until RFQ is approved (unit price, line total, grand total all hidden)
+  3. **Combined Cart**: Note - Search and Calculator still have separate carts. Would need shared context to combine (future task)
+  4. **Removed "No Packing" Option**: Removed from packing type dropdown. Default is now "Standard (1%)"
+  5. **Attachments Grouped by Product**: Admin email now shows "Attachments by Product" section with attachments listed under each product name
+
+### March 7, 2026
 - **Freight Charges Feature** - COMPLETED ✅
   - PDF now always shows Freight Charges row (0.0% if no pincode)
   - Admin Approve RFQ modal with freight options:

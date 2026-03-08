@@ -79,6 +79,7 @@ export default function SearchScreen() {
   
   // Quote builder state
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
+  const [customerRfqNo, setCustomerRfqNo] = useState<string>('');  // Customer's own RFQ reference
   const [showQuoteBuilder, setShowQuoteBuilder] = useState(false);
   const [savingQuote, setSavingQuote] = useState(false);
   
@@ -307,7 +308,8 @@ export default function SearchScreen() {
         products,
         customer_id: selectedCustomer?.id || null,
         delivery_location: null,
-        notes: `Quote from Search - ${quoteItems.length} items`
+        notes: `Quote from Search - ${quoteItems.length} items`,
+        customer_rfq_no: customerRfqNo || null  // Customer's own reference number
       });
       
       Alert.alert(
@@ -878,7 +880,7 @@ export default function SearchScreen() {
                 <View style={styles.modalDetails}>
                   <Text style={styles.modalDetailText}>Length: {selectedLength.length.length_mm}mm</Text>
                   <Text style={styles.modalDetailText}>Weight: {selectedLength.length.weight_kg} kg</Text>
-                  <Text style={styles.modalDetailText}>Price: Rs. {selectedLength.length.price}</Text>
+                  {!isCustomer && <Text style={styles.modalDetailText}>Price: Rs. {selectedLength.length.price}</Text>}
                 </View>
                 <Text style={styles.quantityLabel}>Quantity:</Text>
                 <TextInput
@@ -950,10 +952,12 @@ export default function SearchScreen() {
                   <Text style={styles.quoteItemDetail}>Weight: {item.weight_kg} kg</Text>
                   <Text style={styles.quoteItemDetail}>Qty: {item.quantity}</Text>
                 </View>
-                <View style={styles.quoteItemPricing}>
-                  <Text style={styles.quoteItemUnitPrice}>Rs. {item.unit_price.toFixed(2)} x {item.quantity}</Text>
-                  <Text style={styles.quoteItemTotal}>Rs. {(item.unit_price * item.quantity).toFixed(2)}</Text>
-                </View>
+                {!isCustomer && (
+                  <View style={styles.quoteItemPricing}>
+                    <Text style={styles.quoteItemUnitPrice}>Rs. {item.unit_price.toFixed(2)} x {item.quantity}</Text>
+                    <Text style={styles.quoteItemTotal}>Rs. {(item.unit_price * item.quantity).toFixed(2)}</Text>
+                  </View>
+                )}
               </View>
             ))}
           </ScrollView>
@@ -967,11 +971,27 @@ export default function SearchScreen() {
               <Text style={styles.quoteSummaryLabel}>Total Weight:</Text>
               <Text style={styles.quoteSummaryValue}>{getTotalWeight().toFixed(2)} kg</Text>
             </View>
-            <View style={styles.quoteSummaryRow}>
-              <Text style={styles.quoteSummaryLabel}>Total Amount:</Text>
-              <Text style={styles.quoteTotalValue}>Rs. {getQuoteTotal().toFixed(2)}</Text>
-            </View>
+            {!isCustomer && (
+              <View style={styles.quoteSummaryRow}>
+                <Text style={styles.quoteSummaryLabel}>Total Amount:</Text>
+                <Text style={styles.quoteTotalValue}>Rs. {getQuoteTotal().toFixed(2)}</Text>
+              </View>
+            )}
           </View>
+
+          {/* Customer RFQ Reference Number (Optional) - For Customers */}
+          {isCustomer && (
+            <View style={styles.customerRfqNoSection}>
+              <Text style={styles.customerRfqNoLabel}>Your Reference No. (Optional)</Text>
+              <TextInput
+                style={styles.customerRfqNoInput}
+                value={customerRfqNo}
+                onChangeText={setCustomerRfqNo}
+                placeholder="e.g., PO-12345, REQ-001"
+                placeholderTextColor="#999"
+              />
+            </View>
+          )}
 
           <TouchableOpacity 
             style={styles.saveQuoteButton}
@@ -1891,5 +1911,27 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
+  },
+  // Customer RFQ No. styles
+  customerRfqNoSection: {
+    marginTop: 16,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  customerRfqNoLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  customerRfqNoInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#1E293B',
   },
 });
