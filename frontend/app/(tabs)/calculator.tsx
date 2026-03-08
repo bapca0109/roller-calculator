@@ -907,9 +907,6 @@ export default function CalculatorScreen() {
     setCurrentAttachments([]);
     setProductRemark('');
     
-    // Show popup for admin to add more or submit
-    setShowQuotePopup(true);
-    
     // Clear current result to configure next item
     setResult(null);
   };
@@ -1559,7 +1556,6 @@ export default function CalculatorScreen() {
                 // Clear current attachments and remark for next item
                 setCurrentAttachments([]);
                 setProductRemark('');
-                setShowRfqPopup(true);
                 setResult(null); // Don't show result section
               }
             } else {
@@ -2198,137 +2194,6 @@ export default function CalculatorScreen() {
                 <Text style={styles.saveAllButtonText}>Go to Cart</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      )}
-
-      {/* RFQ Popup for Customers */}
-      {showRfqPopup && isCustomer && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.rfqPopupContent}>
-            <View style={styles.rfqPopupHeader}>
-              <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
-              <Text style={styles.rfqPopupTitle}>Item Added!</Text>
-              <Text style={styles.rfqPopupSubtitle}>
-                {quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''} in your cart
-              </Text>
-            </View>
-            
-            <View style={styles.rfqPopupButtons}>
-              <TouchableOpacity
-                style={styles.rfqAddMoreButton}
-                onPress={() => {
-                  setShowRfqPopup(false);
-                }}
-              >
-                <Ionicons name="add-circle-outline" size={24} color="#960018" />
-                <Text style={styles.rfqAddMoreButtonText}>Add More</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.rfqSubmitButtonGreen}
-                onPress={() => {
-                  setShowRfqPopup(false);
-                  router.push('/cart');
-                }}
-              >
-                <Ionicons name="cart" size={24} color="#fff" />
-                <Text style={styles.rfqSubmitButtonText}>Go to Cart</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* RFQ Success Popup */}
-      {showRfqSuccessPopup && isCustomer && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.rfqPopupContent}>
-            <View style={styles.rfqPopupHeader}>
-              <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
-              <Text style={styles.rfqSuccessTitle}>RFQ Submitted!</Text>
-              <Text style={styles.rfqSuccessSubtitle}>
-                Your Request for Quotation has been sent successfully.
-              </Text>
-              <Text style={styles.rfqSuccessNumber}>{submittedRfqNumber}</Text>
-            </View>
-            
-            <TouchableOpacity
-              style={styles.rfqSuccessButton}
-              onPress={() => {
-                setShowRfqSuccessPopup(false);
-              }}
-            >
-              <Ionicons name="checkmark" size={24} color="#fff" />
-              <Text style={styles.rfqSubmitButtonText}>OK</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* Quote Popup for Admin - Similar to Customer RFQ popup */}
-      {showQuotePopup && !isCustomer && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.rfqPopupContent}>
-            <View style={styles.rfqPopupHeader}>
-              <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
-              <Text style={styles.rfqPopupTitle}>Item Added!</Text>
-              <Text style={styles.rfqPopupSubtitle}>
-                {quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''} in your Quote
-              </Text>
-              <Text style={styles.quotePopupTotal}>
-                Total: Rs. {getQuoteTotal().toFixed(2)}
-              </Text>
-            </View>
-            
-            <View style={styles.rfqPopupButtons}>
-              <TouchableOpacity
-                style={styles.rfqAddMoreButton}
-                onPress={() => {
-                  setShowQuotePopup(false);
-                }}
-              >
-                <Ionicons name="add-circle-outline" size={24} color="#960018" />
-                <Text style={styles.rfqAddMoreButtonText}>Add More</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.rfqSubmitButtonGreen}
-                onPress={() => {
-                  setShowQuotePopup(false);
-                  router.push('/cart');
-                }}
-              >
-                <Ionicons name="cart" size={24} color="#fff" />
-                <Text style={styles.rfqSubmitButtonText}>Go to Cart</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Quote Success Popup for Admin */}
-      {showQuoteSuccessPopup && !isCustomer && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.rfqPopupContent}>
-            <View style={styles.rfqPopupHeader}>
-              <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
-              <Text style={styles.rfqSuccessTitle}>Quote Generated!</Text>
-              <Text style={styles.rfqSuccessSubtitle}>
-                Your Quote has been created successfully.
-              </Text>
-              <Text style={styles.rfqSuccessNumber}>{submittedQuoteNumber}</Text>
-            </View>
-            
-            <TouchableOpacity
-              style={styles.rfqSuccessButton}
-              onPress={() => {
-                setShowQuoteSuccessPopup(false);
-              }}
-            >
-              <Ionicons name="checkmark" size={24} color="#fff" />
-              <Text style={styles.rfqSubmitButtonText}>OK</Text>
-            </TouchableOpacity>
           </View>
         </View>
       )}

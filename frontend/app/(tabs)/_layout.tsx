@@ -1,12 +1,14 @@
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, View, Text, StyleSheet } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCart } from '../context/CartContext';
 
 export default function TabsLayout() {
   const { user, isAuthenticated } = useAuth();
+  const { cartCount } = useCart();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   
@@ -69,7 +71,14 @@ export default function TabsLayout() {
         options={{
           title: 'Cart',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="cart-outline" size={size} color={color} />
+            <View>
+              <Ionicons name="cart-outline" size={size} color={color} />
+              {cartCount > 0 && (
+                <View style={styles.cartBadge}>
+                  <Text style={styles.cartBadgeText}>{cartCount > 99 ? '99+' : cartCount}</Text>
+                </View>
+              )}
+            </View>
           ),
         }}
       />
@@ -130,3 +139,23 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  cartBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -10,
+    backgroundColor: '#960018',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+});
