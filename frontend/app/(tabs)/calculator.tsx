@@ -66,6 +66,8 @@ interface CostResult {
     rubber_cost?: number;
     locking_ring_cost?: number;
     total_raw_material: number;
+    single_roller_weight_kg?: number;
+    total_weight_kg?: number;
   };
   pricing: {
     raw_material_cost: number;
@@ -789,7 +791,7 @@ export default function CalculatorScreen() {
         bearing: config.bearing_number,
         bearing_make: config.bearing_make,
         housing: config.housing,
-        weight_kg: result.cost_breakdown.total_weight || 0,
+        weight_kg: result.cost_breakdown?.single_roller_weight_kg || 0,
         unit_price: result.pricing.unit_price,
         rubber_diameter: config.rubber_diameter || null,
         belt_widths: [],
@@ -881,7 +883,7 @@ export default function CalculatorScreen() {
       roller_type: result.configuration.roller_type,
       quantity: result.configuration.quantity,
       unit_price: result.pricing.unit_price,
-      weight_kg: result.cost_breakdown.total_weight || 0,
+      weight_kg: result.cost_breakdown?.single_roller_weight_kg || 0,
       specifications: {
         pipe_diameter: result.configuration.pipe_diameter_mm,
         pipe_length: result.configuration.pipe_length_mm,
@@ -1531,7 +1533,7 @@ export default function CalculatorScreen() {
                   roller_type: calcResult.configuration.roller_type,
                   quantity: calcResult.configuration.quantity,
                   unit_price: calcResult.pricing.unit_price,
-                  weight_kg: calcResult.cost_breakdown.total_weight || 0,
+                  weight_kg: calcResult.freight?.single_roller_weight_kg || 0,
                   specifications: {
                     pipe_diameter: calcResult.configuration.pipe_diameter_mm,
                     pipe_length: calcResult.configuration.pipe_length_mm,

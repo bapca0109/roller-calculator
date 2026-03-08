@@ -3946,24 +3946,26 @@ async def calculate_detailed_cost(
         quantity
     )
     
+    # Always calculate weight of single roller
+    single_roller_weight = rs.calculate_roller_weight(
+        request.pipe_diameter,
+        request.pipe_length,
+        request.shaft_diameter,
+        request.pipe_type or "B",
+        request.rubber_diameter
+    )
+    total_weight = single_roller_weight * quantity
+    
+    # Add weight to cost_breakdown
+    cost_breakdown["single_roller_weight_kg"] = round(single_roller_weight, 3)
+    cost_breakdown["total_weight_kg"] = round(total_weight, 3)
+    
     # Initialize freight data
     freight_data = None
     total_freight_charges = 0.0
     
     # Calculate freight if destination pincode is provided
     if request.freight_pincode:
-        # Calculate weight of single roller
-        single_roller_weight = rs.calculate_roller_weight(
-            request.pipe_diameter,
-            request.pipe_length,
-            request.shaft_diameter,
-            request.pipe_type or "B",
-            request.rubber_diameter
-        )
-        
-        # Calculate total weight for all rollers
-        total_weight = single_roller_weight * quantity
-        
         # Calculate freight charges
         freight_calc = rs.calculate_freight_charges(total_weight, request.freight_pincode)
         
