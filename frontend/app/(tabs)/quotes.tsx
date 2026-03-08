@@ -119,6 +119,10 @@ export default function QuotesScreen() {
   // Edit RFQ modal state for viewing items
   const [editPackingType, setEditPackingType] = useState<string>('standard');
   const [editDeliveryPincode, setEditDeliveryPincode] = useState<string>('');
+  const [customPackingPercent, setCustomPackingPercent] = useState<string>('');
+  const [editableProducts, setEditableProducts] = useState<QuoteProduct[]>([]);
+  const [pincodeError, setPincodeError] = useState<string>('');
+  const [pincodeValid, setPincodeValid] = useState<boolean>(true);
   
   const { user, loading: authLoading } = useAuth();
   
@@ -254,11 +258,86 @@ export default function QuotesScreen() {
     setFreightPercent(quote.freight_details?.freight_percent?.toString() || '0');
     setCustomFreightAmount(quote.shipping_cost?.toString() || '0');
     setUseCustomFreight(false);
+    setCustomPackingPercent('');
+    setEditableProducts([...(quote.products || [])]);
+    setPincodeError('');
+    setPincodeValid(true);
     // Mark as read if admin and quote is pending RFQ and unread
     const isRfq = quote.quote_number?.startsWith('RFQ/');
     if (isAdmin && quote.status === 'pending' && isRfq && !quote.read_by_admin) {
       markAsRead(quote.id);
     }
+  };
+
+  // Validate pincode using API
+  const validatePincode = async (pincode: string) => {
+    if (!pincode || pincode.length !== 6) {
+      setPincodeError('Pincode must be 6 digits');
+      setPincodeValid(false);
+      return false;
+    }
+    
+    try {
+      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const data = await response.json();
+      
+      if (data[0]?.Status === 'Success') {
+        setPincodeError('');
+        setPincodeValid(true);
+        return true;
+      } else {
+        setPincodeError('Invalid pincode');
+        setPincodeValid(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('Pincode validation error:', error);
+      setPincodeError('Unable to validate pincode');
+      setPincodeValid(false);
+      return false;
+    }
+  };
+
+  // Handle pincode change with validation
+  const handlePincodeChange = (pincode: string) => {
+    setEditDeliveryPincode(pincode);
+    if (pincode.length === 6) {
+      validatePincode(pincode);
+    } else if (pincode.length > 0) {
+      setPincodeError('Pincode must be 6 digits');
+      setPincodeValid(false);
+    } else {
+      setPincodeError('');
+      setPincodeValid(true);
+    }
+  };
+
+  // Update product quantity
+  const updateProductQuantity = (index: number, newQty: number) => {
+    if (newQty < 1) return;
+    const updatedProducts = [...editableProducts];
+    updatedProducts[index] = {
+      ...updatedProducts[index],
+      quantity: newQty
+    };
+    setEditableProducts(updatedProducts);
+  };
+
+  // Delete product from list
+  const deleteProduct = (index: number) => {
+    if (editableProducts.length <= 1) {
+      Alert.alert('Error', 'Cannot delete the last item. At least one item is required.');
+      return;
+    }
+    const updatedProducts = editableProducts.filter((_, i) => i !== index);
+    setEditableProducts(updatedProducts);
+  };
+
+  // Calculate editable subtotal
+  const calculateEditableSubtotal = () => {
+    return editableProducts.reduce((sum, product) => {
+      return sum + (product.unit_price * product.quantity);
+    }, 0);
   };
 
   // Get unread count for badge - only count RFQs (customer-generated)
@@ -283,13 +362,6 @@ export default function QuotesScreen() {
       ? ((quote.total_discount / quote.subtotal) * 100).toFixed(1)
       : '0';
     setEditedDiscount(discountPercent);
-  };
-
-  const updateProductQuantity = (index: number, newQty: string) => {
-    const qty = parseInt(newQty) || 0;
-    const updated = [...editedProducts];
-    updated[index] = { ...updated[index], quantity: qty };
-    setEditedProducts(updated);
   };
 
   const updateProductItemDiscount = (index: number, newDiscount: string) => {
@@ -424,15 +496,36 @@ export default function QuotesScreen() {
     const quote = approveModalQuote || selectedQuote;
     if (!quote) return;
     
+    // Validate pincode before approving
+    if (editDeliveryPincode && !pincodeValid) {
+      Alert.alert('Error', 'Please enter a valid pincode before approving.');
+      return;
+    }
+    
     setApprovingId(quote.id);
     try {
       const freightAmount = calculateFreightAmount();
       const freightPct = useCustomFreight ? 0 : (parseFloat(freightPercent) || 0);
       
-      // First update the quote with freight and packing details
+      // Calculate updated subtotal from editable products
+      const updatedSubtotal = editableProducts.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0);
+      
+      // Calculate packing charges based on packing type
+      let packingPercent = 0;
+      if (editPackingType === 'standard') packingPercent = 1;
+      else if (editPackingType === 'pallet') packingPercent = 4;
+      else if (editPackingType === 'wooden_box') packingPercent = 8;
+      else if (editPackingType === 'custom') packingPercent = parseFloat(customPackingPercent) || 0;
+      
+      const packingCharges = updatedSubtotal * (packingPercent / 100);
+      
+      // First update the quote with products, freight and packing details
       await api.put(`/quotes/${quote.id}`, {
+        products: editableProducts,
+        subtotal: updatedSubtotal,
+        packing_charges: packingCharges,
         shipping_cost: freightAmount,
-        packing_type: editPackingType,
+        packing_type: editPackingType === 'custom' ? `custom_${customPackingPercent}` : editPackingType,
         delivery_location: editDeliveryPincode,
         freight_details: {
           freight_percent: freightPct,
@@ -1805,41 +1898,105 @@ export default function QuotesScreen() {
                     </View>
                   </View>
 
-                  {/* Products */}
+                  {/* Products - Editable for Admin on Pending RFQs */}
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>Products</Text>
-                    {selectedQuote.products.map((product, index) => (
-                      <View key={index} style={styles.productCard}>
-                        <Text style={styles.productName}>{product.product_name || product.product_id}</Text>
-                        <View style={styles.productDetails}>
-                          <Text style={styles.productQty}>Qty: {product.quantity}</Text>
-                          {/* Hide price for customers unless quote is approved */}
-                          {(!isCustomer || selectedQuote.status === 'approved') && (
+                    {isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected' ? (
+                      // Editable products for admin
+                      editableProducts.map((product, index) => (
+                        <View key={index} style={styles.editableProductCard}>
+                          <View style={styles.editableProductHeader}>
+                            <Text style={styles.productName}>{product.product_name || product.product_id}</Text>
+                            <TouchableOpacity 
+                              style={styles.deleteProductButton}
+                              onPress={() => deleteProduct(index)}
+                            >
+                              <Ionicons name="trash-outline" size={20} color="#DC3545" />
+                            </TouchableOpacity>
+                          </View>
+                          <View style={styles.editableProductRow}>
+                            <View style={styles.qtyEditContainer}>
+                              <Text style={styles.qtyLabel}>Qty:</Text>
+                              <TouchableOpacity 
+                                style={styles.qtyButton}
+                                onPress={() => updateProductQuantity(index, product.quantity - 1)}
+                              >
+                                <Ionicons name="remove" size={18} color="#333" />
+                              </TouchableOpacity>
+                              <TextInput
+                                style={styles.qtyInput}
+                                value={product.quantity.toString()}
+                                onChangeText={(text) => {
+                                  const qty = parseInt(text) || 1;
+                                  updateProductQuantity(index, qty);
+                                }}
+                                keyboardType="numeric"
+                              />
+                              <TouchableOpacity 
+                                style={styles.qtyButton}
+                                onPress={() => updateProductQuantity(index, product.quantity + 1)}
+                              >
+                                <Ionicons name="add" size={18} color="#333" />
+                              </TouchableOpacity>
+                            </View>
                             <Text style={styles.productPrice}>Rs. {(product.unit_price * product.quantity).toFixed(2)}</Text>
+                          </View>
+                          {product.specifications && (
+                            <View style={styles.specsContainer}>
+                              {product.specifications.pipe_diameter && (
+                                <Text style={styles.specText}>Pipe: {product.specifications.pipe_diameter}mm</Text>
+                              )}
+                              {product.specifications.shaft_diameter && (
+                                <Text style={styles.specText}>Shaft: {product.specifications.shaft_diameter}mm</Text>
+                              )}
+                              {product.specifications.bearing && (
+                                <Text style={styles.specText}>Bearing: {product.specifications.bearing}</Text>
+                              )}
+                            </View>
+                          )}
+                          {product.remark && (
+                            <View style={styles.remarkContainer}>
+                              <Ionicons name="chatbubble-outline" size={14} color="#64748B" />
+                              <Text style={styles.remarkText}>{product.remark}</Text>
+                            </View>
                           )}
                         </View>
-                        {product.specifications && (
-                          <View style={styles.specsContainer}>
-                            {product.specifications.pipe_diameter && (
-                              <Text style={styles.specText}>Pipe: {product.specifications.pipe_diameter}mm</Text>
-                            )}
-                            {product.specifications.shaft_diameter && (
-                              <Text style={styles.specText}>Shaft: {product.specifications.shaft_diameter}mm</Text>
-                            )}
-                            {product.specifications.bearing && (
-                              <Text style={styles.specText}>Bearing: {product.specifications.bearing}</Text>
+                      ))
+                    ) : (
+                      // Read-only products for non-admin or approved quotes
+                      selectedQuote.products.map((product, index) => (
+                        <View key={index} style={styles.productCard}>
+                          <Text style={styles.productName}>{product.product_name || product.product_id}</Text>
+                          <View style={styles.productDetails}>
+                            <Text style={styles.productQty}>Qty: {product.quantity}</Text>
+                            {/* Hide price for customers unless quote is approved */}
+                            {(!isCustomer || selectedQuote.status === 'approved') && (
+                              <Text style={styles.productPrice}>Rs. {(product.unit_price * product.quantity).toFixed(2)}</Text>
                             )}
                           </View>
-                        )}
-                        {/* Product Remark */}
-                        {product.remark && (
-                          <View style={styles.remarkContainer}>
-                            <Ionicons name="chatbubble-outline" size={14} color="#64748B" />
-                            <Text style={styles.remarkText}>{product.remark}</Text>
-                          </View>
-                        )}
-                      </View>
-                    ))}
+                          {product.specifications && (
+                            <View style={styles.specsContainer}>
+                              {product.specifications.pipe_diameter && (
+                                <Text style={styles.specText}>Pipe: {product.specifications.pipe_diameter}mm</Text>
+                              )}
+                              {product.specifications.shaft_diameter && (
+                                <Text style={styles.specText}>Shaft: {product.specifications.shaft_diameter}mm</Text>
+                              )}
+                              {product.specifications.bearing && (
+                                <Text style={styles.specText}>Bearing: {product.specifications.bearing}</Text>
+                              )}
+                            </View>
+                          )}
+                          {/* Product Remark */}
+                          {product.remark && (
+                            <View style={styles.remarkContainer}>
+                              <Ionicons name="chatbubble-outline" size={14} color="#64748B" />
+                              <Text style={styles.remarkText}>{product.remark}</Text>
+                            </View>
+                          )}
+                        </View>
+                      ))
+                    )}
                   </View>
 
                   {/* Pricing Summary - Hidden for customers on pending RFQs */}
@@ -1927,7 +2084,8 @@ export default function QuotesScreen() {
                         {[
                           { value: 'standard', label: 'Standard (1%)' },
                           { value: 'pallet', label: 'Pallet (4%)' },
-                          { value: 'wooden_box', label: 'Wooden Box (8%)' }
+                          { value: 'wooden_box', label: 'Wooden Box (8%)' },
+                          { value: 'custom', label: 'Custom' }
                         ].map((option) => (
                           <TouchableOpacity
                             key={option.value}
@@ -1950,16 +2108,39 @@ export default function QuotesScreen() {
                         ))}
                       </View>
                       
-                      {/* Delivery Pincode */}
+                      {/* Custom Packing Percentage Input */}
+                      {editPackingType === 'custom' && (
+                        <View style={styles.customPackingRow}>
+                          <Text style={styles.customPackingLabel}>Custom Percentage:</Text>
+                          <View style={styles.freightInputWrapper}>
+                            <TextInput
+                              style={styles.freightInput}
+                              value={customPackingPercent}
+                              onChangeText={setCustomPackingPercent}
+                              keyboardType="numeric"
+                              placeholder="0"
+                            />
+                            <Text style={styles.freightInputSuffix}>%</Text>
+                          </View>
+                        </View>
+                      )}
+                      
+                      {/* Delivery Pincode with Validation */}
                       <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Delivery Pincode</Text>
                       <TextInput
-                        style={styles.editableInput}
+                        style={[
+                          styles.editableInput,
+                          !pincodeValid && styles.inputError
+                        ]}
                         value={editDeliveryPincode}
-                        onChangeText={setEditDeliveryPincode}
+                        onChangeText={handlePincodeChange}
                         keyboardType="numeric"
                         placeholder="Enter pincode"
                         maxLength={6}
                       />
+                      {pincodeError ? (
+                        <Text style={styles.errorText}>{pincodeError}</Text>
+                      ) : null}
                       
                       {/* Freight Mode Toggle */}
                       <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Freight Charges</Text>
@@ -3778,5 +3959,76 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     color: '#333',
+  },
+  inputError: {
+    borderColor: '#DC3545',
+    borderWidth: 2,
+  },
+  errorText: {
+    color: '#DC3545',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  customPackingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 12,
+  },
+  customPackingLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  // Editable product styles
+  editableProductCard: {
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#960018',
+  },
+  editableProductHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  deleteProductButton: {
+    padding: 4,
+  },
+  editableProductRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  qtyEditContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  qtyLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  qtyButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qtyInput: {
+    width: 50,
+    height: 32,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    textAlign: 'center',
+    fontSize: 14,
+    backgroundColor: '#fff',
   },
 });
