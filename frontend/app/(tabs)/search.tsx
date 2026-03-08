@@ -1015,34 +1015,18 @@ export default function SearchScreen() {
             )}
           </View>
 
-          {/* Customer RFQ Reference Number (Optional) - For Customers */}
-          {isCustomer && (
-            <View style={styles.customerRfqNoSection}>
-              <Text style={styles.customerRfqNoLabel}>Your Reference No. (Optional)</Text>
-              <TextInput
-                style={styles.customerRfqNoInput}
-                value={customerRfqNo}
-                onChangeText={setCustomerRfqNo}
-                placeholder="e.g., PO-12345, REQ-001"
-                placeholderTextColor="#999"
-              />
-            </View>
-          )}
-
+          {/* Save Quote Button - Opens shared submission modal */}
           <TouchableOpacity 
             style={styles.saveQuoteButton}
-            onPress={saveQuote}
-            disabled={savingQuote || quoteItems.length === 0}
+            onPress={() => {
+              setShowQuoteBuilder(false);
+              setShowSubmitModal(true);
+            }}
+            disabled={quoteItems.length === 0}
             data-testid="save-quote-btn"
           >
-            {savingQuote ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="save-outline" size={20} color="#fff" />
-                <Text style={styles.saveQuoteButtonText}>Save Quote</Text>
-              </>
-            )}
+            <Ionicons name="save-outline" size={20} color="#fff" />
+            <Text style={styles.saveQuoteButtonText}>{isCustomer ? 'Submit RFQ' : 'Save Quote'}</Text>
           </TouchableOpacity>
         </View>
       </Modal>

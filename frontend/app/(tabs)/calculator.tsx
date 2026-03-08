@@ -1722,23 +1722,6 @@ export default function CalculatorScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Floating Quote Badge - Show for both admin and customer */}
-      {quoteItems.length > 0 && (
-        <TouchableOpacity 
-          style={styles.floatingQuoteBadge}
-          onPress={() => setShowQuoteBuilder(true)}
-        >
-          <Ionicons name="cart" size={24} color="#fff" />
-          <View style={styles.badgeCount}>
-            <Text style={styles.badgeCountText}>{quoteItems.length}</Text>
-          </View>
-          {/* Hide price for customers - only show item count */}
-          <Text style={styles.floatingBadgeText}>
-            {isCustomer ? `${quoteItems.length} item${quoteItems.length !== 1 ? 's' : ''}` : `Rs. ${getQuoteTotal().toFixed(0)}`}
-          </Text>
-        </TouchableOpacity>
-      )}
-
       {/* Customer Picker Modal */}
       {showCustomerPicker && (
         <View style={styles.modalOverlay}>
@@ -1956,14 +1939,12 @@ export default function CalculatorScreen() {
               </View>
               <TouchableOpacity 
                 style={styles.saveAllButton}
-                onPress={saveMultiProductQuote}
-                disabled={savingQuote}
+                onPress={() => {
+                  setShowQuoteBuilder(false);
+                  setShowSubmitModal(true);
+                }}
               >
-                {savingQuote ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.saveAllButtonText}>{isCustomer ? 'Submit RFQ' : 'Save Quote'}</Text>
-                )}
+                <Text style={styles.saveAllButtonText}>{isCustomer ? 'Submit RFQ' : 'Save Quote'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1982,18 +1963,6 @@ export default function CalculatorScreen() {
               </Text>
             </View>
             
-            {/* Customer RFQ Reference Number (Optional) */}
-            <View style={styles.customerRfqNoSection}>
-              <Text style={styles.customerRfqNoLabel}>Your Reference No. (Optional)</Text>
-              <TextInput
-                style={styles.customerRfqNoInput}
-                value={customerRfqNo}
-                onChangeText={setCustomerRfqNo}
-                placeholder="e.g., PO-12345, REQ-001"
-                placeholderTextColor="#999"
-              />
-            </View>
-            
             <View style={styles.rfqPopupButtons}>
               <TouchableOpacity
                 style={styles.rfqAddMoreButton}
@@ -2007,32 +1976,14 @@ export default function CalculatorScreen() {
               
               <TouchableOpacity
                 style={styles.rfqSubmitButtonGreen}
-                onPress={async () => {
+                onPress={() => {
                   setShowRfqPopup(false);
-                  setSavingQuote(true);
-                  try {
-                    const response = await saveMultiProductQuote();
-                    // Show success popup
-                    setSubmittedRfqNumber(response?.quote_number || 'RFQ');
-                    setShowRfqSuccessPopup(true);
-                    // Clear the cart
-                    setQuoteItems([]);
-                  } catch (error) {
-                    console.log('RFQ submission error:', error);
-                  } finally {
-                    setSavingQuote(false);
-                  }
+                  // Open the shared submission modal
+                  setShowSubmitModal(true);
                 }}
-                disabled={savingQuote}
               >
-                {savingQuote ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="send" size={24} color="#fff" />
-                    <Text style={styles.rfqSubmitButtonText}>Submit RFQ</Text>
-                  </>
-                )}
+                <Ionicons name="send" size={24} color="#fff" />
+                <Text style={styles.rfqSubmitButtonText}>Submit RFQ</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2093,32 +2044,14 @@ export default function CalculatorScreen() {
               
               <TouchableOpacity
                 style={styles.rfqSubmitButtonGreen}
-                onPress={async () => {
+                onPress={() => {
                   setShowQuotePopup(false);
-                  setSavingQuote(true);
-                  try {
-                    const response = await saveMultiProductQuote();
-                    // Show success popup
-                    setSubmittedQuoteNumber(response?.data?.quote_number || response?.quote_number || 'Quote');
-                    setShowQuoteSuccessPopup(true);
-                    // Clear the cart
-                    setQuoteItems([]);
-                  } catch (error) {
-                    console.log('Quote submission error:', error);
-                  } finally {
-                    setSavingQuote(false);
-                  }
+                  // Open the shared submission modal
+                  setShowSubmitModal(true);
                 }}
-                disabled={savingQuote}
               >
-                {savingQuote ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="document-text" size={24} color="#fff" />
-                    <Text style={styles.rfqSubmitButtonText}>Generate Quote</Text>
-                  </>
-                )}
+                <Ionicons name="document-text" size={24} color="#fff" />
+                <Text style={styles.rfqSubmitButtonText}>Generate Quote</Text>
               </TouchableOpacity>
             </View>
           </View>
