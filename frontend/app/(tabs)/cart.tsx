@@ -24,7 +24,7 @@ const PACKING_TYPES = [
 
 export default function CartScreen() {
   const { user } = useAuth();
-  const { cartItems, removeFromCart, getCartTotal, getCartWeight, clearCart } = useCart();
+  const { cartItems, removeFromCart, updateCartItem, getCartTotal, getCartWeight, clearCart } = useCart();
   const isCustomer = user?.role === 'customer';
 
   // Submission modal state
@@ -37,6 +37,35 @@ export default function CartScreen() {
   // Success state
   const [showSuccess, setShowSuccess] = useState(false);
   const [submittedNumber, setSubmittedNumber] = useState('');
+
+  // Edit quantity state
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editQty, setEditQty] = useState('');
+
+  const startEditQty = (itemId: string, currentQty: number) => {
+    setEditingItemId(itemId);
+    setEditQty(currentQty.toString());
+  };
+
+  const saveEditQty = (itemId: string) => {
+    const newQty = parseInt(editQty);
+    if (isNaN(newQty) || newQty < 1) {
+      Alert.alert('Invalid Quantity', 'Please enter a valid quantity (minimum 1)');
+      return;
+    }
+    if (newQty > 10000) {
+      Alert.alert('Invalid Quantity', 'Maximum quantity is 10,000');
+      return;
+    }
+    updateCartItem(itemId, { quantity: newQty });
+    setEditingItemId(null);
+    setEditQty('');
+  };
+
+  const cancelEditQty = () => {
+    setEditingItemId(null);
+    setEditQty('');
+  };
 
   const handleSubmit = async () => {
     if (cartItems.length === 0) {
@@ -152,10 +181,42 @@ export default function CartScreen() {
 
                 <View style={styles.itemFooter}>
                   <View style={styles.qtyWeightRow}>
-                    <View style={styles.infoBox}>
-                      <Text style={styles.infoLabel}>Qty</Text>
-                      <Text style={styles.infoValue}>{item.quantity}</Text>
-                    </View>
+                    {/* Editable Quantity */}
+                    {editingItemId === item.id ? (
+                      <View style={styles.editQtyContainer}>
+                        <TextInput
+                          style={styles.editQtyInput}
+                          value={editQty}
+                          onChangeText={setEditQty}
+                          keyboardType="numeric"
+                          autoFocus
+                          selectTextOnFocus
+                        />
+                        <TouchableOpacity 
+                          style={styles.editQtySaveBtn}
+                          onPress={() => saveEditQty(item.id)}
+                        >
+                          <Ionicons name="checkmark" size={18} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.editQtyCancelBtn}
+                          onPress={cancelEditQty}
+                        >
+                          <Ionicons name="close" size={18} color="#666" />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity 
+                        style={styles.qtyEditableBox}
+                        onPress={() => startEditQty(item.id, item.quantity)}
+                      >
+                        <Text style={styles.infoLabel}>Qty</Text>
+                        <View style={styles.qtyValueRow}>
+                          <Text style={styles.infoValue}>{item.quantity}</Text>
+                          <Ionicons name="pencil" size={14} color="#960018" style={styles.editIcon} />
+                        </View>
+                      </TouchableOpacity>
+                    )}
                     <View style={styles.infoBox}>
                       <Text style={styles.infoLabel}>Weight</Text>
                       <Text style={styles.infoValue}>{(item.weight_kg * item.quantity).toFixed(2)} kg</Text>
@@ -473,6 +534,51 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  qtyEditableBox: {
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#960018',
+  },
+  qtyValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  editIcon: {
+    marginLeft: 4,
+  },
+  editQtyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  editQtyInput: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#960018',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0F172A',
+    width: 70,
+    textAlign: 'center',
+  },
+  editQtySaveBtn: {
+    backgroundColor: '#4CAF50',
+    padding: 8,
+    borderRadius: 6,
+  },
+  editQtyCancelBtn: {
+    backgroundColor: '#E2E8F0',
+    padding: 8,
+    borderRadius: 6,
   },
   priceBox: {
     flex: 1,
