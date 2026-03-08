@@ -1450,20 +1450,26 @@ export default function QuotesScreen() {
     );
   }
 
-  // If Edit Quote is active, render full screen edit view
+  // If Edit Quote is active, render full screen edit view using Modal
   if (approveModalQuote) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#fff' }}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Edit Quote</Text>
-          <TouchableOpacity onPress={() => setApproveModalQuote(null)}>
-            <Ionicons name="close" size={28} color="#333" />
-          </TouchableOpacity>
-        </View>
-        <ScrollView style={styles.modalScroll} contentContainerStyle={{paddingBottom: 120}}>
+      <Modal
+        visible={true}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setApproveModalQuote(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+            <View style={[styles.modalHeader, { backgroundColor: '#fff' }]}>
+              <Text style={styles.modalTitle}>Edit Quote</Text>
+              <TouchableOpacity onPress={() => setApproveModalQuote(null)}>
+                <Ionicons name="close" size={28} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ flex: 1, backgroundColor: '#fff' }} contentContainerStyle={{paddingBottom: 120, backgroundColor: '#fff'}}>
           {/* RFQ Info */}
-          <View style={styles.detailSection}>
+          <View style={[styles.detailSection, { backgroundColor: '#fff' }]}>
             <Text style={styles.sectionTitle}>RFQ Details</Text>
             <Text style={styles.approveQuoteNumber}>{approveModalQuote.quote_number}</Text>
             <Text style={styles.approveCustomerName}>{approveModalQuote.customer_name}</Text>
@@ -1473,7 +1479,7 @@ export default function QuotesScreen() {
           </View>
 
           {/* Products List */}
-          <View style={styles.detailSection}>
+          <View style={[styles.detailSection, { backgroundColor: '#fff' }]}>
             <Text style={styles.sectionTitle}>Items Requested ({approveModalQuote.products?.length || 0})</Text>
             {approveModalQuote.products?.map((product, idx) => (
               <View key={idx} style={styles.editProductItem}>
@@ -1490,16 +1496,16 @@ export default function QuotesScreen() {
                 )}
               </View>
             ))}
-            <View style={styles.subtotalRow}>
+            <View style={[styles.subtotalRow, { backgroundColor: '#fff' }]}>
               <Text style={styles.subtotalLabel}>Subtotal:</Text>
               <Text style={styles.subtotalValue}>Rs. {approveModalQuote.subtotal?.toFixed(2)}</Text>
             </View>
           </View>
 
           {/* Packing Type Selection */}
-          <View style={styles.detailSection}>
+          <View style={[styles.detailSection, { backgroundColor: '#fff' }]}>
             <Text style={styles.sectionTitle}>Packing Type</Text>
-            <View style={styles.packingOptions}>
+            <View style={[styles.packingOptions, { backgroundColor: '#fff' }]}>
               {[
                 { value: 'standard', label: 'Standard (1%)' },
                 { value: 'pallet', label: 'Pallet (4%)' },
@@ -1528,11 +1534,11 @@ export default function QuotesScreen() {
           </View>
 
           {/* Freight Section */}
-          <View style={styles.detailSection}>
+          <View style={[styles.detailSection, { backgroundColor: '#fff' }]}>
             <Text style={styles.sectionTitle}>Freight Charges</Text>
             
             {/* Delivery Pincode */}
-            <View style={styles.freightInputRow}>
+            <View style={[styles.freightInputRow, { backgroundColor: '#fff' }]}>
               <Text style={styles.freightInputLabel}>Delivery Pincode:</Text>
               <TextInput
                 style={[styles.freightInput, { flex: 1 }]}
@@ -1605,7 +1611,7 @@ export default function QuotesScreen() {
           </View>
 
           {/* Action Buttons */}
-          <View style={styles.approveRejectButtons}>
+          <View style={[styles.approveRejectButtons, { backgroundColor: '#fff' }]}>
             {/* Approve Button */}
             <TouchableOpacity 
               style={styles.approveConfirmButton}
@@ -1638,8 +1644,9 @@ export default function QuotesScreen() {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </SafeAreaView>
-    </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
     );
   }
 
