@@ -124,6 +124,11 @@ export default function QuotesScreen() {
   const [pincodeError, setPincodeError] = useState<string>('');
   const [pincodeValid, setPincodeValid] = useState<boolean>(true);
   
+  // Discount editing state
+  const [useItemDiscount, setUseItemDiscount] = useState<boolean>(false);
+  const [totalDiscountPercent, setTotalDiscountPercent] = useState<string>('0');
+  const [itemDiscounts, setItemDiscounts] = useState<{[key: number]: string}>({});
+  
   const { user, loading: authLoading } = useAuth();
   
   // Check if user is customer - show RFQ terminology
@@ -262,6 +267,15 @@ export default function QuotesScreen() {
     setEditableProducts([...(quote.products || [])]);
     setPincodeError('');
     setPincodeValid(true);
+    // Initialize discount state
+    setUseItemDiscount(quote.use_item_discounts || false);
+    setTotalDiscountPercent(quote.discount_percent?.toString() || '0');
+    // Initialize item discounts from products
+    const discounts: {[key: number]: string} = {};
+    quote.products?.forEach((p, idx) => {
+      discounts[idx] = p.discount_percent?.toString() || '0';
+    });
+    setItemDiscounts(discounts);
     // Mark as read if admin and quote is pending RFQ and unread
     const isRfq = quote.quote_number?.startsWith('RFQ/');
     if (isAdmin && quote.status === 'pending' && isRfq && !quote.read_by_admin) {
@@ -338,6 +352,24 @@ export default function QuotesScreen() {
     return editableProducts.reduce((sum, product) => {
       return sum + (product.unit_price * product.quantity);
     }, 0);
+  };
+
+  // Calculate total discount based on mode
+  const calculateTotalDiscount = () => {
+    const subtotal = calculateEditableSubtotal();
+    
+    if (!useItemDiscount) {
+      // Total discount mode
+      const discountPct = parseFloat(totalDiscountPercent) || 0;
+      return subtotal * (discountPct / 100);
+    } else {
+      // Item-wise discount mode
+      return editableProducts.reduce((total, product, index) => {
+        const itemSubtotal = product.unit_price * product.quantity;
+        const itemDiscountPct = parseFloat(itemDiscounts[index] || '0') || 0;
+        return total + (itemSubtotal * (itemDiscountPct / 100));
+      }, 0);
+    }
   };
 
   // Get unread count for badge - only count RFQs (customer-generated)
@@ -492,8 +524,9 @@ export default function QuotesScreen() {
   };
 
   // Approve RFQ with freight
-  const confirmApproveRfq = async () => {
-    const quote = approveModalQuote || selectedQuote;
+  const confirmApproveRfq = async (quoteOverride?: Quote) => {
+    // Use quoteOverride if passed directly, otherwise use state
+    const quote = quoteOverride || approveModalQuote || selectedQuote;
     if (!quote) return;
     
     // Validate pincode before approving
@@ -519,14 +552,51 @@ export default function QuotesScreen() {
       
       const packingCharges = updatedSubtotal * (packingPercent / 100);
       
-      // First update the quote with products, freight and packing details
+      // Calculate discount values
+      let totalDiscountAmount = 0;
+      let updatedProducts = [...editableProducts];
+      
+      if (useItemDiscount) {
+        // Item-wise discount mode - update each product with its discount
+        updatedProducts = editableProducts.map((product, index) => {
+          const itemDiscountPct = parseFloat(itemDiscounts[index] || '0') || 0;
+          const itemSubtotal = product.unit_price * product.quantity;
+          const itemDiscountAmount = itemSubtotal * (itemDiscountPct / 100);
+          totalDiscountAmount += itemDiscountAmount;
+          return {
+            ...product,
+            item_discount_percent: itemDiscountPct
+          };
+        });
+      } else {
+        // Total discount mode
+        const discountPct = parseFloat(totalDiscountPercent) || 0;
+        totalDiscountAmount = updatedSubtotal * (discountPct / 100);
+        // Apply the same discount percentage to all items
+        updatedProducts = editableProducts.map(product => ({
+          ...product,
+          item_discount_percent: parseFloat(totalDiscountPercent) || 0
+        }));
+      }
+      
+      // Calculate final total price
+      const afterDiscount = updatedSubtotal - totalDiscountAmount;
+      const taxableAmount = afterDiscount + packingCharges;
+      const gst = taxableAmount * 0.18;
+      const totalPrice = (taxableAmount + freightAmount) * 1.18;
+      
+      // First update the quote with products, freight, packing and discount details
       await api.put(`/quotes/${quote.id}`, {
-        products: editableProducts,
+        products: updatedProducts,
         subtotal: updatedSubtotal,
+        total_discount: totalDiscountAmount,
+        use_item_discounts: useItemDiscount,
+        discount_percent: useItemDiscount ? 0 : (parseFloat(totalDiscountPercent) || 0),
         packing_charges: packingCharges,
         shipping_cost: freightAmount,
         packing_type: editPackingType === 'custom' ? `custom_${customPackingPercent}` : editPackingType,
         delivery_location: editDeliveryPincode,
+        total_price: totalPrice,
         freight_details: {
           freight_percent: freightPct,
           freight_amount: freightAmount,
@@ -543,6 +613,7 @@ export default function QuotesScreen() {
       fetchQuotes();
       setActiveTab('approved'); // Switch to approved tab
     } catch (error: any) {
+      console.error('Approve RFQ error:', error);
       Alert.alert('Error', error.response?.data?.detail || 'Failed to approve RFQ');
     } finally {
       setApprovingId(null);
@@ -2073,6 +2144,83 @@ export default function QuotesScreen() {
                     </View>
                   )}
 
+                  {/* Discount Section - Editable for Admin on Pending RFQs */}
+                  {isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected' && (
+                    <View style={[styles.detailSection, { backgroundColor: '#fff' }]}>
+                      <Text style={styles.sectionTitle}>Discount</Text>
+                      
+                      {/* Discount Mode Toggle */}
+                      <View style={styles.discountModeToggle}>
+                        <TouchableOpacity 
+                          style={[styles.modeButton, !useItemDiscount && styles.modeButtonActive]}
+                          onPress={() => setUseItemDiscount(false)}
+                        >
+                          <Ionicons name="calculator-outline" size={18} color={!useItemDiscount ? "#fff" : "#666"} />
+                          <Text style={[styles.modeButtonText, !useItemDiscount && styles.modeButtonTextActive]}>
+                            Total Discount
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.modeButton, useItemDiscount && styles.modeButtonActive]}
+                          onPress={() => setUseItemDiscount(true)}
+                        >
+                          <Ionicons name="list-outline" size={18} color={useItemDiscount ? "#fff" : "#666"} />
+                          <Text style={[styles.modeButtonText, useItemDiscount && styles.modeButtonTextActive]}>
+                            Item-wise
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Total Discount Input */}
+                      {!useItemDiscount ? (
+                        <View style={styles.freightInputRow}>
+                          <Text style={styles.freightInputLabel}>Discount on Total:</Text>
+                          <View style={styles.freightInputWrapper}>
+                            <TextInput
+                              style={styles.freightInput}
+                              value={totalDiscountPercent}
+                              onChangeText={setTotalDiscountPercent}
+                              keyboardType="numeric"
+                              placeholder="0"
+                            />
+                            <Text style={styles.freightInputSuffix}>%</Text>
+                          </View>
+                        </View>
+                      ) : (
+                        // Item-wise Discount
+                        <View style={styles.itemDiscountContainer}>
+                          {editableProducts.map((product, index) => (
+                            <View key={index} style={styles.itemDiscountRow}>
+                              <Text style={styles.itemDiscountName} numberOfLines={1}>
+                                {product.product_name || product.product_id}
+                              </Text>
+                              <View style={styles.freightInputWrapper}>
+                                <TextInput
+                                  style={[styles.freightInput, { width: 60 }]}
+                                  value={itemDiscounts[index] || '0'}
+                                  onChangeText={(text) => {
+                                    setItemDiscounts(prev => ({...prev, [index]: text}));
+                                  }}
+                                  keyboardType="numeric"
+                                  placeholder="0"
+                                />
+                                <Text style={styles.freightInputSuffix}>%</Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {/* Calculated Discount Amount */}
+                      <View style={styles.calculatedFreightRow}>
+                        <Text style={styles.calculatedFreightLabel}>Total Discount Amount:</Text>
+                        <Text style={[styles.calculatedFreightValue, { color: '#4CAF50' }]}>
+                          - Rs. {calculateTotalDiscount().toFixed(2)}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
                   {/* Packing & Freight Details - Editable for Admin on Pending RFQs */}
                   {isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected' ? (
                     <View style={[styles.detailSection, { backgroundColor: '#fff' }]}>
@@ -2267,9 +2415,8 @@ export default function QuotesScreen() {
                         <TouchableOpacity 
                           style={styles.approveConfirmButton}
                           onPress={() => {
-                            // Set the quote for approval
-                            setApproveModalQuote(selectedQuote);
-                            confirmApproveRfq();
+                            // Pass the quote directly to avoid state timing issues
+                            confirmApproveRfq(selectedQuote);
                           }}
                           disabled={approvingId === selectedQuote.id}
                         >
@@ -4030,5 +4177,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     backgroundColor: '#fff',
+  },
+  // Discount section styles
+  itemDiscountContainer: {
+    marginTop: 12,
+    gap: 10,
+  },
+  itemDiscountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 10,
+    borderRadius: 8,
+  },
+  itemDiscountName: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+    marginRight: 12,
   },
 });
