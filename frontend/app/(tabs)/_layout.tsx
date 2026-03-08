@@ -68,6 +68,7 @@ export default function TabsLayout() {
         name="search"
         options={{
           title: 'Search',
+          href: null, // Hidden - Search is now integrated in Calculator tab
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search-outline" size={size} color={color} />
           ),

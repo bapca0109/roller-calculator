@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CustomDropdown } from '../../components/CustomDropdown';
@@ -145,6 +146,19 @@ export default function CalculatorScreen() {
   
   // Debug: Log user state on every render
   console.log('CalculatorScreen render - user:', user, 'role:', user?.role, 'isCustomer:', isCustomer);
+  
+  // Tab mode: 'calculator' or 'search'
+  const [activeTab, setActiveTab] = useState<'calculator' | 'search'>('calculator');
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [selectedLength, setSelectedLength] = useState<any>(null);
+  const [quantityInput, setQuantityInput] = useState('1');
   
   // Shared cart modals state
   const [showCartView, setShowCartView] = useState(false);
@@ -968,6 +982,75 @@ export default function CalculatorScreen() {
     }
   };
 
+  // Search functionality
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      Alert.alert('Enter Search Term', 'Please enter a product code to search');
+      return;
+    }
+
+    setSearchLoading(true);
+    setHasSearched(true);
+
+    try {
+      const response = await api.get('/search/product-catalog', {
+        params: { query: searchQuery.trim().toUpperCase() }
+      });
+      setSearchResults(response.data.results || []);
+    } catch (error: any) {
+      console.error('Search error:', error);
+      Alert.alert('Search Error', error.response?.data?.detail || 'Failed to search');
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const addSearchItemToCart = () => {
+    if (!selectedLength) return;
+    
+    const qty = parseInt(quantityInput) || 1;
+    if (qty < 1 || qty > 10000) {
+      Alert.alert('Invalid Quantity', 'Please enter a quantity between 1 and 10,000');
+      return;
+    }
+
+    const { product, length } = selectedLength;
+    
+    // Add to shared cart
+    addToCart({
+      product_id: length.product_code,
+      product_name: `${product.roller_type.charAt(0).toUpperCase() + product.roller_type.slice(1)} Roller - ${length.product_code}`,
+      product_code: length.product_code,
+      roller_type: product.roller_type,
+      quantity: qty,
+      unit_price: length.price,
+      weight_kg: length.weight_kg,
+      specifications: {
+        pipe_diameter: product.pipe_diameter,
+        pipe_length: length.length_mm,
+        pipe_type: product.pipe_type,
+        shaft_diameter: product.shaft_diameter,
+        bearing: product.bearing,
+        bearing_make: product.bearing_make,
+        housing: product.housing,
+        rubber_diameter: product.rubber_diameter,
+        belt_widths: length.belt_widths,
+      },
+      source: 'search',
+    });
+    
+    setShowQuantityModal(false);
+    setSelectedLength(null);
+    setQuantityInput('1');
+    
+    Alert.alert(
+      'Added to Cart!', 
+      `${length.product_code} x ${qty} added.`,
+      [{ text: 'OK' }, { text: 'View Cart', onPress: () => setShowCartView(true) }]
+    );
+  };
+
   const availableBearings = standards?.bearing_options[shaftDiameter.toString()] || [];
   const availableRubberDiameters = RUBBER_DIAMETERS[pipeDiameter] || [];
 
@@ -996,9 +1079,167 @@ export default function CalculatorScreen() {
             />
           </View>
           <Text style={styles.headerTitle}>Roller Calculator</Text>
-          <Text style={styles.headerSubtitle}>Configure your conveyor roller</Text>
+          <Text style={styles.headerSubtitle}>Configure or search for your conveyor roller</Text>
         </View>
 
+        {/* Tab Switcher: Calculator / Search */}
+        <View style={styles.tabSwitcher}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'search' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('search')}
+          >
+            <Ionicons 
+              name="search-outline" 
+              size={18} 
+              color={activeTab === 'search' ? '#fff' : '#666'} 
+            />
+            <Text style={[styles.tabButtonText, activeTab === 'search' && styles.tabButtonTextActive]}>
+              Search
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'calculator' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('calculator')}
+          >
+            <Ionicons 
+              name="calculator-outline" 
+              size={18} 
+              color={activeTab === 'calculator' ? '#fff' : '#666'} 
+            />
+            <Text style={[styles.tabButtonText, activeTab === 'calculator' && styles.tabButtonTextActive]}>
+              Calculator
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Search Tab Content */}
+        {activeTab === 'search' && (
+          <View style={styles.searchSection}>
+            {/* Search Input */}
+            <View style={styles.searchInputContainer}>
+              <TextInput
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Enter product code (e.g., CR25 89 500)"
+                placeholderTextColor="#999"
+                onSubmitEditing={handleSearch}
+                autoCapitalize="characters"
+              />
+              <TouchableOpacity 
+                style={styles.searchButton}
+                onPress={handleSearch}
+                disabled={searchLoading}
+              >
+                {searchLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Ionicons name="search" size={22} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick Search Buttons */}
+            <View style={styles.quickSearchRow}>
+              {['89', '114', '127', '140', '152'].map((dia) => (
+                <TouchableOpacity
+                  key={dia}
+                  style={styles.quickSearchBtn}
+                  onPress={() => {
+                    setSearchQuery(dia);
+                    setSearchLoading(true);
+                    setHasSearched(true);
+                    api.get('/search/product-catalog', { params: { query: dia } })
+                      .then(res => setSearchResults(res.data.results || []))
+                      .catch(() => setSearchResults([]))
+                      .finally(() => setSearchLoading(false));
+                  }}
+                >
+                  <Text style={styles.quickSearchText}>{dia}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Search Results */}
+            {searchLoading ? (
+              <View style={styles.searchLoadingContainer}>
+                <ActivityIndicator size="large" color="#960018" />
+                <Text style={styles.searchLoadingText}>Searching...</Text>
+              </View>
+            ) : hasSearched && searchResults.length === 0 ? (
+              <View style={styles.noResultsContainer}>
+                <Ionicons name="search-outline" size={48} color="#ccc" />
+                <Text style={styles.noResultsText}>No products found</Text>
+                <Text style={styles.noResultsSubtext}>Try a different search term</Text>
+              </View>
+            ) : searchResults.length > 0 ? (
+              <View style={styles.searchResultsContainer}>
+                {searchResults.map((product, index) => (
+                  <View key={index} style={styles.productCard}>
+                    <TouchableOpacity 
+                      style={styles.productHeader}
+                      onPress={() => setExpandedProduct(expandedProduct === product.base_code ? null : product.base_code)}
+                    >
+                      <View style={styles.productInfo}>
+                        <Text style={styles.productCode}>{product.base_code}</Text>
+                        <Text style={styles.productType}>
+                          {product.roller_type.charAt(0).toUpperCase() + product.roller_type.slice(1)} Roller
+                        </Text>
+                        <Text style={styles.productSpecs}>
+                          Ø{product.pipe_diameter}mm • {product.bearing} • {product.bearing_make.toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.productActions}>
+                        <TouchableOpacity style={styles.expandBtn}>
+                          <Ionicons 
+                            name={expandedProduct === product.base_code ? 'chevron-up' : 'chevron-down'} 
+                            size={24} 
+                            color="#960018" 
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+
+                    {/* Expanded Length Details */}
+                    {expandedProduct === product.base_code && (
+                      <View style={styles.lengthDetails}>
+                        <View style={styles.lengthTableHeader}>
+                          <Text style={[styles.lengthHeaderCell, { flex: 2 }]}>Code</Text>
+                          <Text style={styles.lengthHeaderCell}>Len</Text>
+                          <Text style={styles.lengthHeaderCell}>Wt</Text>
+                          {!isCustomer && <Text style={styles.lengthHeaderCell}>Price</Text>}
+                          <Text style={styles.lengthHeaderCell}>Action</Text>
+                        </View>
+                        {product.lengths.map((length: any, lIndex: number) => (
+                          <View key={lIndex} style={styles.lengthRow}>
+                            <Text style={[styles.lengthCell, { flex: 2 }]}>{length.product_code}</Text>
+                            <Text style={styles.lengthCell}>{length.length_mm}</Text>
+                            <Text style={styles.lengthCell}>{length.weight_kg.toFixed(2)}</Text>
+                            {!isCustomer && <Text style={styles.lengthCell}>₹{length.price.toFixed(0)}</Text>}
+                            <TouchableOpacity 
+                              style={styles.addToCartBtn}
+                              onPress={() => {
+                                setSelectedLength({ product, length });
+                                setQuantityInput('1');
+                                setShowQuantityModal(true);
+                              }}
+                            >
+                              <Ionicons name="cart-outline" size={18} color="#fff" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        {/* Calculator Tab Content */}
+        {activeTab === 'calculator' && (
+          <>
         {/* Roller Type Selection */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Roller Type</Text>
@@ -1718,6 +1959,48 @@ export default function CalculatorScreen() {
             )}
           </View>
         )}
+          </>
+        )}
+
+        {/* Quantity Modal for Search */}
+        <Modal
+          visible={showQuantityModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowQuantityModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.quantityModal}>
+              <Text style={styles.quantityModalTitle}>Enter Quantity</Text>
+              {selectedLength && (
+                <Text style={styles.quantityModalCode}>{selectedLength.length.product_code}</Text>
+              )}
+              <TextInput
+                style={styles.quantityInput}
+                value={quantityInput}
+                onChangeText={setQuantityInput}
+                keyboardType="numeric"
+                placeholder="Quantity"
+                autoFocus
+              />
+              <View style={styles.quantityModalButtons}>
+                <TouchableOpacity 
+                  style={styles.quantityCancelBtn}
+                  onPress={() => setShowQuantityModal(false)}
+                >
+                  <Text style={styles.quantityCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.quantityConfirmBtn}
+                  onPress={addSearchItemToCart}
+                >
+                  <Ionicons name="cart" size={18} color="#fff" />
+                  <Text style={styles.quantityConfirmText}>Add to Cart</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -2189,6 +2472,245 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 4,
     fontWeight: '400',
+  },
+  // Tab Switcher Styles
+  tabSwitcher: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 10,
+    padding: 4,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  tabButtonActive: {
+    backgroundColor: '#960018',
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  tabButtonTextActive: {
+    color: '#fff',
+  },
+  // Search Section Styles
+  searchSection: {
+    marginHorizontal: 16,
+    marginTop: 16,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  searchInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#0F172A',
+  },
+  searchButton: {
+    backgroundColor: '#960018',
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickSearchRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 8,
+  },
+  quickSearchBtn: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  quickSearchText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  searchLoadingContainer: {
+    paddingVertical: 48,
+    alignItems: 'center',
+  },
+  searchLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748B',
+  },
+  noResultsContainer: {
+    paddingVertical: 48,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 12,
+  },
+  noResultsSubtext: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  searchResultsContainer: {
+    marginTop: 16,
+  },
+  productCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  productHeader: {
+    flexDirection: 'row',
+    padding: 16,
+    alignItems: 'center',
+  },
+  productInfo: {
+    flex: 1,
+  },
+  productCode: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#960018',
+  },
+  productType: {
+    fontSize: 14,
+    color: '#0F172A',
+    marginTop: 2,
+  },
+  productSpecs: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+  },
+  productActions: {
+    marginLeft: 12,
+  },
+  expandBtn: {
+    padding: 4,
+  },
+  lengthDetails: {
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  lengthTableHeader: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  lengthHeaderCell: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+  },
+  lengthRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  lengthCell: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0F172A',
+  },
+  addToCartBtn: {
+    backgroundColor: '#960018',
+    padding: 8,
+    borderRadius: 6,
+  },
+  // Quantity Modal Styles
+  quantityModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 320,
+  },
+  quantityModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  quantityModalCode: {
+    fontSize: 14,
+    color: '#960018',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  quantityInput: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 18,
+    textAlign: 'center',
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  quantityModalButtons: {
+    flexDirection: 'row',
+    marginTop: 20,
+    gap: 12,
+  },
+  quantityCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  quantityCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  quantityConfirmBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#960018',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  quantityConfirmText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
   },
   section: {
     backgroundColor: '#FFFFFF',
