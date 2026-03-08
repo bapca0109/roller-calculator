@@ -61,6 +61,7 @@ interface Quote {
   use_item_discounts?: boolean;  // Toggle for per-item vs total discount
   discount_percent?: number;  // Overall discount percentage
   packing_charges?: number;
+  packing_type?: string;  // standard, pallet, wooden_box
   shipping_cost: number;
   delivery_location?: string;
   total_price: number;
@@ -71,6 +72,7 @@ interface Quote {
   freight_details?: any;
   read_by_admin?: boolean;
   original_rfq_number?: string;
+  customer_rfq_no?: string;
   approved_at?: string;
   approved_by?: string;
   created_at: string;
@@ -1109,9 +1111,28 @@ export default function QuotesScreen() {
         </div>
         `}
 
-        ${quote.delivery_location ? `
-          <div class="delivery-box">
-            <strong>Delivery Location:</strong> PIN Code ${quote.delivery_location}
+        ${(quote.packing_type || quote.delivery_location) ? `
+          <div class="delivery-box" style="display: flex; gap: 40px; flex-wrap: wrap;">
+            ${quote.packing_type ? `
+              <div>
+                <strong>Packing Type:</strong> ${
+                  quote.packing_type === 'standard' ? 'Standard (1%)' :
+                  quote.packing_type === 'pallet' ? 'Pallet (4%)' :
+                  quote.packing_type === 'wooden_box' ? 'Wooden Box (8%)' :
+                  quote.packing_type
+                }
+              </div>
+            ` : ''}
+            ${quote.delivery_location ? `
+              <div>
+                <strong>Delivery Pincode:</strong> ${quote.delivery_location}
+              </div>
+            ` : ''}
+            ${quote.customer_rfq_no ? `
+              <div>
+                <strong>Customer Ref:</strong> ${quote.customer_rfq_no}
+              </div>
+            ` : ''}
           </div>
         ` : ''}
 
@@ -1634,6 +1655,44 @@ export default function QuotesScreen() {
                     <View style={styles.detailSection}>
                       <Text style={styles.sectionTitle}>Delivery</Text>
                       <Text style={styles.deliveryText}>Pincode: {selectedQuote.delivery_location}</Text>
+                    </View>
+                  )}
+
+                  {/* Packing & Freight Details */}
+                  {(selectedQuote.packing_type || selectedQuote.delivery_location) && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.sectionTitle}>Packing & Freight</Text>
+                      {selectedQuote.packing_type && (
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoLabel}>Packing Type:</Text>
+                          <Text style={styles.infoValue}>
+                            {selectedQuote.packing_type === 'standard' ? 'Standard (1%)' :
+                             selectedQuote.packing_type === 'pallet' ? 'Pallet (4%)' :
+                             selectedQuote.packing_type === 'wooden_box' ? 'Wooden Box (8%)' :
+                             selectedQuote.packing_type}
+                          </Text>
+                        </View>
+                      )}
+                      {selectedQuote.delivery_location && (
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoLabel}>Delivery Pincode:</Text>
+                          <Text style={styles.infoValue}>{selectedQuote.delivery_location}</Text>
+                        </View>
+                      )}
+                      {selectedQuote.freight_details?.freight_percent > 0 && (
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoLabel}>Freight:</Text>
+                          <Text style={styles.infoValue}>{selectedQuote.freight_details.freight_percent}%</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Customer RFQ Reference */}
+                  {selectedQuote.customer_rfq_no && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.sectionTitle}>Customer Reference</Text>
+                      <Text style={styles.deliveryText}>{selectedQuote.customer_rfq_no}</Text>
                     </View>
                   )}
 
@@ -2453,6 +2512,23 @@ const styles = StyleSheet.create({
   deliveryText: {
     fontSize: 14,
     color: '#333',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
   },
   notesText: {
     fontSize: 14,

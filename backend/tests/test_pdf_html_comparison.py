@@ -14,7 +14,7 @@ import re
 # Add backend to path for importing generate_quote_html
 sys.path.insert(0, '/app/backend')
 
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://roller-quote-engine-1.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://freight-pricing-pro-1.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "test@test.com"

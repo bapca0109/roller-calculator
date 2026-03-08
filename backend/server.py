@@ -305,6 +305,7 @@ class Quote(BaseModel):
     discount_percent: Optional[float] = 0.0  # Overall discount percentage
     shipping_cost: float = 0.0
     delivery_location: Optional[str] = None
+    packing_type: Optional[str] = None  # standard, pallet, wooden_box
     total_price: float
     status: str = QuoteStatus.PENDING
     notes: Optional[str] = None
@@ -325,6 +326,7 @@ class QuoteInDB(Quote):
 class QuoteCreate(BaseModel):
     products: List[QuoteProduct]
     delivery_location: Optional[str] = None
+    packing_type: Optional[str] = None  # standard, pallet, wooden_box
     notes: Optional[str] = None
     customer_rfq_no: Optional[str] = None  # Customer's own reference number (optional)
 
@@ -688,6 +690,26 @@ def generate_rfq_html(rfq_data: dict) -> str:
     # Notes
     notes_html = f'<div style="padding: 10px; background: #fff5f5; border-left: 3px solid #960018; border-radius: 4px; margin-bottom: 15px; font-size: 10px;"><strong>Notes:</strong> {rfq_data.get("notes")}</div>' if rfq_data.get('notes') else ''
     
+    # Packing and Delivery details
+    packing_type = rfq_data.get('packing_type')
+    delivery_location = rfq_data.get('delivery_location')
+    
+    packing_type_labels = {
+        'standard': 'Standard (1%)',
+        'pallet': 'Pallet (4%)',
+        'wooden_box': 'Wooden Box (8%)'
+    }
+    
+    packing_delivery_html = ""
+    if packing_type or delivery_location:
+        packing_delivery_html = '<div style="padding: 10px; background: #f5f5f5; border-radius: 4px; margin-bottom: 15px; font-size: 10px; display: flex; gap: 40px; flex-wrap: wrap;">'
+        if packing_type:
+            packing_label = packing_type_labels.get(packing_type, packing_type)
+            packing_delivery_html += f'<div><strong>Packing Type:</strong> {packing_label}</div>'
+        if delivery_location:
+            packing_delivery_html += f'<div><strong>Delivery Pincode:</strong> {delivery_location}</div>'
+        packing_delivery_html += '</div>'
+    
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -779,6 +801,8 @@ def generate_rfq_html(rfq_data: dict) -> str:
                 {products_html}
             </tbody>
         </table>
+
+        {packing_delivery_html}
 
         {notes_html}
 
@@ -1899,6 +1923,37 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
             """
             customer_ref_text = f"Customer Ref. No.: {customer_rfq_no}\n"
         
+        # Get packing type and delivery pincode
+        packing_type = rfq_data.get('packing_type')
+        delivery_location = rfq_data.get('delivery_location')
+        
+        packing_type_labels = {
+            'standard': 'Standard (1%)',
+            'pallet': 'Pallet (4%)',
+            'wooden_box': 'Wooden Box (8%)'
+        }
+        packing_label = packing_type_labels.get(packing_type, packing_type) if packing_type else 'Not specified'
+        
+        packing_delivery_html = ""
+        packing_delivery_text = ""
+        if packing_type or delivery_location:
+            if packing_type:
+                packing_delivery_html += f"""
+                        <div class="info-box">
+                            <div class="info-label">Packing Type</div>
+                            <div class="info-value">{packing_label}</div>
+                        </div>
+                """
+                packing_delivery_text += f"Packing Type: {packing_label}\n"
+            if delivery_location:
+                packing_delivery_html += f"""
+                        <div class="info-box">
+                            <div class="info-label">Delivery Pincode</div>
+                            <div class="info-value">{delivery_location}</div>
+                        </div>
+                """
+                packing_delivery_text += f"Delivery Pincode: {delivery_location}\n"
+        
         # ===== ADMIN EMAIL (internal notification) =====
         admin_msg = MIMEMultipart('mixed')
         admin_subject = f"New RFQ Received - {rfq_data.get('quote_number')}"
@@ -1958,6 +2013,7 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
                             <div class="info-value">{ist_now.strftime("%d %b %Y, %I:%M %p IST")}</div>
                         </div>
                         {customer_ref_html}
+                        {packing_delivery_html}
                     </div>
                     
                     <h3>Products Requested</h3>
@@ -1994,7 +2050,7 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
         Company: {rfq_data.get('customer_company', 'N/A')}
         Email: {rfq_data.get('customer_email')}
         Submission Time: {ist_now.strftime("%d %b %Y, %I:%M %p IST")}
-        
+        {packing_delivery_text}
         Products Requested:
         -------------------
         {products_text}
@@ -2092,6 +2148,16 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
                         <div class="info-value">{ist_now.strftime("%d %b %Y, %I:%M %p IST")}</div>
                     </div>
                     
+                    {f'''<div class="info-box">
+                        <div class="info-label">Packing Type</div>
+                        <div class="info-value">{packing_label}</div>
+                    </div>''' if packing_type else ''}
+                    
+                    {f'''<div class="info-box">
+                        <div class="info-label">Delivery Pincode</div>
+                        <div class="info-value">{delivery_location}</div>
+                    </div>''' if delivery_location else ''}
+                    
                     <h3>Products Requested</h3>
                     <table class="products-table">
                         <tr>
@@ -2128,7 +2194,7 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
         
         Your RFQ Number: {rfq_data.get('quote_number')}
         Submission Time: {ist_now.strftime("%d %b %Y, %I:%M %p IST")}
-        
+        {packing_delivery_text}
         Products Requested:
         -------------------
         {products_text}
@@ -2798,6 +2864,7 @@ async def create_quote(
         "total_discount": total_discount,
         "shipping_cost": 0.0,
         "delivery_location": quote.delivery_location,
+        "packing_type": quote.packing_type,  # Packing type from cart submission
         "total_price": total_price,
         "status": QuoteStatus.PENDING,
         "notes": quote.notes,
@@ -3111,6 +3178,11 @@ async def send_quote_approval_email(quote_data: dict, customer_email: str):
                         <span style="font-size: 14px;">TOTAL VALUE</span>
                         <span style="font-size: 24px; font-weight: bold; margin-left: 10px;">Rs. {quote_data.get('total_price', 0):,.2f}</span>
                     </div>
+                    
+                    {f'''<div class="info-box" style="display: flex; gap: 30px; flex-wrap: wrap;">
+                        {f'<div><div class="info-label">Packing Type</div><div class="info-value">{quote_data.get("packing_type", "").replace("_", " ").title() if quote_data.get("packing_type") else "N/A"}</div></div>' if quote_data.get('packing_type') else ''}
+                        {f'<div><div class="info-label">Delivery Pincode</div><div class="info-value">{quote_data.get("delivery_location")}</div></div>' if quote_data.get('delivery_location') else ''}
+                    </div>''' if quote_data.get('packing_type') or quote_data.get('delivery_location') else ''}
                     
                     <div style="margin-top: 30px; padding: 20px; background: #E8F5E9; border-radius: 8px; text-align: center;">
                         <p style="margin: 0; color: #2E7D32; font-weight: bold;">
