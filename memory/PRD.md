@@ -77,6 +77,28 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 
 ### March 8, 2026 (Latest Session - Current)
 
+- **P0 BUG FIX: UNCAUGHT ERROR ON APPROVE BUTTON** - COMPLETED ✅
+  - **Issue**: Clicking "Approve" button in RFQ details modal caused an uncaught frontend error, even though the backend API call succeeded and approval email was sent
+  - **Root Cause**: State timing issue - React state updates are asynchronous. The approve button was setting `setApproveModalQuote(selectedQuote)` and immediately calling `confirmApproveRfq()`, but the state hadn't updated yet
+  - **Fix Applied**: Modified `confirmApproveRfq` to accept an optional `quoteOverride` parameter and pass the `selectedQuote` directly to the function
+  - **Files Changed**: `frontend/app/(tabs)/quotes.tsx` (lines 527-620, 2376-2392)
+  - **Testing**: Testing agent verified - NO uncaught errors occur on approve
+
+- **P1 FEATURE: EDITABLE DISCOUNTS FOR ADMIN** - COMPLETED ✅
+  - **Issue**: Admin could not edit discounts during RFQ review
+  - **Implementation**:
+    1. Added Discount section in RFQ details modal (visible only for admins on pending RFQs)
+    2. Toggle between "Total Discount" (single % applied to all items) and "Item-wise" (individual % per product)
+    3. Real-time calculation of "Total Discount Amount" shown
+    4. Discount values now passed to backend during approval via PUT /quotes/{id}
+  - **Backend Fields Updated**:
+    - `total_discount`: Total discount amount in rupees
+    - `discount_percent`: Overall discount percentage (for total discount mode)
+    - `use_item_discounts`: Boolean flag for discount mode
+    - `item_discount_percent`: Per-product discount in each product's data
+  - **Files Changed**: `frontend/app/(tabs)/quotes.tsx` (confirmApproveRfq function, discount UI section)
+  - **Testing**: Testing agent verified - Q/25-26/0070 (5% discount = Rs. 450), Q/25-26/0071 (15% discount = Rs. 660)
+
 - **EDIT RFQ MODAL WITH APPROVE/REJECT WORKFLOW** - COMPLETED ✅
   - **Feature**: Complete Edit RFQ modal redesign with:
     1. Display all items selected by customer with quantities, unit prices, and totals
