@@ -1374,7 +1374,7 @@ export default function QuotesScreen() {
           ) : (
             <>
               <Ionicons name="create-outline" size={18} color="#fff" />
-              <Text style={styles.approveButtonText}>Edit</Text>
+              <Text style={styles.approveButtonText}>Edit RFQ</Text>
             </>
           )}
         </TouchableOpacity>
