@@ -270,10 +270,10 @@ export default function QuotesScreen() {
     // Initialize discount state
     setUseItemDiscount(quote.use_item_discounts || false);
     setTotalDiscountPercent(quote.discount_percent?.toString() || '0');
-    // Initialize item discounts from products
+    // Initialize item discounts from products - use item_discount_percent field
     const discounts: {[key: number]: string} = {};
     quote.products?.forEach((p, idx) => {
-      discounts[idx] = p.discount_percent?.toString() || '0';
+      discounts[idx] = p.item_discount_percent?.toString() || '0';
     });
     setItemDiscounts(discounts);
     // Mark as read if admin and quote is pending RFQ and unread
@@ -553,6 +553,7 @@ export default function QuotesScreen() {
       const packingCharges = updatedSubtotal * (packingPercent / 100);
       
       // Calculate discount values
+      // NOTE: When admin enters discount (total or item-wise), system-calculated discount is replaced
       let totalDiscountAmount = 0;
       let updatedProducts = [...editableProducts];
       
@@ -565,7 +566,8 @@ export default function QuotesScreen() {
           totalDiscountAmount += itemDiscountAmount;
           return {
             ...product,
-            item_discount_percent: itemDiscountPct
+            item_discount_percent: itemDiscountPct,
+            calculated_discount: 0  // Clear system discount - admin discount replaces it
           };
         });
       } else {
@@ -575,7 +577,8 @@ export default function QuotesScreen() {
         // Apply the same discount percentage to all items
         updatedProducts = editableProducts.map(product => ({
           ...product,
-          item_discount_percent: parseFloat(totalDiscountPercent) || 0
+          item_discount_percent: parseFloat(totalDiscountPercent) || 0,
+          calculated_discount: 0  // Clear system discount - admin discount replaces it
         }));
       }
       
