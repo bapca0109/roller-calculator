@@ -2446,9 +2446,23 @@ export default function QuotesScreen() {
                       </>
                     )}
 
+                    {/* Edit Quote Button - Admin only, for approved quotes */}
+                    {isAdmin && selectedQuote.status?.toLowerCase() === 'approved' && (
+                      <TouchableOpacity 
+                        style={styles.editQuoteButton}
+                        onPress={() => {
+                          setSelectedQuote(null);
+                          openEditQuote(selectedQuote);
+                        }}
+                      >
+                        <Ionicons name="create-outline" size={24} color="#fff" />
+                        <Text style={styles.editQuoteButtonText}>Edit Quote</Text>
+                      </TouchableOpacity>
+                    )}
+
                     {/* Export PDF Button */}
                     <TouchableOpacity 
-                      style={[styles.exportButton, !(isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected') ? { flex: 1 } : {}]}
+                      style={[styles.exportButton, !(isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected') && !(isAdmin && selectedQuote.status?.toLowerCase() === 'approved') ? { flex: 1 } : {}]}
                       onPress={exportToPdf}
                       disabled={generatingPdf}
                     >
