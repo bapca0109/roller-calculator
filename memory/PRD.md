@@ -76,10 +76,37 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 ## Completed Work
 
 ### March 8, 2026 (Latest Session - Current)
+
+- **SHARED CART IMPLEMENTATION** - COMPLETED ✅
+  - Implemented a unified shopping cart using React Context (`CartContext`)
+  - Items added from either Calculator or Search tabs now appear in a single shared cart
+  - **New Components Created**:
+    1. `CartContext.tsx` - Shared state management for cart items
+    2. `FloatingCartButton.tsx` - Shows cart count and total at bottom of screen
+    3. `CartViewModal.tsx` - Full-screen modal to view and manage cart items
+    4. `RfqSubmissionModal.tsx` - Final submission popup with Packing Type, Freight Pincode, Customer RFQ No.
+  - **UI Flow**:
+    1. User adds items from Calculator or Search tab
+    2. Items show with "CALC" or "SEARCH" tag indicating source
+    3. Click floating cart button → Opens CartViewModal showing all items
+    4. Click "Proceed to Submit" → Opens RfqSubmissionModal
+    5. User selects Packing Type, enters Freight Pincode, adds Customer Reference No.
+    6. Submit creates the quote/RFQ
+
+- **RFQ SUBMISSION POPUP REFACTOR** - COMPLETED ✅
+  - Moved Packing Type, Freight Pincode, and Customer RFQ No. fields to a final popup
+  - These options are now requested AFTER user finishes adding all items to cart
+  - Fields collected in `RfqSubmissionModal`:
+    - Packing Type (Standard 1%, Pallet 4%, Wooden Box 8%)
+    - Delivery Pincode (Optional) - for freight calculation
+    - Your Reference No. (Optional) - customer's internal tracking number
+    - Customer Selection (Admin only)
+  - Streamlined UX: no clutter during item selection
+
 - **5 New Feature Requests** - COMPLETED ✅
   1. **Customer RFQ No. (Optional)**: Added optional reference field for customers in Calculator and Search tabs. Displays in emails and PDFs as "Customer Ref: XXX"
   2. **Hide Prices from Customers**: Prices hidden in Search tab for customers until RFQ is approved (unit price, line total, grand total all hidden)
-  3. **Combined Cart**: Note - Search and Calculator still have separate carts. Would need shared context to combine (future task)
+  3. **Combined Cart**: ✅ NOW IMPLEMENTED via shared CartContext
   4. **Removed "No Packing" Option**: Removed from packing type dropdown. Default is now "Standard (1%)"
   5. **Attachments Grouped by Product**: Admin email now shows "Attachments by Product" section with attachments listed under each product name
 
