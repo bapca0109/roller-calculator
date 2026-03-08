@@ -447,6 +447,8 @@ export default function QuotesScreen() {
   // Approve RFQ function - open modal for freight input
   const approveRfq = async (quote: Quote) => {
     console.log('Opening approve modal for:', quote.quote_number);
+    // Close the details modal first
+    setSelectedQuote(null);
     setApproveModalQuote(quote);
     const existingFreightPercent = quote.freight_details?.freight_percent || 0;
     setFreightPercent(existingFreightPercent.toString());
@@ -1448,6 +1450,199 @@ export default function QuotesScreen() {
     );
   }
 
+  // If Edit Quote is active, render full screen edit view
+  if (approveModalQuote) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Edit Quote</Text>
+          <TouchableOpacity onPress={() => setApproveModalQuote(null)}>
+            <Ionicons name="close" size={28} color="#333" />
+          </TouchableOpacity>
+        </View>
+        <ScrollView style={styles.modalScroll} contentContainerStyle={{paddingBottom: 120}}>
+          {/* RFQ Info */}
+          <View style={styles.detailSection}>
+            <Text style={styles.sectionTitle}>RFQ Details</Text>
+            <Text style={styles.approveQuoteNumber}>{approveModalQuote.quote_number}</Text>
+            <Text style={styles.approveCustomerName}>{approveModalQuote.customer_name}</Text>
+            {approveModalQuote.customer_company && (
+              <Text style={styles.approveCompanyName}>{approveModalQuote.customer_company}</Text>
+            )}
+          </View>
+
+          {/* Products List */}
+          <View style={styles.detailSection}>
+            <Text style={styles.sectionTitle}>Items Requested ({approveModalQuote.products?.length || 0})</Text>
+            {approveModalQuote.products?.map((product, idx) => (
+              <View key={idx} style={styles.editProductItem}>
+                <View style={styles.editProductHeader}>
+                  <Text style={styles.editProductName}>{product.product_name}</Text>
+                  <Text style={styles.editProductQty}>Qty: {product.quantity}</Text>
+                </View>
+                <View style={styles.editProductDetails}>
+                  <Text style={styles.editProductPrice}>Unit Price: Rs. {product.unit_price?.toFixed(2)}</Text>
+                  <Text style={styles.editProductTotal}>Total: Rs. {(product.unit_price * product.quantity)?.toFixed(2)}</Text>
+                </View>
+                {product.remarks && (
+                  <Text style={styles.editProductRemarks}>Remarks: {product.remarks}</Text>
+                )}
+              </View>
+            ))}
+            <View style={styles.subtotalRow}>
+              <Text style={styles.subtotalLabel}>Subtotal:</Text>
+              <Text style={styles.subtotalValue}>Rs. {approveModalQuote.subtotal?.toFixed(2)}</Text>
+            </View>
+          </View>
+
+          {/* Packing Type Selection */}
+          <View style={styles.detailSection}>
+            <Text style={styles.sectionTitle}>Packing Type</Text>
+            <View style={styles.packingOptions}>
+              {[
+                { value: 'standard', label: 'Standard (1%)' },
+                { value: 'pallet', label: 'Pallet (4%)' },
+                { value: 'wooden_box', label: 'Wooden Box (8%)' }
+              ].map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.packingOption,
+                    editPackingType === option.value && styles.packingOptionActive
+                  ]}
+                  onPress={() => setEditPackingType(option.value)}
+                >
+                  <Ionicons 
+                    name={editPackingType === option.value ? 'radio-button-on' : 'radio-button-off'} 
+                    size={20} 
+                    color={editPackingType === option.value ? '#960018' : '#666'} 
+                  />
+                  <Text style={[
+                    styles.packingOptionText,
+                    editPackingType === option.value && styles.packingOptionTextActive
+                  ]}>{option.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Freight Section */}
+          <View style={styles.detailSection}>
+            <Text style={styles.sectionTitle}>Freight Charges</Text>
+            
+            {/* Delivery Pincode */}
+            <View style={styles.freightInputRow}>
+              <Text style={styles.freightInputLabel}>Delivery Pincode:</Text>
+              <TextInput
+                style={[styles.freightInput, { flex: 1 }]}
+                value={editDeliveryPincode}
+                onChangeText={setEditDeliveryPincode}
+                keyboardType="numeric"
+                placeholder="Enter pincode"
+                maxLength={6}
+              />
+            </View>
+            
+            {/* Freight Mode Toggle */}
+            <View style={styles.discountModeToggle}>
+              <TouchableOpacity 
+                style={[styles.modeButton, !useCustomFreight && styles.modeButtonActive]}
+                onPress={() => setUseCustomFreight(false)}
+              >
+                <Ionicons name="calculator-outline" size={18} color={!useCustomFreight ? "#fff" : "#666"} />
+                <Text style={[styles.modeButtonText, !useCustomFreight && styles.modeButtonTextActive]}>
+                  Freight %
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modeButton, useCustomFreight && styles.modeButtonActive]}
+                onPress={() => setUseCustomFreight(true)}
+              >
+                <Ionicons name="cash-outline" size={18} color={useCustomFreight ? "#fff" : "#666"} />
+                <Text style={[styles.modeButtonText, useCustomFreight && styles.modeButtonTextActive]}>
+                  Custom Amount
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Freight Input */}
+            {!useCustomFreight ? (
+              <View style={styles.freightInputRow}>
+                <Text style={styles.freightInputLabel}>Freight Percentage:</Text>
+                <View style={styles.freightInputWrapper}>
+                  <TextInput
+                    style={styles.freightInput}
+                    value={freightPercent}
+                    onChangeText={setFreightPercent}
+                    keyboardType="numeric"
+                    placeholder="0"
+                  />
+                  <Text style={styles.freightInputSuffix}>%</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.freightInputRow}>
+                <Text style={styles.freightInputLabel}>Custom Amount:</Text>
+                <View style={styles.freightInputWrapper}>
+                  <Text style={styles.freightInputPrefix}>Rs.</Text>
+                  <TextInput
+                    style={styles.freightInput}
+                    value={customFreightAmount}
+                    onChangeText={setCustomFreightAmount}
+                    keyboardType="numeric"
+                    placeholder="0"
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Calculated Freight */}
+            <View style={styles.calculatedFreightRow}>
+              <Text style={styles.calculatedFreightLabel}>Freight Amount:</Text>
+              <Text style={styles.calculatedFreightValue}>Rs. {calculateFreightAmount().toFixed(2)}</Text>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.approveRejectButtons}>
+            {/* Approve Button */}
+            <TouchableOpacity 
+              style={styles.approveConfirmButton}
+              onPress={confirmApproveRfq}
+              disabled={approvingId === approveModalQuote.id}
+            >
+              {approvingId === approveModalQuote.id ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                  <Text style={styles.approveConfirmButtonText}>Approve</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            
+            {/* Reject Button */}
+            <TouchableOpacity 
+              style={styles.rejectButton}
+              onPress={() => {
+                const quoteToReject = approveModalQuote;
+                setApproveModalQuote(null);
+                if (quoteToReject) {
+                  openRejectModal(quoteToReject);
+                }
+              }}
+            >
+              <Ionicons name="close-circle" size={24} color="#fff" />
+              <Text style={styles.rejectButtonText}>Reject</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -1557,7 +1752,7 @@ export default function QuotesScreen() {
 
       {/* Quote Detail Modal */}
       <Modal
-        visible={!!selectedQuote}
+        visible={!!selectedQuote && !approveModalQuote}
         animationType="slide"
         transparent={true}
         onRequestClose={() => setSelectedQuote(null)}
@@ -1840,201 +2035,6 @@ export default function QuotesScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* Approve RFQ Full Screen Modal with Freight Options */}
-      {approveModalQuote && (
-        <View style={styles.fullScreenOverlay}>
-          <SafeAreaView style={styles.editQuoteModalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Quote</Text>
-              <TouchableOpacity onPress={() => setApproveModalQuote(null)}>
-                <Ionicons name="close" size={28} color="#333" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalScroll} contentContainerStyle={{paddingBottom: 100}}>
-              {approveModalQuote && (
-                <>
-                  {/* RFQ Info */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>RFQ Details</Text>
-                    <Text style={styles.approveQuoteNumber}>{approveModalQuote.quote_number}</Text>
-                    <Text style={styles.approveCustomerName}>{approveModalQuote.customer_name}</Text>
-                    {approveModalQuote.customer_company && (
-                      <Text style={styles.approveCompanyName}>{approveModalQuote.customer_company}</Text>
-                    )}
-                  </View>
-
-                  {/* Products List */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>Items Requested ({approveModalQuote.products?.length || 0})</Text>
-                    {approveModalQuote.products?.map((product, idx) => (
-                      <View key={idx} style={styles.editProductItem}>
-                        <View style={styles.editProductHeader}>
-                          <Text style={styles.editProductName}>{product.product_name}</Text>
-                          <Text style={styles.editProductQty}>Qty: {product.quantity}</Text>
-                        </View>
-                        <View style={styles.editProductDetails}>
-                          <Text style={styles.editProductPrice}>Unit Price: Rs. {product.unit_price?.toFixed(2)}</Text>
-                          <Text style={styles.editProductTotal}>Total: Rs. {(product.unit_price * product.quantity)?.toFixed(2)}</Text>
-                        </View>
-                        {product.remarks && (
-                          <Text style={styles.editProductRemarks}>Remarks: {product.remarks}</Text>
-                        )}
-                      </View>
-                    ))}
-                    <View style={styles.subtotalRow}>
-                      <Text style={styles.subtotalLabel}>Subtotal:</Text>
-                      <Text style={styles.subtotalValue}>Rs. {approveModalQuote.subtotal?.toFixed(2)}</Text>
-                    </View>
-                  </View>
-
-                  {/* Packing Type Selection */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>Packing Type</Text>
-                    <View style={styles.packingOptions}>
-                      {[
-                        { value: 'standard', label: 'Standard (1%)' },
-                        { value: 'pallet', label: 'Pallet (4%)' },
-                        { value: 'wooden_box', label: 'Wooden Box (8%)' }
-                      ].map((option) => (
-                        <TouchableOpacity
-                          key={option.value}
-                          style={[
-                            styles.packingOption,
-                            editPackingType === option.value && styles.packingOptionActive
-                          ]}
-                          onPress={() => setEditPackingType(option.value)}
-                        >
-                          <Ionicons 
-                            name={editPackingType === option.value ? 'radio-button-on' : 'radio-button-off'} 
-                            size={20} 
-                            color={editPackingType === option.value ? '#960018' : '#666'} 
-                          />
-                          <Text style={[
-                            styles.packingOptionText,
-                            editPackingType === option.value && styles.packingOptionTextActive
-                          ]}>{option.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Freight Section */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>Freight Charges</Text>
-                    
-                    {/* Delivery Pincode */}
-                    <View style={styles.freightInputRow}>
-                      <Text style={styles.freightInputLabel}>Delivery Pincode:</Text>
-                      <TextInput
-                        style={[styles.freightInput, { flex: 1 }]}
-                        value={editDeliveryPincode}
-                        onChangeText={setEditDeliveryPincode}
-                        keyboardType="numeric"
-                        placeholder="Enter pincode"
-                        maxLength={6}
-                      />
-                    </View>
-                    
-                    {/* Freight Mode Toggle */}
-                    <View style={styles.discountModeToggle}>
-                      <TouchableOpacity 
-                        style={[styles.modeButton, !useCustomFreight && styles.modeButtonActive]}
-                        onPress={() => setUseCustomFreight(false)}
-                      >
-                        <Ionicons name="calculator-outline" size={18} color={!useCustomFreight ? "#fff" : "#666"} />
-                        <Text style={[styles.modeButtonText, !useCustomFreight && styles.modeButtonTextActive]}>
-                          Freight %
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.modeButton, useCustomFreight && styles.modeButtonActive]}
-                        onPress={() => setUseCustomFreight(true)}
-                      >
-                        <Ionicons name="cash-outline" size={18} color={useCustomFreight ? "#fff" : "#666"} />
-                        <Text style={[styles.modeButtonText, useCustomFreight && styles.modeButtonTextActive]}>
-                          Custom Amount
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Freight Input */}
-                    {!useCustomFreight ? (
-                      <View style={styles.freightInputRow}>
-                        <Text style={styles.freightInputLabel}>Freight Percentage:</Text>
-                        <View style={styles.freightInputWrapper}>
-                          <TextInput
-                            style={styles.freightInput}
-                            value={freightPercent}
-                            onChangeText={setFreightPercent}
-                            keyboardType="numeric"
-                            placeholder="0"
-                          />
-                          <Text style={styles.freightInputSuffix}>%</Text>
-                        </View>
-                      </View>
-                    ) : (
-                      <View style={styles.freightInputRow}>
-                        <Text style={styles.freightInputLabel}>Custom Amount:</Text>
-                        <View style={styles.freightInputWrapper}>
-                          <Text style={styles.freightInputPrefix}>Rs.</Text>
-                          <TextInput
-                            style={styles.freightInput}
-                            value={customFreightAmount}
-                            onChangeText={setCustomFreightAmount}
-                            keyboardType="numeric"
-                            placeholder="0"
-                          />
-                        </View>
-                      </View>
-                    )}
-
-                    {/* Calculated Freight */}
-                    <View style={styles.calculatedFreightRow}>
-                      <Text style={styles.calculatedFreightLabel}>Freight Amount:</Text>
-                      <Text style={styles.calculatedFreightValue}>Rs. {calculateFreightAmount().toFixed(2)}</Text>
-                    </View>
-                  </View>
-
-                  {/* Action Buttons */}
-                  <View style={styles.approveRejectButtons}>
-                    {/* Approve Button */}
-                    <TouchableOpacity 
-                      style={styles.approveConfirmButton}
-                      onPress={confirmApproveRfq}
-                      disabled={approvingId === approveModalQuote.id}
-                    >
-                      {approvingId === approveModalQuote.id ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <>
-                          <Ionicons name="checkmark-circle" size={24} color="#fff" />
-                          <Text style={styles.approveConfirmButtonText}>Approve</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                    
-                    {/* Reject Button */}
-                    <TouchableOpacity 
-                      style={styles.rejectButton}
-                      onPress={() => {
-                        const quoteToReject = approveModalQuote;
-                        setApproveModalQuote(null);
-                        if (quoteToReject) {
-                          openRejectModal(quoteToReject);
-                        }
-                      }}
-                    >
-                      <Ionicons name="close-circle" size={24} color="#fff" />
-                      <Text style={styles.rejectButtonText}>Reject</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-            </ScrollView>
-          </SafeAreaView>
-        </View>
-      )}
 
       {/* Reject Reason Modal */}
       <Modal
@@ -2612,18 +2612,19 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 10,
   },
-  editQuoteModalContainer: {
+  fullScreenEditContainer: {
     flex: 1,
     backgroundColor: '#fff',
-  },
-  fullScreenOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    zIndex: 99999,
+  },
+  editQuoteModalContainer: {
+    flex: 1,
     backgroundColor: '#fff',
-    zIndex: 9999,
   },
   modalContent: {
     backgroundColor: '#fff',
