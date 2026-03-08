@@ -2,6 +2,7 @@ import React from 'react';
 import { Stack } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet, Text, Image, Platform } from 'react-native';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { CartProvider } from './context/CartContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Global font family constant - Calibri with fallbacks
@@ -51,7 +52,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <RootLayoutNav />
+        <CartProvider>
+          <RootLayoutNav />
+        </CartProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

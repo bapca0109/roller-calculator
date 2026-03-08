@@ -15,12 +15,16 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { CustomDropdown } from '../../components/CustomDropdown';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCart } from '../context/CartContext';
 import api from '../../utils/api';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import FloatingCartButton from '../../components/FloatingCartButton';
+import CartViewModal from '../../components/CartViewModal';
+import RfqSubmissionModal from '../../components/RfqSubmissionModal';
 
 // Attachment interface
 interface Attachment {
@@ -134,6 +138,7 @@ const RUBBER_DIAMETERS: { [key: number]: number[] } = {
 
 export default function CalculatorScreen() {
   const { user, loading: authLoading } = useAuth();
+  const { addToCart, cartCount, clearCart } = useCart();
   const isCustomer = user?.role === 'customer';
   const [standards, setStandards] = useState<RollerStandards | null>(null);
   const [loading, setLoading] = useState(true);
@@ -141,7 +146,13 @@ export default function CalculatorScreen() {
   // Debug: Log user state on every render
   console.log('CalculatorScreen render - user:', user, 'role:', user?.role, 'isCustomer:', isCustomer);
   
-  // RFQ popup state for customers
+  // Shared cart modals state
+  const [showCartView, setShowCartView] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [submittedQuoteNumber, setSubmittedQuoteNumber] = useState('');
+  
+  // RFQ popup state for customers (old - keeping for backward compat during transition)
   const [showRfqPopup, setShowRfqPopup] = useState(false);
   const [showRfqSuccessPopup, setShowRfqSuccessPopup] = useState(false);
   const [submittedRfqNumber, setSubmittedRfqNumber] = useState('');
@@ -149,7 +160,6 @@ export default function CalculatorScreen() {
   // Quote popup state for admin (similar to customer RFQ flow)
   const [showQuotePopup, setShowQuotePopup] = useState(false);
   const [showQuoteSuccessPopup, setShowQuoteSuccessPopup] = useState(false);
-  const [submittedQuoteNumber, setSubmittedQuoteNumber] = useState('');
   
   const [calculating, setCalculating] = useState(false);
   const [result, setResult] = useState<CostResult | null>(null);
@@ -851,8 +861,38 @@ export default function CalculatorScreen() {
       [quoteItems.length]: currentAttachments
     });
     
-    // Add to quote items
+    // Add to local quote items (for old flow backward compatibility)
     setQuoteItems([...quoteItems, itemWithAttachments]);
+    
+    // Also add to shared cart
+    addToCart({
+      product_id: result.configuration.product_code,
+      product_name: `${result.configuration.roller_type.charAt(0).toUpperCase() + result.configuration.roller_type.slice(1)} Roller - ${result.configuration.product_code}`,
+      product_code: result.configuration.product_code,
+      roller_type: result.configuration.roller_type,
+      quantity: result.configuration.quantity,
+      unit_price: result.pricing.unit_price,
+      weight_kg: result.cost_breakdown.total_weight || 0,
+      specifications: {
+        pipe_diameter: result.configuration.pipe_diameter_mm,
+        pipe_length: result.configuration.pipe_length_mm,
+        pipe_type: result.configuration.pipe_type,
+        shaft_diameter: result.configuration.shaft_diameter_mm,
+        bearing: result.configuration.bearing,
+        bearing_make: result.configuration.bearing_make,
+        housing: result.configuration.housing,
+        rubber_diameter: result.configuration.rubber_diameter_mm,
+      },
+      remark: productRemark.trim() || undefined,
+      attachments: currentAttachments.map(att => ({
+        uri: att.uri,
+        name: att.name,
+        type: att.type,
+        base64: att.base64,
+      })),
+      source: 'calculator',
+      calculatorData: result,
+    });
     
     // Clear current attachments and remark for next item
     setCurrentAttachments([]);
@@ -1269,13 +1309,44 @@ export default function CalculatorScreen() {
                   attachments: currentAttachments,
                   remark: productRemark.trim() || null,
                 };
-                // Add the calculated item directly to quote items
+                // Add the calculated item directly to local quote items
                 setQuoteItems([...quoteItems, itemWithAttachments]);
                 // Store attachments by index
                 setItemAttachments({
                   ...itemAttachments,
                   [quoteItems.length]: currentAttachments
                 });
+                
+                // Also add to shared cart
+                addToCart({
+                  product_id: calcResult.configuration.product_code,
+                  product_name: `${calcResult.configuration.roller_type.charAt(0).toUpperCase() + calcResult.configuration.roller_type.slice(1)} Roller - ${calcResult.configuration.product_code}`,
+                  product_code: calcResult.configuration.product_code,
+                  roller_type: calcResult.configuration.roller_type,
+                  quantity: calcResult.configuration.quantity,
+                  unit_price: calcResult.pricing.unit_price,
+                  weight_kg: calcResult.cost_breakdown.total_weight || 0,
+                  specifications: {
+                    pipe_diameter: calcResult.configuration.pipe_diameter_mm,
+                    pipe_length: calcResult.configuration.pipe_length_mm,
+                    pipe_type: calcResult.configuration.pipe_type,
+                    shaft_diameter: calcResult.configuration.shaft_diameter_mm,
+                    bearing: calcResult.configuration.bearing,
+                    bearing_make: calcResult.configuration.bearing_make,
+                    housing: calcResult.configuration.housing,
+                    rubber_diameter: calcResult.configuration.rubber_diameter_mm,
+                  },
+                  remark: productRemark.trim() || undefined,
+                  attachments: currentAttachments.map(att => ({
+                    uri: att.uri,
+                    name: att.name,
+                    type: att.type,
+                    base64: att.base64,
+                  })),
+                  source: 'calculator',
+                  calculatorData: calcResult,
+                });
+                
                 // Clear current attachments and remark for next item
                 setCurrentAttachments([]);
                 setProductRemark('');
@@ -2072,6 +2143,57 @@ export default function CalculatorScreen() {
               onPress={() => {
                 setShowQuoteSuccessPopup(false);
               }}
+            >
+              <Ionicons name="checkmark" size={24} color="#fff" />
+              <Text style={styles.rfqSubmitButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Shared Cart Floating Button */}
+      <FloatingCartButton onPress={() => setShowCartView(true)} />
+
+      {/* Shared Cart View Modal */}
+      <CartViewModal
+        visible={showCartView}
+        onClose={() => setShowCartView(false)}
+        onSubmit={() => {
+          setShowCartView(false);
+          setShowSubmitModal(true);
+        }}
+      />
+
+      {/* Shared RFQ/Quote Submission Modal */}
+      <RfqSubmissionModal
+        visible={showSubmitModal}
+        onClose={() => setShowSubmitModal(false)}
+        onSuccess={(quoteNumber) => {
+          setShowSubmitModal(false);
+          setSubmittedQuoteNumber(quoteNumber);
+          setShowSuccessPopup(true);
+          // Also clear local quote items
+          setQuoteItems([]);
+        }}
+        customers={customers}
+      />
+
+      {/* Shared Success Popup */}
+      {showSuccessPopup && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.rfqPopupContent}>
+            <View style={styles.rfqPopupHeader}>
+              <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
+              <Text style={styles.rfqSuccessTitle}>{isCustomer ? 'RFQ Submitted!' : 'Quote Generated!'}</Text>
+              <Text style={styles.rfqSuccessSubtitle}>
+                Your {isCustomer ? 'Request for Quotation' : 'Quote'} has been {isCustomer ? 'sent' : 'created'} successfully.
+              </Text>
+              <Text style={styles.rfqSuccessNumber}>{submittedQuoteNumber}</Text>
+            </View>
+            
+            <TouchableOpacity
+              style={styles.rfqSuccessButton}
+              onPress={() => setShowSuccessPopup(false)}
             >
               <Ionicons name="checkmark" size={24} color="#fff" />
               <Text style={styles.rfqSubmitButtonText}>OK</Text>

@@ -15,11 +15,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCart } from '../context/CartContext';
 import api from '../../utils/api';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import FloatingCartButton from '../../components/FloatingCartButton';
+import CartViewModal from '../../components/CartViewModal';
+import RfqSubmissionModal from '../../components/RfqSubmissionModal';
 
 interface LengthDetail {
   length_mm: number;
@@ -69,6 +73,7 @@ interface QuoteItem {
 
 export default function SearchScreen() {
   const { user, loading: authLoading } = useAuth();
+  const { addToCart } = useCart();
   const isCustomer = user?.role === 'customer';
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<ProductResult[]>([]);
@@ -77,11 +82,17 @@ export default function SearchScreen() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
   
-  // Quote builder state
+  // Quote builder state (local - keeping for backward compatibility)
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [customerRfqNo, setCustomerRfqNo] = useState<string>('');  // Customer's own RFQ reference
   const [showQuoteBuilder, setShowQuoteBuilder] = useState(false);
   const [savingQuote, setSavingQuote] = useState(false);
+  
+  // Shared cart modal states
+  const [showCartView, setShowCartView] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [submittedQuoteNumber, setSubmittedQuoteNumber] = useState('');
   
   // Customer selection
   const [customers, setCustomers] = useState<any[]>([]);
@@ -250,14 +261,39 @@ export default function SearchScreen() {
       belt_widths: length.belt_widths,
     };
 
+    // Add to local quote items (for backward compatibility)
     setQuoteItems([...quoteItems, newItem]);
+    
+    // Also add to shared cart
+    addToCart({
+      product_id: length.product_code,
+      product_name: `${product.roller_type.charAt(0).toUpperCase() + product.roller_type.slice(1)} Roller - ${length.product_code}`,
+      product_code: length.product_code,
+      roller_type: product.roller_type,
+      quantity: qty,
+      unit_price: length.price,
+      weight_kg: length.weight_kg,
+      specifications: {
+        pipe_diameter: product.pipe_diameter,
+        pipe_length: length.length_mm,
+        pipe_type: product.pipe_type,
+        shaft_diameter: product.shaft_diameter,
+        bearing: product.bearing,
+        bearing_make: product.bearing_make,
+        housing: product.housing,
+        rubber_diameter: product.rubber_diameter,
+        belt_widths: length.belt_widths,
+      },
+      source: 'search',
+    });
+    
     setShowQuantityModal(false);
     setSelectedLength(null);
     
     Alert.alert(
-      'Added to Quote!', 
-      `${length.product_code} x ${qty} added.\nItems in quote: ${quoteItems.length + 1}`,
-      [{ text: 'OK' }, { text: 'View Quote', onPress: () => setShowQuoteBuilder(true) }]
+      'Added to Cart!', 
+      `${length.product_code} x ${qty} added.\nItems in cart: ${quoteItems.length + 1}`,
+      [{ text: 'OK' }, { text: 'View Cart', onPress: () => setShowCartView(true) }]
     );
   };
 
@@ -1113,6 +1149,54 @@ export default function SearchScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Shared Cart Floating Button */}
+      <FloatingCartButton onPress={() => setShowCartView(true)} />
+
+      {/* Shared Cart View Modal */}
+      <CartViewModal
+        visible={showCartView}
+        onClose={() => setShowCartView(false)}
+        onSubmit={() => {
+          setShowCartView(false);
+          setShowSubmitModal(true);
+        }}
+      />
+
+      {/* Shared RFQ/Quote Submission Modal */}
+      <RfqSubmissionModal
+        visible={showSubmitModal}
+        onClose={() => setShowSubmitModal(false)}
+        onSuccess={(quoteNumber) => {
+          setShowSubmitModal(false);
+          setSubmittedQuoteNumber(quoteNumber);
+          setShowSuccessPopup(true);
+          // Clear local quote items
+          setQuoteItems([]);
+        }}
+        customers={customers}
+      />
+
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <View style={styles.successOverlay}>
+          <View style={styles.successPopup}>
+            <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
+            <Text style={styles.successTitle}>{isCustomer ? 'RFQ Submitted!' : 'Quote Generated!'}</Text>
+            <Text style={styles.successSubtitle}>
+              Your {isCustomer ? 'Request for Quotation' : 'Quote'} has been {isCustomer ? 'sent' : 'created'} successfully.
+            </Text>
+            <Text style={styles.successNumber}>{submittedQuoteNumber}</Text>
+            <TouchableOpacity
+              style={styles.successButton}
+              onPress={() => setShowSuccessPopup(false)}
+            >
+              <Ionicons name="checkmark" size={24} color="#fff" />
+              <Text style={styles.successButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -1933,5 +2017,57 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     color: '#1E293B',
+  },
+  // Success popup styles
+  successOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successPopup: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    width: '85%',
+    maxWidth: 350,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginTop: 16,
+  },
+  successSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  successNumber: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#960018',
+    marginBottom: 16,
+  },
+  successButton: {
+    flexDirection: 'row',
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    gap: 8,
+  },
+  successButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
