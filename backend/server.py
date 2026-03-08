@@ -340,7 +340,14 @@ class QuoteUpdate(BaseModel):
     use_item_discounts: Optional[bool] = None  # Toggle between item discounts and total discount
     discount_percent: Optional[float] = None  # Overall discount percentage
     packing_charges: Optional[float] = None
+    packing_type: Optional[str] = None  # standard, pallet, wooden_box
+    delivery_location: Optional[str] = None  # Freight pincode
     total_price: Optional[float] = None
+
+class QuoteReject(BaseModel):
+    """Reject an RFQ with a reason"""
+    reason: str  # low_quantity, low_amount, not_in_range
+    custom_message: Optional[str] = None
 
 class RollerQuoteCreate(BaseModel):
     """Create a quote from roller calculation"""
@@ -3333,6 +3340,160 @@ async def approve_rfq(
         "old_number": old_number,
         "new_quote_number": new_quote_number,
         "status": QuoteStatus.APPROVED
+    }
+
+@api_router.post("/quotes/{quote_id}/reject")
+async def reject_rfq(
+    quote_id: str,
+    rejection: QuoteReject,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+):
+    """
+    Reject an RFQ with a reason.
+    - Sets status to REJECTED
+    - Stores rejection reason
+    - Sends email notification to customer
+    """
+    try:
+        obj_id = ObjectId(quote_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid quote ID")
+    
+    # Get the quote
+    quote = await db.quotes.find_one({"_id": obj_id})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    
+    # Check if it's an RFQ
+    quote_number = quote.get("quote_number", "")
+    if not quote_number.startswith("RFQ"):
+        raise HTTPException(status_code=400, detail="Only RFQs can be rejected")
+    
+    if quote.get("status") == QuoteStatus.REJECTED:
+        raise HTTPException(status_code=400, detail="This RFQ has already been rejected")
+    
+    if quote.get("status") == QuoteStatus.APPROVED:
+        raise HTTPException(status_code=400, detail="This RFQ has already been approved")
+    
+    # Map rejection reasons to human-readable messages
+    rejection_reasons = {
+        "low_quantity": "Rejected due to low quantity",
+        "low_amount": "Rejected due to low amount",
+        "not_in_range": "Rejected due to product is not within the manufacturing range"
+    }
+    
+    reason_text = rejection_reasons.get(rejection.reason, rejection.reason)
+    ist_now = get_ist_now()
+    
+    # Update the quote
+    update_result = await db.quotes.update_one(
+        {"_id": obj_id},
+        {"$set": {
+            "status": QuoteStatus.REJECTED,
+            "rejection_reason": rejection.reason,
+            "rejection_reason_text": reason_text,
+            "rejection_message": rejection.custom_message,
+            "rejected_by": current_user["email"],
+            "rejected_at": ist_now,
+            "updated_at": ist_now
+        }}
+    )
+    
+    if update_result.modified_count == 0:
+        raise HTTPException(status_code=500, detail="Failed to reject RFQ")
+    
+    # Send rejection email to customer
+    customer_email = quote.get("customer_email")
+    customer_name = quote.get("customer_name", "Customer")
+    
+    if customer_email and GMAIL_USER and GMAIL_APP_PASSWORD:
+        try:
+            # Create rejection email
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = f"RFQ {quote_number} - Status Update"
+            msg['From'] = f"Convero Solutions <{GMAIL_USER}>"
+            msg['To'] = customer_email
+            
+            # HTML email content
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background: #960018; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                    .content {{ background: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px; }}
+                    .reason-box {{ background: #fff5f5; border-left: 4px solid #960018; padding: 15px; margin: 20px 0; border-radius: 4px; }}
+                    .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1 style="margin: 0; font-size: 24px;">RFQ Status Update</h1>
+                    </div>
+                    <div class="content">
+                        <p>Dear {customer_name},</p>
+                        <p>Thank you for your Request for Quotation <strong>{quote_number}</strong>.</p>
+                        <p>After careful review, we regret to inform you that we are unable to proceed with your request at this time.</p>
+                        
+                        <div class="reason-box">
+                            <strong>Reason:</strong><br>
+                            {reason_text}
+                            {f'<br><br><strong>Additional Note:</strong><br>{rejection.custom_message}' if rejection.custom_message else ''}
+                        </div>
+                        
+                        <p>We encourage you to submit a new request with revised specifications. Our team is always happy to assist you in finding the right solution for your needs.</p>
+                        <p>If you have any questions, please don't hesitate to contact us at info@convero.in</p>
+                        <p>Best regards,<br>Convero Solutions Team</p>
+                    </div>
+                    <div class="footer">
+                        <p>This is an automated message from Convero Solutions.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            text_content = f"""
+            RFQ Status Update - Convero Solutions
+            
+            Dear {customer_name},
+            
+            Thank you for your Request for Quotation {quote_number}.
+            
+            After careful review, we regret to inform you that we are unable to proceed with your request at this time.
+            
+            Reason: {reason_text}
+            {f'Additional Note: {rejection.custom_message}' if rejection.custom_message else ''}
+            
+            We encourage you to submit a new request with revised specifications.
+            
+            If you have any questions, please contact us at info@convero.in
+            
+            Best regards,
+            Convero Solutions Team
+            """
+            
+            msg.attach(MIMEText(text_content, 'plain'))
+            msg.attach(MIMEText(html_content, 'html'))
+            
+            # Send email
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+                server.sendmail(GMAIL_USER, customer_email, msg.as_string())
+            
+            logging.info(f"Rejection email sent for RFQ: {quote_number}")
+        except Exception as e:
+            logging.error(f"Failed to send rejection email: {str(e)}")
+    
+    return {
+        "message": "RFQ rejected successfully",
+        "quote_number": quote_number,
+        "reason": reason_text,
+        "status": QuoteStatus.REJECTED
     }
 
 @api_router.put("/quotes/{quote_id}/discount")

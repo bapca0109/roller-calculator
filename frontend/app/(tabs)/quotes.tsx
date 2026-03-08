@@ -75,6 +75,11 @@ interface Quote {
   customer_rfq_no?: string;
   approved_at?: string;
   approved_by?: string;
+  rejected_at?: string;
+  rejected_by?: string;
+  rejection_reason?: string;
+  rejection_reason_text?: string;
+  rejection_message?: string;
   created_at: string;
   created_at_ist?: string;
   updated_at: string;
@@ -98,12 +103,23 @@ export default function QuotesScreen() {
   const [freightPercent, setFreightPercent] = useState<string>('0');
   const [customFreightAmount, setCustomFreightAmount] = useState<string>('');
   const [useCustomFreight, setUseCustomFreight] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Approval success popup state
   const [showApprovalSuccess, setShowApprovalSuccess] = useState(false);
   const [approvedQuoteNumber, setApprovedQuoteNumber] = useState('');
+  
+  // Rejection modal state
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectingQuote, setRejectingQuote] = useState<Quote | null>(null);
+  const [selectedRejectReason, setSelectedRejectReason] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  
+  // Edit RFQ modal state for viewing items
+  const [editPackingType, setEditPackingType] = useState<string>('standard');
+  const [editDeliveryPincode, setEditDeliveryPincode] = useState<string>('');
+  
   const { user, loading: authLoading } = useAuth();
   
   // Check if user is customer - show RFQ terminology
@@ -436,6 +452,38 @@ export default function QuotesScreen() {
     setFreightPercent(existingFreightPercent.toString());
     setCustomFreightAmount(quote.shipping_cost?.toString() || '0');
     setUseCustomFreight(false);
+    // Set packing and delivery from quote
+    setEditPackingType(quote.packing_type || 'standard');
+    setEditDeliveryPincode(quote.delivery_location || '');
+  };
+  
+  // Open reject modal
+  const openRejectModal = (quote: Quote) => {
+    setRejectingQuote(quote);
+    setSelectedRejectReason(null);
+    setShowRejectModal(true);
+  };
+  
+  // Confirm reject RFQ
+  const confirmRejectRfq = async () => {
+    if (!rejectingQuote || !selectedRejectReason) return;
+    
+    setRejectingId(rejectingQuote.id);
+    try {
+      await api.post(`/quotes/${rejectingQuote.id}/reject`, {
+        reason: selectedRejectReason
+      });
+      
+      Alert.alert('Success', 'RFQ has been rejected and the customer has been notified.');
+      setShowRejectModal(false);
+      setRejectingQuote(null);
+      setSelectedRejectReason(null);
+      fetchQuotes();
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to reject RFQ');
+    } finally {
+      setRejectingId(null);
+    }
   };
 
   // Filter quotes based on active tab and search query
@@ -446,10 +494,13 @@ export default function QuotesScreen() {
     if (!isCustomer) {
       switch (activeTab) {
         case 'pending':
-          filtered = filtered.filter(q => q.quote_number?.startsWith('RFQ') && q.status?.toLowerCase() !== 'approved');
+          filtered = filtered.filter(q => q.quote_number?.startsWith('RFQ') && q.status?.toLowerCase() !== 'approved' && q.status?.toLowerCase() !== 'rejected');
           break;
         case 'approved':
           filtered = filtered.filter(q => q.status?.toLowerCase() === 'approved');
+          break;
+        case 'rejected':
+          filtered = filtered.filter(q => q.status?.toLowerCase() === 'rejected');
           break;
         default:
           break;
@@ -1272,10 +1323,11 @@ export default function QuotesScreen() {
   const renderQuote = ({ item }: { item: Quote }) => {
     const isRfq = item.quote_number?.startsWith('RFQ/');
     const isApproved = item.status?.toLowerCase() === 'approved';
-    const canApprove = isAdmin && isRfq && !isApproved;
+    const isRejected = item.status?.toLowerCase() === 'rejected';
+    const canApprove = isAdmin && isRfq && !isApproved && !isRejected;
     
     // Debug log for each quote card
-    console.log(`Quote ${item.quote_number}: isRfq=${isRfq}, isApproved=${isApproved}, isAdmin=${isAdmin}, canApprove=${canApprove}`);
+    console.log(`Quote ${item.quote_number}: isRfq=${isRfq}, isApproved=${isApproved}, isRejected=${isRejected}, isAdmin=${isAdmin}, canApprove=${canApprove}`);
     
     // Check if this is an unread pending RFQ (for admin) - only for customer RFQs
     const isUnread = isAdmin && item.status === 'pending' && isRfq && item.read_by_admin !== true;
@@ -1387,6 +1439,14 @@ export default function QuotesScreen() {
           <Text style={styles.approveButtonText}>Approved</Text>
         </View>
       )}
+      
+      {/* Show Rejected badge for rejected quotes - RED */}
+      {isRejected && isRfq && (
+        <View style={styles.rejectedBadge}>
+          <Ionicons name="close-circle" size={18} color="#fff" />
+          <Text style={styles.approveButtonText}>Rejected</Text>
+        </View>
+      )}
     </TouchableOpacity>
     );
   };
@@ -1488,6 +1548,12 @@ export default function QuotesScreen() {
             onPress={() => setActiveTab('approved')}
           >
             <Text style={[styles.filterTabText, activeTab === 'approved' && styles.filterTabTextActive]}>Approved</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterTab, activeTab === 'rejected' && styles.filterTabActive]}
+            onPress={() => setActiveTab('rejected')}
+          >
+            <Text style={[styles.filterTabText, activeTab === 'rejected' && styles.filterTabTextActive]}>Rejected</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1802,9 +1868,9 @@ export default function QuotesScreen() {
         onRequestClose={() => setApproveModalQuote(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
+          <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Approve RFQ</Text>
+              <Text style={styles.modalTitle}>Edit RFQ</Text>
               <TouchableOpacity onPress={() => setApproveModalQuote(null)}>
                 <Ionicons name="close" size={28} color="#333" />
               </TouchableOpacity>
@@ -1812,15 +1878,87 @@ export default function QuotesScreen() {
             <ScrollView style={styles.modalScroll}>
               {approveModalQuote && (
                 <>
+                  {/* RFQ Info */}
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>RFQ Details</Text>
                     <Text style={styles.approveQuoteNumber}>{approveModalQuote.quote_number}</Text>
                     <Text style={styles.approveCustomerName}>{approveModalQuote.customer_name}</Text>
-                    <Text style={styles.approveSubtotal}>Subtotal: Rs. {approveModalQuote.subtotal?.toFixed(2)}</Text>
+                    {approveModalQuote.customer_company && (
+                      <Text style={styles.approveCompanyName}>{approveModalQuote.customer_company}</Text>
+                    )}
                   </View>
 
+                  {/* Products List */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Items Requested ({approveModalQuote.products?.length || 0})</Text>
+                    {approveModalQuote.products?.map((product, idx) => (
+                      <View key={idx} style={styles.editProductItem}>
+                        <View style={styles.editProductHeader}>
+                          <Text style={styles.editProductName}>{product.product_name}</Text>
+                          <Text style={styles.editProductQty}>Qty: {product.quantity}</Text>
+                        </View>
+                        <View style={styles.editProductDetails}>
+                          <Text style={styles.editProductPrice}>Unit Price: Rs. {product.unit_price?.toFixed(2)}</Text>
+                          <Text style={styles.editProductTotal}>Total: Rs. {(product.unit_price * product.quantity)?.toFixed(2)}</Text>
+                        </View>
+                        {product.remarks && (
+                          <Text style={styles.editProductRemarks}>Remarks: {product.remarks}</Text>
+                        )}
+                      </View>
+                    ))}
+                    <View style={styles.subtotalRow}>
+                      <Text style={styles.subtotalLabel}>Subtotal:</Text>
+                      <Text style={styles.subtotalValue}>Rs. {approveModalQuote.subtotal?.toFixed(2)}</Text>
+                    </View>
+                  </View>
+
+                  {/* Packing Type Selection */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Packing Type</Text>
+                    <View style={styles.packingOptions}>
+                      {[
+                        { value: 'standard', label: 'Standard (1%)' },
+                        { value: 'pallet', label: 'Pallet (4%)' },
+                        { value: 'wooden_box', label: 'Wooden Box (8%)' }
+                      ].map((option) => (
+                        <TouchableOpacity
+                          key={option.value}
+                          style={[
+                            styles.packingOption,
+                            editPackingType === option.value && styles.packingOptionActive
+                          ]}
+                          onPress={() => setEditPackingType(option.value)}
+                        >
+                          <Ionicons 
+                            name={editPackingType === option.value ? 'radio-button-on' : 'radio-button-off'} 
+                            size={20} 
+                            color={editPackingType === option.value ? '#960018' : '#666'} 
+                          />
+                          <Text style={[
+                            styles.packingOptionText,
+                            editPackingType === option.value && styles.packingOptionTextActive
+                          ]}>{option.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Freight Section */}
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>Freight Charges</Text>
+                    
+                    {/* Delivery Pincode */}
+                    <View style={styles.freightInputRow}>
+                      <Text style={styles.freightInputLabel}>Delivery Pincode:</Text>
+                      <TextInput
+                        style={[styles.freightInput, { flex: 1 }]}
+                        value={editDeliveryPincode}
+                        onChangeText={setEditDeliveryPincode}
+                        keyboardType="numeric"
+                        placeholder="Enter pincode"
+                        maxLength={6}
+                      />
+                    </View>
                     
                     {/* Freight Mode Toggle */}
                     <View style={styles.discountModeToggle}>
@@ -1882,18 +2020,140 @@ export default function QuotesScreen() {
                     </View>
                   </View>
 
-                  {/* Approve Button */}
+                  {/* Action Buttons */}
+                  <View style={styles.approveRejectButtons}>
+                    {/* Approve Button */}
+                    <TouchableOpacity 
+                      style={styles.approveConfirmButton}
+                      onPress={confirmApproveRfq}
+                      disabled={approvingId === approveModalQuote.id}
+                    >
+                      {approvingId === approveModalQuote.id ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <>
+                          <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                          <Text style={styles.approveConfirmButtonText}>Approve</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    
+                    {/* Reject Button */}
+                    <TouchableOpacity 
+                      style={styles.rejectButton}
+                      onPress={() => {
+                        const quoteToReject = approveModalQuote;
+                        setApproveModalQuote(null);
+                        if (quoteToReject) {
+                          openRejectModal(quoteToReject);
+                        }
+                      }}
+                    >
+                      <Ionicons name="close-circle" size={24} color="#fff" />
+                      <Text style={styles.rejectButtonText}>Reject</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Reject Reason Modal */}
+      <Modal
+        visible={showRejectModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowRejectModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '60%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reject RFQ</Text>
+              <TouchableOpacity onPress={() => setShowRejectModal(false)}>
+                <Ionicons name="close" size={28} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalScroll}>
+              {rejectingQuote && (
+                <>
+                  <Text style={styles.rejectModalSubtitle}>
+                    Select a reason for rejecting {rejectingQuote.quote_number}
+                  </Text>
+                  
+                  {/* Rejection Reason Options */}
+                  <View style={styles.rejectReasonOptions}>
+                    <TouchableOpacity
+                      style={[
+                        styles.rejectReasonOption,
+                        selectedRejectReason === 'low_quantity' && styles.rejectReasonOptionActive
+                      ]}
+                      onPress={() => setSelectedRejectReason('low_quantity')}
+                    >
+                      <Ionicons 
+                        name={selectedRejectReason === 'low_quantity' ? 'radio-button-on' : 'radio-button-off'} 
+                        size={24} 
+                        color={selectedRejectReason === 'low_quantity' ? '#960018' : '#666'} 
+                      />
+                      <Text style={[
+                        styles.rejectReasonText,
+                        selectedRejectReason === 'low_quantity' && styles.rejectReasonTextActive
+                      ]}>Rejected due to low quantity</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[
+                        styles.rejectReasonOption,
+                        selectedRejectReason === 'low_amount' && styles.rejectReasonOptionActive
+                      ]}
+                      onPress={() => setSelectedRejectReason('low_amount')}
+                    >
+                      <Ionicons 
+                        name={selectedRejectReason === 'low_amount' ? 'radio-button-on' : 'radio-button-off'} 
+                        size={24} 
+                        color={selectedRejectReason === 'low_amount' ? '#960018' : '#666'} 
+                      />
+                      <Text style={[
+                        styles.rejectReasonText,
+                        selectedRejectReason === 'low_amount' && styles.rejectReasonTextActive
+                      ]}>Rejected due to low amount</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[
+                        styles.rejectReasonOption,
+                        selectedRejectReason === 'not_in_range' && styles.rejectReasonOptionActive
+                      ]}
+                      onPress={() => setSelectedRejectReason('not_in_range')}
+                    >
+                      <Ionicons 
+                        name={selectedRejectReason === 'not_in_range' ? 'radio-button-on' : 'radio-button-off'} 
+                        size={24} 
+                        color={selectedRejectReason === 'not_in_range' ? '#960018' : '#666'} 
+                      />
+                      <Text style={[
+                        styles.rejectReasonText,
+                        selectedRejectReason === 'not_in_range' && styles.rejectReasonTextActive
+                      ]}>Rejected due to product is not within the manufacturing range</Text>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Confirm Reject Button */}
                   <TouchableOpacity 
-                    style={styles.approveConfirmButton}
-                    onPress={confirmApproveRfq}
-                    disabled={approvingId === approveModalQuote.id}
+                    style={[
+                      styles.confirmRejectButton,
+                      !selectedRejectReason && styles.confirmRejectButtonDisabled
+                    ]}
+                    onPress={confirmRejectRfq}
+                    disabled={!selectedRejectReason || rejectingId === rejectingQuote.id}
                   >
-                    {approvingId === approveModalQuote.id ? (
+                    {rejectingId === rejectingQuote.id ? (
                       <ActivityIndicator color="#fff" />
                     ) : (
                       <>
-                        <Ionicons name="checkmark-circle" size={24} color="#fff" />
-                        <Text style={styles.approveConfirmButtonText}>Approve & Convert to Quote</Text>
+                        <Ionicons name="close-circle" size={24} color="#fff" />
+                        <Text style={styles.confirmRejectButtonText}>Confirm Rejection</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -3148,12 +3408,189 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     gap: 8,
-    marginTop: 20,
-    marginBottom: 20,
+    flex: 1,
   },
   approveConfirmButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  // New styles for Edit RFQ modal
+  approveCompanyName: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  editProductItem: {
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#960018',
+  },
+  editProductHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  editProductName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    flex: 1,
+  },
+  editProductQty: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#960018',
+  },
+  editProductDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  editProductPrice: {
+    fontSize: 13,
+    color: '#666',
+  },
+  editProductTotal: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+  },
+  editProductRemarks: {
+    fontSize: 12,
+    color: '#888',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  subtotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  subtotalLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  subtotalValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#960018',
+  },
+  packingOptions: {
+    gap: 8,
+  },
+  packingOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    gap: 10,
+  },
+  packingOptionActive: {
+    backgroundColor: '#fff5f5',
+    borderColor: '#960018',
+  },
+  packingOptionText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  packingOptionTextActive: {
+    color: '#960018',
+    fontWeight: '600',
+  },
+  approveRejectButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  rejectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#DC3545',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    flex: 1,
+  },
+  rejectButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // Reject Modal styles
+  rejectModalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  rejectReasonOptions: {
+    gap: 12,
+  },
+  rejectReasonOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    gap: 12,
+  },
+  rejectReasonOptionActive: {
+    backgroundColor: '#fff5f5',
+    borderColor: '#960018',
+  },
+  rejectReasonText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  rejectReasonTextActive: {
+    color: '#960018',
+    fontWeight: '600',
+  },
+  confirmRejectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#DC3545',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 24,
+    marginBottom: 20,
+  },
+  confirmRejectButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  confirmRejectButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // Rejected badge style
+  rejectedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DC3545',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
   },
 });

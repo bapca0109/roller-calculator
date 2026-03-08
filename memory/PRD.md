@@ -77,6 +77,32 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 
 ### March 8, 2026 (Latest Session - Current)
 
+- **EDIT RFQ MODAL WITH APPROVE/REJECT WORKFLOW** - COMPLETED ✅
+  - **Feature**: Complete Edit RFQ modal redesign with:
+    1. Display all items selected by customer with quantities, unit prices, and totals
+    2. Editable Packing Type selection (Standard 1%, Pallet 4%, Wooden Box 8%)
+    3. Editable Freight Charges with Delivery Pincode and Freight %/Custom Amount toggle
+    4. **Approve** button (green) - sends quotation to customer and admin via email
+    5. **Reject** button (red) - opens rejection reasons popup
+  - **Reject Reasons Modal**: 3 predefined reasons:
+    1. "Rejected due to low quantity"
+    2. "Rejected due to low amount"
+    3. "Rejected due to product is not within the manufacturing range"
+  - **Rejected Tab**: New tab added to quotes screen to display rejected RFQs
+  - **Backend Changes**:
+    1. Added `QuoteReject` model with reason and custom_message fields
+    2. Added `POST /api/quotes/{quote_id}/reject` endpoint
+    3. Rejection email sent to customer with reason
+    4. Added rejection tracking fields (rejected_at, rejected_by, rejection_reason)
+  - **Frontend Changes**:
+    1. Updated Edit RFQ modal with full item display
+    2. Added editable packing/freight fields
+    3. Added Approve and Reject buttons
+    4. Added Reject Reasons modal
+    5. Added Rejected tab in filter tabs
+    6. Added rejected badge display on quote cards
+  - **Testing**: Visual verification completed via screenshots
+
 - **PACKING TYPE & DELIVERY PINCODE VISIBILITY FIX** - COMPLETED ✅
   - **Issue**: Packing Type and Delivery Pincode selected during RFQ submission were not visible in quote details, PDFs, or emails
   - **Backend Fixes**:
