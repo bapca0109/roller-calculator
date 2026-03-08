@@ -1410,28 +1410,6 @@ export default function QuotesScreen() {
         {(!isCustomer || isApproved) && <Text style={styles.totalPrice}>Rs. {item.total_price?.toFixed(2) || '0.00'}</Text>}
       </View>
       
-      {/* Approve Button for RFQs - RED before approval */}
-      {canApprove && (
-        <TouchableOpacity 
-          style={styles.approveButtonRed}
-          data-testid="approve-rfq-button"
-          onPress={(e) => {
-            e.stopPropagation();
-            approveRfq(item);
-          }}
-          disabled={approvingId === item.id}
-        >
-          {approvingId === item.id ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="create-outline" size={18} color="#fff" />
-              <Text style={styles.approveButtonText}>Edit RFQ</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      )}
-      
       {/* Show Approved badge for approved quotes - GREEN */}
       {isApproved && isRfq && (
         <View style={styles.approvedBadge}>
@@ -1779,21 +1757,38 @@ export default function QuotesScreen() {
                     </Text>
                   </View>
 
-                  {/* Export PDF Button */}
-                  <TouchableOpacity 
-                    style={styles.exportButton}
-                    onPress={exportToPdf}
-                    disabled={generatingPdf}
-                  >
-                    {generatingPdf ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <>
-                        <Ionicons name="download-outline" size={24} color="#fff" />
-                        <Text style={styles.exportButtonText}>Export PDF</Text>
-                      </>
+                  {/* Action Buttons Row */}
+                  <View style={styles.detailActionsRow}>
+                    {/* Edit Quote Button - Admin only, for pending RFQs */}
+                    {isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected' && (
+                      <TouchableOpacity 
+                        style={styles.editQuoteButton}
+                        onPress={() => {
+                          setSelectedQuote(null);
+                          approveRfq(selectedQuote);
+                        }}
+                      >
+                        <Ionicons name="create-outline" size={24} color="#fff" />
+                        <Text style={styles.editQuoteButtonText}>Edit Quote</Text>
+                      </TouchableOpacity>
                     )}
-                  </TouchableOpacity>
+
+                    {/* Export PDF Button */}
+                    <TouchableOpacity 
+                      style={[styles.exportButton, isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected' ? { flex: 1 } : {}]}
+                      onPress={exportToPdf}
+                      disabled={generatingPdf}
+                    >
+                      {generatingPdf ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <>
+                          <Ionicons name="download-outline" size={24} color="#fff" />
+                          <Text style={styles.exportButtonText}>Export PDF</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
                   
                   {/* Attachments Section - Admin Only */}
                   {!isCustomer && selectedQuote.products?.some((p: any) => p.attachments?.length > 0) && (
@@ -1839,20 +1834,6 @@ export default function QuotesScreen() {
                       )}
                     </View>
                   )}
-                  
-                  {/* Edit Quote Button - Admin Only */}
-                  {!isCustomer && (
-                    <TouchableOpacity 
-                      style={[styles.exportButton, { backgroundColor: '#FF9500', marginTop: 12 }]}
-                      onPress={() => {
-                        setSelectedQuote(null);
-                        openEditQuote(selectedQuote);
-                      }}
-                    >
-                      <Ionicons name="pencil" size={24} color="#fff" />
-                      <Text style={styles.exportButtonText}>Edit {docLabel}</Text>
-                    </TouchableOpacity>
-                  )}
                 </>
               )}
             </ScrollView>
@@ -1870,7 +1851,7 @@ export default function QuotesScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit RFQ</Text>
+              <Text style={styles.modalTitle}>Edit Quote</Text>
               <TouchableOpacity onPress={() => setApproveModalQuote(null)}>
                 <Ionicons name="close" size={28} color="#333" />
               </TouchableOpacity>
@@ -2807,11 +2788,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#960018',
     paddingVertical: 16,
     borderRadius: 12,
-    marginTop: 20,
-    marginBottom: 30,
     gap: 10,
+    flex: 1,
   },
   exportButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  // Detail Actions Row
+  detailActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  editQuoteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4CAF50',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 10,
+    flex: 1,
+  },
+  editQuoteButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
