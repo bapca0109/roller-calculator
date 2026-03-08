@@ -2198,8 +2198,6 @@ export default function CalculatorScreen() {
         </View>
       )}
 
-      {/* Floating Cart Button - navigates to Cart tab */}
-      <FloatingCartButton onPress={() => router.push('/cart')} />
     </KeyboardAvoidingView>
   );
 }
