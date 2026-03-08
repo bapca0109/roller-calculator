@@ -24,8 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import FloatingCartButton from '../../components/FloatingCartButton';
-import CartViewModal from '../../components/CartViewModal';
-import RfqSubmissionModal from '../../components/RfqSubmissionModal';
+import { useRouter } from 'expo-router';
 
 // Attachment interface
 interface Attachment {
@@ -140,6 +139,7 @@ const RUBBER_DIAMETERS: { [key: number]: number[] } = {
 export default function CalculatorScreen() {
   const { user, loading: authLoading } = useAuth();
   const { addToCart, cartCount, clearCart } = useCart();
+  const router = useRouter();
   const isCustomer = user?.role === 'customer';
   const [standards, setStandards] = useState<RollerStandards | null>(null);
   const [loading, setLoading] = useState(true);
@@ -160,12 +160,6 @@ export default function CalculatorScreen() {
   const [selectedLength, setSelectedLength] = useState<any>(null);
   const [quantityInput, setQuantityInput] = useState('1');
   
-  // Shared cart modals state
-  const [showCartView, setShowCartView] = useState(false);
-  const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-  const [submittedQuoteNumber, setSubmittedQuoteNumber] = useState('');
-  
   // RFQ popup state for customers (old - keeping for backward compat during transition)
   const [showRfqPopup, setShowRfqPopup] = useState(false);
   const [showRfqSuccessPopup, setShowRfqSuccessPopup] = useState(false);
@@ -174,6 +168,7 @@ export default function CalculatorScreen() {
   // Quote popup state for admin (similar to customer RFQ flow)
   const [showQuotePopup, setShowQuotePopup] = useState(false);
   const [showQuoteSuccessPopup, setShowQuoteSuccessPopup] = useState(false);
+  const [submittedQuoteNumber, setSubmittedQuoteNumber] = useState('');
   
   const [calculating, setCalculating] = useState(false);
   const [result, setResult] = useState<CostResult | null>(null);
@@ -1448,14 +1443,6 @@ export default function CalculatorScreen() {
             <Text style={styles.errorText}>{errors.quantity}</Text>
           ) : null}
 
-          <CustomDropdown
-            label="Packing Type"
-            value={packingType}
-            onValueChange={(value) => setPackingType(value)}
-            options={PACKING_TYPES.map((type) => ({ label: type.label, value: type.value }))}
-            placeholder="Select packing type"
-          />
-
           {/* Product Remark */}
           <Text style={styles.label}>Remark (Optional)</Text>
           <TextInput
@@ -1467,25 +1454,6 @@ export default function CalculatorScreen() {
             numberOfLines={3}
             textAlignVertical="top"
           />
-        </View>
-
-        {/* Freight */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Freight (Optional)</Text>
-          <Text style={styles.label}>Destination Pincode</Text>
-          <TextInput
-            style={[styles.input, errors.freightPincode ? styles.inputError : null]}
-            value={freightPincode}
-            onChangeText={handlePincodeChange}
-            keyboardType="numeric"
-            placeholder="Enter 6-digit pincode"
-            maxLength={6}
-          />
-          {errors.freightPincode ? (
-            <Text style={styles.errorText}>{errors.freightPincode}</Text>
-          ) : (
-            <Text style={styles.hint}>Dispatch from: 382433 (Gujarat)</Text>
-          )}
         </View>
 
         {/* Attachment Section - Available for both Admin and Customer */}
@@ -2224,10 +2192,10 @@ export default function CalculatorScreen() {
                 style={styles.saveAllButton}
                 onPress={() => {
                   setShowQuoteBuilder(false);
-                  setShowSubmitModal(true);
+                  router.push('/cart');
                 }}
               >
-                <Text style={styles.saveAllButtonText}>{isCustomer ? 'Submit RFQ' : 'Save Quote'}</Text>
+                <Text style={styles.saveAllButtonText}>Go to Cart</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2242,7 +2210,7 @@ export default function CalculatorScreen() {
               <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
               <Text style={styles.rfqPopupTitle}>Item Added!</Text>
               <Text style={styles.rfqPopupSubtitle}>
-                {quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''} in your RFQ
+                {quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''} in your cart
               </Text>
             </View>
             
@@ -2261,12 +2229,11 @@ export default function CalculatorScreen() {
                 style={styles.rfqSubmitButtonGreen}
                 onPress={() => {
                   setShowRfqPopup(false);
-                  // Open the shared submission modal
-                  setShowSubmitModal(true);
+                  router.push('/cart');
                 }}
               >
-                <Ionicons name="send" size={24} color="#fff" />
-                <Text style={styles.rfqSubmitButtonText}>Submit RFQ</Text>
+                <Ionicons name="cart" size={24} color="#fff" />
+                <Text style={styles.rfqSubmitButtonText}>Go to Cart</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2329,12 +2296,11 @@ export default function CalculatorScreen() {
                 style={styles.rfqSubmitButtonGreen}
                 onPress={() => {
                   setShowQuotePopup(false);
-                  // Open the shared submission modal
-                  setShowSubmitModal(true);
+                  router.push('/cart');
                 }}
               >
-                <Ionicons name="document-text" size={24} color="#fff" />
-                <Text style={styles.rfqSubmitButtonText}>Generate Quote</Text>
+                <Ionicons name="cart" size={24} color="#fff" />
+                <Text style={styles.rfqSubmitButtonText}>Go to Cart</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2367,56 +2333,8 @@ export default function CalculatorScreen() {
         </View>
       )}
 
-      {/* Shared Cart Floating Button */}
-      <FloatingCartButton onPress={() => setShowCartView(true)} />
-
-      {/* Shared Cart View Modal */}
-      <CartViewModal
-        visible={showCartView}
-        onClose={() => setShowCartView(false)}
-        onSubmit={() => {
-          setShowCartView(false);
-          setShowSubmitModal(true);
-        }}
-      />
-
-      {/* Shared RFQ/Quote Submission Modal */}
-      <RfqSubmissionModal
-        visible={showSubmitModal}
-        onClose={() => setShowSubmitModal(false)}
-        onSuccess={(quoteNumber) => {
-          setShowSubmitModal(false);
-          setSubmittedQuoteNumber(quoteNumber);
-          setShowSuccessPopup(true);
-          // Also clear local quote items
-          setQuoteItems([]);
-        }}
-        customers={customers}
-      />
-
-      {/* Shared Success Popup */}
-      {showSuccessPopup && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.rfqPopupContent}>
-            <View style={styles.rfqPopupHeader}>
-              <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
-              <Text style={styles.rfqSuccessTitle}>{isCustomer ? 'RFQ Submitted!' : 'Quote Generated!'}</Text>
-              <Text style={styles.rfqSuccessSubtitle}>
-                Your {isCustomer ? 'Request for Quotation' : 'Quote'} has been {isCustomer ? 'sent' : 'created'} successfully.
-              </Text>
-              <Text style={styles.rfqSuccessNumber}>{submittedQuoteNumber}</Text>
-            </View>
-            
-            <TouchableOpacity
-              style={styles.rfqSuccessButton}
-              onPress={() => setShowSuccessPopup(false)}
-            >
-              <Ionicons name="checkmark" size={24} color="#fff" />
-              <Text style={styles.rfqSubmitButtonText}>OK</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      {/* Floating Cart Button - navigates to Cart tab */}
+      <FloatingCartButton onPress={() => router.push('/cart')} />
     </KeyboardAvoidingView>
   );
 }
