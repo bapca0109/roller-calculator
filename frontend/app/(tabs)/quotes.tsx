@@ -1373,8 +1373,8 @@ export default function QuotesScreen() {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              <Ionicons name="checkmark-circle" size={18} color="#fff" />
-              <Text style={styles.approveButtonText}>Approve & Generate Quote</Text>
+              <Ionicons name="create-outline" size={18} color="#fff" />
+              <Text style={styles.approveButtonText}>Edit</Text>
             </>
           )}
         </TouchableOpacity>
