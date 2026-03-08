@@ -248,6 +248,12 @@ export default function QuotesScreen() {
   // Open quote detail and mark as read
   const openQuoteDetail = (quote: Quote) => {
     setSelectedQuote(quote);
+    // Initialize editable fields for admin
+    setEditPackingType(quote.packing_type || 'standard');
+    setEditDeliveryPincode(quote.delivery_location || '');
+    setFreightPercent(quote.freight_details?.freight_percent?.toString() || '0');
+    setCustomFreightAmount(quote.shipping_cost?.toString() || '0');
+    setUseCustomFreight(false);
     // Mark as read if admin and quote is pending RFQ and unread
     const isRfq = quote.quote_number?.startsWith('RFQ/');
     if (isAdmin && quote.status === 'pending' && isRfq && !quote.read_by_admin) {
@@ -403,27 +409,31 @@ export default function QuotesScreen() {
 
   // Calculate freight amount from percentage
   const calculateFreightAmount = () => {
-    if (!approveModalQuote) return 0;
+    const quote = approveModalQuote || selectedQuote;
+    if (!quote) return 0;
     if (useCustomFreight) {
       return parseFloat(customFreightAmount) || 0;
     }
     const percent = parseFloat(freightPercent) || 0;
-    const taxableAmount = (approveModalQuote.subtotal || 0) - (approveModalQuote.total_discount || 0) + (approveModalQuote.packing_charges || 0);
+    const taxableAmount = (quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0);
     return taxableAmount * (percent / 100);
   };
 
   // Approve RFQ with freight
   const confirmApproveRfq = async () => {
-    if (!approveModalQuote) return;
+    const quote = approveModalQuote || selectedQuote;
+    if (!quote) return;
     
-    setApprovingId(approveModalQuote.id);
+    setApprovingId(quote.id);
     try {
       const freightAmount = calculateFreightAmount();
       const freightPct = useCustomFreight ? 0 : (parseFloat(freightPercent) || 0);
       
-      // First update the quote with freight details
-      await api.put(`/quotes/${approveModalQuote.id}`, {
+      // First update the quote with freight and packing details
+      await api.put(`/quotes/${quote.id}`, {
         shipping_cost: freightAmount,
+        packing_type: editPackingType,
+        delivery_location: editDeliveryPincode,
         freight_details: {
           freight_percent: freightPct,
           freight_amount: freightAmount,
@@ -432,11 +442,13 @@ export default function QuotesScreen() {
       });
       
       // Then approve
-      const response = await api.post(`/quotes/${approveModalQuote.id}/approve`);
-      setApprovedQuoteNumber(response.data.new_quote_number || approveModalQuote.quote_number);
+      const response = await api.post(`/quotes/${quote.id}/approve`);
+      setApprovedQuoteNumber(response.data.new_quote_number || quote.quote_number);
       setShowApprovalSuccess(true);
       setApproveModalQuote(null);
+      setSelectedQuote(null);
       fetchQuotes();
+      setActiveTab('approved'); // Switch to approved tab
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to approve RFQ');
     } finally {
@@ -1904,34 +1916,141 @@ export default function QuotesScreen() {
                     </View>
                   )}
 
-                  {/* Packing & Freight Details */}
-                  {(selectedQuote.packing_type || selectedQuote.delivery_location) && (
-                    <View style={styles.detailSection}>
-                      <Text style={styles.sectionTitle}>Packing & Freight</Text>
-                      {selectedQuote.packing_type && (
-                        <View style={styles.infoRow}>
-                          <Text style={styles.infoLabel}>Packing Type:</Text>
-                          <Text style={styles.infoValue}>
-                            {selectedQuote.packing_type === 'standard' ? 'Standard (1%)' :
-                             selectedQuote.packing_type === 'pallet' ? 'Pallet (4%)' :
-                             selectedQuote.packing_type === 'wooden_box' ? 'Wooden Box (8%)' :
-                             selectedQuote.packing_type}
+                  {/* Packing & Freight Details - Editable for Admin on Pending RFQs */}
+                  {isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected' ? (
+                    <View style={[styles.detailSection, { backgroundColor: '#fff' }]}>
+                      <Text style={styles.sectionTitle}>Packing & Freight (Editable)</Text>
+                      
+                      {/* Packing Type Selection */}
+                      <Text style={styles.fieldLabel}>Packing Type</Text>
+                      <View style={styles.packingOptions}>
+                        {[
+                          { value: 'standard', label: 'Standard (1%)' },
+                          { value: 'pallet', label: 'Pallet (4%)' },
+                          { value: 'wooden_box', label: 'Wooden Box (8%)' }
+                        ].map((option) => (
+                          <TouchableOpacity
+                            key={option.value}
+                            style={[
+                              styles.packingOption,
+                              editPackingType === option.value && styles.packingOptionActive
+                            ]}
+                            onPress={() => setEditPackingType(option.value)}
+                          >
+                            <Ionicons 
+                              name={editPackingType === option.value ? 'radio-button-on' : 'radio-button-off'} 
+                              size={20} 
+                              color={editPackingType === option.value ? '#960018' : '#666'} 
+                            />
+                            <Text style={[
+                              styles.packingOptionText,
+                              editPackingType === option.value && styles.packingOptionTextActive
+                            ]}>{option.label}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      
+                      {/* Delivery Pincode */}
+                      <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Delivery Pincode</Text>
+                      <TextInput
+                        style={styles.editableInput}
+                        value={editDeliveryPincode}
+                        onChangeText={setEditDeliveryPincode}
+                        keyboardType="numeric"
+                        placeholder="Enter pincode"
+                        maxLength={6}
+                      />
+                      
+                      {/* Freight Mode Toggle */}
+                      <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Freight Charges</Text>
+                      <View style={styles.discountModeToggle}>
+                        <TouchableOpacity 
+                          style={[styles.modeButton, !useCustomFreight && styles.modeButtonActive]}
+                          onPress={() => setUseCustomFreight(false)}
+                        >
+                          <Ionicons name="calculator-outline" size={18} color={!useCustomFreight ? "#fff" : "#666"} />
+                          <Text style={[styles.modeButtonText, !useCustomFreight && styles.modeButtonTextActive]}>
+                            Freight %
                           </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.modeButton, useCustomFreight && styles.modeButtonActive]}
+                          onPress={() => setUseCustomFreight(true)}
+                        >
+                          <Ionicons name="cash-outline" size={18} color={useCustomFreight ? "#fff" : "#666"} />
+                          <Text style={[styles.modeButtonText, useCustomFreight && styles.modeButtonTextActive]}>
+                            Custom Amount
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Freight Input */}
+                      {!useCustomFreight ? (
+                        <View style={styles.freightInputRow}>
+                          <Text style={styles.freightInputLabel}>Freight Percentage:</Text>
+                          <View style={styles.freightInputWrapper}>
+                            <TextInput
+                              style={styles.freightInput}
+                              value={freightPercent}
+                              onChangeText={setFreightPercent}
+                              keyboardType="numeric"
+                              placeholder="0"
+                            />
+                            <Text style={styles.freightInputSuffix}>%</Text>
+                          </View>
+                        </View>
+                      ) : (
+                        <View style={styles.freightInputRow}>
+                          <Text style={styles.freightInputLabel}>Custom Amount:</Text>
+                          <View style={styles.freightInputWrapper}>
+                            <Text style={styles.freightInputPrefix}>Rs.</Text>
+                            <TextInput
+                              style={styles.freightInput}
+                              value={customFreightAmount}
+                              onChangeText={setCustomFreightAmount}
+                              keyboardType="numeric"
+                              placeholder="0"
+                            />
+                          </View>
                         </View>
                       )}
-                      {selectedQuote.delivery_location && (
-                        <View style={styles.infoRow}>
-                          <Text style={styles.infoLabel}>Delivery Pincode:</Text>
-                          <Text style={styles.infoValue}>{selectedQuote.delivery_location}</Text>
-                        </View>
-                      )}
-                      {selectedQuote.freight_details?.freight_percent > 0 && (
-                        <View style={styles.infoRow}>
-                          <Text style={styles.infoLabel}>Freight:</Text>
-                          <Text style={styles.infoValue}>{selectedQuote.freight_details.freight_percent}%</Text>
-                        </View>
-                      )}
+
+                      {/* Calculated Freight */}
+                      <View style={styles.calculatedFreightRow}>
+                        <Text style={styles.calculatedFreightLabel}>Freight Amount:</Text>
+                        <Text style={styles.calculatedFreightValue}>Rs. {calculateFreightAmount().toFixed(2)}</Text>
+                      </View>
                     </View>
+                  ) : (
+                    /* Read-only Packing & Freight for non-editable cases */
+                    (selectedQuote.packing_type || selectedQuote.delivery_location) && (
+                      <View style={styles.detailSection}>
+                        <Text style={styles.sectionTitle}>Packing & Freight</Text>
+                        {selectedQuote.packing_type && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Packing Type:</Text>
+                            <Text style={styles.infoValue}>
+                              {selectedQuote.packing_type === 'standard' ? 'Standard (1%)' :
+                               selectedQuote.packing_type === 'pallet' ? 'Pallet (4%)' :
+                               selectedQuote.packing_type === 'wooden_box' ? 'Wooden Box (8%)' :
+                               selectedQuote.packing_type}
+                            </Text>
+                          </View>
+                        )}
+                        {selectedQuote.delivery_location && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Delivery Pincode:</Text>
+                            <Text style={styles.infoValue}>{selectedQuote.delivery_location}</Text>
+                          </View>
+                        )}
+                        {selectedQuote.freight_details?.freight_percent > 0 && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Freight:</Text>
+                            <Text style={styles.infoValue}>{selectedQuote.freight_details.freight_percent}%</Text>
+                          </View>
+                        )}
+                      </View>
+                    )
                   )}
 
                   {/* Customer RFQ Reference */}
@@ -1961,23 +2080,44 @@ export default function QuotesScreen() {
 
                   {/* Action Buttons Row */}
                   <View style={styles.detailActionsRow}>
-                    {/* Edit Quote Button - Admin only, for pending RFQs */}
+                    {/* Approve & Reject Buttons - Admin only, for pending RFQs */}
                     {isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected' && (
-                      <TouchableOpacity 
-                        style={styles.editQuoteButton}
-                        onPress={() => {
-                          setSelectedQuote(null);
-                          approveRfq(selectedQuote);
-                        }}
-                      >
-                        <Ionicons name="create-outline" size={24} color="#fff" />
-                        <Text style={styles.editQuoteButtonText}>Edit Quote</Text>
-                      </TouchableOpacity>
+                      <>
+                        <TouchableOpacity 
+                          style={styles.approveConfirmButton}
+                          onPress={() => {
+                            // Set the quote for approval
+                            setApproveModalQuote(selectedQuote);
+                            confirmApproveRfq();
+                          }}
+                          disabled={approvingId === selectedQuote.id}
+                        >
+                          {approvingId === selectedQuote.id ? (
+                            <ActivityIndicator color="#fff" />
+                          ) : (
+                            <>
+                              <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                              <Text style={styles.approveConfirmButtonText}>Approve</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={styles.rejectButton}
+                          onPress={() => {
+                            setSelectedQuote(null);
+                            openRejectModal(selectedQuote);
+                          }}
+                        >
+                          <Ionicons name="close-circle" size={24} color="#fff" />
+                          <Text style={styles.rejectButtonText}>Reject</Text>
+                        </TouchableOpacity>
+                      </>
                     )}
 
                     {/* Export PDF Button */}
                     <TouchableOpacity 
-                      style={[styles.exportButton, isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected' ? { flex: 1 } : {}]}
+                      style={[styles.exportButton, !(isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected') ? { flex: 1 } : {}]}
                       onPress={exportToPdf}
                       disabled={generatingPdf}
                     >
@@ -3622,5 +3762,21 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     gap: 6,
+  },
+  // Field label and editable input styles
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  editableInput: {
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#333',
   },
 });
