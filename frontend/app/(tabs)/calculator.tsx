@@ -1365,7 +1365,7 @@ export default function CalculatorScreen() {
           ) : (
             <>
               <Ionicons name={isCustomer ? "document-text" : "calculator"} size={24} color="#fff" />
-              <Text style={styles.calculateButtonText}>{isCustomer ? 'Generate RFQ' : 'Calculate Price'}</Text>
+              <Text style={styles.calculateButtonText}>{isCustomer ? 'Add to Cart' : 'Calculate Price'}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -1678,7 +1678,7 @@ export default function CalculatorScreen() {
                 onPress={addToQuote}
               >
                 <Ionicons name="add-circle-outline" size={24} color="#fff" />
-                <Text style={styles.addToQuoteButtonText}>Add to Quote</Text>
+                <Text style={styles.addToQuoteButtonText}>Add to Cart</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
