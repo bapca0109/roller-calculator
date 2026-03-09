@@ -150,6 +150,61 @@ export default function QuotesScreen() {
   const [totalDiscountPercent, setTotalDiscountPercent] = useState<string>('0');
   const [itemDiscounts, setItemDiscounts] = useState<{[key: number]: string}>({});
   
+  // Calculate approval modal totals in real-time
+  const calculateApprovalTotal = () => {
+    const quote = approveModalQuote || selectedQuote;
+    if (!quote) return { subtotal: 0, discountAmount: 0, afterDiscount: 0, packingCharges: 0, freightAmount: 0, taxableAmount: 0, total: 0 };
+    
+    // Use editableProducts if available, otherwise fall back to quote's original products
+    const productsToUse = editableProducts.length > 0 ? editableProducts : (quote.products || []);
+    
+    // Calculate subtotal (original, before discount)
+    const subtotal = productsToUse.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0);
+    
+    // Calculate discount
+    let discountAmount = 0;
+    if (useItemDiscount) {
+      // Item-wise discount
+      productsToUse.forEach((product, index) => {
+        const itemDiscountPct = parseFloat(itemDiscounts[index] || '0') || 0;
+        const itemSubtotal = product.unit_price * product.quantity;
+        discountAmount += itemSubtotal * (itemDiscountPct / 100);
+      });
+    } else {
+      // Total discount mode
+      const discountPct = parseFloat(totalDiscountPercent) || 0;
+      discountAmount = subtotal * (discountPct / 100);
+    }
+    
+    const afterDiscount = subtotal - discountAmount;
+    
+    // Calculate packing charges based on DISCOUNTED subtotal
+    let packingPercent = 0;
+    if (editPackingType === 'standard') packingPercent = 1;
+    else if (editPackingType === 'pallet') packingPercent = 4;
+    else if (editPackingType === 'wooden_box') packingPercent = 8;
+    else if (editPackingType === 'custom') packingPercent = parseFloat(customPackingPercent) || 0;
+    
+    const packingCharges = afterDiscount * (packingPercent / 100);
+    
+    // Get freight amount
+    const freightAmount = parseFloat(customFreightAmount) || 0;
+    
+    // Calculate final total
+    const taxableAmount = afterDiscount + packingCharges + freightAmount;
+    const total = taxableAmount * 1.18; // Include 18% GST
+    
+    return {
+      subtotal,
+      discountAmount,
+      afterDiscount,
+      packingCharges,
+      freightAmount,
+      taxableAmount,
+      total
+    };
+  };
+
   const { user, loading: authLoading } = useAuth();
   
   // Check if user is customer - show RFQ terminology
@@ -2094,6 +2149,124 @@ export default function QuotesScreen() {
             </View>
           </View>
 
+          {/* Discount Section */}
+          <View style={[styles.detailSection, { backgroundColor: '#fff' }]}>
+            <Text style={styles.sectionTitle}>Discount</Text>
+            
+            {/* Discount Mode Toggle */}
+            <View style={styles.discountModeToggle}>
+              <TouchableOpacity
+                style={[styles.discountModeButton, !useItemDiscount && styles.discountModeButtonActive]}
+                onPress={() => setUseItemDiscount(false)}
+              >
+                <Text style={[styles.discountModeText, !useItemDiscount && styles.discountModeTextActive]}>Total Discount</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.discountModeButton, useItemDiscount && styles.discountModeButtonActive]}
+                onPress={() => setUseItemDiscount(true)}
+              >
+                <Text style={[styles.discountModeText, useItemDiscount && styles.discountModeTextActive]}>Per-Item Discount</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {!useItemDiscount ? (
+              /* Total Discount Input */
+              <View style={styles.freightInputRow}>
+                <Text style={styles.freightInputLabel}>Discount %:</Text>
+                <View style={styles.freightInputWrapper}>
+                  <TextInput
+                    style={styles.freightInput}
+                    value={totalDiscountPercent}
+                    onChangeText={setTotalDiscountPercent}
+                    keyboardType="numeric"
+                    placeholder="0"
+                  />
+                  <Text style={styles.freightInputSuffix}>%</Text>
+                </View>
+              </View>
+            ) : (
+              /* Per-Item Discount Inputs */
+              <View style={{ marginTop: 8 }}>
+                {(editableProducts.length > 0 ? editableProducts : approveModalQuote?.products || []).map((product, idx) => (
+                  <View key={idx} style={styles.itemDiscountRow}>
+                    <Text style={styles.itemDiscountName} numberOfLines={1}>
+                      {product.product_name || `Item ${idx + 1}`}
+                    </Text>
+                    <View style={styles.freightInputWrapper}>
+                      <TextInput
+                        style={[styles.freightInput, { width: 60 }]}
+                        value={itemDiscounts[idx] || '0'}
+                        onChangeText={(val) => setItemDiscounts(prev => ({ ...prev, [idx]: val }))}
+                        keyboardType="numeric"
+                        placeholder="0"
+                      />
+                      <Text style={styles.freightInputSuffix}>%</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Summary Section - Real-time Calculation */}
+          <View style={[styles.detailSection, { backgroundColor: '#fff' }]}>
+            <Text style={styles.sectionTitle}>Summary</Text>
+            
+            {/* Subtotal */}
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingLabel}>Subtotal</Text>
+              <Text style={styles.pricingValue}>Rs. {calculateApprovalTotal().subtotal.toFixed(2)}</Text>
+            </View>
+            
+            {/* Discount */}
+            {calculateApprovalTotal().discountAmount > 0 && (
+              <View style={styles.pricingRow}>
+                <Text style={[styles.pricingLabel, { color: '#059669' }]}>
+                  Discount {!useItemDiscount ? `(${totalDiscountPercent || 0}%)` : '(Per-Item)'}
+                </Text>
+                <Text style={[styles.pricingValue, { color: '#059669' }]}>
+                  - Rs. {calculateApprovalTotal().discountAmount.toFixed(2)}
+                </Text>
+              </View>
+            )}
+            
+            {/* Packing Charges */}
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingLabel}>
+                Packing Charges ({editPackingType === 'standard' ? '1' : editPackingType === 'pallet' ? '4' : editPackingType === 'wooden_box' ? '8' : customPackingPercent || '0'}%)
+              </Text>
+              <Text style={styles.pricingValue}>Rs. {calculateApprovalTotal().packingCharges.toFixed(2)}</Text>
+            </View>
+            
+            {/* Freight */}
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingLabel}>Freight Charges</Text>
+              <Text style={styles.pricingValue}>Rs. {calculateApprovalTotal().freightAmount.toFixed(2)}</Text>
+            </View>
+            
+            {/* Taxable Amount */}
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingLabel}>Taxable Amount</Text>
+              <Text style={styles.pricingValue}>Rs. {calculateApprovalTotal().taxableAmount.toFixed(2)}</Text>
+            </View>
+            
+            {/* GST */}
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingLabel}>CGST @ 9%</Text>
+              <Text style={styles.pricingValue}>Rs. {(calculateApprovalTotal().taxableAmount * 0.09).toFixed(2)}</Text>
+            </View>
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingLabel}>SGST @ 9%</Text>
+              <Text style={styles.pricingValue}>Rs. {(calculateApprovalTotal().taxableAmount * 0.09).toFixed(2)}</Text>
+            </View>
+            
+            {/* Grand Total */}
+            <View style={[styles.pricingRow, styles.totalRow]}>
+              <Text style={styles.totalLabel}>GRAND TOTAL</Text>
+              <Text style={styles.totalValue}>Rs. {calculateApprovalTotal().total.toFixed(2)}</Text>
+            </View>
+          </View>
+
           {/* Action Buttons */}
           <View style={[styles.approveRejectButtons, { backgroundColor: '#fff' }]}>
             {/* Approve Button */}
@@ -2706,6 +2879,67 @@ export default function QuotesScreen() {
                         )}
                       </View>
                     )
+                  )}
+
+                  {/* Summary Section - Only for pending RFQs that admin can approve */}
+                  {isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected' && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.sectionTitle}>Summary</Text>
+                      
+                      {/* Subtotal */}
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabel}>Subtotal</Text>
+                        <Text style={styles.pricingValue}>Rs. {calculateApprovalTotal().subtotal.toFixed(2)}</Text>
+                      </View>
+                      
+                      {/* Discount */}
+                      {calculateApprovalTotal().discountAmount > 0 && (
+                        <View style={styles.pricingRow}>
+                          <Text style={[styles.pricingLabel, { color: '#059669' }]}>
+                            Discount {!useItemDiscount ? `(${totalDiscountPercent || 0}%)` : '(Per-Item)'}
+                          </Text>
+                          <Text style={[styles.pricingValue, { color: '#059669' }]}>
+                            - Rs. {calculateApprovalTotal().discountAmount.toFixed(2)}
+                          </Text>
+                        </View>
+                      )}
+                      
+                      {/* Packing Charges */}
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabel}>
+                          Packing Charges ({editPackingType === 'standard' ? '1' : editPackingType === 'pallet' ? '4' : editPackingType === 'wooden_box' ? '8' : customPackingPercent || '0'}%)
+                        </Text>
+                        <Text style={styles.pricingValue}>Rs. {calculateApprovalTotal().packingCharges.toFixed(2)}</Text>
+                      </View>
+                      
+                      {/* Freight */}
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabel}>Freight Charges</Text>
+                        <Text style={styles.pricingValue}>Rs. {calculateApprovalTotal().freightAmount.toFixed(2)}</Text>
+                      </View>
+                      
+                      {/* Taxable Amount */}
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabel}>Taxable Amount</Text>
+                        <Text style={styles.pricingValue}>Rs. {calculateApprovalTotal().taxableAmount.toFixed(2)}</Text>
+                      </View>
+                      
+                      {/* GST */}
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabel}>CGST @ 9%</Text>
+                        <Text style={styles.pricingValue}>Rs. {(calculateApprovalTotal().taxableAmount * 0.09).toFixed(2)}</Text>
+                      </View>
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabel}>SGST @ 9%</Text>
+                        <Text style={styles.pricingValue}>Rs. {(calculateApprovalTotal().taxableAmount * 0.09).toFixed(2)}</Text>
+                      </View>
+                      
+                      {/* Grand Total */}
+                      <View style={[styles.pricingRow, styles.totalRow]}>
+                        <Text style={styles.totalLabel}>GRAND TOTAL</Text>
+                        <Text style={styles.totalValue}>Rs. {calculateApprovalTotal().total.toFixed(2)}</Text>
+                      </View>
+                    </View>
                   )}
 
                   {/* Customer RFQ Reference */}
