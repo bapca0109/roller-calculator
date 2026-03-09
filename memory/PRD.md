@@ -77,6 +77,29 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 
 ### March 9, 2026 (Latest Session - Current)
 
+- **P0 FEATURE: REVISION HISTORY** - COMPLETED ✅
+  - **User Request**: Add ability to see all changes made to a quote over time, for audit trails and customer communication
+  - **Implementation**:
+    1. **Backend API**: Added `GET /api/quotes/{quote_id}/history` endpoint to retrieve revision history
+    2. **Change Tracking**: Modified `PUT /api/quotes/{quote_id}` to automatically track changes to:
+       - Packing Type (with formatted display like "Wooden Box (8%)" → "Pallet (4%)")
+       - Packing Charges (with Rs. formatting)
+       - Freight/Shipping Cost (with Rs. formatting)
+       - Discount % and Total Discount
+       - Grand Total
+       - Product Quantities
+    3. **Frontend UI**: Added "History" button in quote detail modal (visible to admins only)
+    4. **Revision History Modal**: Timeline view with:
+       - Timestamp and user who made the change
+       - Action badge (Updated, Revised, etc.)
+       - Before values with strikethrough (red)
+       - After values in green
+       - Support for both old format (legacy revisions) and new detailed format
+  - **Files Changed**:
+    - `backend/server.py` - Added RevisionHistoryEntry model, GET /api/quotes/{quote_id}/history endpoint, change tracking in PUT endpoint, _format_packing_type helper
+    - `frontend/app/(tabs)/quotes.tsx` - Added RevisionHistoryEntry interface, state variables, fetchRevisionHistory/formatRevisionDate functions, History button, Revision History modal, styles
+  - **Testing**: Testing agent verified 100% - All backend API tests and frontend UI tests passed
+
 - **P0 FEATURE: EDITABLE PACKING TYPE IN EDIT QUOTE MODAL** - COMPLETED ✅
   - **Issue**: When admin revises an already approved quote, they could not change the packing type
   - **Implementation**:
