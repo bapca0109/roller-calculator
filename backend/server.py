@@ -1530,9 +1530,8 @@ def generate_quote_html(quote_data: dict) -> str:
           <div class="summary-table">
             <div class="summary-row">
               <span class="summary-label">Subtotal</span>
-              <span class="summary-value">Rs. {subtotal:,.2f}</span>
+              <span class="summary-value">Rs. {subtotal_after_discount:,.2f}</span>
             </div>
-            {discount_html}
             {packing_html}
             {shipping_html}
             <div class="summary-row" style="background: #f5f5f5;">
