@@ -96,6 +96,7 @@ export default function QuotesScreen() {
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [editedProducts, setEditedProducts] = useState<QuoteProduct[]>([]);
   const [editedDiscount, setEditedDiscount] = useState<string>('0');
+  const [editedFreight, setEditedFreight] = useState<string>('0');  // Editable freight for Edit Quote modal
   const [useItemDiscounts, setUseItemDiscounts] = useState(false);
   const [bulkDiscountPercent, setBulkDiscountPercent] = useState<string>('0');
   const [savingEdit, setSavingEdit] = useState(false);
@@ -436,6 +437,8 @@ export default function QuotesScreen() {
       ? ((quote.total_discount / quote.subtotal) * 100).toFixed(1)
       : '0';
     setEditedDiscount(discountPercent);
+    // Initialize freight with existing value
+    setEditedFreight((quote.shipping_cost || 0).toString());
   };
 
   const updateProductItemDiscount = (index: number, newDiscount: string) => {
@@ -483,7 +486,7 @@ export default function QuotesScreen() {
         discountAmount: totalItemDiscount,
         afterDiscount,
         packingCharges: newPacking,
-        total: afterDiscount + newPacking + (editingQuote?.shipping_cost || 0)
+        total: afterDiscount + newPacking + (parseFloat(editedFreight) || 0)
       };
     } else {
       // Use total discount percentage
@@ -503,7 +506,7 @@ export default function QuotesScreen() {
         discountAmount,
         afterDiscount,
         packingCharges: newPacking,
-        total: afterDiscount + newPacking + (editingQuote?.shipping_cost || 0)
+        total: afterDiscount + newPacking + (parseFloat(editedFreight) || 0)
       };
     }
   };
@@ -514,12 +517,14 @@ export default function QuotesScreen() {
     setSavingEdit(true);
     try {
       const totals = calculateEditedTotal();
+      const freightAmount = parseFloat(editedFreight) || 0;
       const updateData: any = {
         products: editedProducts,
         subtotal: totals.subtotal,
         total_discount: totals.discountAmount,
         use_item_discounts: useItemDiscounts,
         packing_charges: totals.packingCharges,
+        shipping_cost: freightAmount,  // Include edited freight
         total_price: totals.total,
       };
       
@@ -2989,6 +2994,29 @@ export default function QuotesScreen() {
                     </View>
                   )}
 
+                  {/* Freight Input */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Freight</Text>
+                    <View style={styles.freightInputRow}>
+                      <Text style={styles.freightInputLabel}>Freight Amount:</Text>
+                      <View style={styles.freightInputWrapper}>
+                        <Text style={styles.freightInputPrefix}>Rs.</Text>
+                        <TextInput
+                          style={styles.freightInput}
+                          value={editedFreight}
+                          onChangeText={setEditedFreight}
+                          keyboardType="numeric"
+                          placeholder="0"
+                        />
+                      </View>
+                    </View>
+                    {editingQuote?.shipping_cost > 0 && parseFloat(editedFreight) !== editingQuote.shipping_cost && (
+                      <Text style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
+                        Original freight: Rs. {editingQuote.shipping_cost.toFixed(2)}
+                      </Text>
+                    )}
+                  </View>
+
                   {/* Calculated Totals */}
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>Summary</Text>
@@ -3010,10 +3038,10 @@ export default function QuotesScreen() {
                     )}
                     
                     {/* Freight Charges */}
-                    {editingQuote.shipping_cost > 0 && (
+                    {(parseFloat(editedFreight) || 0) > 0 && (
                       <View style={styles.pricingRow}>
                         <Text style={styles.pricingLabel}>Freight Charges</Text>
-                        <Text style={styles.pricingValue}>Rs. {editingQuote.shipping_cost.toFixed(2)}</Text>
+                        <Text style={styles.pricingValue}>Rs. {(parseFloat(editedFreight) || 0).toFixed(2)}</Text>
                       </View>
                     )}
                     
@@ -3021,7 +3049,7 @@ export default function QuotesScreen() {
                     <View style={styles.pricingRow}>
                       <Text style={styles.pricingLabel}>Taxable Amount</Text>
                       <Text style={styles.pricingValue}>
-                        Rs. {((calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount) + calculateEditedTotal().packingCharges + (editingQuote.shipping_cost || 0)).toFixed(2)}
+                        Rs. {((calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount) + calculateEditedTotal().packingCharges + (parseFloat(editedFreight) || 0)).toFixed(2)}
                       </Text>
                     </View>
                     
@@ -3029,7 +3057,7 @@ export default function QuotesScreen() {
                     <View style={styles.pricingRow}>
                       <Text style={styles.pricingLabel}>CGST @ 9%</Text>
                       <Text style={styles.pricingValue}>
-                        Rs. {(((calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount) + calculateEditedTotal().packingCharges + (editingQuote.shipping_cost || 0)) * 0.09).toFixed(2)}
+                        Rs. {(((calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount) + calculateEditedTotal().packingCharges + (parseFloat(editedFreight) || 0)) * 0.09).toFixed(2)}
                       </Text>
                     </View>
                     
@@ -3037,7 +3065,7 @@ export default function QuotesScreen() {
                     <View style={styles.pricingRow}>
                       <Text style={styles.pricingLabel}>SGST @ 9%</Text>
                       <Text style={styles.pricingValue}>
-                        Rs. {(((calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount) + calculateEditedTotal().packingCharges + (editingQuote.shipping_cost || 0)) * 0.09).toFixed(2)}
+                        Rs. {(((calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount) + calculateEditedTotal().packingCharges + (parseFloat(editedFreight) || 0)) * 0.09).toFixed(2)}
                       </Text>
                     </View>
                     
