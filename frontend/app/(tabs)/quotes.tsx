@@ -1464,22 +1464,16 @@ export default function QuotesScreen() {
           <div class="summary-table">
             <div class="summary-row">
               <span class="summary-label">Subtotal</span>
-              <span class="summary-value">Rs. ${(quote.subtotal || 0).toFixed(2)}</span>
+              <span class="summary-value">Rs. ${((quote.subtotal || 0) - (quote.total_discount || 0)).toFixed(2)}</span>
             </div>
-            ${discount > 0 ? `
-              <div class="summary-row discount-row">
-                <span class="summary-label">${discountLabel}</span>
-                <span class="summary-value">- Rs. ${discount.toFixed(2)}</span>
-              </div>
-            ` : ''}
             ${quote.packing_charges && quote.packing_charges > 0 ? `
               <div class="summary-row">
-                <span class="summary-label">Packing Charges</span>
+                <span class="summary-label">Packing Charges (${(((quote.packing_charges || 0) / ((quote.subtotal || 1) - (quote.total_discount || 0))) * 100).toFixed(1)}%)</span>
                 <span class="summary-value">Rs. ${quote.packing_charges?.toFixed(2)}</span>
               </div>
             ` : ''}
             <div class="summary-row">
-              <span class="summary-label">Freight Charges (${quote.freight_details?.freight_percent?.toFixed(1) || '0.0'}%)</span>
+              <span class="summary-label">Freight Charges (${(((quote.shipping_cost || 0) / ((quote.subtotal || 1) - (quote.total_discount || 0))) * 100).toFixed(1)}%)</span>
               <span class="summary-value">Rs. ${(quote.shipping_cost || 0).toFixed(2)}</span>
             </div>
             <div class="summary-row" style="background: #f5f5f5;">
