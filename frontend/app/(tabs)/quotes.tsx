@@ -296,12 +296,12 @@ export default function QuotesScreen() {
     if (isAdmin && quote.status === 'pending' && isRfq && !quote.read_by_admin) {
       markAsRead(quote.id);
     }
-    // Auto-calculate freight if there's an existing delivery pincode (for pending RFQs)
-    if (quote.delivery_location && quote.delivery_location.length === 6 && quote.products && quote.products.length > 0) {
-      // Use setTimeout to ensure state is updated before calculation
+    // DON'T auto-calculate freight from pincode here - use the original freight
+    // The calculateFreightAmount function will recalculate based on discount changes
+    // Just validate the pincode if it exists
+    if (quote.delivery_location && quote.delivery_location.length === 6) {
       setTimeout(async () => {
         await validatePincode(quote.delivery_location!);
-        await calculateFreightFromPincode(quote.delivery_location!, quote.products);
       }, 100);
     }
   };
