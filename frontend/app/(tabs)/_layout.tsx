@@ -60,9 +60,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="calculator"
         options={{
-          title: 'Calculator',
+          title: 'Products',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calculator-outline" size={size} color={color} />
+            <Ionicons name="cube-outline" size={size} color={color} />
           ),
         }}
       />

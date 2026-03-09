@@ -1,571 +1,77 @@
-# Roller Price Calculator - Product Requirements Document
+# Belt Conveyor Roller Price Calculator - PRD
 
 ## Original Problem Statement
-Mobile application to calculate the price of belt conveyor rollers, serving as an engineering and quoting tool. Features include product catalog search, full admin panel for price management, customer database for quote association, GSTIN lookup, and engineering drawing generation.
-
-## Target Audience
-Sales teams, engineers, and industrial professionals in the conveyor equipment industry.
-
-## Tech Stack
-- **Frontend**: React Native (Expo), TypeScript
-- **Backend**: FastAPI (Python)
-- **Database**: MongoDB
-- **PDF Generation**: fpdf2 with Pillow
-- **Email**: Python smtplib with Gmail SMTP
-
-## Core Features
-
-### 1. Roller Price Calculator
-- Calculate prices for Carrying, Impact, and Return belt conveyor rollers
-- Selectable shaft end types (A/B/C/Custom)
-- Role-based cost breakdown visibility (admin only)
-- Editable custom discount feature
-
-### 2. Product Catalog Search
-- Search by partial terms or full codes
-- Display roller length, weight, belt width, and price
-- Quick search filters (CR, IR, 25, 30, etc.)
-- Add items to quote directly from results
-- Email and PDF download for search results
-
-### 3. Quote Management
-- Associate quotes with customers
-- Edit quantity and discount
-- GST calculation and display
-- Print customer details on final quote PDF
-
-### 4. Customer Management
-- CRUD operations for customer information
-- GSTIN lookup from local database
-
-### 5. Admin Panel
-- Secure interface for managing raw material prices
-- Read-only standards view
-- Excel export of raw material costs
-
-### 6. Engineering Drawings
-- Generate PDF engineering drawings for any roller configuration
-- Email drawing feature as alternative to direct download
-
-### 7. User Authentication (NEW - March 2026)
-- **OTP-based Email Verification** for customer signup
-  - 4-digit OTP sent to email
-  - 10-minute expiry time
-  - Resend OTP with 60-second cooldown
-  - Professional email template with Convero branding
-- JWT-based authentication for login
-- Role-based access control (Admin, Sales, Customer)
-
-## UI/UX Design
-
-### Design System (Updated March 2026)
-- **Style**: Corporate Professional
-- **Primary Color**: Carmine Red (#960018)
-- **Dark Accent**: Slate (#1E293B)
-- **Background**: Light Slate (#F8FAFC)
-- **Typography**: Clean, professional with uppercase section labels
-- **Cards**: White backgrounds with subtle shadows and borders
-
-### Key Visual Elements
-- Dark slate headers with white text
-- Professional card layouts with proper spacing
-- Carmine red accent for prices and CTAs
-- Green/Blue/Orange tags for roller type identification
-- Improved tab bar with better active state indication
-
-## Completed Work
-
-### March 9, 2026 (Latest Session - Current)
-
-- **P0 FEATURE: REVISION HISTORY** - COMPLETED ✅
-  - **User Request**: Add ability to see all changes made to a quote over time, for audit trails and customer communication
-  - **Implementation**:
-    1. **Backend API**: Added `GET /api/quotes/{quote_id}/history` endpoint to retrieve revision history
-    2. **Change Tracking**: Modified `PUT /api/quotes/{quote_id}` to automatically track changes to:
-       - Packing Type (with formatted display like "Wooden Box (8%)" → "Pallet (4%)")
-       - Packing Charges (with Rs. formatting)
-       - Freight/Shipping Cost (with Rs. formatting)
-       - Discount % and Total Discount
-       - Grand Total
-       - Product Quantities
-    3. **Frontend UI**: Added "History" button in quote detail modal (visible to admins only)
-    4. **Revision History Modal**: Timeline view with:
-       - Timestamp and user who made the change
-       - Action badge (Updated, Revised, etc.)
-       - Before values with strikethrough (red)
-       - After values in green
-       - Support for both old format (legacy revisions) and new detailed format
-  - **Files Changed**:
-    - `backend/server.py` - Added RevisionHistoryEntry model, GET /api/quotes/{quote_id}/history endpoint, change tracking in PUT endpoint, _format_packing_type helper
-    - `frontend/app/(tabs)/quotes.tsx` - Added RevisionHistoryEntry interface, state variables, fetchRevisionHistory/formatRevisionDate functions, History button, Revision History modal, styles
-  - **Testing**: Testing agent verified 100% - All backend API tests and frontend UI tests passed
-
-- **P0 FEATURE: EDITABLE PACKING TYPE IN EDIT QUOTE MODAL** - COMPLETED ✅
-  - **Issue**: When admin revises an already approved quote, they could not change the packing type
-  - **Implementation**:
-    1. **Frontend**: Added Packing Type selector UI in Edit Quote modal (`quotes.tsx` lines 3040-3100)
-       - Shows 4 radio button options: Standard (1%), Pallet (4%), Wooden Box (8%), Custom
-       - Custom option shows percentage input field when selected
-       - Dynamic calculation updates Summary section in real-time
-       - Shows "Original: [packing type]" when changed from original value
-    2. **State Management**: Added `editedPackingType` and `customPackingPercent` state variables
-    3. **Calculation Logic**: Updated `calculateEditedTotal()` function with `getPackingPercent()` helper
-       - Returns correct percentage based on selected packing type
-       - Handles both "custom" (UI selection) and "custom_5" (saved format)
-       - GST calculation now included in Grand Total
-    4. **Save Logic**: Updated `saveEditedQuote()` to pass `packing_type` to backend
-       - Custom packing type saved as "custom_X" format (e.g., "custom_5")
-    5. **Initialization**: Updated `openEditQuote()` to parse and initialize packing type
-       - Handles "custom_X" format by extracting percentage into separate state
-  - **Files Changed**:
-    - `frontend/app/(tabs)/quotes.tsx` - Added Packing Type UI section, updated calculation and save functions
-  - **Testing**: Testing agent verified 100% - Backend API update, Frontend UI display, all packing type options functional
-
-- **P0 FEATURE: AUTOMATIC FREIGHT CALCULATION** - COMPLETED ✅
-  - **Issue**: Freight charges were not being automatically calculated when admin reviewed an RFQ. Admin had to manually calculate or enter freight.
-  - **Root Cause**: Missing `/api/calculate-freight` backend endpoint and frontend handlers were not triggering freight calculation on pincode input.
-  - **Implementation**:
-    1. **Backend**: Added `/api/calculate-freight` endpoint in `server.py` (lines 4024-4065)
-       - Accepts: `{pincode: string, total_weight_kg: float}`
-       - Returns: `{destination_pincode, dispatch_pincode, distance_km, total_weight_kg, freight_rate_per_kg, freight_charges}`
-       - Uses existing zone-based distance and rate calculation from `roller_standards.py`
-    2. **Frontend**: Updated `quotes.tsx` to auto-calculate freight:
-       - `openQuoteDetail()` now triggers freight calculation if existing delivery_location exists
-       - `handlePincodeChange()` updated to call freight API when valid 6-digit pincode entered
-       - Added loading indicator and green "Auto-calculated freight: Rs. X.XX (based on weight & distance)" text
-       - Auto-populates "Custom Amount" field with calculated freight
-    3. **Weight Estimation**: Enhanced `calculateFreightFromPincode()` to find weight from multiple sources: `weight_kg`, `base_weight_kg`, `specifications.weight_kg`, `cost_breakdown.single_roller_weight_kg`, or default estimates by roller type
-  - **Files Changed**:
-    - `backend/server.py` - Added `FreightCalculationRequest`, `FreightCalculationResponse`, and `/api/calculate-freight` endpoint
-    - `frontend/app/(tabs)/quotes.tsx` - Updated `handlePincodeChange`, `openQuoteDetail`, `calculateFreightFromPincode`, and added UI feedback
-  - **Testing**: Testing agent verified 100% - Backend API returns correct freight for Gujarat/Maharashtra/Delhi/Tamil Nadu pincodes, Frontend auto-calculates on modal open and pincode change
-
-- **UI IMPROVEMENT: Review & Approve Button** - COMPLETED ✅
-  - Changed "Approve" button in RFQ detail modal to "Review & Approve"
-  - Icon changed from checkmark to edit icon to indicate review step
-  - Button now properly opens the approval modal where admin can review/edit freight, packing, discounts before final approval
-
-### March 8, 2026
-
-- **P0 BUG FIX: UNCAUGHT ERROR ON APPROVE BUTTON** - COMPLETED ✅
-  - **Issue**: Clicking "Approve" button in RFQ details modal caused an uncaught frontend error, even though the backend API call succeeded and approval email was sent
-  - **Root Cause**: State timing issue - React state updates are asynchronous. The approve button was setting `setApproveModalQuote(selectedQuote)` and immediately calling `confirmApproveRfq()`, but the state hadn't updated yet
-  - **Fix Applied**: Modified `confirmApproveRfq` to accept an optional `quoteOverride` parameter and pass the `selectedQuote` directly to the function
-  - **Files Changed**: `frontend/app/(tabs)/quotes.tsx` (lines 527-620, 2376-2392)
-  - **Testing**: Testing agent verified - NO uncaught errors occur on approve
-
-- **P1 FEATURE: EDITABLE DISCOUNTS FOR ADMIN** - COMPLETED ✅
-  - **Issue**: Admin could not edit discounts during RFQ review
-  - **Implementation**:
-    1. Added Discount section in RFQ details modal (visible only for admins on pending RFQs)
-    2. Toggle between "Total Discount" (single % applied to all items) and "Item-wise" (individual % per product)
-    3. Real-time calculation of "Total Discount Amount" shown
-    4. Discount values now passed to backend during approval via PUT /quotes/{id}
-  - **Backend Fields Updated**:
-    - `total_discount`: Total discount amount in rupees
-    - `discount_percent`: Overall discount percentage (for total discount mode)
-    - `use_item_discounts`: Boolean flag for discount mode
-    - `item_discount_percent`: Per-product discount in each product's data
-  - **Files Changed**: `frontend/app/(tabs)/quotes.tsx` (confirmApproveRfq function, discount UI section)
-  - **Testing**: Testing agent verified - Q/25-26/0070 (5% discount = Rs. 450), Q/25-26/0071 (15% discount = Rs. 660)
-
-- **EDIT RFQ MODAL WITH APPROVE/REJECT WORKFLOW** - COMPLETED ✅
-  - **Feature**: Complete Edit RFQ modal redesign with:
-    1. Display all items selected by customer with quantities, unit prices, and totals
-    2. Editable Packing Type selection (Standard 1%, Pallet 4%, Wooden Box 8%)
-    3. Editable Freight Charges with Delivery Pincode and Freight %/Custom Amount toggle
-    4. **Approve** button (green) - sends quotation to customer and admin via email
-    5. **Reject** button (red) - opens rejection reasons popup
-  - **Reject Reasons Modal**: 3 predefined reasons:
-    1. "Rejected due to low quantity"
-    2. "Rejected due to low amount"
-    3. "Rejected due to product is not within the manufacturing range"
-  - **Rejected Tab**: New tab added to quotes screen to display rejected RFQs
-  - **Backend Changes**:
-    1. Added `QuoteReject` model with reason and custom_message fields
-    2. Added `POST /api/quotes/{quote_id}/reject` endpoint
-    3. Rejection email sent to customer with reason
-    4. Added rejection tracking fields (rejected_at, rejected_by, rejection_reason)
-  - **Frontend Changes**:
-    1. Updated Edit RFQ modal with full item display
-    2. Added editable packing/freight fields
-    3. Added Approve and Reject buttons
-    4. Added Reject Reasons modal
-    5. Added Rejected tab in filter tabs
-    6. Added rejected badge display on quote cards
-  - **Testing**: Visual verification completed via screenshots
-
-- **PACKING TYPE & DELIVERY PINCODE VISIBILITY FIX** - COMPLETED ✅
-  - **Issue**: Packing Type and Delivery Pincode selected during RFQ submission were not visible in quote details, PDFs, or emails
-  - **Backend Fixes**:
-    1. Added `packing_type` field to `Quote` model (line 308)
-    2. Added `packing_type` field to `QuoteCreate` model (line 329)
-    3. Updated `create_quote` function to save `packing_type` to database (line 2803)
-    4. Updated `generate_rfq_html` function to include packing/delivery section in PDF
-    5. Updated `send_rfq_notification_email` to include packing_type and delivery_location in admin and customer emails
-    6. Updated `send_quote_approval_email` to include packing_type and delivery_location
-  - **Frontend Fixes**:
-    1. Added `packing_type` and `customer_rfq_no` to `Quote` interface in `quotes.tsx`
-  - **Testing**: Testing agent verified 100% (13/13 tests passed)
-    - Backend API correctly stores and retrieves packing_type and delivery_location
-    - Quote Details modal displays "Packing & Freight" section with both fields
-    - PDF export includes packing/delivery section
-    - Email templates include packing/delivery details
-
-- **SHARED CART IMPLEMENTATION** - COMPLETED ✅
-  - Implemented a unified shopping cart using React Context (`CartContext`)
-  - Items added from either Calculator or Search tabs now appear in a single shared cart
-  - **New Components Created**:
-    1. `CartContext.tsx` - Shared state management for cart items
-    2. `FloatingCartButton.tsx` - Shows cart count and total at bottom of screen
-    3. `CartViewModal.tsx` - Full-screen modal to view and manage cart items
-    4. `RfqSubmissionModal.tsx` - Final submission popup with Packing Type, Freight Pincode, Customer RFQ No.
-  - **UI Flow**:
-    1. User adds items from Calculator or Search tab
-    2. Items show with "CALC" or "SEARCH" tag indicating source
-    3. Click floating cart button → Opens CartViewModal showing all items
-    4. Click "Proceed to Submit" → Opens RfqSubmissionModal
-    5. User selects Packing Type, enters Freight Pincode, adds Customer Reference No.
-    6. Submit creates the quote/RFQ
-
-- **RFQ SUBMISSION POPUP REFACTOR** - COMPLETED ✅
-  - Moved Packing Type, Freight Pincode, and Customer RFQ No. fields to a final popup
-  - These options are now requested AFTER user finishes adding all items to cart
-  - Fields collected in `RfqSubmissionModal`:
-    - Packing Type (Standard 1%, Pallet 4%, Wooden Box 8%)
-    - Delivery Pincode (Optional) - for freight calculation
-    - Your Reference No. (Optional) - customer's internal tracking number
-    - Customer Selection (Admin only)
-  - Streamlined UX: no clutter during item selection
-
-- **5 New Feature Requests** - COMPLETED ✅
-  1. **Customer RFQ No. (Optional)**: Added optional reference field for customers in Calculator and Search tabs. Displays in emails and PDFs as "Customer Ref: XXX"
-  2. **Hide Prices from Customers**: Prices hidden in Search tab for customers until RFQ is approved (unit price, line total, grand total all hidden)
-  3. **Combined Cart**: ✅ NOW IMPLEMENTED via shared CartContext
-  4. **Removed "No Packing" Option**: Removed from packing type dropdown. Default is now "Standard (1%)"
-  5. **Attachments Grouped by Product**: Admin email now shows "Attachments by Product" section with attachments listed under each product name
-
-### March 7, 2026
-- **Freight Charges Feature** - COMPLETED ✅
-  - PDF now always shows Freight Charges row (0.0% if no pincode)
-  - Admin Approve RFQ modal with freight options:
-    - Toggle between "Freight %" and "Custom Amount" modes
-    - Input freight percentage or enter custom amount
-    - Real-time calculation of freight amount
-    - "Approve & Convert to Quote" button saves freight and approves
-  - Freight details stored in `freight_details` field (percent, amount, custom flag)
-
-- **PDF Format Standardization** - COMPLETED ✅
-  - ALL PDFs now use per-item discount format: SR. | ITEM CODE | QTY | RATE | DISC % | VALUE AFTER DISC | TOTAL
-  - Uppercase headers to match exact export format
-  - IST timestamp (converted from UTC)
-  - Freight row always shown with percentage
-
-- **Email PDF Matching Frontend PDF - FINAL FIX** - COMPLETED ✅
-  - Root cause: `use_item_discounts` flag was not being passed to email functions
-  - Fixed `send_quote_approval_email` call (line 3162) to include `use_item_discounts`
-  - Fixed `send_quote_revision_email` call (line 3454) to include `use_item_discounts`
-  - Testing agent verified 100% (16/16 tests passed):
-    - Backend PDF HTML matches Frontend PDF HTML structurally
-    - Table headers identical for both Total Discount and Per-Item Discount modes
-    - CSS styles identical between backend and frontend
-    - All customer fields properly included
-  - This issue has been reported 3 times and is now definitively resolved
-
-- **Per-Item Discounts Feature** - COMPLETED ✅
-  - Added per-item discount capability with new PDF table format: Sr. No. | Item Code | Qty | Rate | Disc % | Value After Disc | Total
-  - Admin can toggle between "Total Discount" and "Per-Item Discount" modes per quote
-  - When Per-Item Discount enabled:
-    - Each product has editable Discount % input
-    - Total Discount input is hidden
-    - Summary shows "Item Discounts (Total)" instead of percentage
-    - **"Apply to All Items"** feature: Enter discount % and apply to all products at once
-  - Backend updates:
-    - `QuoteProduct` model: Added `item_discount_percent` field
-    - `Quote` model: Added `use_item_discounts` boolean flag
-    - `QuoteUpdate` model: Added `use_item_discounts` and `discount_percent` fields
-    - `generate_quote_html`: Dynamic table header/format based on discount mode
-  - Frontend updates:
-    - Edit Quote modal with Discount Mode toggle
-    - Per-product discount inputs with live total calculation
-    - Bulk "Apply to All" discount feature
-    - PDF generation respects discount mode
-  - Testing: Backend 100% (9/9), Frontend verified with screenshots
-
-- **Email PDF Matching Frontend PDF** - COMPLETED ✅
-  - Fixed critical issue where PDFs attached to quote approval emails didn't match frontend-exported PDFs
-  - Root causes identified and fixed:
-    1. Quote Pydantic model was missing `customer_code`, `customer_company`, `original_rfq_number`, `approved_at`, `approved_by` fields
-    2. `generate_quote_html` function didn't use `customer_company` when `customer_details` was None
-    3. `send_quote_approval_email` and `send_quote_revision_email` weren't receiving complete quote data
-    4. Bug fix: `customer_details = quote_data.get('customer_details') or {}` to handle explicit None values
-  - All PDFs now contain: Customer Code (C0001), Company Name, Original RFQ Reference, Approval Date, Full Pricing Breakdown, T&Cs
-  - Testing agent verified 100% success rate (9/9 tests passed)
-
-- **Customer Codes Feature** - COMPLETED
-  - Auto-generated customer codes (C0001, C0002, etc.) for all customers
-  - Customer codes displayed in:
-    1. Customers list with red badge
-    2. Quotes list with red badge next to customer name
-    3. RFQ and Quote PDFs (backend generated)
-    4. Frontend Quote PDF exports
-    5. Email templates (RFQ and Quote approval)
-  - Migration endpoint to assign codes to existing customers and quotes
-  - Customer codes stored in users, customers, and quotes collections
-
-- **Quote Date Fix** - COMPLETED
-  - Approved quotes now show the approval date (`approved_at`) instead of the RFQ creation date
-  - Fixed in 3 locations:
-    1. Quote card display - shows approval date for approved quotes
-    2. Quote detail modal - shows "Approved: [date]" instead of "Created: [date]"
-    3. PDF generation - uses approval date in the header
-  - Testing agent verified 100% success rate
-
-### March 6, 2026 (Previous Session)
-- **RFQ Traceability in Quotes** - COMPLETED
-  - Added original RFQ number reference in Quote PDF (e.g., "Ref: RFQ/25-26/0045")
-  - RFQ reference shown in quote detail modal
-  - RFQ reference displayed in quote card list view (in blue)
-  - Enables tracking which RFQ was converted to which Quote
-
-- **Professional Quote PDF Redesign** - COMPLETED
-  - Clean, minimalist design with modern typography
-  - Header: Logo, Document type, Quote number, Date
-  - Info boxes: From (Convero) and Bill To (Customer) sections
-  - Product table with specifications and remarks
-  - Summary section aligned to right with clear breakdown
-  - **Commercial Terms**: Payment (25% advance, 75% before dispatch), Freight, Color charges (2%), 30-day validity
-  - **Technical Specs**: Pipe (IS-9295), Shaft (EN8), Bearing, Circlip (IS-3075), Housing (CRCA 3.15mm), Seal Set (Nylon-6), Rubber Ring (Shore 50-60), Painting (40 microns), TIR (1.6mm per IS-8598)
-  - Footer with authorized signatory space
-  - Print-optimized layout
-
-- **Export Search Results Feature** - COMPLETED
-  - **Quotes Tab**: Export button appears when searching, exports filtered quotes to CSV
-  - **Customers Tab**: Export button in header, exports customer list to CSV
-  - **Search Tab**: Export button appears when products found, exports product search results to CSV
-  - All exports include relevant columns (name, company, status, price, date, etc.)
-  - CSV format for easy import into Excel/Google Sheets
-
-- **Quote Search Feature** - COMPLETED
-  - Added search bar in Quotes tab (admin only)
-  - Search by: quote number, customer name, company, email, phone, GST, city, state, product names, status
-  - Real-time filtering with result count display
-  - Clear button to reset search
-  - Works across all tabs (All, RFQ, Approved)
-
-- **Customer Quote Management** - COMPLETED
-  - Customers automatically move to "Quoted" tab after receiving an approved quote
-  - Admin can click on any customer to see all their quotes in a modal
-  - "View Quotes" button shows on customers in the Quoted tab
-  - Quote modal displays: quote number, status (Approved/Pending), amount, date, item count
-  - Backend endpoint: GET /api/customers/{customer_id}/quotes
-
-- **Dashboard Date Range Filters** - COMPLETED
-  - Added filter pills: 7 Days, 30 Days, 3 Months, 6 Months, 1 Year, All Time
-  - Dashboard data refreshes based on selected filter
-  - Backend APIs updated to accept start_date and end_date parameters
-  - Active filter highlighted in carmine red
-
-- **Dashboard Export to PDF/Excel** - COMPLETED
-  - Added PDF and Excel export buttons to Dashboard header
-  - PDF report: Summary metrics, Top Customers table, Recent Quotes table
-  - Excel report: 4 sheets (Summary, Top Customers, Recent Quotes, Roller Types)
-  - Professional formatting with company branding (Carmine Red theme)
-  - Download functionality working on web
-
-- **Dashboard & Analytics** - COMPLETED
-  - Created new Dashboard tab (admin-only)
-  - Summary cards: Total Revenue, Total Quotes, Customers, Conversion Rate
-  - Revenue Trend line chart (6 months)
-  - Monthly Quotes bar chart
-  - Quote Status pie chart (Approved vs Pending)
-  - Top Customers by Revenue list
-  - Roller Type Distribution with progress bars
-  - Recent Quotes activity list
-  - Pull-to-refresh functionality
-  - Backend analytics APIs: dashboard summary, revenue trend, top customers, quote status, roller distribution
-
-- **Forgot Password Feature** - COMPLETED
-  - Added "Forgot Password?" link on login page
-  - Created forgot-password screen with 3-step flow: Email → OTP → Success
-  - Backend endpoints: `/api/auth/forgot-password` and `/api/auth/reset-password`
-  - OTP sent via email with 10-minute expiry
-  - Password reset with validation (min 6 chars)
-  - Cooldown timer for OTP resend (60 seconds)
-
-- **RFQ Tab Rename** - COMPLETED
-  - Changed "Pending RFQ" to "RFQ" in quotes tab
-
-- **iOS/Android Fixes** - COMPLETED  
-  - Fixed approval popup not working (replaced `window.confirm` with `Alert.alert`)
-  - Fixed logout crash (added navigation delay)
-  - Shaft end type now defaults to 'A'
-
-- **Auto-logout Feature** - COMPLETED
-  - Customers auto-logout after 7 days of inactivity
-  - Activity tracking stored in AsyncStorage
-  - Checked on app load and when app returns from background
-
-- **RFQ Approval Success Popup** - COMPLETED
-  - Added success popup modal that appears when admin clicks "Approve & Generate Quote"
-  - Popup displays: green checkmark, "Approved & Submitted!" title, new quote number, "View Approved Quotes" button
-  - Clicking "View Approved Quotes" automatically switches to the Approved tab
-  - Approved RFQs are automatically moved from "RFQ" tab to "Approved" tab
-  - Testing agent verified 100% success rate across all 7 test scenarios
-
-### March 2, 2026 (Previous Session)
-- **CRITICAL FIX: Authentication Race Condition** - Resolved the recurring bug where components rendered before auth state was fully loaded
-  - Root Layout (`_layout.tsx`): Added splash screen that blocks navigation until auth loading completes
-  - AuthContext: Enhanced with detailed logging, proper state management, `isAuthenticated` flag, and `refreshUser` method
-  - This fix ensures `isCustomer` and `isAdmin` always evaluate correctly before dependent components render
-  
-- **Attachment Download Feature Complete**:
-  - Backend endpoints: `/api/quotes/{id}/attachments/{pIdx}/{aIdx}/download` (single) and `/api/quotes/{id}/attachments/download-all` (ZIP)
-  - Frontend: Added authenticated download functions using `fetch` with Bearer token
-  - UI: Added proper styling for attachments section, showing attachment icons and download buttons
-  
-- **Admin Portal Unified with Customer Portal**:
-  - Attachments section now available for admin users (previously customer-only)
-  - Admin gets popup flow after "Add to Quote" with "Add More" and "Generate Quote" options
-  - Green "Generate Quote" button (#4CAF50) with success popup showing "Quote Generated!"
-  - Admin retains all exclusive features: visible prices, Admin tab, Customer management, Quote approval/revision
-  
-- **Testing Agent Verification**: All tests passed (100% success rate across 2 test runs)
-  - Iteration 6: Role-based UI tests (customer vs admin views)
-  - Iteration 7: Admin portal changes (attachments, popup flow, green button, success popup)
-
-### March 2026 (Previous Sessions)
-- **RFQ Feature Complete**: Customer users now generate RFQ (Request for Quote) while Admin users generate Quotes
-  - Backend: `generate_rfq_number()` creates `RFQ/YY-YY/XXXX` for customers
-  - Backend: `generate_quote_number()` creates `Q/YY-YY/XXXX` for admins  
-  - Frontend: Dynamic `docLabel` variable shows "RFQ" or "Quote" based on user role
-  - PDF: Document title shows "REQUEST FOR QUOTATION" or "QUOTATION" based on quote_number prefix
-  - Email notifications sent to admins when customers submit RFQs
-
-- **Price Hiding for Customers**: Customer users cannot see prices in any screen
-  - Calculator: Pricing, GST, Freight, Grand Total, and Configuration sections hidden
-  - Search: Price column hidden, only product specs visible
-  - Quotes: Price totals hidden in list view
-  - "Calculate Price" button renamed to "Generate RFQ"
-
-- **Customer RFQ Popup Flow**:
-  - After clicking "Generate RFQ", a popup appears with two options:
-    - "Add More Items" - add current item to RFQ and continue adding
-    - "Submit RFQ" - submit the RFQ immediately
-  - Bottom "Add to RFQ" and "Submit RFQ" buttons removed for customers
-  - Product Configuration section hidden for customers
-
-- **RFQ Approval Workflow**:
-  - Admin sees filter tabs: All / Pending RFQ / Approved
-  - Admin can click "Approve & Generate Quote" (RED button) on pending RFQs
-  - After approval, shows "Approved" badge (GREEN)
-  - Email sent to customer + info@convero.in + design@convero.in on approval
-  - Approved quotes visible to both customer and admin
-
-- **Security Fix**: Moved hardcoded admin emails to environment variables
-  - `ADMIN_REGISTRATION_EMAILS` - Recipients for new customer registration alerts
-  - `ADMIN_RFQ_EMAILS` - Recipients for new RFQ submissions
-
-- **OTP-based Email Verification**: Implemented 4-digit OTP verification for customer signup
-  - Backend: `/api/auth/send-otp`, `/api/auth/verify-otp`, `/api/auth/resend-otp` endpoints
-  - Frontend: New verify-otp.tsx screen with 4-digit input boxes
-  - Email: Professional HTML email template with OTP code
-  - Features: 10-minute expiry, 60-second resend cooldown
-  
-- **UI/UX Redesign**: Applied professional corporate look to Calculator and Search screens
-  - Updated color palette (Carmine Red + Slate)
-  - Improved typography with uppercase section labels
-  - Enhanced card designs with better shadows and borders
-  - Professional tab bar styling
-  - Login page styling improvements
-
-### Previous Sessions
-- Fixed core price calculation bug (now data-driven from MongoDB)
-- Admin panel UX improvement (read-only standards)
-- Fixed price reset functionality
-- Search functionality with Add to Quote
-- Email drawing feature
-- Quote editing (quantity/discount)
-- GST display in quotes
-- Role-based access control for cost breakdown
-- Logout functionality fix
-
-## Known Issues
-
-### ✅ Resolved (March 7, 2026)
-1. **Quote Date Display** - FIXED: Approved quotes now show approval date (`approved_at`) instead of RFQ creation date (`created_at`) in cards, modals, and PDFs.
-
-### ✅ Resolved (March 2, 2026)
-1. **Authentication Race Condition** - FIXED: Components no longer render before auth state is resolved. Splash screen blocks rendering until `loading=false`.
-
-### P1 - Pending User Verification
-1. **iOS Logout** - May still have issues. The fix (navigation delay) needs user verification on physical iOS device.
-
-### P2 - Environmental/Known Limitations
-1. **Expo Tunnel Instability** (ERR_NGROK_3200) - Environmental issue, use web preview as workaround
-2. **PDF Download on iOS** - Native share/download not working in Expo Go; workarounds available (browser tab, email)
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/send-otp` - Send OTP for registration
-- `POST /api/auth/verify-otp` - Verify OTP and create account
-- `POST /api/auth/resend-otp` - Resend OTP with cooldown
-- `POST /api/auth/login` - User login
-- `POST /api/auth/register` - Direct registration (legacy)
-
-### Pricing
-- `POST /api/admin/prices/reset`
-- `PUT /api/admin/prices/update`
-- `GET /api/admin/prices`
-
-### Quotes
-- `GET /api/quotes`
-- `POST /api/quotes`
-- `PUT /api/quotes/{quote_id}`
-
-### Search
-- `GET /api/search/product-catalog?query=`
-
-### Drawings
-- `POST /api/email-drawing`
-- `GET /api/generate-drawing-download/{product_code}`
-
-## File Structure
+The user wants to create a mobile application to calculate the price of belt conveyor rollers, serving as an engineering and quoting tool. The scope has expanded to include a product catalog search, a full admin panel for price management, a customer database, and a complete quote/RFQ generation and approval workflow with file attachments and product-specific remarks.
+
+## Core Requirements
+- **Core Function**: Calculate prices for Carrying, Impact, and Return belt conveyor rollers.
+- **Admin Panel**: Secure interface for CRUD operations, customer management, and sales analytics.
+- **Customer Management**: System to manage customers with unique, auto-incrementing customer codes.
+- **Professional UI**: A corporate look and feel with a Carmine Red color scheme.
+- **Authentication**: Secure OTP-based signup and login.
+- **Role-Based Access Control (RBAC)**: Prices are hidden from customers until a quote is formally approved.
+- **RFQ & Quote Workflow**: Full lifecycle from customer RFQ submission to admin review, edit, approval, or rejection.
+- **Pincode Validation**: Pincodes entered by customers or admins should be validated.
+- **Discount Flexibility**: Admins must be able to apply discounts either item-wise or on the total value.
+- **Search**: Users (admin and customer) should be able to search for products by code and add them to the cart.
+- **Editable Approved Quotes**: Admins must be able to edit quotes even after they have been approved.
+- **Quote Revision History**: Admins need to see a history of all changes made to a quote after it's approved.
+
+## Architecture
 ```
 /app
-├── backend/
-│   ├── server.py (main API endpoints including OTP)
-│   ├── roller_standards.py (calculation logic)
-│   ├── drawing_generator.py (PDF generation)
-│   └── price_loader.py (cached price lookups)
-├── frontend/
-│   ├── app/
-│   │   ├── (tabs)/ (main screens)
-│   │   └── auth/
-│   │       ├── login.tsx
-│   │       ├── register.tsx (updated with OTP flow)
-│   │       └── verify-otp.tsx (NEW)
-│   ├── constants/
-│   │   └── Colors.ts (design tokens)
-│   └── contexts/
-└── memory/
-    └── PRD.md
+├── backend
+│   └── server.py        # FastAPI backend with MongoDB
+└── frontend
+    └── app
+        ├── (tabs)
+        │   ├── _layout.tsx      # Tab navigation layout
+        │   ├── cart.tsx         # Shopping cart
+        │   ├── calculator.tsx   # Product calculator (renamed to "Products" in tab)
+        │   ├── quotes.tsx       # Quote management
+        │   └── search.tsx       # Product search
+        └── _layout.tsx
 ```
 
-## Upcoming Tasks
+## Completed Features (as of Dec 2025)
+- [x] Complete authentication system with OTP
+- [x] Role-based access control (admin/customer)
+- [x] Product calculator for Carrying, Impact, Return rollers
+- [x] Product search functionality
+- [x] Shopping cart with weight tracking
+- [x] RFQ submission and approval workflow
+- [x] Quote revision history
+- [x] Editable packing type in Edit Quote modal
+- [x] Real-time calculation updates in approval flow
+- [x] PDF quote generation
+- [x] Email notifications for approved/revised quotes
+- [x] Tab rename: "Calculator" → "Products" (Dec 9, 2025)
 
-### P1 - Important
-1. User acceptance testing for RFQ flow (customer creates RFQ)
-2. User acceptance testing for Quote Editing
-3. Verify Email button visibility in all search contexts
+## Pending User Verification
+1. Weight in cart bug fix - items from Search tab should show weight correctly
+2. iOS logout functionality - needs testing on physical iOS device
+3. Android system nav bar overlap - needs testing on physical Android device
 
-### P2 - Future
-1. Dashboard & Analytics
-2. Update Raw Material Costs from Excel import
-3. More quote statuses (Rejected, Processing)
+## Backlog (Prioritized)
+### P0 - Critical
+- [ ] Refactor `quotes.tsx` and `calculator.tsx` into smaller components
 
-## Credentials
+### P1 - High Priority
+- [ ] Refactor `backend/server.py` into proper FastAPI structure with routers
+
+### P2 - Medium Priority
+- [ ] Excel upload feature for updating raw material costs
+
+### P3 - Low Priority
+- [ ] Show original RFQ number on quote cards
+- [ ] Code cleanup - delete unused files
+
+## Test Credentials
 - **Admin**: test@test.com / test123
 - **Customer**: customer@test.com / test123
-- **Email Account**: info@convero.in (App password in backend/.env)
+
+## 3rd Party Integrations
+- api.postalpincode.in - Address/pincode validation
+- weasyprint - Server-side PDF generation
+- Gmail SMTP - Email notifications
+- Expo/EAS - Mobile app builds (APK/IPA)
