@@ -1177,14 +1177,14 @@ export default function CalculatorScreen() {
               </View>
             ) : searchResults.length > 0 ? (
               <View style={styles.searchResultsContainer}>
-                {searchResults.map((product, index) => (
+                {searchResults.filter(p => p).map((product, index) => (
                   <View key={index} style={styles.productCard}>
                     <TouchableOpacity 
                       style={styles.productHeader}
-                      onPress={() => setExpandedProduct(expandedProduct === product.base_code ? null : product.base_code)}
+                      onPress={() => setExpandedProduct(expandedProduct === (product.base_code || product.product_code) ? null : (product.base_code || product.product_code))}
                     >
                       <View style={styles.productInfo}>
-                        <Text style={styles.productCode}>{product.base_code}</Text>
+                        <Text style={styles.productCode}>{product.base_code || product.product_code}</Text>
                         <Text style={styles.productType}>
                           {product.roller_type.charAt(0).toUpperCase() + product.roller_type.slice(1)} Roller
                         </Text>
@@ -1195,7 +1195,7 @@ export default function CalculatorScreen() {
                       <View style={styles.productActions}>
                         <TouchableOpacity style={styles.expandBtn}>
                           <Ionicons 
-                            name={expandedProduct === product.base_code ? 'chevron-up' : 'chevron-down'} 
+                            name={expandedProduct === (product.base_code || product.product_code) ? 'chevron-up' : 'chevron-down'} 
                             size={24} 
                             color="#960018" 
                           />
@@ -1204,7 +1204,7 @@ export default function CalculatorScreen() {
                     </TouchableOpacity>
 
                     {/* Expanded Length Details */}
-                    {expandedProduct === product.base_code && (
+                    {expandedProduct === (product.base_code || product.product_code) && (
                       <View style={styles.lengthDetails}>
                         <View style={styles.lengthTableHeader}>
                           <Text style={[styles.lengthHeaderCell, { flex: 2 }]}>Code</Text>
@@ -1213,7 +1213,7 @@ export default function CalculatorScreen() {
                           {!isCustomer && <Text style={styles.lengthHeaderCell}>Price</Text>}
                           <Text style={styles.lengthHeaderCell}>Action</Text>
                         </View>
-                        {product.lengths.map((length: any, lIndex: number) => (
+                        {(product.length_details || product.lengths || []).map((length: any, lIndex: number) => (
                           <View key={lIndex} style={styles.lengthRow}>
                             <Text style={[styles.lengthCell, { flex: 2 }]}>{length.product_code}</Text>
                             <Text style={styles.lengthCell}>{length.length_mm}</Text>
