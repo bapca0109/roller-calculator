@@ -23,17 +23,25 @@ The user wants to create a mobile application to calculate the price of belt con
 ├── backend
 │   └── server.py        # FastAPI backend with MongoDB
 └── frontend
-    └── app
-        ├── (tabs)
-        │   ├── _layout.tsx      # Tab navigation layout
-        │   ├── cart.tsx         # Shopping cart
-        │   ├── calculator.tsx   # Product calculator (renamed to "Products" in tab)
-        │   ├── quotes.tsx       # Quote management
-        │   └── search.tsx       # Product search
-        └── _layout.tsx
+    ├── app
+    │   ├── (tabs)
+    │   │   ├── _layout.tsx      # Tab navigation layout (Products tab)
+    │   │   ├── cart.tsx         # Shopping cart
+    │   │   ├── calculator.tsx   # Product calculator 
+    │   │   ├── quotes.tsx       # Quote management
+    │   │   └── search.tsx       # Product search
+    │   └── _layout.tsx
+    └── components
+        └── quotes/              # NEW: Extracted quote components
+            ├── types.ts         # Shared TypeScript interfaces
+            ├── QuoteCard.tsx    # Quote list item component
+            ├── RevisionHistoryModal.tsx  # History viewer
+            ├── ApprovalSuccessModal.tsx  # Success popup
+            ├── RejectReasonModal.tsx     # Rejection modal
+            └── index.ts         # Barrel export
 ```
 
-## Completed Features (as of Dec 2025)
+## Completed Features (as of Dec 9, 2025)
 - [x] Complete authentication system with OTP
 - [x] Role-based access control (admin/customer)
 - [x] Product calculator for Carrying, Impact, Return rollers
@@ -46,6 +54,12 @@ The user wants to create a mobile application to calculate the price of belt con
 - [x] PDF quote generation
 - [x] Email notifications for approved/revised quotes
 - [x] Tab rename: "Calculator" → "Products" (Dec 9, 2025)
+- [x] **REFACTORING STARTED**: Extracted quote components (Dec 9, 2025)
+  - types.ts - Shared interfaces for Quote, QuoteProduct, RevisionHistoryEntry
+  - QuoteCard.tsx - Reusable quote list item component
+  - RevisionHistoryModal.tsx - Standalone history viewer
+  - ApprovalSuccessModal.tsx - Success popup component
+  - RejectReasonModal.tsx - Rejection flow component
 
 ## Pending User Verification
 1. Weight in cart bug fix - items from Search tab should show weight correctly
@@ -53,8 +67,18 @@ The user wants to create a mobile application to calculate the price of belt con
 3. Android system nav bar overlap - needs testing on physical Android device
 
 ## Backlog (Prioritized)
-### P0 - Critical
-- [ ] Refactor `quotes.tsx` and `calculator.tsx` into smaller components
+
+### P0 - Critical (Refactoring - IN PROGRESS)
+- [x] Created shared types.ts for quote interfaces
+- [x] Extracted QuoteCard component
+- [x] Extracted RevisionHistoryModal component
+- [x] Extracted ApprovalSuccessModal component  
+- [x] Extracted RejectReasonModal component
+- [ ] Integrate extracted components into quotes.tsx
+- [ ] Extract EditQuoteModal component
+- [ ] Extract ApproveModal component
+- [ ] Extract QuoteDetailModal component
+- [ ] Refactor calculator.tsx into smaller components
 
 ### P1 - High Priority
 - [ ] Refactor `backend/server.py` into proper FastAPI structure with routers
@@ -75,3 +99,20 @@ The user wants to create a mobile application to calculate the price of belt con
 - weasyprint - Server-side PDF generation
 - Gmail SMTP - Email notifications
 - Expo/EAS - Mobile app builds (APK/IPA)
+
+## Refactoring Notes
+The refactoring is being done incrementally to avoid breaking the application. Components are being extracted to `/app/frontend/components/quotes/` directory. The original `quotes.tsx` file (5113 lines) will be updated to use these extracted components once all modals are extracted.
+
+### Extracted Component Summary:
+| Component | Lines | Status |
+|-----------|-------|--------|
+| types.ts | ~170 | ✅ Created |
+| QuoteCard.tsx | ~265 | ✅ Created |
+| RevisionHistoryModal.tsx | ~220 | ✅ Created |
+| ApprovalSuccessModal.tsx | ~115 | ✅ Created |
+| RejectReasonModal.tsx | ~160 | ✅ Created |
+| EditQuoteModal.tsx | ~TBD | ⏳ Pending |
+| ApproveModal.tsx | ~TBD | ⏳ Pending |
+| QuoteDetailModal.tsx | ~TBD | ⏳ Pending |
+
+Total lines extracted so far: ~930 lines (potential reduction from 5113)
