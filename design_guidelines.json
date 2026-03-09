@@ -1,236 +1,154 @@
 {
   "identity": {
-    "name": "E1",
-    "mission": "Create a Corporate Professional UI that commands respect without being boring. We are building a tool for engineers, not a toy.",
-    "core_principles": [
-      "Function over Flash: Every pixel must serve a purpose.",
-      "Tactile Precision: Inputs must feel like physical switches.",
-      "Data Density: Engineers want to see the numbers, not whitespace.",
-      "Carmine Authority: Use the brand red sparingly but powerfully."
-    ]
+    "name": "Industrial Minimalist",
+    "tone": "Precision, Engineering, Efficiency, Modern Industry",
+    "description": "A clean, data-first aesthetic that prioritizes legibility and workflow efficiency. Uses Carmine Red as a strong accent against a technical slate/white background."
   },
-  "visual_style": {
-    "theme": "Corporate Professional",
-    "mode": "Light (Primary) / Dark (Secondary)",
-    "palette": {
-      "primary": {
-        "main": "#960018",
-        "light": "#C32E41",
-        "dark": "#6B0011",
-        "contrast_text": "#FFFFFF"
-      },
-      "secondary": {
-        "main": "#475569",
-        "light": "#64748B",
-        "dark": "#1E293B",
-        "contrast_text": "#FFFFFF"
-      },
-      "background": {
-        "default": "#F8FAFC",
-        "paper": "#FFFFFF",
-        "subtle": "#F1F5F9"
-      },
-      "text": {
-        "primary": "#0F172A",
-        "secondary": "#475569",
-        "disabled": "#94A3B8"
-      },
-      "status": {
-        "success": "#10B981",
-        "warning": "#F59E0B",
-        "error": "#EF4444",
-        "info": "#3B82F6"
-      },
-      "border": "#E2E8F0"
+  "typography": {
+    "font_family": {
+      "headings": "System Sans-Serif (configured as Manrope/Inter)",
+      "body": "System Sans-Serif",
+      "mono": "SpaceMono-Regular"
     },
-    "typography": {
-      "font_family": {
-        "headings": "System",
-        "body": "System",
-        "monospace": "SpaceMono"
-      },
-      "scale": {
-        "h1": { "fontSize": 32, "fontWeight": "700", "lineHeight": 40 },
-        "h2": { "fontSize": 24, "fontWeight": "700", "lineHeight": 32 },
-        "h3": { "fontSize": 20, "fontWeight": "600", "lineHeight": 28 },
-        "body_large": { "fontSize": 18, "fontWeight": "400", "lineHeight": 28 },
-        "body": { "fontSize": 16, "fontWeight": "400", "lineHeight": 24 },
-        "caption": { "fontSize": 14, "fontWeight": "500", "color": "#64748B" },
-        "overline": { "fontSize": 12, "fontWeight": "700", "textTransform": "uppercase", "letterSpacing": 1 }
-      }
-    },
-    "spacing": {
-      "base_unit": 4,
-      "scale": {
-        "xs": 4,
-        "s": 8,
-        "m": 16,
-        "l": 24,
-        "xl": 32,
-        "xxl": 48
-      }
-    },
-    "shapes": {
-      "radius": {
-        "sm": 4,
-        "md": 8,
-        "lg": 12,
-        "xl": 16,
-        "full": 9999
-      },
-      "border_width": {
-        "hairline": 0.5,
-        "thin": 1,
-        "thick": 2
-      }
-    },
-    "shadows": {
-      "card": {
-        "shadowColor": "#000",
-        "shadowOffset": { "width": 0, "height": 2 },
-        "shadowOpacity": 0.1,
-        "shadowRadius": 4,
-        "elevation": 3
-      },
-      "floating": {
-        "shadowColor": "#960018",
-        "shadowOffset": { "width": 0, "height": 4 },
-        "shadowOpacity": 0.2,
-        "shadowRadius": 8,
-        "elevation": 6
-      }
+    "styles": {
+      "h1": "text-2xl font-bold tracking-tight text-slate-900",
+      "h2": "text-xl font-semibold tracking-tight text-slate-900",
+      "h3": "text-lg font-medium text-slate-800",
+      "body": "text-base text-slate-600",
+      "caption": "text-sm text-slate-500",
+      "label": "text-xs font-medium uppercase tracking-wider text-slate-500"
     }
   },
-  "components": {
-    "Button": {
-      "default_props": {
-        "activeOpacity": 0.8
-      },
-      "variants": {
-        "primary": {
-          "backgroundColor": "#960018",
-          "borderRadius": 8,
-          "paddingVertical": 12,
-          "paddingHorizontal": 24,
-          "alignItems": "center",
-          "justifyContent": "center",
-          "minHeight": 48
-        },
-        "secondary": {
-          "backgroundColor": "transparent",
-          "borderWidth": 1,
-          "borderColor": "#960018",
-          "borderRadius": 8,
-          "paddingVertical": 12,
-          "paddingHorizontal": 24,
-          "alignItems": "center",
-          "justifyContent": "center",
-          "minHeight": 48
-        },
-        "ghost": {
-          "backgroundColor": "transparent",
-          "paddingVertical": 8,
-          "paddingHorizontal": 16
-        }
-      },
-      "text_style": {
-        "primary": { "color": "#FFFFFF", "fontWeight": "600", "fontSize": 16 },
-        "secondary": { "color": "#960018", "fontWeight": "600", "fontSize": 16 },
-        "ghost": { "color": "#475569", "fontWeight": "500", "fontSize": 14 }
-      }
+  "colors": {
+    "primary": {
+      "DEFAULT": "#960018",
+      "50": "#fdf2f2",
+      "100": "#fde8e8",
+      "200": "#fbd5d5",
+      "300": "#f8b4b4",
+      "400": "#f98080",
+      "500": "#960018",
+      "600": "#750012",
+      "700": "#5a000e",
+      "800": "#42000a",
+      "900": "#2b0006"
     },
-    "Input": {
-      "container": {
-        "marginBottom": 16
-      },
-      "label": {
-        "fontSize": 12,
-        "fontWeight": "700",
-        "color": "#475569",
-        "textTransform": "uppercase",
-        "marginBottom": 8,
-        "letterSpacing": 0.5
-      },
-      "field": {
-        "backgroundColor": "#FFFFFF",
-        "borderWidth": 1,
-        "borderColor": "#E2E8F0",
-        "borderRadius": 8,
-        "paddingHorizontal": 12,
-        "height": 48,
-        "fontSize": 16,
-        "color": "#0F172A"
-      },
-      "focused": {
-        "borderColor": "#960018",
-        "backgroundColor": "#FFF5F5"
-      }
+    "secondary": {
+      "DEFAULT": "#475569",
+      "foreground": "#ffffff"
     },
-    "Card": {
-      "style": {
-        "backgroundColor": "#FFFFFF",
-        "borderRadius": 12,
-        "padding": 16,
-        "marginBottom": 16,
-        "borderWidth": 1,
-        "borderColor": "#E2E8F0"
-      },
-      "header": {
-        "flexDirection": "row",
-        "justifyContent": "space-between",
-        "alignItems": "center",
-        "marginBottom": 12,
-        "borderBottomWidth": 1,
-        "borderBottomColor": "#F1F5F9",
-        "paddingBottom": 8
-      }
+    "background": {
+      "default": "#F8FAFC",
+      "paper": "#FFFFFF",
+      "subtle": "#F1F5F9"
+    },
+    "text": {
+      "primary": "#0F172A",
+      "secondary": "#64748B",
+      "muted": "#94A3B8",
+      "inverted": "#FFFFFF"
+    },
+    "border": {
+      "default": "#E2E8F0",
+      "focus": "#960018"
+    },
+    "status": {
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "error": "#EF4444",
+      "info": "#3B82F6"
     }
   },
   "layout_strategies": {
-    "Calculator": {
-      "description": "Dense, form-heavy layout. Prioritize clear input-output mapping.",
-      "structure": "Single column scroll view. Inputs grouped by section (e.g., 'Dimensions', 'Material'). Floating 'Calculate' button at bottom or sticky footer.",
-      "tips": "Use specialized keypads (numeric) for dimensions."
+    "dashboard": {
+      "type": "bento_grid",
+      "description": "Asymmetrical grid layout. Major metrics (Total Sales) take 2x1 or 2x2 spans. Quick actions are 1x1.",
+      "gap": "gap-4",
+      "padding": "p-4"
     },
-    "Search": {
-      "description": "List view with expandable details.",
-      "structure": "Search bar fixed at top. FlatList for results. Each item is a card showing Part #, OD, and Length. Tap to expand for Price and 'Add to Quote'.",
-      "tips": "Use 'skeletons' while loading."
+    "lists": {
+      "style": "flat_list",
+      "item_style": "bg-white border-b border-slate-100 py-4 px-4 active:bg-slate-50",
+      "separator": "border-slate-100"
     },
-    "Quote": {
-      "description": "Table-like view.",
-      "structure": "Header with customer info. List of line items. Summary footer with 'Total' and action buttons (PDF, Email)."
+    "forms": {
+      "style": "stacked",
+      "spacing": "space-y-4",
+      "input_bg": "bg-white",
+      "input_border": "border-slate-200"
+    },
+    "calculator": {
+      "style": "split_view",
+      "input_section": "p-4 bg-white rounded-lg shadow-sm mb-4",
+      "result_section": "p-6 bg-slate-900 rounded-lg text-white mb-4",
+      "result_text": "text-3xl font-mono font-bold text-white"
     }
   },
-  "image_assets": {
-    "hero_background": {
-      "url": "https://images.unsplash.com/photo-1720036236694-d0a231c52563?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwxfHxpbmR1c3RyaWFsJTIwY29udmV5b3IlMjByb2xsZXIlMjBzdGVlbCUyMHdhcmVob3VzZSUyMGZhY3Rvcnl8ZW58MHx8fHwxNzcyMzU1OTcyfDA&ixlib=rb-4.1.0&q=85",
-      "description": "Industrial factory background for Login/Welcome screens",
-      "category": "background"
+  "components": {
+    "buttons": {
+      "primary": "bg-[#960018] rounded-md py-3 px-6 shadow-sm active:opacity-90",
+      "primary_text": "text-white font-medium text-center",
+      "secondary": "bg-white border border-slate-200 rounded-md py-3 px-6 active:bg-slate-50",
+      "secondary_text": "text-slate-700 font-medium text-center",
+      "ghost": "bg-transparent py-2 px-4 active:bg-slate-100",
+      "ghost_text": "text-slate-600 font-medium text-center"
     },
-    "placeholder_product": {
-      "url": "https://via.placeholder.com/300x200?text=Roller+Image",
-      "description": "Fallback image for rollers if no specific image is available",
-      "category": "product"
+    "cards": {
+      "default": "bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden",
+      "hover": "active:shadow-md transition-shadow duration-200"
+    },
+    "inputs": {
+      "default": "bg-white border border-slate-200 rounded-md px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-[#960018] focus:ring-1 focus:ring-[#960018]",
+      "label": "block text-sm font-medium text-slate-700 mb-1"
+    },
+    "badges": {
+      "base": "px-2 py-0.5 rounded text-xs font-medium",
+      "success": "bg-emerald-50 text-emerald-700 border border-emerald-100",
+      "warning": "bg-amber-50 text-amber-700 border border-amber-100",
+      "error": "bg-red-50 text-red-700 border border-red-100",
+      "neutral": "bg-slate-100 text-slate-600 border border-slate-200"
     }
+  },
+  "assets": {
+    "images": [
+      {
+        "category": "hero_background",
+        "url": "https://images.unsplash.com/photo-1748946469988-61310d7ea26a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDN8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBmYWN0b3J5JTIwY29udmV5b3IlMjBiZWx0JTIwc3lzdGVtJTIwY2xlYW58ZW58MHx8fHwxNzczMDc3MzQyfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Industrial factory background for Login/Signup screens"
+      },
+      {
+        "category": "product_placeholder",
+        "url": "https://images.unsplash.com/photo-1764875471704-95de704ee3a2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTN8MHwxfHNlYXJjaHwyfHxtZXRhbCUyMGNvbnZleW9yJTIwcm9sbGVyfGVufDB8fHx8MTc3MzA3NzM1M3ww&ixlib=rb-4.1.0&q=85",
+        "description": "Default image for conveyor roller products"
+      },
+      {
+        "category": "blueprint_abstract",
+        "url": "https://images.unsplash.com/photo-1727522974676-c2f9c32ee692?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzV8MHwxfHNlYXJjaHw0fHxhYnN0cmFjdCUyMGluZHVzdHJpYWwlMjBibHVlcHJpbnRzJTIwdGVjaG5pY2FsJTIwZHJhd2luZ3xlbnwwfHx8fDE3NzMwNzczNDV8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract blueprint for empty states or headers"
+      },
+      {
+        "category": "user_avatar",
+        "url": "https://images.pexels.com/photos/4484075/pexels-photo-4484075.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Placeholder for user profile (Engineer with tablet)"
+      }
+    ]
   },
   "instructions_to_main_agent": [
-    "IMPORTANT: The project structure contains .tsx files, but you are instructed to Provide Guidelines Compatible with .js logic. You may write code in .tsx if the file exists, or .js if creating new ones, but avoid complex TypeScript interfaces in your reasoning to keep it simple as per instructions.",
-    "Use 'StyleSheet.create' for all styles. Do not use inline styles for complex components.",
-    "Ensure all interactive elements (Touchable, TextInput, Button) have a 'data-testid' prop for testing.",
-    "Respect the Safe Area Context. Always wrap screens in <SafeAreaView> or use useSafeAreaInsets().",
-    "For the Calculator, use 'KeyboardAvoidingView' to prevent the keyboard from hiding inputs.",
-    "Use the predefined color palette constants. Create a 'constants/Colors.ts' or '.js' file if it doesn't exist.",
-    "Do not use generic 'blue' for links. Use the Primary Red (#960018) or Secondary Slate (#475569).",
-    "For icons, use '@expo/vector-icons' (Ionicons or MaterialCommunityIcons).",
-    "Keep the 'Carmine Red' as the primary action color (Buttons, Active Tabs, Highlights).",
-    "Never use pure black (#000). Use Slate 900 (#0F172A) instead."
+    "Use React Native StyleSheet or NativeWind (Tailwind) classes as configured in the project.",
+    "Prioritize 'View' and 'Text' structure over heavy external libraries for simple layouts.",
+    "Ensure all touch targets are at least 44x44 points for industrial usage (gloves/busy hands).",
+    "For the Calculator: Use distinct visual separation between Inputs (White bg) and Results (Dark bg or Highlighted Border).",
+    "For Quotes: Use a clear status indicator (e.g., a colored left border on the list item) rather than just a badge.",
+    "Navigation: Ensure the Bottom Tab Bar has a clean, high-contrast look (White bg, Slate 900 active icon, Slate 400 inactive).",
+    "Accessibility: Ensure high contrast for all text. The Carmine Red should be used for primary actions and active states.",
+    "Do not use gradients for backgrounds. Stick to flat, solid colors or subtle patterns (like the blueprint image with low opacity)."
   ],
   "universal_guidelines": [
-    "Accessibility: Ensure text contrast ratio is at least 4.5:1 against the background.",
-    "Touch Targets: Minimum 44x44 points for all buttons.",
-    "Feedback: All buttons must have an 'activeOpacity' or visual change on press.",
-    "Loading: Show a tailored loading spinner (ActivityIndicator color='#960018') for all async actions.",
-    "Error Handling: Display user-friendly error messages in red (#EF4444) below inputs."
+    "Avoid generic 'on distribution' AI aesthetics.",
+    "Don't center everything. Left align text for readability.",
+    "Use generous padding (p-4, p-6) inside cards.",
+    "Micro-interactions: Add active opacity to all touchables.",
+    "Use 'sonner' or similar toast for notifications if available, otherwise standard Alert.",
+    "Data-Test-IDs: All interactive elements must have a unique testID prop."
   ]
 }
