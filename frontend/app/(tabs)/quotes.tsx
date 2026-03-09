@@ -727,6 +727,13 @@ export default function QuotesScreen() {
       });
     }
     
+    // Sort by date - newest first
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.approved_at || a.created_at || 0).getTime();
+      const dateB = new Date(b.approved_at || b.created_at || 0).getTime();
+      return dateB - dateA; // Descending order (newest first)
+    });
+    
     return filtered;
   };
 
