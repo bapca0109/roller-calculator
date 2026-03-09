@@ -2857,7 +2857,7 @@ async def create_quote(
         "customer_rfq_no": quote.customer_rfq_no,  # Customer's own reference number (optional)
         "products": processed_products,
         "subtotal": subtotal,
-        "total_discount": total_discount,
+        "total_discount": 0,  # No system discount - admin will set during approval
         "shipping_cost": 0.0,
         "delivery_location": quote.delivery_location,
         "packing_type": quote.packing_type,  # Packing type from cart submission
