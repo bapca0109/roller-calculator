@@ -91,6 +91,70 @@ async def generate_rfq_number():
     seq_num = counter.get("seq", 1)
     return f"RFQ/{fy}/{seq_num:04d}"
 
+
+def get_convero_logo_base64():
+    """Get Convero logo as base64 string for PDF embedding"""
+    try:
+        logo_path = ROOT_DIR / 'static' / 'convero-logo.png'
+        if logo_path.exists():
+            with open(logo_path, 'rb') as f:
+                return base64.b64encode(f.read()).decode('utf-8')
+    except Exception as e:
+        logging.warning(f"Could not load logo: {e}")
+    return None
+
+
+def get_pdf_header_html(doc_title: str, doc_number: str, doc_date: str, rfq_ref: str = None):
+    """Generate PDF header HTML with Convero logo and timestamp"""
+    logo_base64 = get_convero_logo_base64()
+    report_generated = get_ist_now().strftime("%d %b %Y at %I:%M:%S %p IST")
+    
+    if logo_base64:
+        logo_html = f'<img src="data:image/png;base64,{logo_base64}" style="height: 45px; width: auto;" alt="Convero" />'
+    else:
+        logo_html = '<div class="logo">C<span>O</span>NVER<span>O</span></div>'
+    
+    rfq_ref_html = f'<div class="doc-ref">Ref: {rfq_ref}</div>' if rfq_ref else ''
+    
+    return f'''
+        <div class="header">
+          <div class="logo-section">
+            {logo_html}
+            <div class="company-tagline">SOLUTIONS</div>
+          </div>
+          <div class="doc-type">
+            <div class="doc-title">{doc_title}</div>
+            <div class="doc-number">{doc_number}</div>
+            {rfq_ref_html}
+            <div class="doc-date">{doc_date}</div>
+          </div>
+        </div>
+        <div class="report-generated">
+          Report Generated: {report_generated}
+        </div>
+    '''
+
+
+def get_pdf_footer_html():
+    """Generate PDF footer HTML with timestamp"""
+    generated_time = get_ist_now().strftime("%d %b %Y, %I:%M %p IST")
+    return f'''
+        <div class="footer">
+          <div class="footer-left">
+            <div class="footer-company">Convero Solutions</div>
+            <div>Conveyor Roller Manufacturer</div>
+            <div>Ahmedabad, Gujarat - India</div>
+          </div>
+          <div class="footer-right">
+            <div class="footer-signature">Authorized Signature</div>
+          </div>
+        </div>
+        <div class="footer-note">
+          This is a computer-generated document. Generated on {generated_time}
+        </div>
+    '''
+
+
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 # Add connection options for Atlas compatibility
@@ -652,6 +716,10 @@ def generate_rfq_html(rfq_data: dict) -> str:
     display_date = ist_now.strftime("%d %b %Y")
     quote_number = rfq_data.get('quote_number', 'N/A')
     
+    # Get logo for PDF header
+    logo_base64 = get_convero_logo_base64() or ""
+    report_generated = get_ist_now().strftime("%d %b %Y at %I:%M:%S %p IST")
+    
     # Generate products HTML - WITHOUT PRICES
     products = rfq_data.get('products', [])
     products_html = ""
@@ -755,7 +823,9 @@ def generate_rfq_html(rfq_data: dict) -> str:
             }}
             .logo {{ font-size: 26px; font-weight: 800; letter-spacing: -1px; color: #1a1a1a; }}
             .logo span {{ color: #960018; }}
+            .logo-section img {{ height: 45px; width: auto; }}
             .company-tagline {{ font-size: 9px; color: #666; letter-spacing: 3px; margin-top: 2px; }}
+            .report-generated {{ font-size: 8px; color: #666; text-align: right; margin-bottom: 10px; font-style: italic; }}
             .doc-type {{ text-align: right; }}
             .doc-title {{ font-size: 18px; font-weight: 700; color: #960018; letter-spacing: 1px; }}
             .doc-number {{ font-size: 13px; font-weight: 600; color: #333; margin-top: 3px; }}
@@ -776,8 +846,8 @@ def generate_rfq_html(rfq_data: dict) -> str:
     </head>
     <body>
         <div class="header">
-            <div>
-                <div class="logo">C<span>O</span>NVER<span>O</span></div>
+            <div class="logo-section">
+                <img src="data:image/png;base64,{logo_base64}" style="height: 45px; width: auto;" alt="Convero" />
                 <div class="company-tagline">SOLUTIONS</div>
             </div>
             <div class="doc-type">
@@ -786,6 +856,7 @@ def generate_rfq_html(rfq_data: dict) -> str:
                 <div class="doc-date">{display_date}</div>
             </div>
         </div>
+        <div class="report-generated">Report Generated: {report_generated}</div>
 
         <div class="info-section">
             <div class="info-box">
@@ -989,6 +1060,10 @@ def generate_quote_html(quote_data: dict) -> str:
     quote_date = utc_to_ist(quote_date) if quote_date else get_ist_now()
     
     display_date = quote_date.strftime("%d %b %Y, %I:%M %p")
+    
+    # Get logo for PDF header
+    logo_base64 = get_convero_logo_base64() or ""
+    report_generated = get_ist_now().strftime("%d %b %Y at %I:%M:%S %p IST")
     
     # Determine if RFQ or Quote
     quote_number = quote_data.get('quote_number', 'N/A')
@@ -1224,9 +1299,13 @@ def generate_quote_html(quote_data: dict) -> str:
             align-items: flex-start;
             padding-bottom: 15px;
             border-bottom: 2px solid #960018;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
           }}
           .logo-section {{ }}
+          .logo-section img {{
+            height: 45px;
+            width: auto;
+          }}
           .logo {{
             font-size: 26px;
             font-weight: 800;
@@ -1239,6 +1318,13 @@ def generate_quote_html(quote_data: dict) -> str:
             color: #666;
             letter-spacing: 3px;
             margin-top: 2px;
+          }}
+          .report-generated {{
+            font-size: 8px;
+            color: #666;
+            text-align: right;
+            margin-bottom: 10px;
+            font-style: italic;
           }}
           .doc-type {{
             text-align: right;
@@ -1480,10 +1566,10 @@ def generate_quote_html(quote_data: dict) -> str:
         </style>
       </head>
       <body>
-        <!-- Header -->
+        <!-- Header with Logo -->
         <div class="header">
           <div class="logo-section">
-            <div class="logo">C<span>O</span>NVER<span>O</span></div>
+            <img src="data:image/png;base64,{logo_base64}" style="height: 45px; width: auto;" alt="Convero" />
             <div class="company-tagline">SOLUTIONS</div>
           </div>
           <div class="doc-type">
@@ -1493,6 +1579,7 @@ def generate_quote_html(quote_data: dict) -> str:
             <div class="doc-date">{display_date}</div>
           </div>
         </div>
+        <div class="report-generated">Report Generated: {report_generated}</div>
 
         <!-- Info Section -->
         <div class="info-section">
@@ -6273,16 +6360,25 @@ async def export_analytics_pdf(current_user: dict = Depends(get_current_user)):
         pdf.add_page()
         pdf.set_auto_page_break(auto=True, margin=15)
         
-        # Header
+        # Header with Convero branding
         pdf.set_fill_color(150, 0, 24)  # Carmine Red
-        pdf.rect(0, 0, 210, 35, 'F')
+        pdf.rect(0, 0, 210, 40, 'F')
         pdf.set_text_color(255, 255, 255)
-        pdf.set_font('Helvetica', 'B', 20)
-        pdf.set_xy(10, 10)
+        
+        # Company name
+        pdf.set_font('Helvetica', 'B', 16)
+        pdf.set_xy(10, 8)
+        pdf.cell(0, 8, 'CONVERO SOLUTIONS')
+        
+        # Report title
+        pdf.set_font('Helvetica', 'B', 18)
+        pdf.set_xy(10, 18)
         pdf.cell(0, 10, 'Dashboard Analytics Report', align='C')
-        pdf.set_font('Helvetica', '', 10)
-        pdf.set_xy(10, 22)
-        pdf.cell(0, 8, f'Generated on {now.strftime("%d %b %Y, %I:%M %p IST")}', align='C')
+        
+        # Generated timestamp
+        pdf.set_font('Helvetica', '', 9)
+        pdf.set_xy(10, 30)
+        pdf.cell(0, 8, f'Report Generated: {now.strftime("%d %b %Y at %I:%M:%S %p IST")}', align='C')
         
         # Reset text color
         pdf.set_text_color(0, 0, 0)
