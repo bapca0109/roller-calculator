@@ -11,11 +11,6 @@ The user wants to create a mobile application to calculate the price of belt con
 - **Authentication**: Secure OTP-based signup and login.
 - **Role-Based Access Control (RBAC)**: Prices are hidden from customers until a quote is formally approved.
 - **RFQ & Quote Workflow**: Full lifecycle from customer RFQ submission to admin review, edit, approval, or rejection.
-- **Pincode Validation**: Pincodes entered by customers or admins should be validated.
-- **Discount Flexibility**: Admins must be able to apply discounts either item-wise or on the total value.
-- **Search**: Users (admin and customer) should be able to search for products by code and add them to the cart.
-- **Editable Approved Quotes**: Admins must be able to edit quotes even after they have been approved.
-- **Quote Revision History**: Admins need to see a history of all changes made to a quote after it's approved.
 
 ## Architecture
 ```
@@ -28,94 +23,85 @@ The user wants to create a mobile application to calculate the price of belt con
     │   │   ├── _layout.tsx      # Tab navigation layout (Products tab)
     │   │   ├── cart.tsx         # Shopping cart
     │   │   ├── calculator.tsx   # Product calculator 
-    │   │   ├── quotes.tsx       # Quote management (REFACTORED: 5113 → 4747 lines)
+    │   │   ├── quotes.tsx       # Quote management (REFACTORED)
     │   │   └── search.tsx       # Product search
-    │   └── _layout.tsx
-    └── components
-        └── quotes/              # EXTRACTED: Quote components (891 lines total)
-            ├── types.ts         # Shared TypeScript interfaces (170 lines)
-            ├── QuoteCard.tsx    # Quote list item component (294 lines) ✅ INTEGRATED
-            ├── RevisionHistoryModal.tsx  # History viewer (277 lines) ✅ INTEGRATED
-            ├── ApprovalSuccessModal.tsx  # Success popup (138 lines) ✅ INTEGRATED
-            ├── RejectReasonModal.tsx     # Rejection modal (182 lines) ✅ INTEGRATED
-            └── index.ts         # Barrel export
+    │   └── auth
+    │       └── login.tsx        # REDESIGNED: New industrial minimalist login
+    ├── components
+    │   └── quotes/              # EXTRACTED: Quote components
+    │       ├── types.ts         
+    │       ├── QuoteCard.tsx    
+    │       ├── RevisionHistoryModal.tsx  
+    │       ├── ApprovalSuccessModal.tsx  
+    │       ├── RejectReasonModal.tsx     
+    │       └── index.ts         
+    └── theme
+        └── index.ts             # NEW: Design system theme file
 ```
 
 ## Completed Features (as of Dec 9, 2025)
-- [x] Complete authentication system with OTP
-- [x] Role-based access control (admin/customer)
-- [x] Product calculator for Carrying, Impact, Return rollers
-- [x] Product search functionality
-- [x] Shopping cart with weight tracking
-- [x] RFQ submission and approval workflow
-- [x] Quote revision history
-- [x] Editable packing type in Edit Quote modal
-- [x] Real-time calculation updates in approval flow
-- [x] PDF quote generation
-- [x] Email notifications for approved/revised quotes
-- [x] Tab rename: "Calculator" → "Products" (Dec 9, 2025) ✅
-- [x] **REFACTORING Phase 2 COMPLETE** (Dec 9, 2025) ✅
-  - Extracted and integrated QuoteCard component
-  - Extracted and integrated RevisionHistoryModal component
-  - Extracted and integrated ApprovalSuccessModal component  
-  - Extracted and integrated RejectReasonModal component
-  - Reduced quotes.tsx from 5113 → 4747 lines (366 lines reduction)
-  - All tests PASSED (100% success rate)
+
+### This Session:
+1. ✅ **Tab Rename**: "Calculator" → "Products" with new cube icon
+2. ✅ **Refactoring Phase 2**: 
+   - Extracted 4 components from monolithic quotes.tsx
+   - Reduced quotes.tsx from 5113 → 4747 lines (366 lines / 7.2%)
+   - All tests passed (100% success rate)
+3. ✅ **Design System Created**: 
+   - `/app/frontend/theme/index.ts` - Centralized theme with colors, typography, spacing
+   - `/app/design_guidelines.json` - Complete design guidelines for "Industrial Minimalist" aesthetic
+4. ✅ **Login Page Redesigned**: 
+   - New two-tone background (Carmine Red top + Dark slate bottom)
+   - Floating white form card with enhanced inputs
+   - Password visibility toggle
+   - Modern typography and spacing
+   - Professional "RollerQuote Pro" branding
+
+### Design System Highlights:
+- **Primary Color**: Carmine Red (#960018)
+- **Background**: Slate tones (#F8FAFC, #F1F5F9, #0F172A)
+- **Typography**: Clean sans-serif with uppercase labels
+- **Cards**: White with subtle shadows, rounded corners (12-20px)
+- **Inputs**: Light gray backgrounds with focus states
+- **Buttons**: Solid Carmine Red with hover states
+
+## Known Issues
+- **Expo Tunnel (ERR_NGROK_3200)**: Recurring environment issue causing preview unavailability. This is a platform-level issue, not code-related.
 
 ## Pending User Verification
-1. Weight in cart bug fix - items from Search tab should show weight correctly
-2. iOS logout functionality - needs testing on physical iOS device
-3. Android system nav bar overlap - needs testing on physical Android device
+1. Weight in cart bug fix - items from Search tab
+2. iOS logout functionality
+3. Android system nav bar overlap
 
 ## Backlog (Prioritized)
 
-### P0 - Critical (Refactoring - IN PROGRESS)
-- [x] Created shared types.ts for quote interfaces
-- [x] Extracted and integrated QuoteCard component
-- [x] Extracted and integrated RevisionHistoryModal component
-- [x] Extracted and integrated ApprovalSuccessModal component  
-- [x] Extracted and integrated RejectReasonModal component
-- [ ] Extract EditQuoteModal component (~300 lines)
-- [ ] Extract ApproveModal component (~300 lines)
-- [ ] Extract QuoteDetailModal component (~500 lines)
-- [ ] Refactor calculator.tsx into smaller components (3683 lines)
+### P0 - Critical (Refactoring)
+- [x] Tab rename ✅
+- [x] Extract quote components ✅
+- [x] Design system + Login redesign ✅
+- [ ] Redesign remaining screens (Dashboard, Products, Quotes, etc.)
+- [ ] Continue extracting quote modals (EditQuoteModal, ApproveModal, QuoteDetailModal)
+- [ ] Refactor calculator.tsx
 
-### P1 - High Priority
-- [ ] Refactor `backend/server.py` into proper FastAPI structure with routers
+### P1 - CRM Features (User Suggested)
+- [ ] Sales Pipeline/Funnel Dashboard
+- [ ] Lead Management
+- [ ] Follow-up & Task System
+- [ ] Customer 360° View
+- [ ] Communication Hub (WhatsApp, Email)
 
-### P2 - Medium Priority
-- [ ] Excel upload feature for updating raw material costs
-
-### P3 - Low Priority
-- [ ] Show original RFQ number on quote cards
-- [ ] Code cleanup - delete unused files
+### P2 - Other
+- [ ] Excel upload for raw material costs
+- [ ] Refactor backend/server.py
 
 ## Test Credentials
 - **Admin**: test@test.com / test123
 - **Customer**: customer@test.com / test123
 
-## 3rd Party Integrations
-- api.postalpincode.in - Address/pincode validation
-- weasyprint - Server-side PDF generation
-- Gmail SMTP - Email notifications
-- Expo/EAS - Mobile app builds (APK/IPA)
-
-## Refactoring Progress Summary
-
-| Component | Lines | Status | Tests |
-|-----------|-------|--------|-------|
-| types.ts | ~170 | ✅ Created | PASS |
-| QuoteCard.tsx | 294 | ✅ Integrated | PASS |
-| RevisionHistoryModal.tsx | 277 | ✅ Integrated | PASS |
-| ApprovalSuccessModal.tsx | 138 | ✅ Integrated | PASS |
-| RejectReasonModal.tsx | 182 | ✅ Integrated | PASS |
-| EditQuoteModal.tsx | TBD | ⏳ Pending | - |
-| ApproveModal.tsx | TBD | ⏳ Pending | - |
-| QuoteDetailModal.tsx | TBD | ⏳ Pending | - |
-
-**Total lines extracted so far:** 891 lines
-**quotes.tsx reduction:** 5113 → 4747 lines (366 lines = 7.2% reduction)
-**Target:** Continue extracting remaining modals to achieve ~50% reduction
+## Design Files Created
+- `/app/design_guidelines.json` - Complete design guidelines
+- `/app/frontend/theme/index.ts` - Theme constants and colors
+- `/app/frontend/app/auth/login.tsx` - Redesigned login screen
 
 ## Test Reports
 - `/app/test_reports/iteration_21.json` - Refactoring Phase 2 tests (100% PASS)

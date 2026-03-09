@@ -10,15 +10,19 @@ import {
   ScrollView,
   Alert,
   Image,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
+const { width, height } = Dimensions.get('window');
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
@@ -40,127 +44,232 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Image 
-            source={require('../../assets/images/logo.png')} 
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.title}>Roller Price Calculator</Text>
-          <Text style={styles.subtitle}>Sign in to your account</Text>
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+    <View style={styles.container}>
+      {/* Modern gradient-like background using overlapping views */}
+      <View style={styles.backgroundTop} />
+      <View style={styles.backgroundPattern} />
+      
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Logo Section */}
+          <View style={styles.logoSection}>
+            <View style={styles.logoContainer}>
+              <Ionicons name="analytics" size={48} color="#FFFFFF" />
+            </View>
+            <Text style={styles.brandName}>RollerQuote Pro</Text>
+            <Text style={styles.tagline}>Industrial Pricing Solutions</Text>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+          {/* Form Card */}
+          <View style={styles.formCard}>
+            <Text style={styles.welcomeText}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Sign in to continue</Text>
+
+            {/* Email Input */}
+            <View style={styles.inputWrapper}>
+              <Text style={styles.inputLabel}>EMAIL</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons name="mail-outline" size={20} color="#64748B" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  placeholderTextColor="#94A3B8"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  data-testid="login-email-input"
+                />
+              </View>
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputWrapper}>
+              <Text style={styles.inputLabel}>PASSWORD</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#94A3B8"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  data-testid="login-password-input"
+                />
+                <TouchableOpacity 
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                  data-testid="toggle-password-visibility"
+                >
+                  <Ionicons 
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
+                    size={20} 
+                    color="#64748B" 
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Forgot Password */}
+            <TouchableOpacity
+              style={styles.forgotButton}
+              onPress={() => router.push('/auth/forgot-password')}
+              data-testid="forgot-password-link"
+            >
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
+
+            {/* Sign In Button */}
+            <TouchableOpacity
+              style={[styles.signInButton, loading && styles.buttonDisabled]}
+              onPress={handleLogin}
+              disabled={loading}
+              activeOpacity={0.8}
+              data-testid="login-submit-btn"
+            >
+              {loading ? (
+                <Text style={styles.buttonText}>Signing in...</Text>
+              ) : (
+                <>
+                  <Text style={styles.buttonText}>Sign In</Text>
+                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Sign Up Link */}
+            <TouchableOpacity
+              style={styles.signUpButton}
+              onPress={() => router.push('/auth/register')}
+              data-testid="signup-link"
+            >
+              <Text style={styles.signUpText}>
+                New to RollerQuote? <Text style={styles.signUpHighlight}>Create Account</Text>
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-            data-testid="login-submit-btn"
-            accessibilityRole="button"
-          >
-            <Text style={styles.buttonText}>
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.forgotButton}
-            onPress={() => router.push('/auth/forgot-password')}
-          >
-            <Text style={styles.forgotText}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => router.push('/auth/register')}
-          >
-            <Text style={styles.linkText}>Don't have an account? Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Precision Engineering • Accurate Quotes</Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#0F172A',
+  },
+  backgroundTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '45%',
+    backgroundColor: '#960018',
+  },
+  backgroundPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    opacity: 0.1,
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
+    minHeight: height,
   },
-  header: {
+  logoSection: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 32,
   },
-  logo: {
-    width: 180,
-    height: 100,
-    marginBottom: 8,
+  logoContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  title: {
+  brandName: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  tagline: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 4,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 28,
+    elevation: 12,
+  },
+  welcomeText: {
     fontSize: 26,
     fontWeight: '700',
     color: '#0F172A',
-    marginTop: 16,
-    letterSpacing: -0.5,
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 15,
     color: '#64748B',
-    marginTop: 8,
-    fontWeight: '400',
+    marginBottom: 28,
   },
-  form: {
-    width: '100%',
+  inputWrapper: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 1,
+    marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
-    borderRadius: 10,
-    marginBottom: 16,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
   },
   inputIcon: {
     marginRight: 12,
@@ -168,47 +277,71 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 52,
-    fontSize: 16,
+    fontSize: 15,
     color: '#0F172A',
   },
-  button: {
+  eyeIcon: {
+    padding: 4,
+  },
+  forgotButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 24,
+  },
+  forgotText: {
+    color: '#960018',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  signInButton: {
     backgroundColor: '#960018',
-    height: 52,
-    borderRadius: 10,
+    height: 54,
+    borderRadius: 12,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12,
-    shadowColor: '#960018',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    gap: 8,
   },
   buttonDisabled: {
     backgroundColor: '#94A3B8',
-    shadowOpacity: 0,
   },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  linkButton: {
-    marginTop: 24,
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E2E8F0',
+  },
+  dividerText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    marginHorizontal: 16,
+  },
+  signUpButton: {
     alignItems: 'center',
   },
-  linkText: {
-    color: '#960018',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  forgotButton: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  forgotText: {
+  signUpText: {
     color: '#64748B',
     fontSize: 14,
-    fontWeight: '500',
+  },
+  signUpHighlight: {
+    color: '#960018',
+    fontWeight: '600',
+  },
+  footer: {
+    marginTop: 32,
+    alignItems: 'center',
+  },
+  footerText: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 12,
+    letterSpacing: 0.5,
   },
 });
