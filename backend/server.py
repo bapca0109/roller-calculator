@@ -4021,6 +4021,48 @@ async def calculate_price(
         total_price=total_price
     )
 
+# ============= FREIGHT CALCULATION ENDPOINT =============
+
+class FreightCalculationRequest(BaseModel):
+    pincode: str
+    total_weight_kg: float
+
+class FreightCalculationResponse(BaseModel):
+    destination_pincode: str
+    dispatch_pincode: str
+    distance_km: float
+    total_weight_kg: float
+    freight_rate_per_kg: float
+    freight_charges: float
+
+@api_router.post("/calculate-freight", response_model=FreightCalculationResponse)
+async def calculate_freight(
+    request: FreightCalculationRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Calculate freight charges based on destination pincode and total weight.
+    Used by admin when reviewing RFQs to auto-populate freight costs.
+    """
+    # Validate pincode format
+    if not request.pincode or len(request.pincode) != 6 or not request.pincode.isdigit():
+        raise HTTPException(status_code=400, detail="Invalid pincode format. Must be 6 digits.")
+    
+    if request.total_weight_kg <= 0:
+        raise HTTPException(status_code=400, detail="Weight must be greater than 0")
+    
+    # Use the existing freight calculation from roller_standards
+    freight_calc = rs.calculate_freight_charges(request.total_weight_kg, request.pincode)
+    
+    return FreightCalculationResponse(
+        destination_pincode=request.pincode,
+        dispatch_pincode=rs.DISPATCH_PINCODE,
+        distance_km=freight_calc["distance_km"],
+        total_weight_kg=freight_calc["roller_weight_kg"],
+        freight_rate_per_kg=freight_calc["freight_rate_per_kg"],
+        freight_charges=freight_calc["freight_charges"]
+    )
+
 # ============= ROLLER CONFIGURATION ENDPOINTS =============
 
 @api_router.get("/roller-standards")

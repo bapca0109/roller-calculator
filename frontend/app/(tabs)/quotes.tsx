@@ -12,6 +12,7 @@ import {
   ScrollView,
   Platform,
   TextInput,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -104,6 +105,8 @@ export default function QuotesScreen() {
   const [freightPercent, setFreightPercent] = useState<string>('0');
   const [customFreightAmount, setCustomFreightAmount] = useState<string>('');
   const [useCustomFreight, setUseCustomFreight] = useState(false);
+  const [calculatedFreightFromPincode, setCalculatedFreightFromPincode] = useState<number>(0);
+  const [freightLoading, setFreightLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -268,6 +271,7 @@ export default function QuotesScreen() {
     setEditableProducts([...(quote.products || [])]);
     setPincodeError('');
     setPincodeValid(true);
+    setCalculatedFreightFromPincode(0);
     // Initialize discount state
     setUseItemDiscount(quote.use_item_discounts || false);
     setTotalDiscountPercent(quote.discount_percent?.toString() || '0');
@@ -281,6 +285,14 @@ export default function QuotesScreen() {
     const isRfq = quote.quote_number?.startsWith('RFQ/');
     if (isAdmin && quote.status === 'pending' && isRfq && !quote.read_by_admin) {
       markAsRead(quote.id);
+    }
+    // Auto-calculate freight if there's an existing delivery pincode (for pending RFQs)
+    if (quote.delivery_location && quote.delivery_location.length === 6 && quote.products && quote.products.length > 0) {
+      // Use setTimeout to ensure state is updated before calculation
+      setTimeout(async () => {
+        await validatePincode(quote.delivery_location!);
+        await calculateFreightFromPincode(quote.delivery_location!, quote.products);
+      }, 100);
     }
   };
 
@@ -313,17 +325,26 @@ export default function QuotesScreen() {
     }
   };
 
-  // Handle pincode change with validation
-  const handlePincodeChange = (pincode: string) => {
+  // Handle pincode change with validation and freight calculation
+  const handlePincodeChange = async (pincode: string) => {
     setEditDeliveryPincode(pincode);
-    if (pincode.length === 6) {
+    if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
+      // Validate pincode
       validatePincode(pincode);
+      // Calculate freight automatically
+      const productsToUse = editableProducts.length > 0 ? editableProducts : 
+        (selectedQuote?.products || []);
+      if (productsToUse.length > 0) {
+        await calculateFreightFromPincode(pincode, productsToUse);
+      }
     } else if (pincode.length > 0) {
       setPincodeError('Pincode must be 6 digits');
       setPincodeValid(false);
+      setCalculatedFreightFromPincode(0);
     } else {
       setPincodeError('');
       setPincodeValid(true);
+      setCalculatedFreightFromPincode(0);
     }
   };
 
@@ -522,16 +543,109 @@ export default function QuotesScreen() {
     }
   };
 
-  // Calculate freight amount from percentage
+  // Calculate freight amount from percentage OR from pincode-based calculation
   const calculateFreightAmount = () => {
     const quote = approveModalQuote || selectedQuote;
     if (!quote) return 0;
+    
+    // If we have a pincode-calculated freight, use it (unless custom is selected)
+    if (calculatedFreightFromPincode > 0 && !useCustomFreight && parseFloat(freightPercent) === 0) {
+      return calculatedFreightFromPincode;
+    }
+    
     if (useCustomFreight) {
       return parseFloat(customFreightAmount) || 0;
     }
     const percent = parseFloat(freightPercent) || 0;
     const taxableAmount = (quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0);
     return taxableAmount * (percent / 100);
+  };
+
+  // Calculate freight based on pincode and product weight
+  const calculateFreightFromPincode = async (pincode: string, products: any[]) => {
+    if (!pincode || pincode.length !== 6) {
+      setCalculatedFreightFromPincode(0);
+      return;
+    }
+    
+    // Calculate total weight from products
+    // Weight can be in multiple places: weight_kg, base_weight_kg, specifications.weight_kg, cost_breakdown.total_weight_kg
+    const totalWeight = products.reduce((sum, p) => {
+      let weight = 0;
+      
+      // Try different sources for weight
+      if (p.weight_kg) {
+        weight = p.weight_kg;
+      } else if (p.base_weight_kg) {
+        weight = p.base_weight_kg;
+      } else if (p.specifications?.weight_kg) {
+        weight = p.specifications.weight_kg;
+      } else if (p.cost_breakdown?.single_roller_weight_kg) {
+        weight = p.cost_breakdown.single_roller_weight_kg;
+      } else if (p.pricing_details?.single_roller_weight_kg) {
+        weight = p.pricing_details.single_roller_weight_kg;
+      } else {
+        // Estimate weight based on roller type if no weight data available
+        // Average weight: Carrying ~5kg, Impact ~7kg, Return ~4kg
+        const rollerType = p.specifications?.roller_type || p.product_name?.toLowerCase() || '';
+        if (rollerType.includes('impact')) {
+          weight = 7;
+        } else if (rollerType.includes('return')) {
+          weight = 4;
+        } else {
+          weight = 5; // Default carrying roller
+        }
+      }
+      
+      return sum + (weight * (p.quantity || 1));
+    }, 0);
+    
+    if (totalWeight === 0) {
+      setCalculatedFreightFromPincode(0);
+      return;
+    }
+    
+    setFreightLoading(true);
+    try {
+      // Call backend to calculate freight
+      const response = await api.post('/calculate-freight', {
+        pincode: pincode,
+        total_weight_kg: totalWeight
+      });
+      
+      if (response.data && response.data.freight_charges) {
+        setCalculatedFreightFromPincode(response.data.freight_charges);
+        // Auto-set as custom amount for clarity
+        setCustomFreightAmount(response.data.freight_charges.toFixed(2));
+        setUseCustomFreight(true);
+      }
+    } catch (error) {
+      console.error('Freight calculation error:', error);
+      setCalculatedFreightFromPincode(0);
+    } finally {
+      setFreightLoading(false);
+    }
+  };
+
+  // Handle pincode change and calculate freight
+  const handleDeliveryPincodeChange = async (pincode: string) => {
+    setEditDeliveryPincode(pincode);
+    
+    // Validate pincode format
+    if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
+      // Validate pincode
+      validatePincode(pincode);
+      
+      // Calculate freight - prefer editableProducts (from approval modal) over original quote products
+      const productsToUse = editableProducts.length > 0 ? editableProducts : 
+        (approveModalQuote?.products || selectedQuote?.products || []);
+      
+      if (productsToUse.length > 0) {
+        await calculateFreightFromPincode(pincode, productsToUse);
+      }
+    } else {
+      setCalculatedFreightFromPincode(0);
+    }
   };
 
   // Approve RFQ with freight
@@ -647,6 +761,30 @@ export default function QuotesScreen() {
     // Set packing and delivery from quote
     setEditPackingType(quote.packing_type || 'standard');
     setEditDeliveryPincode(quote.delivery_location || '');
+    // Initialize editable products for approval modal
+    setEditableProducts([...(quote.products || [])]);
+    // Reset freight calculation state
+    setCalculatedFreightFromPincode(0);
+    setPincodeError('');
+    setPincodeValid(true);
+    // Initialize discount state
+    setUseItemDiscount(quote.use_item_discounts || false);
+    setTotalDiscountPercent(quote.discount_percent?.toString() || '0');
+    const discounts: {[key: number]: string} = {};
+    quote.products?.forEach((p, idx) => {
+      discounts[idx] = p.item_discount_percent?.toString() || '0';
+    });
+    setItemDiscounts(discounts);
+    // If there's an existing delivery pincode, auto-calculate freight
+    if (quote.delivery_location && quote.delivery_location.length === 6) {
+      // Validate and calculate freight after a short delay to let state settle
+      setTimeout(async () => {
+        await validatePincode(quote.delivery_location!);
+        if (quote.products && quote.products.length > 0) {
+          await calculateFreightFromPincode(quote.delivery_location!, quote.products);
+        }
+      }, 100);
+    }
   };
   
   // Open reject modal
@@ -1738,14 +1876,25 @@ export default function QuotesScreen() {
             <View style={[styles.freightInputRow, { backgroundColor: '#fff' }]}>
               <Text style={styles.freightInputLabel}>Delivery Pincode:</Text>
               <TextInput
-                style={[styles.freightInput, { flex: 1 }]}
+                style={[styles.freightInput, { flex: 1 }, pincodeError ? { borderColor: '#ef4444' } : {}]}
                 value={editDeliveryPincode}
-                onChangeText={setEditDeliveryPincode}
+                onChangeText={handleDeliveryPincodeChange}
                 keyboardType="numeric"
                 placeholder="Enter pincode"
                 maxLength={6}
               />
+              {freightLoading && (
+                <ActivityIndicator size="small" color="#8B0000" style={{ marginLeft: 8 }} />
+              )}
             </View>
+            {pincodeError ? (
+              <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{pincodeError}</Text>
+            ) : null}
+            {calculatedFreightFromPincode > 0 && !freightLoading && (
+              <Text style={{ color: '#059669', fontSize: 12, marginTop: 4, marginLeft: 4 }}>
+                Auto-calculated freight: Rs. {calculatedFreightFromPincode.toFixed(2)} (based on weight & distance)
+              </Text>
+            )}
             
             {/* Freight Mode Toggle */}
             <View style={styles.discountModeToggle}>
@@ -2310,6 +2459,17 @@ export default function QuotesScreen() {
                       {pincodeError ? (
                         <Text style={styles.errorText}>{pincodeError}</Text>
                       ) : null}
+                      {freightLoading && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                          <ActivityIndicator size="small" color="#8B0000" />
+                          <Text style={{ marginLeft: 8, color: '#666' }}>Calculating freight...</Text>
+                        </View>
+                      )}
+                      {calculatedFreightFromPincode > 0 && !freightLoading && (
+                        <Text style={{ color: '#059669', fontSize: 12, marginTop: 4 }}>
+                          Auto-calculated freight: Rs. {calculatedFreightFromPincode.toFixed(2)} (based on weight & distance)
+                        </Text>
+                      )}
                       
                       {/* Freight Mode Toggle */}
                       <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Freight Charges</Text>
@@ -2430,25 +2590,18 @@ export default function QuotesScreen() {
 
                   {/* Action Buttons Row */}
                   <View style={styles.detailActionsRow}>
-                    {/* Approve & Reject Buttons - Admin only, for pending RFQs */}
+                    {/* Review & Approve Button - Admin only, for pending RFQs */}
                     {isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected' && (
                       <>
                         <TouchableOpacity 
                           style={styles.approveConfirmButton}
                           onPress={() => {
-                            // Pass the quote directly to avoid state timing issues
-                            confirmApproveRfq(selectedQuote);
+                            // Open approval modal with freight calculation
+                            approveRfq(selectedQuote);
                           }}
-                          disabled={approvingId === selectedQuote.id}
                         >
-                          {approvingId === selectedQuote.id ? (
-                            <ActivityIndicator color="#fff" />
-                          ) : (
-                            <>
-                              <Ionicons name="checkmark-circle" size={24} color="#fff" />
-                              <Text style={styles.approveConfirmButtonText}>Approve</Text>
-                            </>
-                          )}
+                          <Ionicons name="create-outline" size={24} color="#fff" />
+                          <Text style={styles.approveConfirmButtonText}>Review & Approve</Text>
                         </TouchableOpacity>
                         
                         <TouchableOpacity 
