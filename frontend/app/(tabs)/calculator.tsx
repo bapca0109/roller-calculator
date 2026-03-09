@@ -991,6 +991,10 @@ export default function CalculatorScreen() {
       const response = await api.get('/search/product-catalog', {
         params: { query: searchQuery.trim().toUpperCase() }
       });
+      console.log('Search results:', response.data.results);
+      if (response.data.results && response.data.results.length > 0) {
+        console.log('First result exact_match:', response.data.results[0].exact_match);
+      }
       setSearchResults(response.data.results || []);
     } catch (error: any) {
       console.error('Search error:', error);
@@ -1189,22 +1193,49 @@ export default function CalculatorScreen() {
                           {product.roller_type.charAt(0).toUpperCase() + product.roller_type.slice(1)} Roller
                         </Text>
                         <Text style={styles.productSpecs}>
-                          Ø{product.pipe_diameter}mm • {product.bearing} • {product.bearing_make.toUpperCase()}
+                          Ø{product.pipe_diameter}mm {product.pipe_length ? `× ${product.pipe_length}mm ` : ''}• {product.bearing} • {product.bearing_make.toUpperCase()}
                         </Text>
+                        {/* Show price for exact match on the card for admin */}
+                        {!isCustomer && product.exact_match === true && product.base_price && (
+                          <Text style={styles.productPrice}>₹{product.base_price.toFixed(0)}</Text>
+                        )}
                       </View>
                       <View style={styles.productActions}>
-                        <TouchableOpacity style={styles.expandBtn}>
-                          <Ionicons 
-                            name={expandedProduct === (product.base_code || product.product_code) ? 'chevron-up' : 'chevron-down'} 
-                            size={24} 
-                            color="#960018" 
-                          />
-                        </TouchableOpacity>
+                        {/* For exact match, show Add to Cart button directly */}
+                        {product.exact_match === true ? (
+                          <TouchableOpacity 
+                            style={styles.directAddToCartBtn}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              // Create a length-like object for the exact match product
+                              const lengthObj = {
+                                product_code: product.product_code,
+                                length_mm: product.pipe_length || 0,
+                                weight_kg: product.base_weight_kg || 0,
+                                price: product.base_price || 0
+                              };
+                              setSelectedLength({ product, length: lengthObj });
+                              setQuantityInput('1');
+                              setShowQuantityModal(true);
+                            }}
+                          >
+                            <Ionicons name="cart-outline" size={18} color="#fff" />
+                            <Text style={styles.directAddToCartText}>Add</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity style={styles.expandBtn}>
+                            <Ionicons 
+                              name={expandedProduct === (product.base_code || product.product_code) ? 'chevron-up' : 'chevron-down'} 
+                              size={24} 
+                              color="#960018" 
+                            />
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </TouchableOpacity>
 
-                    {/* Expanded Length Details */}
-                    {expandedProduct === (product.base_code || product.product_code) && (
+                    {/* Expanded Length Details - only for non-exact matches */}
+                    {expandedProduct === (product.base_code || product.product_code) && product.exact_match !== true && (
                       <View style={styles.lengthDetails}>
                         <View style={styles.lengthTableHeader}>
                           <Text style={[styles.lengthHeaderCell, { flex: 2 }]}>Code</Text>
@@ -1217,8 +1248,8 @@ export default function CalculatorScreen() {
                           <View key={lIndex} style={styles.lengthRow}>
                             <Text style={[styles.lengthCell, { flex: 2 }]}>{length.product_code}</Text>
                             <Text style={styles.lengthCell}>{length.length_mm}</Text>
-                            <Text style={styles.lengthCell}>{length.weight_kg.toFixed(2)}</Text>
-                            {!isCustomer && <Text style={styles.lengthCell}>₹{length.price.toFixed(0)}</Text>}
+                            <Text style={styles.lengthCell}>{length.weight_kg?.toFixed(2) || 'N/A'}</Text>
+                            {!isCustomer && <Text style={styles.lengthCell}>₹{length.price?.toFixed(0) || 'N/A'}</Text>}
                             <TouchableOpacity 
                               style={styles.addToCartBtn}
                               onPress={() => {
@@ -2440,6 +2471,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#960018',
     padding: 8,
     borderRadius: 6,
+  },
+  directAddToCartBtn: {
+    backgroundColor: '#960018',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  directAddToCartText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  productPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#960018',
+    marginTop: 4,
   },
   // Quantity Modal Styles
   quantityModal: {
