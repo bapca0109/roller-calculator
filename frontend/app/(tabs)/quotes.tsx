@@ -21,81 +21,16 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface QuoteProduct {
-  product_id: string;
-  product_name: string;
-  quantity: number;
-  unit_price: number;
-  specifications?: any;
-  calculated_discount?: number;
-  item_discount_percent?: number;  // Per-item discount percentage
-  remark?: string;
-  attachments?: Array<{
-    name: string;
-    type: string;
-    base64?: string;
-  }>;
-}
-
-interface Quote {
-  id: string;
-  quote_number?: string;
-  customer_code?: string;
-  customer_name: string;
-  customer_email: string;
-  customer_company?: string;
-  customer_details?: {
-    name?: string;
-    company?: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    pincode?: string;
-    gst_number?: string;
-    customer_code?: string;
-  };
-  products: QuoteProduct[];
-  subtotal: number;
-  total_discount: number;
-  use_item_discounts?: boolean;  // Toggle for per-item vs total discount
-  discount_percent?: number;  // Overall discount percentage
-  packing_charges?: number;
-  packing_type?: string;  // standard, pallet, wooden_box
-  shipping_cost: number;
-  delivery_location?: string;
-  total_price: number;
-  status: string;
-  notes?: string;
-  cost_breakdown?: any;
-  pricing_details?: any;
-  freight_details?: any;
-  read_by_admin?: boolean;
-  original_rfq_number?: string;
-  customer_rfq_no?: string;
-  approved_at?: string;
-  approved_at_ist?: string;
-  approved_by?: string;
-  rejected_at?: string;
-  rejected_by?: string;
-  rejection_reason?: string;
-  rejection_reason_text?: string;
-  rejection_message?: string;
-  revision_history?: RevisionHistoryEntry[];  // Track all changes made
-  created_at: string;
-  created_at_ist?: string;
-  updated_at: string;
-}
-
-interface RevisionHistoryEntry {
-  timestamp: string;
-  changed_by: string;
-  changed_by_name?: string;
-  action: string;
-  changes: Record<string, { old: string; new: string }>;
-  summary: string;
-}
+// Import extracted components and types
+import {
+  Quote,
+  QuoteProduct,
+  RevisionHistoryEntry,
+  QuoteCard,
+  RevisionHistoryModal,
+  ApprovalSuccessModal,
+  RejectReasonModal,
+} from '../../components/quotes';
 
 export default function QuotesScreen() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -1895,111 +1830,17 @@ export default function QuotesScreen() {
   };
 
   const renderQuote = ({ item }: { item: Quote }) => {
-    const isRfq = item.quote_number?.startsWith('RFQ/');
-    const isApproved = item.status?.toLowerCase() === 'approved';
-    const isRejected = item.status?.toLowerCase() === 'rejected';
-    const canApprove = isAdmin && isRfq && !isApproved && !isRejected;
-    
-    // Debug log for each quote card
-    console.log(`Quote ${item.quote_number}: isRfq=${isRfq}, isApproved=${isApproved}, isRejected=${isRejected}, isAdmin=${isAdmin}, canApprove=${canApprove}`);
-    
-    // Check if this is an unread pending RFQ (for admin) - only for customer RFQs
-    const isUnread = isAdmin && item.status === 'pending' && isRfq && item.read_by_admin !== true;
-    
-    // Debug log
-    if (isRfq) {
-      console.log(`RFQ ${item.quote_number}: isUnread=${isUnread}, read_by_admin=${item.read_by_admin}, isAdmin=${isAdmin}`);
-    }
-    
     return (
-    <TouchableOpacity
-      style={[styles.quoteCard, isUnread && styles.unreadQuoteCard]}
-      onPress={() => openQuoteDetail(item)}
-    >
-      <View style={styles.quoteHeader}>
-        <View style={styles.quoteInfo}>
-          <View style={styles.quoteIdRow}>
-            {/* Unread indicator dot */}
-            {isUnread && (
-              <View style={styles.unreadDot} />
-            )}
-            <Text style={[styles.quoteId, isUnread && styles.unreadQuoteId]}>{item.quote_number || `${docLabel} #${item.id.slice(-6).toUpperCase()}`}</Text>
-            {item.original_rfq_number && (
-              <Text style={styles.rfqRefInCard}>({item.original_rfq_number})</Text>
-            )}
-          </View>
-          <Text style={styles.quoteDate}>
-            {isApproved && (item.approved_at_ist || item.approved_at)
-              ? (item.approved_at_ist || formatDate(item.approved_at))
-              : (item.created_at_ist || formatDate(item.created_at))}
-          </Text>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status)}20` }]}>
-          <Ionicons name={getStatusIcon(item.status)} size={16} color={getStatusColor(item.status)} />
-          <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {item.status?.charAt(0).toUpperCase() + item.status?.slice(1)}
-          </Text>
-        </View>
-      </View>
-
-      {/* Customer & Company Name */}
-      <View style={styles.customerRow}>
-        {item.customer_code && (
-          <View style={styles.customerCodeBadge}>
-            <Text style={styles.customerCodeText}>{item.customer_code}</Text>
-          </View>
-        )}
-        <Ionicons name="person-outline" size={16} color="#64748B" />
-        <Text style={styles.customerName}>{item.customer_name || 'Unknown Customer'}</Text>
-      </View>
-      {(item.customer_details?.company || item.customer_company) && (
-        <View style={styles.companyRow}>
-          <Ionicons name="business-outline" size={16} color="#64748B" />
-          <Text style={styles.companyName}>{item.customer_details?.company || item.customer_company}</Text>
-        </View>
-      )}
-
-      <View style={styles.productsList}>
-        {item.products.slice(0, 2).map((product, index) => (
-          <Text key={index} style={styles.productItem} numberOfLines={1}>
-            • {product.product_name || product.product_id} (Qty: {product.quantity})
-          </Text>
-        ))}
-        {item.products.length > 2 && (
-          <Text style={styles.moreProducts}>+{item.products.length - 2} more items</Text>
-        )}
-      </View>
-
-      <View style={styles.quoteFooter}>
-        <View>
-          <Text style={styles.totalLabel}>{item.products.length} item{item.products.length !== 1 ? 's' : ''}</Text>
-          {/* Admin always sees discount, Customer sees it only for approved quotes */}
-          {(!isCustomer || isApproved) && (
-            <Text style={[styles.discountBadge, { color: '#4CAF50', fontWeight: 'bold' }]}>
-              Discount: {item.subtotal > 0 ? ((item.total_discount / item.subtotal) * 100).toFixed(1) : 0}%
-            </Text>
-          )}
-        </View>
-        {/* Admin always sees price, Customer sees it only for approved quotes */}
-        {(!isCustomer || isApproved) && <Text style={styles.totalPrice}>Rs. {item.total_price?.toFixed(2) || '0.00'}</Text>}
-      </View>
-      
-      {/* Show Approved badge for approved quotes - GREEN */}
-      {isApproved && isRfq && (
-        <View style={styles.approvedBadge}>
-          <Ionicons name="checkmark-circle" size={18} color="#fff" />
-          <Text style={styles.approveButtonText}>Approved</Text>
-        </View>
-      )}
-      
-      {/* Show Rejected badge for rejected quotes - RED */}
-      {isRejected && isRfq && (
-        <View style={styles.rejectedBadge}>
-          <Ionicons name="close-circle" size={18} color="#fff" />
-          <Text style={styles.approveButtonText}>Rejected</Text>
-        </View>
-      )}
-    </TouchableOpacity>
+      <QuoteCard
+        quote={item}
+        isAdmin={isAdmin}
+        isCustomer={isCustomer}
+        docLabel={docLabel}
+        onPress={openQuoteDetail}
+        formatDate={formatDate}
+        getStatusColor={getStatusColor}
+        getStatusIcon={getStatusIcon}
+      />
     );
   };
 
@@ -3103,146 +2944,27 @@ export default function QuotesScreen() {
         </View>
       </Modal>
 
-      {/* Reject Reason Modal */}
-      <Modal
+      {/* Reject Reason Modal - Using extracted component */}
+      <RejectReasonModal
         visible={showRejectModal}
-        animationType="fade"
-        transparent={false}
-        onRequestClose={() => setShowRejectModal(false)}
-      >
-        <View style={styles.editQuoteModalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Reject RFQ</Text>
-            <TouchableOpacity onPress={() => setShowRejectModal(false)}>
-              <Ionicons name="close" size={28} color="#333" />
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.modalScroll}>
-              {rejectingQuote && (
-                <>
-                  <Text style={styles.rejectModalSubtitle}>
-                    Select a reason for rejecting {rejectingQuote.quote_number}
-                  </Text>
-                  
-                  {/* Rejection Reason Options */}
-                  <View style={styles.rejectReasonOptions}>
-                    <TouchableOpacity
-                      style={[
-                        styles.rejectReasonOption,
-                        selectedRejectReason === 'low_quantity' && styles.rejectReasonOptionActive
-                      ]}
-                      onPress={() => setSelectedRejectReason('low_quantity')}
-                    >
-                      <Ionicons 
-                        name={selectedRejectReason === 'low_quantity' ? 'radio-button-on' : 'radio-button-off'} 
-                        size={24} 
-                        color={selectedRejectReason === 'low_quantity' ? '#960018' : '#666'} 
-                      />
-                      <Text style={[
-                        styles.rejectReasonText,
-                        selectedRejectReason === 'low_quantity' && styles.rejectReasonTextActive
-                      ]}>Rejected due to low quantity</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                      style={[
-                        styles.rejectReasonOption,
-                        selectedRejectReason === 'low_amount' && styles.rejectReasonOptionActive
-                      ]}
-                      onPress={() => setSelectedRejectReason('low_amount')}
-                    >
-                      <Ionicons 
-                        name={selectedRejectReason === 'low_amount' ? 'radio-button-on' : 'radio-button-off'} 
-                        size={24} 
-                        color={selectedRejectReason === 'low_amount' ? '#960018' : '#666'} 
-                      />
-                      <Text style={[
-                        styles.rejectReasonText,
-                        selectedRejectReason === 'low_amount' && styles.rejectReasonTextActive
-                      ]}>Rejected due to low amount</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                      style={[
-                        styles.rejectReasonOption,
-                        selectedRejectReason === 'not_in_range' && styles.rejectReasonOptionActive
-                      ]}
-                      onPress={() => setSelectedRejectReason('not_in_range')}
-                    >
-                      <Ionicons 
-                        name={selectedRejectReason === 'not_in_range' ? 'radio-button-on' : 'radio-button-off'} 
-                        size={24} 
-                        color={selectedRejectReason === 'not_in_range' ? '#960018' : '#666'} 
-                      />
-                      <Text style={[
-                        styles.rejectReasonText,
-                        selectedRejectReason === 'not_in_range' && styles.rejectReasonTextActive
-                      ]}>Rejected due to product is not within the manufacturing range</Text>
-                    </TouchableOpacity>
-                  </View>
-                  
-                  {/* Confirm Reject Button */}
-                  <TouchableOpacity 
-                    style={[
-                      styles.confirmRejectButton,
-                      !selectedRejectReason && styles.confirmRejectButtonDisabled
-                    ]}
-                    onPress={confirmRejectRfq}
-                    disabled={!selectedRejectReason || rejectingId === rejectingQuote.id}
-                  >
-                    {rejectingId === rejectingQuote.id ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <>
-                        <Ionicons name="close-circle" size={24} color="#fff" />
-                        <Text style={styles.confirmRejectButtonText}>Confirm Rejection</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </>
-              )}
-            </ScrollView>
-          </View>
-      </Modal>
+        onClose={() => setShowRejectModal(false)}
+        quote={rejectingQuote}
+        selectedReason={selectedRejectReason}
+        setSelectedReason={setSelectedRejectReason}
+        onConfirmReject={confirmRejectRfq}
+        isRejecting={rejectingId === rejectingQuote?.id}
+      />
 
-      {/* Approval Success Popup Modal */}
-      <Modal
+      {/* Approval Success Modal - Using extracted component */}
+      <ApprovalSuccessModal
         visible={showApprovalSuccess}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowApprovalSuccess(false)}
-      >
-        <View style={styles.successModalOverlay}>
-          <View style={styles.successModalContent}>
-            <View style={styles.successIconContainer}>
-              <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
-            </View>
-            <Text style={styles.successTitle}>Approved & Submitted!</Text>
-            <Text style={styles.successMessage}>
-              RFQ has been converted to Quote
-            </Text>
-            <Text style={styles.successQuoteNumber}>{approvedQuoteNumber}</Text>
-            <Text style={styles.successSubtext}>
-              The customer has been notified via email.
-            </Text>
-            <TouchableOpacity 
-              style={styles.successButton}
-              onPress={() => {
-                setShowApprovalSuccess(false);
-                setActiveTab('approved'); // Switch to approved tab
-              }}
-            >
-              <Text style={styles.successButtonText}>View Approved Quotes</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.successCloseButton}
-              onPress={() => setShowApprovalSuccess(false)}
-            >
-              <Text style={styles.successCloseText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowApprovalSuccess(false)}
+        quoteNumber={approvedQuoteNumber}
+        onViewApproved={() => {
+          setShowApprovalSuccess(false);
+          setActiveTab('approved');
+        }}
+      />
 
       {/* Edit Quote Modal */}
       <Modal
@@ -3554,100 +3276,13 @@ export default function QuotesScreen() {
         </View>
       </Modal>
 
-      {/* Revision History Modal */}
-      <Modal
+      {/* Revision History Modal - Using extracted component */}
+      <RevisionHistoryModal
         visible={showRevisionHistory}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowRevisionHistory(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Revision History</Text>
-              <TouchableOpacity onPress={() => setShowRevisionHistory(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={{ flex: 1 }}>
-              {revisionHistory.length === 0 ? (
-                <View style={{ padding: 40, alignItems: 'center' }}>
-                  <Ionicons name="time-outline" size={48} color="#ccc" />
-                  <Text style={{ color: '#666', marginTop: 12, fontSize: 16, textAlign: 'center' }}>
-                    No revisions yet
-                  </Text>
-                  <Text style={{ color: '#999', marginTop: 4, fontSize: 14, textAlign: 'center' }}>
-                    Changes made to this quote will appear here
-                  </Text>
-                </View>
-              ) : (
-                revisionHistory.map((entry, index) => (
-                  <View key={index} style={styles.revisionEntry}>
-                    <View style={styles.revisionHeader}>
-                      <View style={styles.revisionTimeline}>
-                        <View style={[styles.revisionDot, index === 0 && styles.revisionDotActive]} />
-                        {index < revisionHistory.length - 1 && <View style={styles.revisionLine} />}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.revisionDate}>
-                          {formatRevisionDate(entry.timestamp)}
-                        </Text>
-                        <Text style={styles.revisionUser}>
-                          by {entry.changed_by_name || entry.changed_by}
-                        </Text>
-                      </View>
-                      <View style={[styles.revisionActionBadge, 
-                        entry.action === 'approved' && { backgroundColor: '#E8F5E9' },
-                        entry.action === 'rejected' && { backgroundColor: '#FFEBEE' },
-                      ]}>
-                        <Text style={[styles.revisionActionText,
-                          entry.action === 'approved' && { color: '#2E7D32' },
-                          entry.action === 'rejected' && { color: '#C62828' },
-                        ]}>
-                          {entry.action.charAt(0).toUpperCase() + entry.action.slice(1)}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    {/* Show changes */}
-                    {Object.keys(entry.changes).length > 0 && (
-                      <View style={styles.revisionChanges}>
-                        {Object.entries(entry.changes).map(([field, values]: [string, any], cIdx) => (
-                          <View key={cIdx} style={styles.revisionChangeRow}>
-                            <Text style={styles.revisionChangeLabel}>{field}:</Text>
-                            <View style={styles.revisionChangeValues}>
-                              {values.old && (
-                                <Text style={styles.revisionOldValue}>{values.old}</Text>
-                              )}
-                              {values.old && values.new && (
-                                <Ionicons name="arrow-forward" size={14} color="#666" style={{ marginHorizontal: 8 }} />
-                              )}
-                              <Text style={styles.revisionNewValue}>{values.new}</Text>
-                            </View>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                    
-                    {/* Show summary if no detailed changes */}
-                    {Object.keys(entry.changes).length === 0 && entry.summary && (
-                      <Text style={styles.revisionSummary}>{entry.summary}</Text>
-                    )}
-                  </View>
-                ))
-              )}
-            </ScrollView>
-            
-            <TouchableOpacity 
-              style={styles.closeHistoryButton}
-              onPress={() => setShowRevisionHistory(false)}
-            >
-              <Text style={styles.closeHistoryButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowRevisionHistory(false)}
+        history={revisionHistory}
+        formatDate={formatRevisionDate}
+      />
     </View>
   );
 }
