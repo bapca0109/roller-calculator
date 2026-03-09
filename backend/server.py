@@ -317,6 +317,10 @@ class Quote(BaseModel):
     original_rfq_number: Optional[str] = None  # Original RFQ number if approved
     approved_at: Optional[datetime] = None  # When the RFQ was approved
     approved_by: Optional[str] = None  # Admin who approved
+    rejected_at: Optional[datetime] = None  # When the RFQ was rejected
+    rejected_by: Optional[str] = None  # Admin who rejected
+    rejection_reason: Optional[str] = None  # Rejection reason code
+    revision_history: Optional[List[Dict[str, Any]]] = []  # Track all changes made to this quote
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -349,6 +353,15 @@ class QuoteReject(BaseModel):
     """Reject an RFQ with a reason"""
     reason: str  # low_quantity, low_amount, not_in_range
     custom_message: Optional[str] = None
+
+class RevisionHistoryEntry(BaseModel):
+    """Track changes made to a quote"""
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    changed_by: str  # Email of user who made the change
+    changed_by_name: Optional[str] = None  # Name of user
+    action: str  # 'created', 'updated', 'approved', 'rejected', 'revised'
+    changes: Dict[str, Any] = {}  # What was changed: {field_name: {old: x, new: y}}
+    summary: str = ""  # Human-readable summary of changes
 
 class RollerQuoteCreate(BaseModel):
     """Create a quote from roller calculation"""
@@ -3054,6 +3067,35 @@ async def get_quote(quote_id: str, current_user: dict = Depends(get_current_user
     del quote["_id"]
     return QuoteInDB(**quote)
 
+@api_router.get("/quotes/{quote_id}/history")
+async def get_quote_revision_history(
+    quote_id: str,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+):
+    """Get revision history for a specific quote"""
+    try:
+        quote = await db.quotes.find_one(
+            {"_id": ObjectId(quote_id)},
+            {"revision_history": 1, "quote_number": 1}
+        )
+    except:
+        raise HTTPException(status_code=400, detail="Invalid quote ID")
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    
+    revision_history = quote.get("revision_history", [])
+    
+    # Sort by timestamp descending (most recent first)
+    revision_history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    
+    return {
+        "quote_id": quote_id,
+        "quote_number": quote.get("quote_number"),
+        "revision_count": len(revision_history),
+        "history": revision_history
+    }
+
 @api_router.put("/quotes/{quote_id}", response_model=QuoteInDB)
 async def update_quote(
     quote_id: str,
@@ -3065,6 +3107,11 @@ async def update_quote(
     except:
         raise HTTPException(status_code=400, detail="Invalid quote ID")
     
+    # Fetch the current quote to track changes
+    existing_quote = await db.quotes.find_one({"_id": obj_id})
+    if not existing_quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    
     update_dict = quote_update.dict(exclude_unset=True)
     update_dict["updated_at"] = datetime.utcnow()
     
@@ -3072,19 +3119,109 @@ async def update_quote(
     if "products" in update_dict and update_dict["products"]:
         update_dict["products"] = [p.dict() if hasattr(p, 'dict') else p for p in update_dict["products"]]
     
+    # Track changes for revision history
+    changes = {}
+    tracked_fields = [
+        ('discount_percent', 'Discount %'),
+        ('total_discount', 'Total Discount'),
+        ('packing_type', 'Packing Type'),
+        ('packing_charges', 'Packing Charges'),
+        ('shipping_cost', 'Freight'),
+        ('delivery_location', 'Delivery Pincode'),
+        ('total_price', 'Grand Total'),
+        ('use_item_discounts', 'Discount Mode'),
+        ('status', 'Status'),
+    ]
+    
+    for field, label in tracked_fields:
+        if field in update_dict:
+            old_value = existing_quote.get(field)
+            new_value = update_dict[field]
+            # Only track if value actually changed
+            if old_value != new_value:
+                # Format values for display
+                if field == 'packing_type':
+                    old_display = _format_packing_type(old_value) if old_value else 'None'
+                    new_display = _format_packing_type(new_value) if new_value else 'None'
+                elif field in ['total_discount', 'packing_charges', 'shipping_cost', 'total_price']:
+                    old_display = f"Rs. {old_value:,.2f}" if old_value else "Rs. 0.00"
+                    new_display = f"Rs. {new_value:,.2f}" if new_value else "Rs. 0.00"
+                elif field == 'discount_percent':
+                    old_display = f"{old_value}%" if old_value else "0%"
+                    new_display = f"{new_value}%" if new_value else "0%"
+                elif field == 'use_item_discounts':
+                    old_display = "Per-Item" if old_value else "Total"
+                    new_display = "Per-Item" if new_value else "Total"
+                else:
+                    old_display = str(old_value) if old_value else 'None'
+                    new_display = str(new_value) if new_value else 'None'
+                
+                changes[label] = {'old': old_display, 'new': new_display}
+    
+    # Check for product quantity changes
+    if 'products' in update_dict:
+        old_products = existing_quote.get('products', [])
+        new_products = update_dict['products']
+        qty_changes = []
+        for i, new_p in enumerate(new_products):
+            if i < len(old_products):
+                old_qty = old_products[i].get('quantity', 0)
+                new_qty = new_p.get('quantity', 0)
+                if old_qty != new_qty:
+                    product_name = new_p.get('product_name') or new_p.get('product_id', f'Item {i+1}')
+                    qty_changes.append(f"{product_name}: {old_qty} → {new_qty}")
+        if qty_changes:
+            changes['Product Quantities'] = {'old': '', 'new': ', '.join(qty_changes)}
+    
+    # Create revision history entry if there are changes
+    if changes:
+        # Build summary
+        change_summary_parts = []
+        for label, vals in changes.items():
+            if label == 'Product Quantities':
+                change_summary_parts.append(f"Updated quantities")
+            else:
+                change_summary_parts.append(f"{label}: {vals['old']} → {vals['new']}")
+        
+        revision_entry = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "changed_by": current_user.get('email', 'Unknown'),
+            "changed_by_name": current_user.get('name', current_user.get('email', 'Unknown')),
+            "action": "updated",
+            "changes": changes,
+            "summary": "; ".join(change_summary_parts)
+        }
+        
+        # Append to revision history
+        await db.quotes.update_one(
+            {"_id": obj_id},
+            {"$push": {"revision_history": revision_entry}}
+        )
+    
+    # Apply the update
     result = await db.quotes.update_one(
         {"_id": obj_id},
         {"$set": update_dict}
     )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Quote not found")
     
     updated_quote = await db.quotes.find_one({"_id": obj_id})
     updated_quote["id"] = str(updated_quote["_id"])
     del updated_quote["_id"]
     
     return QuoteInDB(**updated_quote)
+
+def _format_packing_type(packing_type: str) -> str:
+    """Format packing type for display"""
+    if packing_type == 'standard':
+        return 'Standard (1%)'
+    elif packing_type == 'pallet':
+        return 'Pallet (4%)'
+    elif packing_type == 'wooden_box':
+        return 'Wooden Box (8%)'
+    elif packing_type and packing_type.startswith('custom_'):
+        percent = packing_type.split('_')[1] if '_' in packing_type else '0'
+        return f'Custom ({percent}%)'
+    return packing_type or 'None'
 
 # ============= RFQ APPROVAL WORKFLOW =============
 

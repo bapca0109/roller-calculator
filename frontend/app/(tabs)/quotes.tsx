@@ -82,9 +82,19 @@ interface Quote {
   rejection_reason?: string;
   rejection_reason_text?: string;
   rejection_message?: string;
+  revision_history?: RevisionHistoryEntry[];  // Track all changes made
   created_at: string;
   created_at_ist?: string;
   updated_at: string;
+}
+
+interface RevisionHistoryEntry {
+  timestamp: string;
+  changed_by: string;
+  changed_by_name?: string;
+  action: string;
+  changes: Record<string, { old: string; new: string }>;
+  summary: string;
 }
 
 export default function QuotesScreen() {
@@ -121,6 +131,11 @@ export default function QuotesScreen() {
   const [rejectingQuote, setRejectingQuote] = useState<Quote | null>(null);
   const [selectedRejectReason, setSelectedRejectReason] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  
+  // Revision history state
+  const [showRevisionHistory, setShowRevisionHistory] = useState(false);
+  const [revisionHistory, setRevisionHistory] = useState<RevisionHistoryEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   
   // Edit RFQ modal state for viewing items
   const [editPackingType, setEditPackingType] = useState<string>('standard');
@@ -267,6 +282,61 @@ export default function QuotesScreen() {
       );
     } catch (error) {
       console.error('Error marking quote as read:', error);
+    }
+  };
+
+  // Fetch revision history for a quote
+  const fetchRevisionHistory = async (quoteId: string) => {
+    setLoadingHistory(true);
+    try {
+      const response = await api.get(`/quotes/${quoteId}/history`);
+      const history = response.data.history || [];
+      
+      // Transform old format to new format if needed
+      const transformedHistory: RevisionHistoryEntry[] = history.map((entry: any) => {
+        // Check if it's old format (has 'revision' field) or new format (has 'action' field)
+        if (entry.revision && !entry.action) {
+          // Old format - transform to new format
+          return {
+            timestamp: entry.revised_at || '',
+            changed_by: entry.revised_by || 'Unknown',
+            changed_by_name: entry.revised_by || 'Unknown',
+            action: 'revised',
+            changes: {
+              'Discount %': { old: '', new: `${entry.discount_percent || 0}%` },
+              'Discount Amount': { old: '', new: `Rs. ${(entry.discount_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
+              'Total Price': { old: '', new: `Rs. ${(entry.total_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
+            },
+            summary: `${entry.revision}: ${entry.notes || 'Quote revised'}`
+          };
+        }
+        // New format - return as is
+        return entry;
+      });
+      
+      setRevisionHistory(transformedHistory);
+      setShowRevisionHistory(true);
+    } catch (error) {
+      console.error('Error fetching revision history:', error);
+      Alert.alert('Error', 'Failed to load revision history');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Format revision timestamp
+  const formatRevisionDate = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return timestamp;
     }
   };
 
@@ -2668,6 +2738,24 @@ export default function QuotesScreen() {
                       </TouchableOpacity>
                     )}
 
+                    {/* View History Button - Admin only */}
+                    {isAdmin && (
+                      <TouchableOpacity 
+                        style={styles.historyButton}
+                        onPress={() => fetchRevisionHistory(selectedQuote.id)}
+                        disabled={loadingHistory}
+                      >
+                        {loadingHistory ? (
+                          <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                          <>
+                            <Ionicons name="time-outline" size={24} color="#fff" />
+                            <Text style={styles.historyButtonText}>History</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
+
                     {/* Export PDF Button */}
                     <TouchableOpacity 
                       style={[styles.exportButton, !(isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected') && !(isAdmin && selectedQuote.status?.toLowerCase() === 'approved') ? { flex: 1 } : {}]}
@@ -3204,6 +3292,101 @@ export default function QuotesScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Revision History Modal */}
+      <Modal
+        visible={showRevisionHistory}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowRevisionHistory(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Revision History</Text>
+              <TouchableOpacity onPress={() => setShowRevisionHistory(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={{ flex: 1 }}>
+              {revisionHistory.length === 0 ? (
+                <View style={{ padding: 40, alignItems: 'center' }}>
+                  <Ionicons name="time-outline" size={48} color="#ccc" />
+                  <Text style={{ color: '#666', marginTop: 12, fontSize: 16, textAlign: 'center' }}>
+                    No revisions yet
+                  </Text>
+                  <Text style={{ color: '#999', marginTop: 4, fontSize: 14, textAlign: 'center' }}>
+                    Changes made to this quote will appear here
+                  </Text>
+                </View>
+              ) : (
+                revisionHistory.map((entry, index) => (
+                  <View key={index} style={styles.revisionEntry}>
+                    <View style={styles.revisionHeader}>
+                      <View style={styles.revisionTimeline}>
+                        <View style={[styles.revisionDot, index === 0 && styles.revisionDotActive]} />
+                        {index < revisionHistory.length - 1 && <View style={styles.revisionLine} />}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.revisionDate}>
+                          {formatRevisionDate(entry.timestamp)}
+                        </Text>
+                        <Text style={styles.revisionUser}>
+                          by {entry.changed_by_name || entry.changed_by}
+                        </Text>
+                      </View>
+                      <View style={[styles.revisionActionBadge, 
+                        entry.action === 'approved' && { backgroundColor: '#E8F5E9' },
+                        entry.action === 'rejected' && { backgroundColor: '#FFEBEE' },
+                      ]}>
+                        <Text style={[styles.revisionActionText,
+                          entry.action === 'approved' && { color: '#2E7D32' },
+                          entry.action === 'rejected' && { color: '#C62828' },
+                        ]}>
+                          {entry.action.charAt(0).toUpperCase() + entry.action.slice(1)}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    {/* Show changes */}
+                    {Object.keys(entry.changes).length > 0 && (
+                      <View style={styles.revisionChanges}>
+                        {Object.entries(entry.changes).map(([field, values]: [string, any], cIdx) => (
+                          <View key={cIdx} style={styles.revisionChangeRow}>
+                            <Text style={styles.revisionChangeLabel}>{field}:</Text>
+                            <View style={styles.revisionChangeValues}>
+                              {values.old && (
+                                <Text style={styles.revisionOldValue}>{values.old}</Text>
+                              )}
+                              {values.old && values.new && (
+                                <Ionicons name="arrow-forward" size={14} color="#666" style={{ marginHorizontal: 8 }} />
+                              )}
+                              <Text style={styles.revisionNewValue}>{values.new}</Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    
+                    {/* Show summary if no detailed changes */}
+                    {Object.keys(entry.changes).length === 0 && entry.summary && (
+                      <Text style={styles.revisionSummary}>{entry.summary}</Text>
+                    )}
+                  </View>
+                ))
+              )}
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={styles.closeHistoryButton}
+              onPress={() => setShowRevisionHistory(false)}
+            >
+              <Text style={styles.closeHistoryButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -3630,6 +3813,7 @@ const styles = StyleSheet.create({
   // Detail Actions Row
   detailActionsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
     marginTop: 20,
     marginBottom: 30,
@@ -3639,10 +3823,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#4CAF50',
-    paddingVertical: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderRadius: 12,
-    gap: 10,
-    flex: 1,
+    gap: 8,
   },
   editQuoteButtonText: {
     color: '#fff',
@@ -4531,5 +4715,127 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     marginRight: 12,
+  },
+  // Revision History styles
+  historyButton: {
+    backgroundColor: '#475569',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  historyButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  revisionEntry: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  revisionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  revisionTimeline: {
+    alignItems: 'center',
+    width: 20,
+  },
+  revisionDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#ddd',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  revisionDotActive: {
+    backgroundColor: '#960018',
+  },
+  revisionLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: '#ddd',
+    marginTop: 4,
+    minHeight: 40,
+  },
+  revisionDate: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  revisionUser: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  revisionActionBadge: {
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  revisionActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1565C0',
+  },
+  revisionChanges: {
+    marginTop: 12,
+    marginLeft: 32,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+  },
+  revisionChangeRow: {
+    marginBottom: 8,
+  },
+  revisionChangeLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 4,
+  },
+  revisionChangeValues: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  revisionOldValue: {
+    fontSize: 13,
+    color: '#C62828',
+    textDecorationLine: 'line-through',
+  },
+  revisionNewValue: {
+    fontSize: 13,
+    color: '#2E7D32',
+    fontWeight: '500',
+  },
+  revisionSummary: {
+    marginTop: 8,
+    marginLeft: 32,
+    fontSize: 13,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  closeHistoryButton: {
+    backgroundColor: '#960018',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  closeHistoryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
