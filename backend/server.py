@@ -723,8 +723,18 @@ def generate_rfq_html(rfq_data: dict) -> str:
     # Generate products HTML - WITHOUT PRICES
     products = rfq_data.get('products', [])
     products_html = ""
+    grand_total_weight = 0  # Track total weight for RFQ
     for idx, product in enumerate(products, 1):
         qty = product.get('quantity', 0)
+        
+        # Get weight information
+        unit_weight = product.get('weight', 0) or product.get('specifications', {}).get('weight', 0) or 0
+        total_weight = unit_weight * qty
+        grand_total_weight += total_weight
+        
+        # Format weight display
+        unit_weight_str = f"{unit_weight:.2f}" if unit_weight > 0 else "-"
+        total_weight_str = f"{total_weight:.2f}" if total_weight > 0 else "-"
         
         specs = product.get('specifications', {})
         specs_html = ""
@@ -750,6 +760,8 @@ def generate_rfq_html(rfq_data: dict) -> str:
                 {remark_html}
             </td>
             <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: center;">{qty}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right;">{unit_weight_str}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right;">{total_weight_str}</td>
         </tr>
         """
     
@@ -884,14 +896,22 @@ def generate_rfq_html(rfq_data: dict) -> str:
         <table>
             <thead>
                 <tr>
-                    <th style="width: 8%;">#</th>
-                    <th style="width: 72%; text-align: left;">Description</th>
-                    <th style="width: 20%;">Quantity</th>
+                    <th style="width: 6%;">#</th>
+                    <th style="width: 50%; text-align: left;">Description</th>
+                    <th style="width: 10%;">Qty</th>
+                    <th style="width: 14%; text-align: right;">Wt/Pc (kg)</th>
+                    <th style="width: 14%; text-align: right;">Total Wt</th>
                 </tr>
             </thead>
             <tbody>
                 {products_html}
             </tbody>
+            <tfoot>
+                <tr style="background: #e8f4fc; font-weight: bold;">
+                    <td colspan="4" style="padding: 8px 10px; text-align: right; color: #0066cc;">Grand Total Weight:</td>
+                    <td style="padding: 8px 10px; text-align: right; color: #0066cc;">{grand_total_weight:.2f} kg</td>
+                </tr>
+            </tfoot>
         </table>
 
         {packing_delivery_html}
@@ -1079,6 +1099,7 @@ def generate_quote_html(quote_data: dict) -> str:
     products_html = ""
     calculated_subtotal = 0
     total_item_discount = 0
+    grand_total_weight = 0  # Track total weight
     
     # Calculate overall discount percentage for items without individual discounts
     subtotal_raw = quote_data.get('subtotal', 0)
@@ -1089,6 +1110,11 @@ def generate_quote_html(quote_data: dict) -> str:
     for idx, product in enumerate(products, 1):
         qty = product.get('quantity', 0)
         unit_price = product.get('unit_price', 0)
+        
+        # Get weight information
+        unit_weight = product.get('weight', 0) or product.get('specifications', {}).get('weight', 0) or 0
+        total_weight = unit_weight * qty
+        grand_total_weight += total_weight
         
         # Use individual item discount if available, otherwise use overall discount percentage
         if has_per_item_discounts and product.get('item_discount_percent') is not None:
@@ -1120,6 +1146,10 @@ def generate_quote_html(quote_data: dict) -> str:
         if product.get('remark'):
             remark_html = f'<div class="product-remark">Note: {product["remark"]}</div>'
         
+        # Format weight display
+        unit_weight_str = f"{unit_weight:.2f}" if unit_weight > 0 else "-"
+        total_weight_str = f"{total_weight:.2f}" if total_weight > 0 else "-"
+        
         # Always show discount columns (use_item_discounts is always True for PDF)
         if use_item_discounts:
             products_html += f"""
@@ -1131,9 +1161,10 @@ def generate_quote_html(quote_data: dict) -> str:
                     {remark_html}
                   </td>
                   <td class="cell-center">{qty}</td>
+                  <td class="cell-right">{unit_weight_str}</td>
+                  <td class="cell-right">{total_weight_str}</td>
                   <td class="cell-right">Rs. {unit_price:,.2f}</td>
                   <td class="cell-center">{item_discount_percent:.1f}%</td>
-                  <td class="cell-right">Rs. {value_after_discount:,.2f}</td>
                   <td class="cell-right"><strong>Rs. {line_total:,.2f}</strong></td>
                 </tr>
             """
@@ -1147,6 +1178,8 @@ def generate_quote_html(quote_data: dict) -> str:
                     {remark_html}
                   </td>
                   <td class="cell-center">{qty}</td>
+                  <td class="cell-right">{unit_weight_str}</td>
+                  <td class="cell-right">{total_weight_str}</td>
                   <td class="cell-right">Rs. {unit_price:,.2f}</td>
                   <td class="cell-right"><strong>Rs. {original_amount:,.2f}</strong></td>
                 </tr>
@@ -1257,23 +1290,26 @@ def generate_quote_html(quote_data: dict) -> str:
     if use_item_discounts:
         table_header = '''
             <tr>
-              <th style="width: 5%;">SR.</th>
-              <th style="width: 25%; text-align: left;">ITEM CODE</th>
-              <th style="width: 8%;">QTY</th>
-              <th style="width: 15%; text-align: right;">RATE</th>
-              <th style="width: 12%;">DISC %</th>
-              <th style="width: 17%; text-align: right;">VALUE AFTER DISC</th>
-              <th style="width: 18%; text-align: right;">TOTAL</th>
+              <th style="width: 4%;">SR.</th>
+              <th style="width: 22%; text-align: left;">ITEM CODE</th>
+              <th style="width: 6%;">QTY</th>
+              <th style="width: 10%; text-align: right;">WT/PC (kg)</th>
+              <th style="width: 10%; text-align: right;">TOTAL WT</th>
+              <th style="width: 12%; text-align: right;">RATE</th>
+              <th style="width: 8%;">DISC %</th>
+              <th style="width: 14%; text-align: right;">TOTAL</th>
             </tr>
         '''
     else:
         table_header = '''
             <tr>
               <th style="width: 5%;">#</th>
-              <th style="width: 45%; text-align: left;">Description</th>
-              <th style="width: 10%;">Qty</th>
-              <th style="width: 20%; text-align: right;">Unit Price</th>
-              <th style="width: 20%; text-align: right;">Amount</th>
+              <th style="width: 30%; text-align: left;">Description</th>
+              <th style="width: 8%;">Qty</th>
+              <th style="width: 12%; text-align: right;">Wt/Pc (kg)</th>
+              <th style="width: 12%; text-align: right;">Total Wt</th>
+              <th style="width: 15%; text-align: right;">Unit Price</th>
+              <th style="width: 18%; text-align: right;">Amount</th>
             </tr>
         '''
     
@@ -1640,6 +1676,10 @@ def generate_quote_html(quote_data: dict) -> str:
             <div class="total-row">
               <span class="summary-label">GRAND TOTAL</span>
               <span class="summary-value">Rs. {grand_total:,.2f}</span>
+            </div>
+            <div class="summary-row" style="background: #e8f4fc; border-top: 2px solid #0066cc;">
+              <span class="summary-label" style="color: #0066cc;"><strong>TOTAL WEIGHT</strong></span>
+              <span class="summary-value" style="color: #0066cc;"><strong>{grand_total_weight:.2f} kg</strong></span>
             </div>
           </div>
         </div>
