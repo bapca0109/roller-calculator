@@ -3015,6 +3015,12 @@ async def get_quotes(current_user: dict = Depends(get_current_user)):
             if ist_time:
                 quote["created_at_ist"] = ist_time.strftime("%d %b %Y, %I:%M %p IST")
         
+        # Convert approved_at to IST string for display
+        if quote.get("approved_at"):
+            approved_ist_time = utc_to_ist(quote["approved_at"])
+            if approved_ist_time:
+                quote["approved_at_ist"] = approved_ist_time.strftime("%d %b %Y, %I:%M %p IST")
+        
         result.append(quote)
     return result
 

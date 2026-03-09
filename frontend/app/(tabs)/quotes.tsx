@@ -74,6 +74,7 @@ interface Quote {
   original_rfq_number?: string;
   customer_rfq_no?: string;
   approved_at?: string;
+  approved_at_ist?: string;
   approved_by?: string;
   rejected_at?: string;
   rejected_by?: string;
@@ -821,8 +822,8 @@ export default function QuotesScreen() {
     
     // Use approval date for approved quotes, otherwise use created date
     const isApproved = quote.status?.toLowerCase() === 'approved';
-    const displayDate = isApproved && quote.approved_at 
-      ? formatDate(quote.approved_at)
+    const displayDate = isApproved && (quote.approved_at_ist || quote.approved_at)
+      ? (quote.approved_at_ist || formatDate(quote.approved_at))
       : (quote.created_at_ist || formatDate(quote.created_at));
     
     // Check if prices should be hidden (for customers viewing unapproved quotes)
@@ -1546,8 +1547,8 @@ export default function QuotesScreen() {
             )}
           </View>
           <Text style={styles.quoteDate}>
-            {isApproved && item.approved_at 
-              ? formatDate(item.approved_at)
+            {isApproved && (item.approved_at_ist || item.approved_at)
+              ? (item.approved_at_ist || formatDate(item.approved_at))
               : (item.created_at_ist || formatDate(item.created_at))}
           </Text>
         </View>
