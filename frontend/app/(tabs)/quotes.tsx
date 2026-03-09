@@ -460,8 +460,13 @@ export default function QuotesScreen() {
       });
       
       const afterDiscount = subtotal - totalItemDiscount;
-      const packingCharges = editingQuote?.packing_charges || 0;
-      const packingPercent = editingQuote?.subtotal > 0 ? (packingCharges / editingQuote.subtotal * 100) : 0;
+      // Get packing percent from packing_type, not from stored values
+      let packingPercent = 0;
+      const packingType = editingQuote?.packing_type || 'standard';
+      if (packingType === 'standard') packingPercent = 1;
+      else if (packingType === 'pallet') packingPercent = 4;
+      else if (packingType === 'wooden_box') packingPercent = 8;
+      else if (packingType.startsWith('custom_')) packingPercent = parseFloat(packingType.split('_')[1]) || 0;
       const newPacking = afterDiscount * packingPercent / 100;
       return {
         subtotal,
@@ -475,8 +480,13 @@ export default function QuotesScreen() {
       subtotal = editedProducts.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0);
       const discountAmount = (subtotal * (parseFloat(editedDiscount) || 0)) / 100;
       const afterDiscount = subtotal - discountAmount;
-      const packingCharges = editingQuote?.packing_charges || 0;
-      const packingPercent = editingQuote?.subtotal > 0 ? (packingCharges / editingQuote.subtotal * 100) : 0;
+      // Get packing percent from packing_type, not from stored values
+      let packingPercent = 0;
+      const packingType = editingQuote?.packing_type || 'standard';
+      if (packingType === 'standard') packingPercent = 1;
+      else if (packingType === 'pallet') packingPercent = 4;
+      else if (packingType === 'wooden_box') packingPercent = 8;
+      else if (packingType.startsWith('custom_')) packingPercent = parseFloat(packingType.split('_')[1]) || 0;
       const newPacking = afterDiscount * packingPercent / 100;
       return {
         subtotal,
