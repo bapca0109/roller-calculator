@@ -1016,6 +1016,11 @@ export default function CalculatorScreen() {
 
     const { product, length } = selectedLength;
     
+    // Calculate weight with proper fallback
+    const itemWeight = (length.weight_kg !== undefined && length.weight_kg !== null && length.weight_kg > 0) 
+      ? length.weight_kg 
+      : (product.base_weight_kg || 0);
+    
     // Add to shared cart
     addToCart({
       product_id: length.product_code,
@@ -1024,7 +1029,7 @@ export default function CalculatorScreen() {
       roller_type: product.roller_type,
       quantity: qty,
       unit_price: length.price,
-      weight_kg: length.weight_kg || product.base_weight_kg || 0,
+      weight_kg: itemWeight,
       specifications: {
         pipe_diameter: product.pipe_diameter,
         pipe_length: length.length_mm,

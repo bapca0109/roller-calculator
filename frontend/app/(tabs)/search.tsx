@@ -244,6 +244,11 @@ export default function SearchScreen() {
 
     const { product, length } = selectedLength;
     
+    // Calculate weight with proper fallback
+    const itemWeight = (length.weight_kg !== undefined && length.weight_kg !== null && length.weight_kg > 0) 
+      ? length.weight_kg 
+      : (product.base_weight_kg || 0);
+    
     const newItem: QuoteItem = {
       product_code: length.product_code,
       roller_type: product.roller_type,
@@ -272,7 +277,7 @@ export default function SearchScreen() {
       roller_type: product.roller_type,
       quantity: qty,
       unit_price: length.price,
-      weight_kg: length.weight_kg || product.base_weight_kg || 0,
+      weight_kg: itemWeight,
       specifications: {
         pipe_diameter: product.pipe_diameter,
         pipe_length: length.length_mm,
