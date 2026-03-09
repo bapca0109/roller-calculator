@@ -573,7 +573,7 @@ export default function QuotesScreen() {
       return parseFloat(customFreightAmount) || 0;
     }
     
-    // Calculate freight as percentage of (discounted subtotal + packing)
+    // Calculate freight as percentage of discounted subtotal ONLY
     const percent = parseFloat(freightPercent) || 0;
     if (percent === 0) return 0;
     
@@ -595,18 +595,10 @@ export default function QuotesScreen() {
       currentDiscount = currentSubtotal * (discountPct / 100);
     }
     
-    // Get packing percentage
-    let packingPercent = 0;
-    if (editPackingType === 'standard') packingPercent = 1;
-    else if (editPackingType === 'pallet') packingPercent = 4;
-    else if (editPackingType === 'wooden_box') packingPercent = 8;
-    else if (editPackingType === 'custom') packingPercent = parseFloat(customPackingPercent) || 0;
-    
     const discountedSubtotal = currentSubtotal - currentDiscount;
-    const packingCharges = discountedSubtotal * (packingPercent / 100);
-    const taxableBase = discountedSubtotal + packingCharges;
     
-    return taxableBase * (percent / 100);
+    // Freight = Discounted Subtotal × freight%
+    return discountedSubtotal * (percent / 100);
   };
 
   // Calculate freight based on pincode and product weight
