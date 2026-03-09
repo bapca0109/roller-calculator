@@ -2586,9 +2586,8 @@ export default function QuotesScreen() {
                     )}
                   </View>
 
-                  {/* Pricing Summary - Show for customers on approved quotes, OR for admins on non-pending RFQs */}
-                  {((!isCustomer || selectedQuote.status === 'approved') && 
-                    !(isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected')) && (
+                  {/* Pricing Summary - Hide for admin viewing pending RFQs (they see real-time Summary instead) */}
+                  {!(isAdmin && selectedQuote.status?.toLowerCase() === 'pending') && (
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>Pricing Summary</Text>
                     
