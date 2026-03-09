@@ -597,6 +597,51 @@ export default function QuotesScreen() {
     }
   };
 
+  // Save all changes and send email (single button for Edit Quote)
+  const saveAndMailQuote = async () => {
+    if (!editingQuote) return;
+    
+    setSavingEdit(true);
+    try {
+      const totals = calculateEditedTotal();
+      const freightAmount = parseFloat(editedFreight) || 0;
+      
+      // Determine packing type string for storage
+      const packingTypeToSave = editedPackingType === 'custom' 
+        ? `custom_${customPackingPercent}` 
+        : editedPackingType;
+      
+      const updateData: any = {
+        products: editedProducts,
+        subtotal: totals.subtotal,
+        total_discount: totals.discountAmount,
+        use_item_discounts: useItemDiscounts,
+        packing_charges: totals.packingCharges,
+        packing_type: packingTypeToSave,
+        shipping_cost: freightAmount,
+        total_price: totals.total,
+      };
+      
+      // Only include discount_percent if using total discount mode
+      if (!useItemDiscounts) {
+        updateData.discount_percent = parseFloat(editedDiscount) || 0;
+      }
+      
+      const response = await api.post(`/quotes/${editingQuote.id}/save-and-mail`, updateData);
+      
+      Alert.alert(
+        'Quote Updated & Emailed!',
+        `${response.data.revision}\nNew Total: Rs. ${response.data.total_price?.toFixed(2) || totals.total.toFixed(2)}\n\nEmail sent to customer.`
+      );
+      setEditingQuote(null);
+      fetchQuotes();
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || `Failed to update ${docLabel.toLowerCase()}`);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const saveEditedQuote = async () => {
     if (!editingQuote) return;
     
@@ -3246,39 +3291,21 @@ export default function QuotesScreen() {
                     </View>
                   </View>
 
-                  {/* Save Button */}
+                  {/* Single Save & Mail Button */}
                   <TouchableOpacity 
-                    style={styles.saveEditButton}
-                    onPress={saveEditedQuote}
+                    style={styles.saveAndMailButton}
+                    onPress={saveAndMailQuote}
                     disabled={savingEdit}
                   >
                     {savingEdit ? (
                       <ActivityIndicator color="#fff" />
                     ) : (
                       <>
-                        <Ionicons name="checkmark" size={24} color="#fff" />
-                        <Text style={styles.saveEditButtonText}>Save Changes</Text>
+                        <Ionicons name="mail" size={24} color="#fff" />
+                        <Text style={styles.saveEditButtonText}>Save & Mail Revision</Text>
                       </>
                     )}
                   </TouchableOpacity>
-                  
-                  {/* Save Changes & Mail Button - Only for Approved Quotes */}
-                  {editingQuote.status?.toLowerCase() === 'approved' && (
-                    <TouchableOpacity 
-                      style={styles.saveRevisionButton}
-                      onPress={saveRevisionAndMail}
-                      disabled={savingRevision}
-                    >
-                      {savingRevision ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <>
-                          <Ionicons name="mail" size={24} color="#fff" />
-                          <Text style={styles.saveEditButtonText}>Save Changes & Mail</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  )}
                   
                   {/* Show current revision if exists */}
                   {editingQuote.current_revision && (
@@ -3993,6 +4020,16 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 12,
+    gap: 8,
+  },
+  saveAndMailButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#960018',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 16,
     gap: 8,
   },
   revisionLabel: {

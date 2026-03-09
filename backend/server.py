@@ -3910,6 +3910,166 @@ async def create_quote_revision(
         "email_sent": customer_email is not None
     }
 
+
+@api_router.post("/quotes/{quote_id}/save-and-mail")
+async def save_quote_and_mail(
+    quote_id: str,
+    quote_update: QuoteUpdate,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+):
+    """
+    Save all changes to a quote AND send email notification.
+    This is for approved quotes when admin edits and wants to notify customer.
+    """
+    try:
+        obj_id = ObjectId(quote_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid quote ID")
+    
+    # Get the quote
+    quote = await db.quotes.find_one({"_id": obj_id})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    
+    # Check if it's an approved quote
+    if quote.get("status") != QuoteStatus.APPROVED:
+        raise HTTPException(status_code=400, detail="Only approved quotes can be revised")
+    
+    # Get current revision number
+    current_revision_num = quote.get("revision_number", 0)
+    new_revision_num = current_revision_num + 1
+    revision_label = f"R{new_revision_num}"
+    
+    ist_now = get_ist_now()
+    
+    # Prepare update data
+    update_dict = quote_update.dict(exclude_unset=True)
+    update_dict["updated_at"] = ist_now
+    update_dict["updated_by"] = current_user["email"]
+    update_dict["revision_number"] = new_revision_num
+    update_dict["current_revision"] = revision_label
+    
+    # Convert products to dict format if present
+    if "products" in update_dict and update_dict["products"]:
+        update_dict["products"] = [p.dict() if hasattr(p, 'dict') else p for p in update_dict["products"]]
+    
+    # Track changes for revision history
+    changes = {}
+    tracked_fields = [
+        ('discount_percent', 'Discount %'),
+        ('total_discount', 'Total Discount'),
+        ('packing_type', 'Packing Type'),
+        ('packing_charges', 'Packing Charges'),
+        ('shipping_cost', 'Freight'),
+        ('delivery_location', 'Delivery Pincode'),
+        ('total_price', 'Grand Total'),
+    ]
+    
+    for field, label in tracked_fields:
+        if field in update_dict:
+            old_value = quote.get(field)
+            new_value = update_dict[field]
+            if old_value != new_value:
+                if field == 'packing_type':
+                    old_display = _format_packing_type(old_value) if old_value else 'None'
+                    new_display = _format_packing_type(new_value) if new_value else 'None'
+                elif field in ['total_discount', 'packing_charges', 'shipping_cost', 'total_price']:
+                    old_display = f"Rs. {old_value:,.2f}" if old_value else "Rs. 0.00"
+                    new_display = f"Rs. {new_value:,.2f}" if new_value else "Rs. 0.00"
+                elif field == 'discount_percent':
+                    old_display = f"{old_value}%" if old_value else "0%"
+                    new_display = f"{new_value}%" if new_value else "0%"
+                else:
+                    old_display = str(old_value) if old_value else 'None'
+                    new_display = str(new_value) if new_value else 'None'
+                changes[label] = {'old': old_display, 'new': new_display}
+    
+    # Check for product quantity changes
+    if 'products' in update_dict:
+        old_products = quote.get('products', [])
+        new_products = update_dict['products']
+        qty_changes = []
+        for i, new_p in enumerate(new_products):
+            if i < len(old_products):
+                old_qty = old_products[i].get('quantity', 0)
+                new_qty = new_p.get('quantity', 0)
+                if old_qty != new_qty:
+                    product_name = new_p.get('product_name') or new_p.get('product_id', f'Item {i+1}')
+                    qty_changes.append(f"{product_name}: {old_qty} → {new_qty}")
+        if qty_changes:
+            changes['Product Quantities'] = {'old': '', 'new': ', '.join(qty_changes)}
+    
+    # Create revision history entry
+    change_summary_parts = []
+    for label, vals in changes.items():
+        if label == 'Product Quantities':
+            change_summary_parts.append("Updated quantities")
+        else:
+            change_summary_parts.append(f"{label}: {vals['old']} → {vals['new']}")
+    
+    revision_entry = {
+        "timestamp": ist_now.isoformat() if hasattr(ist_now, 'isoformat') else str(ist_now),
+        "changed_by": current_user.get('email', 'Unknown'),
+        "changed_by_name": current_user.get('name', current_user.get('email', 'Unknown')),
+        "action": "revised",
+        "changes": changes,
+        "summary": f"{revision_label}: " + ("; ".join(change_summary_parts) if change_summary_parts else "Quote revised")
+    }
+    
+    # Update the quote
+    await db.quotes.update_one(
+        {"_id": obj_id},
+        {
+            "$set": update_dict,
+            "$push": {"revision_history": revision_entry}
+        }
+    )
+    
+    # Get updated quote for email
+    updated_quote = await db.quotes.find_one({"_id": obj_id})
+    
+    # Send revision email to customer and admins
+    customer_email = quote.get("customer_email")
+    email_sent = False
+    if customer_email:
+        try:
+            await send_quote_revision_email({
+                "quote_number": updated_quote.get("quote_number"),
+                "original_rfq_number": updated_quote.get("original_rfq_number"),
+                "customer_name": updated_quote.get("customer_name"),
+                "customer_company": updated_quote.get("customer_company"),
+                "customer_code": updated_quote.get("customer_code"),
+                "customer_details": updated_quote.get("customer_details") or {},
+                "products": updated_quote.get("products", []),
+                "subtotal": updated_quote.get("subtotal", 0),
+                "discount_percent": updated_quote.get("discount_percent", 0),
+                "total_discount": updated_quote.get("total_discount", 0),
+                "use_item_discounts": updated_quote.get("use_item_discounts", False),
+                "packing_charges": updated_quote.get("packing_charges", 0),
+                "packing_type": updated_quote.get("packing_type"),
+                "shipping_cost": updated_quote.get("shipping_cost", 0),
+                "delivery_location": updated_quote.get("delivery_location"),
+                "total_price": updated_quote.get("total_price", 0),
+                "notes": updated_quote.get("notes"),
+                "approved_at": updated_quote.get("approved_at")
+            }, customer_email, revision_label)
+            email_sent = True
+        except Exception as e:
+            print(f"Failed to send email: {e}")
+    
+    # Return response
+    updated_quote["id"] = str(updated_quote["_id"])
+    del updated_quote["_id"]
+    
+    return {
+        "message": f"Quote updated and email sent - {revision_label}",
+        "quote_number": updated_quote.get("quote_number"),
+        "revision": revision_label,
+        "total_price": updated_quote.get("total_price"),
+        "email_sent": email_sent,
+        "quote": QuoteInDB(**updated_quote)
+    }
+
 # ============= ATTACHMENT DOWNLOAD ROUTES =============
 
 @api_router.get("/quotes/{quote_id}/attachments")
