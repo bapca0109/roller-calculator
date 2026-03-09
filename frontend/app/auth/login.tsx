@@ -60,9 +60,12 @@ export default function Login() {
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
-              <Ionicons name="analytics" size={48} color="#FFFFFF" />
+              <Image 
+                source={require('../../assets/images/convero-logo.png')} 
+                style={styles.logo}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={styles.brandName}>RollerQuote Pro</Text>
             <Text style={styles.tagline}>Industrial Pricing Solutions</Text>
           </View>
 
@@ -211,18 +214,16 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logoContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 20,
-    padding: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  brandName: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
+  logo: {
+    width: 180,
+    height: 60,
   },
   tagline: {
     fontSize: 14,
