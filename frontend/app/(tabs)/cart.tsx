@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import { ExportButtons } from '../../components/shared/ExportButtons';
 
 // Packing types
 const PACKING_TYPES = [
@@ -249,10 +250,19 @@ export default function CartScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{isCustomer ? 'RFQ Cart' : 'Quote Cart'}</Text>
-        <Text style={styles.headerSubtitle}>
-          {cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in cart
-        </Text>
+        <View>
+          <Text style={styles.headerTitle}>{isCustomer ? 'RFQ Cart' : 'Quote Cart'}</Text>
+          <Text style={styles.headerSubtitle}>
+            {cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in cart
+          </Text>
+        </View>
+        {cartItems.length > 0 && (
+          <ExportButtons
+            endpoint="/api/cart/export/excel"
+            filenamePrefix="Cart"
+            compact={true}
+          />
+        )}
       </View>
 
       {/* Cart Items */}
@@ -597,6 +607,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 26,

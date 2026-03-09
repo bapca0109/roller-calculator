@@ -24,6 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import FloatingCartButton from '../../components/FloatingCartButton';
 import CartViewModal from '../../components/CartViewModal';
 import RfqSubmissionModal from '../../components/RfqSubmissionModal';
+import { ExportButtons } from '../../components/shared/ExportButtons';
 
 interface LengthDetail {
   length_mm: number;
@@ -750,8 +751,16 @@ export default function SearchScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Product Catalog</Text>
-        <Text style={styles.headerSubtitle}>Search available roller configurations</Text>
+        <View>
+          <Text style={styles.headerTitle}>Product Catalog</Text>
+          <Text style={styles.headerSubtitle}>Search available roller configurations</Text>
+        </View>
+        <ExportButtons
+          endpoint="/api/products/export/excel"
+          queryParams={searchQuery ? { search: searchQuery } : {}}
+          filenamePrefix="Products"
+          compact={true}
+        />
       </View>
 
       {/* Search Bar */}
@@ -1202,6 +1211,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 28,

@@ -31,6 +31,7 @@ import {
   ApprovalSuccessModal,
   RejectReasonModal,
 } from '../../components/quotes';
+import { ExportButtons } from '../../components/shared/ExportButtons';
 
 export default function QuotesScreen() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -2152,9 +2153,17 @@ export default function QuotesScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>My {docLabel}s</Text>
-        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-          <Ionicons name="refresh" size={24} color="#960018" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <ExportButtons
+            endpoint="/api/quotes/export/excel"
+            queryParams={{ status: activeTab === 'all' ? '' : activeTab }}
+            filenamePrefix="Quotes"
+            compact={true}
+          />
+          <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
+            <Ionicons name="refresh" size={24} color="#960018" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search Bar - Admin Only */}
@@ -3313,6 +3322,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   title: {
     fontSize: 28,
