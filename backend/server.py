@@ -2830,8 +2830,8 @@ async def create_quote(
         
         processed_products.append(item.dict())
     
-    # Calculate total price
-    total_price = subtotal - total_discount + (quote.delivery_location and 0 or 0)  # Shipping calculated later by admin
+    # Calculate total price (no system discount, admin will set later)
+    total_price = subtotal  # Original value without discount
     
     # Generate sequential quote/RFQ number based on user role
     if is_customer:
@@ -2945,15 +2945,15 @@ async def create_roller_quote(
         "products": [product],
         "subtotal": pricing.get("order_value", 0),
         "total_discount": 0,  # No system discount - admin will set during approval
-        "packing_charges": 0,  # Admin will set during approval
-        "shipping_cost": 0,  # Admin will set during approval
+        "packing_charges": pricing.get("packing_charges", 0),  # Customer can set packing
+        "shipping_cost": quote_data.freight.get("freight_charges", 0) if quote_data.freight else 0,  # Customer can set freight
         "delivery_location": quote_data.freight.get("destination_pincode") if quote_data.freight else None,
         "total_price": pricing.get("order_value", 0),  # Original value, no discount yet
         "status": QuoteStatus.PENDING,
         "notes": quote_data.notes,
         "cost_breakdown": quote_data.cost_breakdown,
         "pricing_details": quote_data.pricing,
-        "freight_details": None,  # Admin will set during approval
+        "freight_details": quote_data.freight,  # Customer's freight details
         "created_at": ist_now,
         "updated_at": ist_now
     }
