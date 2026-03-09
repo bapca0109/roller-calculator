@@ -668,19 +668,10 @@ export default function QuotesScreen() {
       // Use editableProducts if available, otherwise fall back to quote's original products
       const productsToUse = editableProducts.length > 0 ? editableProducts : (quote.products || []);
       
-      // Calculate updated subtotal from products
+      // Calculate updated subtotal from products (original, before discount)
       const updatedSubtotal = productsToUse.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0);
       
-      // Calculate packing charges based on packing type
-      let packingPercent = 0;
-      if (editPackingType === 'standard') packingPercent = 1;
-      else if (editPackingType === 'pallet') packingPercent = 4;
-      else if (editPackingType === 'wooden_box') packingPercent = 8;
-      else if (editPackingType === 'custom') packingPercent = parseFloat(customPackingPercent) || 0;
-      
-      const packingCharges = updatedSubtotal * (packingPercent / 100);
-      
-      // Calculate discount values
+      // Calculate discount values FIRST
       // NOTE: When admin enters discount (total or item-wise), system-calculated discount is replaced
       let totalDiscountAmount = 0;
       let updatedProducts = [...productsToUse];
@@ -710,11 +701,22 @@ export default function QuotesScreen() {
         }));
       }
       
+      // Calculate discounted subtotal (after discount)
+      const discountedSubtotal = updatedSubtotal - totalDiscountAmount;
+      
+      // Calculate packing charges based on DISCOUNTED subtotal
+      let packingPercent = 0;
+      if (editPackingType === 'standard') packingPercent = 1;
+      else if (editPackingType === 'pallet') packingPercent = 4;
+      else if (editPackingType === 'wooden_box') packingPercent = 8;
+      else if (editPackingType === 'custom') packingPercent = parseFloat(customPackingPercent) || 0;
+      
+      const packingCharges = discountedSubtotal * (packingPercent / 100);
+      
       // Calculate final total price
-      const afterDiscount = updatedSubtotal - totalDiscountAmount;
-      const taxableAmount = afterDiscount + packingCharges;
+      const taxableAmount = discountedSubtotal + packingCharges + freightAmount;
       const gst = taxableAmount * 0.18;
-      const totalPrice = (taxableAmount + freightAmount) * 1.18;
+      const totalPrice = taxableAmount * 1.18;
       
       // First update the quote with products, freight, packing and discount details
       await api.put(`/quotes/${quote.id}`, {
@@ -2248,21 +2250,27 @@ export default function QuotesScreen() {
                       <Text style={styles.pricingValue}>Rs. {((selectedQuote.subtotal || 0) - (selectedQuote.total_discount || 0)).toFixed(2)}</Text>
                     </View>
                     
-                    {/* Packing Charges with % */}
+                    {/* Packing Charges with % - use actual packing type percentage */}
                     {(selectedQuote.packing_charges || 0) > 0 && (
                       <View style={styles.pricingRow}>
                         <Text style={styles.pricingLabel}>
-                          Packing Charges ({((selectedQuote.packing_charges || 0) / ((selectedQuote.subtotal || 1) - (selectedQuote.total_discount || 0)) * 100).toFixed(1)}%)
+                          Packing Charges ({
+                            selectedQuote.packing_type === 'standard' ? '1' :
+                            selectedQuote.packing_type === 'pallet' ? '4' :
+                            selectedQuote.packing_type === 'wooden_box' ? '8' :
+                            selectedQuote.packing_type?.startsWith('custom_') ? selectedQuote.packing_type.split('_')[1] :
+                            '0'
+                          }%)
                         </Text>
                         <Text style={styles.pricingValue}>Rs. {(selectedQuote.packing_charges || 0).toFixed(2)}</Text>
                       </View>
                     )}
                     
-                    {/* Freight Charges with % */}
+                    {/* Freight Charges with % - use stored freight percentage */}
                     {(selectedQuote.shipping_cost || 0) > 0 && (
                       <View style={styles.pricingRow}>
                         <Text style={styles.pricingLabel}>
-                          Freight Charges ({((selectedQuote.shipping_cost || 0) / ((selectedQuote.subtotal || 1) - (selectedQuote.total_discount || 0)) * 100).toFixed(1)}%)
+                          Freight Charges ({(selectedQuote.freight_details?.freight_percent || 0).toFixed(1)}%)
                         </Text>
                         <Text style={styles.pricingValue}>Rs. {(selectedQuote.shipping_cost || 0).toFixed(2)}</Text>
                       </View>
