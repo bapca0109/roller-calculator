@@ -75,7 +75,33 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 
 ## Completed Work
 
-### March 8, 2026 (Latest Session - Current)
+### March 9, 2026 (Latest Session - Current)
+
+- **P0 FEATURE: AUTOMATIC FREIGHT CALCULATION** - COMPLETED ✅
+  - **Issue**: Freight charges were not being automatically calculated when admin reviewed an RFQ. Admin had to manually calculate or enter freight.
+  - **Root Cause**: Missing `/api/calculate-freight` backend endpoint and frontend handlers were not triggering freight calculation on pincode input.
+  - **Implementation**:
+    1. **Backend**: Added `/api/calculate-freight` endpoint in `server.py` (lines 4024-4065)
+       - Accepts: `{pincode: string, total_weight_kg: float}`
+       - Returns: `{destination_pincode, dispatch_pincode, distance_km, total_weight_kg, freight_rate_per_kg, freight_charges}`
+       - Uses existing zone-based distance and rate calculation from `roller_standards.py`
+    2. **Frontend**: Updated `quotes.tsx` to auto-calculate freight:
+       - `openQuoteDetail()` now triggers freight calculation if existing delivery_location exists
+       - `handlePincodeChange()` updated to call freight API when valid 6-digit pincode entered
+       - Added loading indicator and green "Auto-calculated freight: Rs. X.XX (based on weight & distance)" text
+       - Auto-populates "Custom Amount" field with calculated freight
+    3. **Weight Estimation**: Enhanced `calculateFreightFromPincode()` to find weight from multiple sources: `weight_kg`, `base_weight_kg`, `specifications.weight_kg`, `cost_breakdown.single_roller_weight_kg`, or default estimates by roller type
+  - **Files Changed**:
+    - `backend/server.py` - Added `FreightCalculationRequest`, `FreightCalculationResponse`, and `/api/calculate-freight` endpoint
+    - `frontend/app/(tabs)/quotes.tsx` - Updated `handlePincodeChange`, `openQuoteDetail`, `calculateFreightFromPincode`, and added UI feedback
+  - **Testing**: Testing agent verified 100% - Backend API returns correct freight for Gujarat/Maharashtra/Delhi/Tamil Nadu pincodes, Frontend auto-calculates on modal open and pincode change
+
+- **UI IMPROVEMENT: Review & Approve Button** - COMPLETED ✅
+  - Changed "Approve" button in RFQ detail modal to "Review & Approve"
+  - Icon changed from checkmark to edit icon to indicate review step
+  - Button now properly opens the approval modal where admin can review/edit freight, packing, discounts before final approval
+
+### March 8, 2026
 
 - **P0 BUG FIX: UNCAUGHT ERROR ON APPROVE BUTTON** - COMPLETED ✅
   - **Issue**: Clicking "Approve" button in RFQ details modal caused an uncaught frontend error, even though the backend API call succeeded and approval email was sent
