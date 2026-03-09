@@ -1,13 +1,15 @@
 {
   "cli": {
-    "version": ">= 3.0.0"
+    "version": ">= 3.0.0",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
       }
     },
     "preview": {
@@ -15,13 +17,21 @@
       "android": {
         "buildType": "apk"
       },
+      "ios": {
+        "simulator": true
+      },
       "env": {
-        "EXPO_PUBLIC_BACKEND_URL": "https://belt-roller-calc.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://belt-roller-calc.preview.emergentagent.com",
+        "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
       }
     },
     "production": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_BACKEND_URL": "https://belt-roller-calc.preview.emergentagent.com",
+        "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
       }
     }
   },
