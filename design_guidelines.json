@@ -1,154 +1,333 @@
 {
-  "identity": {
-    "name": "Industrial Minimalist",
-    "tone": "Precision, Engineering, Efficiency, Modern Industry",
-    "description": "A clean, data-first aesthetic that prioritizes legibility and workflow efficiency. Uses Carmine Red as a strong accent against a technical slate/white background."
+  "meta": {
+    "version": "1.0",
+    "last_updated": "2024-05-20",
+    "description": "Design guidelines for Belt Conveyor Rollers Engineering App"
   },
-  "typography": {
-    "font_family": {
-      "headings": "System Sans-Serif (configured as Manrope/Inter)",
-      "body": "System Sans-Serif",
-      "mono": "SpaceMono-Regular"
+  "design_philosophy": {
+    "archetype": "The Performance Pro",
+    "core_values": [
+      "Precision",
+      "Reliability",
+      "Industrial Clarity",
+      "Minimalist Professionalism"
+    ],
+    "visual_direction": "High-contrast, data-dense but readable, card-based layouts with distinct hierarchy. Uses Carmine Red for primary actions and Dark Slate for structure."
+  },
+  "theme": {
+    "colors": {
+      "primary": {
+        "main": "#960018",
+        "light": "#C41E3A",
+        "dark": "#750012",
+        "bg_soft": "#FFF5F5",
+        "contrast_text": "#FFFFFF"
+      },
+      "secondary": {
+        "main": "#0F172A",
+        "light": "#334155",
+        "dark": "#020617",
+        "contrast_text": "#FFFFFF"
+      },
+      "neutral": {
+        "white": "#FFFFFF",
+        "background": "#F8FAFC",
+        "surface": "#FFFFFF",
+        "border": "#E2E8F0",
+        "border_strong": "#CBD5E1",
+        "text_primary": "#0F172A",
+        "text_secondary": "#64748B",
+        "text_tertiary": "#94A3B8"
+      },
+      "semantic": {
+        "success": "#10B981",
+        "success_bg": "#ECFDF5",
+        "warning": "#F59E0B",
+        "warning_bg": "#FFFBEB",
+        "error": "#EF4444",
+        "error_bg": "#FEF2F2",
+        "info": "#3B82F6",
+        "info_bg": "#EFF6FF"
+      }
     },
-    "styles": {
-      "h1": "text-2xl font-bold tracking-tight text-slate-900",
-      "h2": "text-xl font-semibold tracking-tight text-slate-900",
-      "h3": "text-lg font-medium text-slate-800",
-      "body": "text-base text-slate-600",
-      "caption": "text-sm text-slate-500",
-      "label": "text-xs font-medium uppercase tracking-wider text-slate-500"
+    "typography": {
+      "font_family": "System (San Francisco / Roboto)",
+      "weights": {
+        "regular": "400",
+        "medium": "500",
+        "semibold": "600",
+        "bold": "700"
+      },
+      "sizes": {
+        "h1": { "fontSize": 28, "lineHeight": 34, "fontWeight": "700" },
+        "h2": { "fontSize": 24, "lineHeight": 30, "fontWeight": "600" },
+        "h3": { "fontSize": 20, "lineHeight": 28, "fontWeight": "600" },
+        "subtitle1": { "fontSize": 18, "lineHeight": 26, "fontWeight": "600" },
+        "subtitle2": { "fontSize": 16, "lineHeight": 24, "fontWeight": "500" },
+        "body1": { "fontSize": 16, "lineHeight": 24, "fontWeight": "400" },
+        "body2": { "fontSize": 14, "lineHeight": 20, "fontWeight": "400" },
+        "caption": { "fontSize": 12, "lineHeight": 16, "fontWeight": "400" },
+        "overline": { "fontSize": 10, "lineHeight": 16, "fontWeight": "600", "textTransform": "uppercase", "letterSpacing": 1 }
+      }
+    },
+    "spacing": {
+      "xs": 4,
+      "s": 8,
+      "m": 12,
+      "l": 16,
+      "xl": 24,
+      "xxl": 32,
+      "section": 48
+    },
+    "borderRadius": {
+      "s": 4,
+      "m": 8,
+      "l": 12,
+      "xl": 16,
+      "round": 9999
+    },
+    "shadows": {
+      "card": {
+        "shadowColor": "#0F172A",
+        "shadowOffset": { "width": 0, "height": 2 },
+        "shadowOpacity": 0.05,
+        "shadowRadius": 8,
+        "elevation": 2
+      },
+      "card_hover": {
+        "shadowColor": "#0F172A",
+        "shadowOffset": { "width": 0, "height": 4 },
+        "shadowOpacity": 0.1,
+        "shadowRadius": 12,
+        "elevation": 4
+      },
+      "modal": {
+        "shadowColor": "#0F172A",
+        "shadowOffset": { "width": 0, "height": 8 },
+        "shadowOpacity": 0.15,
+        "shadowRadius": 24,
+        "elevation": 12
+      }
     }
   },
-  "colors": {
-    "primary": {
-      "DEFAULT": "#960018",
-      "50": "#fdf2f2",
-      "100": "#fde8e8",
-      "200": "#fbd5d5",
-      "300": "#f8b4b4",
-      "400": "#f98080",
-      "500": "#960018",
-      "600": "#750012",
-      "700": "#5a000e",
-      "800": "#42000a",
-      "900": "#2b0006"
-    },
-    "secondary": {
-      "DEFAULT": "#475569",
-      "foreground": "#ffffff"
-    },
-    "background": {
-      "default": "#F8FAFC",
-      "paper": "#FFFFFF",
-      "subtle": "#F1F5F9"
-    },
-    "text": {
-      "primary": "#0F172A",
-      "secondary": "#64748B",
-      "muted": "#94A3B8",
-      "inverted": "#FFFFFF"
-    },
-    "border": {
-      "default": "#E2E8F0",
-      "focus": "#960018"
-    },
-    "status": {
-      "success": "#10B981",
-      "warning": "#F59E0B",
-      "error": "#EF4444",
-      "info": "#3B82F6"
-    }
-  },
-  "layout_strategies": {
-    "dashboard": {
-      "type": "bento_grid",
-      "description": "Asymmetrical grid layout. Major metrics (Total Sales) take 2x1 or 2x2 spans. Quick actions are 1x1.",
-      "gap": "gap-4",
-      "padding": "p-4"
-    },
-    "lists": {
-      "style": "flat_list",
-      "item_style": "bg-white border-b border-slate-100 py-4 px-4 active:bg-slate-50",
-      "separator": "border-slate-100"
-    },
-    "forms": {
-      "style": "stacked",
-      "spacing": "space-y-4",
-      "input_bg": "bg-white",
-      "input_border": "border-slate-200"
-    },
-    "calculator": {
-      "style": "split_view",
-      "input_section": "p-4 bg-white rounded-lg shadow-sm mb-4",
-      "result_section": "p-6 bg-slate-900 rounded-lg text-white mb-4",
-      "result_text": "text-3xl font-mono font-bold text-white"
-    }
-  },
-  "components": {
+  "ui_components": {
     "buttons": {
-      "primary": "bg-[#960018] rounded-md py-3 px-6 shadow-sm active:opacity-90",
-      "primary_text": "text-white font-medium text-center",
-      "secondary": "bg-white border border-slate-200 rounded-md py-3 px-6 active:bg-slate-50",
-      "secondary_text": "text-slate-700 font-medium text-center",
-      "ghost": "bg-transparent py-2 px-4 active:bg-slate-100",
-      "ghost_text": "text-slate-600 font-medium text-center"
-    },
-    "cards": {
-      "default": "bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden",
-      "hover": "active:shadow-md transition-shadow duration-200"
+      "primary": {
+        "style": {
+          "backgroundColor": "#960018",
+          "borderRadius": 8,
+          "paddingVertical": 12,
+          "paddingHorizontal": 20,
+          "alignItems": "center",
+          "justifyContent": "center",
+          "flexDirection": "row",
+          "elevation": 2
+        },
+        "textStyle": {
+          "color": "#FFFFFF",
+          "fontSize": 16,
+          "fontWeight": "600",
+          "letterSpacing": 0.5
+        }
+      },
+      "secondary": {
+        "style": {
+          "backgroundColor": "#FFFFFF",
+          "borderRadius": 8,
+          "borderWidth": 1,
+          "borderColor": "#E2E8F0",
+          "paddingVertical": 12,
+          "paddingHorizontal": 20,
+          "alignItems": "center",
+          "justifyContent": "center",
+          "flexDirection": "row"
+        },
+        "textStyle": {
+          "color": "#0F172A",
+          "fontSize": 16,
+          "fontWeight": "500"
+        }
+      },
+      "ghost": {
+        "style": {
+          "backgroundColor": "transparent",
+          "paddingVertical": 8,
+          "paddingHorizontal": 12
+        },
+        "textStyle": {
+          "color": "#64748B",
+          "fontSize": 14,
+          "fontWeight": "500"
+        }
+      },
+      "danger": {
+        "style": {
+          "backgroundColor": "#FEF2F2",
+          "borderRadius": 8,
+          "borderWidth": 1,
+          "borderColor": "#FECACA",
+          "paddingVertical": 12,
+          "paddingHorizontal": 20
+        },
+        "textStyle": {
+          "color": "#EF4444",
+          "fontSize": 16,
+          "fontWeight": "600"
+        }
+      }
     },
     "inputs": {
-      "default": "bg-white border border-slate-200 rounded-md px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-[#960018] focus:ring-1 focus:ring-[#960018]",
-      "label": "block text-sm font-medium text-slate-700 mb-1"
+      "container": {
+        "marginBottom": 16
+      },
+      "label": {
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#475569",
+        "marginBottom": 6
+      },
+      "field": {
+        "backgroundColor": "#FFFFFF",
+        "borderWidth": 1,
+        "borderColor": "#E2E8F0",
+        "borderRadius": 8,
+        "paddingHorizontal": 12,
+        "paddingVertical": 10,
+        "fontSize": 15,
+        "color": "#0F172A",
+        "height": 44
+      },
+      "field_focus": {
+        "borderColor": "#960018",
+        "borderWidth": 1.5
+      },
+      "field_error": {
+        "borderColor": "#EF4444",
+        "backgroundColor": "#FEF2F2"
+      }
     },
-    "badges": {
-      "base": "px-2 py-0.5 rounded text-xs font-medium",
-      "success": "bg-emerald-50 text-emerald-700 border border-emerald-100",
-      "warning": "bg-amber-50 text-amber-700 border border-amber-100",
-      "error": "bg-red-50 text-red-700 border border-red-100",
-      "neutral": "bg-slate-100 text-slate-600 border border-slate-200"
+    "cards": {
+      "container": {
+        "backgroundColor": "#FFFFFF",
+        "borderRadius": 12,
+        "padding": 16,
+        "marginBottom": 12,
+        "borderWidth": 1,
+        "borderColor": "#F1F5F9",
+        "shadowColor": "#0F172A",
+        "shadowOffset": { "width": 0, "height": 1 },
+        "shadowOpacity": 0.05,
+        "shadowRadius": 2,
+        "elevation": 2
+      },
+      "header": {
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+        "alignItems": "center",
+        "marginBottom": 12,
+        "paddingBottom": 12,
+        "borderBottomWidth": 1,
+        "borderBottomColor": "#F1F5F9"
+      }
+    },
+    "tabs": {
+      "container": {
+        "flexDirection": "row",
+        "backgroundColor": "#F8FAFC",
+        "padding": 4,
+        "borderRadius": 12,
+        "marginHorizontal": 16,
+        "marginVertical": 12,
+        "borderWidth": 1,
+        "borderColor": "#E2E8F0"
+      },
+      "item": {
+        "flex": 1,
+        "paddingVertical": 8,
+        "alignItems": "center",
+        "borderRadius": 8
+      },
+      "item_active": {
+        "backgroundColor": "#FFFFFF",
+        "shadowColor": "#000",
+        "shadowOffset": { "width": 0, "height": 1 },
+        "shadowOpacity": 0.05,
+        "shadowRadius": 2,
+        "elevation": 1
+      },
+      "text": {
+        "fontSize": 14,
+        "fontWeight": "500",
+        "color": "#64748B"
+      },
+      "text_active": {
+        "color": "#960018",
+        "fontWeight": "600"
+      }
     }
   },
-  "assets": {
+  "screens": {
+    "Calculator": {
+      "layout": {
+        "padding": 16,
+        "backgroundColor": "#F8FAFC"
+      },
+      "section_header": {
+        "fontSize": 18,
+        "fontWeight": "600",
+        "color": "#0F172A",
+        "marginTop": 24,
+        "marginBottom": 12
+      },
+      "result_card": {
+        "backgroundColor": "#0F172A",
+        "borderRadius": 16,
+        "padding": 20,
+        "marginTop": 24
+      },
+      "result_value": {
+        "fontSize": 32,
+        "fontWeight": "700",
+        "color": "#FFFFFF",
+        "marginVertical": 8
+      }
+    },
+    "Quotes": {
+      "list_container": {
+        "padding": 16,
+        "paddingBottom": 100
+      },
+      "status_badge": {
+        "pending": { "backgroundColor": "#FFF7ED", "color": "#C2410C" },
+        "approved": { "backgroundColor": "#ECFDF5", "color": "#047857" },
+        "rejected": { "backgroundColor": "#FEF2F2", "color": "#B91C1C" }
+      }
+    }
+  },
+  "asset_updates": {
     "images": [
       {
-        "category": "hero_background",
-        "url": "https://images.unsplash.com/photo-1748946469988-61310d7ea26a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDN8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBmYWN0b3J5JTIwY29udmV5b3IlMjBiZWx0JTIwc3lzdGVtJTIwY2xlYW58ZW58MHx8fHwxNzczMDc3MzQyfDA&ixlib=rb-4.1.0&q=85",
-        "description": "Industrial factory background for Login/Signup screens"
+        "category": "hero",
+        "description": "Clean industrial warehouse or conveyor belt detail",
+        "url": "https://images.unsplash.com/photo-1748946469988-61310d7ea26a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDN8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBmYWN0b3J5JTIwY29udmV5b3IlMjBiZWx0JTIwc3lzdGVtJTIwY2xlYW58ZW58MHx8fHwxNzczMDc3MzQyfDA&ixlib=rb-4.1.0&q=85"
       },
       {
-        "category": "product_placeholder",
-        "url": "https://images.unsplash.com/photo-1764875471704-95de704ee3a2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTN8MHwxfHNlYXJjaHwyfHxtZXRhbCUyMGNvbnZleW9yJTIwcm9sbGVyfGVufDB8fHx8MTc3MzA3NzM1M3ww&ixlib=rb-4.1.0&q=85",
-        "description": "Default image for conveyor roller products"
-      },
-      {
-        "category": "blueprint_abstract",
-        "url": "https://images.unsplash.com/photo-1727522974676-c2f9c32ee692?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzV8MHwxfHNlYXJjaHw0fHxhYnN0cmFjdCUyMGluZHVzdHJpYWwlMjBibHVlcHJpbnRzJTIwdGVjaG5pY2FsJTIwZHJhd2luZ3xlbnwwfHx8fDE3NzMwNzczNDV8MA&ixlib=rb-4.1.0&q=85",
-        "description": "Abstract blueprint for empty states or headers"
-      },
-      {
-        "category": "user_avatar",
-        "url": "https://images.pexels.com/photos/4484075/pexels-photo-4484075.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "Placeholder for user profile (Engineer with tablet)"
+        "category": "empty_state",
+        "description": "Minimal abstract blueprint",
+        "url": "https://images.unsplash.com/photo-1727522974676-c2f9c32ee692?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzV8MHwxfHNlYXJjaHw0fHxhYnN0cmFjdCUyMGluZHVzdHJpYWwlMjBibHVlcHJpbnRzJTIwdGVjaG5pY2FsJTIwZHJhd2luZ3xlbnwwfHx8fDE3NzMwNzczNDV8MA&ixlib=rb-4.1.0&q=85"
       }
     ]
   },
   "instructions_to_main_agent": [
-    "Use React Native StyleSheet or NativeWind (Tailwind) classes as configured in the project.",
-    "Prioritize 'View' and 'Text' structure over heavy external libraries for simple layouts.",
-    "Ensure all touch targets are at least 44x44 points for industrial usage (gloves/busy hands).",
-    "For the Calculator: Use distinct visual separation between Inputs (White bg) and Results (Dark bg or Highlighted Border).",
-    "For Quotes: Use a clear status indicator (e.g., a colored left border on the list item) rather than just a badge.",
-    "Navigation: Ensure the Bottom Tab Bar has a clean, high-contrast look (White bg, Slate 900 active icon, Slate 400 inactive).",
-    "Accessibility: Ensure high contrast for all text. The Carmine Red should be used for primary actions and active states.",
-    "Do not use gradients for backgrounds. Stick to flat, solid colors or subtle patterns (like the blueprint image with low opacity)."
+    "Do NOT rewrite entire files. Use 'search_replace' or specific 'insert_text' where possible to avoid context loss in large files.",
+    "Prioritize updating the 'theme/index.ts' first to match the new color palette.",
+    "For 'Calculator.tsx' and 'Quotes.tsx', focus on updating the 'StyleSheet.create' styles to match the 'ui_components' specs defined in this JSON.",
+    "Ensure 'data-testid' is added to all TouchableOpacity/Pressable elements for testing."
   ],
-  "universal_guidelines": [
-    "Avoid generic 'on distribution' AI aesthetics.",
-    "Don't center everything. Left align text for readability.",
-    "Use generous padding (p-4, p-6) inside cards.",
-    "Micro-interactions: Add active opacity to all touchables.",
-    "Use 'sonner' or similar toast for notifications if available, otherwise standard Alert.",
-    "Data-Test-IDs: All interactive elements must have a unique testID prop."
+  "UNIVERSAL_GUIDELINES": [
+    "Use 'flex: 1' for main containers to ensure full height.",
+    "Avoid hardcoded dimensions (width/height) unless absolutely necessary for icons/images.",
+    "Use 'KeyboardAvoidingView' for all form screens.",
+    "Ensure 44px minimum touch target size for buttons."
   ]
 }
