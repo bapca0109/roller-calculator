@@ -567,7 +567,38 @@ export default function QuotesScreen() {
       return parseFloat(customFreightAmount) || 0;
     }
     const percent = parseFloat(freightPercent) || 0;
-    const taxableAmount = (quote.subtotal || 0) - (quote.total_discount || 0) + (quote.packing_charges || 0);
+    
+    // Calculate subtotal from editable products (admin's current changes)
+    const currentSubtotal = editableProducts.length > 0 
+      ? editableProducts.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0)
+      : (quote.subtotal || 0);
+    
+    // Calculate discount based on admin's entered values, not original quote values
+    let currentDiscount = 0;
+    if (useItemDiscount) {
+      // Item-wise discount
+      currentDiscount = editableProducts.reduce((total, product, index) => {
+        const itemSubtotal = product.unit_price * product.quantity;
+        const itemDiscountPct = parseFloat(itemDiscounts[index] || '0') || 0;
+        return total + (itemSubtotal * (itemDiscountPct / 100));
+      }, 0);
+    } else {
+      // Total discount
+      const discountPct = parseFloat(totalDiscountPercent) || 0;
+      currentDiscount = currentSubtotal * (discountPct / 100);
+    }
+    
+    // Calculate packing based on admin's entered packing type
+    let packingPercent = 0;
+    if (editPackingType === 'standard') packingPercent = 1;
+    else if (editPackingType === 'pallet') packingPercent = 4;
+    else if (editPackingType === 'wooden_box') packingPercent = 8;
+    else if (editPackingType === 'custom') packingPercent = parseFloat(customPackingPercent) || 0;
+    
+    const discountedSubtotal = currentSubtotal - currentDiscount;
+    const packingCharges = discountedSubtotal * (packingPercent / 100);
+    
+    const taxableAmount = discountedSubtotal + packingCharges;
     return taxableAmount * (percent / 100);
   };
 
