@@ -272,7 +272,7 @@ export default function SearchScreen() {
       roller_type: product.roller_type,
       quantity: qty,
       unit_price: length.price,
-      weight_kg: length.weight_kg,
+      weight_kg: length.weight_kg || product.base_weight_kg || 0,
       specifications: {
         pipe_diameter: product.pipe_diameter,
         pipe_length: length.length_mm,

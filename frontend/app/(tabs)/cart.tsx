@@ -344,7 +344,7 @@ export default function CartScreen() {
                     )}
                     <View style={styles.infoBox}>
                       <Text style={styles.infoLabel}>Weight</Text>
-                      <Text style={styles.infoValue}>{(item.weight_kg * item.quantity).toFixed(2)} kg</Text>
+                      <Text style={styles.infoValue}>{((item.weight_kg || 0) * item.quantity).toFixed(2)} kg</Text>
                     </View>
                     {!isCustomer && (
                       <View style={[styles.infoBox, styles.priceBox]}>
