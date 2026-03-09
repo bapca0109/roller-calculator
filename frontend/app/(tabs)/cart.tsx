@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   header: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0F172A',
     paddingTop: 56,
     paddingBottom: 20,
     paddingHorizontal: 20,
@@ -612,9 +612,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 14,

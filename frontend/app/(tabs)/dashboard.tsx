@@ -604,7 +604,7 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
   },
   content: {
     padding: 16,
@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
   },
   loadingText: {
     marginTop: 12,
@@ -639,6 +639,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   header: {
+    backgroundColor: '#0F172A',
+    marginHorizontal: -16,
+    marginTop: -16,
+    paddingTop: 56,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     marginBottom: 20,
   },
   headerTop: {
@@ -647,13 +655,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#64748B',
+    color: '#94A3B8',
     marginTop: 4,
   },
   exportButtons: {

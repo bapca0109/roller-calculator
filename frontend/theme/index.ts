@@ -1,10 +1,14 @@
 // Industrial Minimalist Theme - Design System
-// Based on design_guidelines.json
+// Based on design_guidelines.json - "The Performance Pro" archetype
 
 export const theme = {
   colors: {
     primary: {
       DEFAULT: '#960018',
+      main: '#960018',
+      light: '#C41E3A',
+      dark: '#750012',
+      bgSoft: '#FFF5F5',
       50: '#fdf2f2',
       100: '#fde8e8',
       200: '#fbd5d5',
@@ -17,7 +21,10 @@ export const theme = {
       900: '#2b0006',
     },
     secondary: {
-      DEFAULT: '#475569',
+      DEFAULT: '#0F172A',
+      main: '#0F172A',
+      light: '#334155',
+      dark: '#020617',
       foreground: '#ffffff',
     },
     background: {
@@ -25,15 +32,18 @@ export const theme = {
       paper: '#FFFFFF',
       subtle: '#F1F5F9',
       dark: '#0F172A',
+      surface: '#FFFFFF',
     },
     text: {
       primary: '#0F172A',
       secondary: '#64748B',
+      tertiary: '#94A3B8',
       muted: '#94A3B8',
       inverted: '#FFFFFF',
     },
     border: {
       default: '#E2E8F0',
+      strong: '#CBD5E1',
       light: '#F1F5F9',
       focus: '#960018',
     },
@@ -53,9 +63,9 @@ export const theme = {
     sm: 8,
     md: 12,
     lg: 16,
-    xl: 20,
-    xxl: 24,
-    xxxl: 32,
+    xl: 24,
+    xxl: 32,
+    section: 48,
   },
   borderRadius: {
     sm: 4,
@@ -66,59 +76,82 @@ export const theme = {
   },
   shadows: {
     sm: {
-      shadowColor: '#000',
+      shadowColor: '#0F172A',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
       shadowRadius: 2,
       elevation: 1,
     },
     md: {
-      shadowColor: '#000',
+      shadowColor: '#0F172A',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 4,
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
       elevation: 2,
     },
     lg: {
-      shadowColor: '#000',
+      shadowColor: '#0F172A',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.1,
-      shadowRadius: 8,
+      shadowRadius: 12,
       elevation: 4,
+    },
+    modal: {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.15,
+      shadowRadius: 24,
+      elevation: 12,
     },
   },
   typography: {
     h1: {
       fontSize: 28,
+      lineHeight: 34,
       fontWeight: '700' as const,
       letterSpacing: -0.5,
       color: '#0F172A',
     },
     h2: {
-      fontSize: 22,
+      fontSize: 24,
+      lineHeight: 30,
       fontWeight: '600' as const,
       letterSpacing: -0.3,
       color: '#0F172A',
     },
     h3: {
-      fontSize: 18,
+      fontSize: 20,
+      lineHeight: 28,
       fontWeight: '600' as const,
-      color: '#1E293B',
+      color: '#0F172A',
+    },
+    subtitle1: {
+      fontSize: 18,
+      lineHeight: 26,
+      fontWeight: '600' as const,
+      color: '#0F172A',
+    },
+    subtitle2: {
+      fontSize: 16,
+      lineHeight: 24,
+      fontWeight: '500' as const,
+      color: '#475569',
     },
     body: {
-      fontSize: 15,
+      fontSize: 16,
+      lineHeight: 24,
       fontWeight: '400' as const,
       color: '#64748B',
-      lineHeight: 22,
     },
-    bodyLarge: {
-      fontSize: 16,
+    body2: {
+      fontSize: 14,
+      lineHeight: 20,
       fontWeight: '400' as const,
-      color: '#475569',
-      lineHeight: 24,
+      color: '#64748B',
     },
     caption: {
-      fontSize: 13,
+      fontSize: 12,
+      lineHeight: 16,
       fontWeight: '400' as const,
       color: '#94A3B8',
     },
@@ -129,10 +162,62 @@ export const theme = {
       textTransform: 'uppercase' as const,
       color: '#64748B',
     },
-    mono: {
-      fontSize: 14,
-      fontFamily: 'SpaceMono-Regular',
+    overline: {
+      fontSize: 10,
+      lineHeight: 16,
+      fontWeight: '600' as const,
+      letterSpacing: 1,
+      textTransform: 'uppercase' as const,
+      color: '#94A3B8',
+    },
+  },
+  // Common component styles for consistency
+  components: {
+    button: {
+      primary: {
+        backgroundColor: '#960018',
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+        flexDirection: 'row' as const,
+      },
+      secondary: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+        flexDirection: 'row' as const,
+      },
+    },
+    card: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: '#F1F5F9',
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    input: {
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: '#E2E8F0',
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 15,
       color: '#0F172A',
+      height: 44,
     },
   },
 };
@@ -143,6 +228,33 @@ export const assets = {
   productPlaceholder: 'https://images.unsplash.com/photo-1764875471704-95de704ee3a2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTN8MHwxfHNlYXJjaHwyfHxtZXRhbCUyMGNvbnZleW9yJTIwcm9sbGVyfGVufDB8fHx8MTc3MzA3NzM1M3ww&ixlib=rb-4.1.0&q=85',
   blueprintAbstract: 'https://images.unsplash.com/photo-1727522974676-c2f9c32ee692?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzV8MHwxfHNlYXJjaHw0fHxhYnN0cmFjdCUyMGluZHVzdHJpYWwlMjBibHVlcHJpbnRzJTIwdGVjaG5pY2FsJTIwZHJhd2luZ3xlbnwwfHx8fDE3NzMwNzczNDV8MA&ixlib=rb-4.1.0&q=85',
   userAvatar: 'https://images.pexels.com/photos/4484075/pexels-photo-4484075.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940',
+};
+
+// Common style constants for reuse across screens
+export const commonStyles = {
+  screenHeader: {
+    backgroundColor: '#0F172A',
+    paddingTop: 56,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  screenHeaderTitle: {
+    fontSize: 24,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  screenHeaderSubtitle: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  pageContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
 };
 
 export default theme;

@@ -870,18 +870,18 @@ export default function AdminScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F8FAFC',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F8FAFC',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: '#64748B',
   },
   accessDenied: {
     flex: 1,
@@ -892,24 +892,27 @@ const styles = StyleSheet.create({
   accessDeniedText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
+    color: '#0F172A',
     marginTop: 16,
   },
   accessDeniedSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: '#64748B',
     marginTop: 8,
   },
   header: {
-    backgroundColor: '#960018',
-    paddingTop: 60,
+    backgroundColor: '#0F172A',
+    paddingTop: 56,
     paddingBottom: 16,
     paddingHorizontal: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.3,
     marginBottom: 12,
   },
   mainTabs: {
@@ -922,7 +925,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     gap: 6,
   },
   mainTabActive: {
@@ -931,7 +934,7 @@ const styles = StyleSheet.create({
   mainTabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: 'rgba(255,255,255,0.9)',
   },
   mainTabTextActive: {
     color: '#960018',
@@ -940,7 +943,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: '#E2E8F0',
   },
   categoryTab: {
     flexDirection: 'row',
@@ -949,11 +952,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginHorizontal: 4,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     gap: 6,
   },
   categoryTabActive: {
     backgroundColor: '#960018',
+    borderColor: '#960018',
   },
   categoryTabText: {
     fontSize: 13,

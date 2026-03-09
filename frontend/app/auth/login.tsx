@@ -16,7 +16,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -27,6 +27,7 @@ export default function Login() {
   const router = useRouter();
 
   const handleLogin = async () => {
+    console.log('[Login] handleLogin called');
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -34,9 +35,12 @@ export default function Login() {
 
     setLoading(true);
     try {
+      console.log('[Login] Attempting login...');
       await login(email, password);
+      console.log('[Login] Login successful, navigating...');
       router.replace('/(tabs)/calculator');
     } catch (error: any) {
+      console.log('[Login] Login failed:', error.message);
       Alert.alert('Login Failed', error.message);
     } finally {
       setLoading(false);
@@ -44,137 +48,116 @@ export default function Login() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Modern gradient-like background using overlapping views */}
-      <View style={styles.backgroundTop} />
-      <View style={styles.backgroundPattern} />
-      
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Logo Section */}
-          <View style={styles.logoSection}>
-            <View style={styles.logoContainer}>
-              <Image 
-                source={require('../../assets/images/convero-logo.png')} 
-                style={styles.logo}
-                resizeMode="contain"
+        {/* Header Section with Background */}
+        <View style={styles.headerSection}>
+          <View style={styles.logoContainer}>
+            <Image 
+              source={require('../../assets/images/convero-logo.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.tagline}>INDUSTRIAL PRICING SOLUTIONS</Text>
+        </View>
+
+        {/* Form Card */}
+        <View style={styles.formCard}>
+          <Text style={styles.welcomeText}>Welcome Back</Text>
+          <Text style={styles.subtitle}>Sign in to continue</Text>
+
+          {/* Email Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>EMAIL</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={20} color="#64748B" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email"
+                placeholderTextColor="#94A3B8"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
               />
             </View>
-            <Text style={styles.tagline}>Industrial Pricing Solutions</Text>
           </View>
 
-          {/* Form Card */}
-          <View style={styles.formCard}>
-            <Text style={styles.welcomeText}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue</Text>
-
-            {/* Email Input */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>EMAIL</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={20} color="#64748B" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your email"
-                  placeholderTextColor="#94A3B8"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  data-testid="login-email-input"
+          {/* Password Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>PASSWORD</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor="#94A3B8"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity 
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeIcon}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={20} 
+                  color="#64748B" 
                 />
-              </View>
+              </TouchableOpacity>
             </View>
-
-            {/* Password Input */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>PASSWORD</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your password"
-                  placeholderTextColor="#94A3B8"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  data-testid="login-password-input"
-                />
-                <TouchableOpacity 
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeIcon}
-                  data-testid="toggle-password-visibility"
-                >
-                  <Ionicons 
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
-                    size={20} 
-                    color="#64748B" 
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Forgot Password */}
-            <TouchableOpacity
-              style={styles.forgotButton}
-              onPress={() => router.push('/auth/forgot-password')}
-              data-testid="forgot-password-link"
-            >
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
-
-            {/* Sign In Button */}
-            <TouchableOpacity
-              style={[styles.signInButton, loading && styles.buttonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.8}
-              data-testid="login-submit-btn"
-            >
-              {loading ? (
-                <Text style={styles.buttonText}>Signing in...</Text>
-              ) : (
-                <>
-                  <Text style={styles.buttonText}>Sign In</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-                </>
-              )}
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Sign Up Link */}
-            <TouchableOpacity
-              style={styles.signUpButton}
-              onPress={() => router.push('/auth/register')}
-              data-testid="signup-link"
-            >
-              <Text style={styles.signUpText}>
-                New to RollerQuote? <Text style={styles.signUpHighlight}>Create Account</Text>
-              </Text>
-            </TouchableOpacity>
           </View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Precision Engineering • Accurate Quotes</Text>
+          {/* Forgot Password */}
+          <TouchableOpacity
+            style={styles.forgotButton}
+            onPress={() => router.push('/auth/forgot-password')}
+          >
+            <Text style={styles.forgotText}>Forgot Password?</Text>
+          </TouchableOpacity>
+
+          {/* Sign In Button */}
+          <TouchableOpacity
+            style={[styles.signInButton, loading && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? 'Signing in...' : 'Sign In'}
+            </Text>
+            {!loading && <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />}
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+
+          {/* Sign Up Link */}
+          <TouchableOpacity
+            style={styles.signUpButton}
+            onPress={() => router.push('/auth/register')}
+          >
+            <Text style={styles.signUpText}>
+              Don't have an account? <Text style={styles.signUpTextBold}>Sign Up</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -183,64 +166,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0F172A',
   },
-  backgroundTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '45%',
-    backgroundColor: '#960018',
-  },
-  backgroundPattern: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
-    opacity: 0.1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
     minHeight: height,
   },
-  logoSection: {
+  headerSection: {
+    backgroundColor: '#960018',
+    paddingTop: 60,
+    paddingBottom: 40,
     alignItems: 'center',
-    marginBottom: 32,
   },
   logoContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   logo: {
-    width: 180,
+    width: 100,
     height: 60,
   },
   tagline: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginTop: 4,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
+    letterSpacing: 2,
   },
   formCard: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 28,
-    elevation: 12,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -20,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 40,
   },
   welcomeText: {
     fontSize: 26,
@@ -251,35 +211,36 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 15,
     color: '#64748B',
-    marginBottom: 28,
+    marginBottom: 32,
   },
-  inputWrapper: {
+  inputGroup: {
     marginBottom: 20,
   },
   inputLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#64748B',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
+    height: 52,
   },
   inputIcon: {
     marginRight: 12,
   },
   input: {
     flex: 1,
-    height: 52,
     fontSize: 15,
     color: '#0F172A',
+    height: '100%',
   },
   eyeIcon: {
     padding: 4,
@@ -289,9 +250,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   forgotText: {
+    fontSize: 14,
     color: '#960018',
-    fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   signInButton: {
     backgroundColor: '#960018',
@@ -301,6 +262,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
+    cursor: 'pointer',
   },
   buttonDisabled: {
     backgroundColor: '#94A3B8',
@@ -321,28 +283,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#E2E8F0',
   },
   dividerText: {
-    color: '#94A3B8',
-    fontSize: 13,
     marginHorizontal: 16,
+    fontSize: 14,
+    color: '#94A3B8',
   },
   signUpButton: {
     alignItems: 'center',
+    paddingVertical: 12,
   },
   signUpText: {
+    fontSize: 15,
     color: '#64748B',
-    fontSize: 14,
   },
-  signUpHighlight: {
+  signUpTextBold: {
     color: '#960018',
     fontWeight: '600',
-  },
-  footer: {
-    marginTop: 32,
-    alignItems: 'center',
-  },
-  footerText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 12,
-    letterSpacing: 0.5,
   },
 });

@@ -1088,7 +1088,7 @@ export default function CalculatorScreen() {
             <Ionicons 
               name="search-outline" 
               size={18} 
-              color={activeTab === 'search' ? '#fff' : '#666'} 
+              color={activeTab === 'search' ? '#960018' : '#64748B'} 
             />
             <Text style={[styles.tabButtonText, activeTab === 'search' && styles.tabButtonTextActive]}>
               Search
@@ -1105,7 +1105,7 @@ export default function CalculatorScreen() {
             <Ionicons 
               name="calculator-outline" 
               size={18} 
-              color={activeTab === 'calculator' ? '#fff' : '#666'} 
+              color={activeTab === 'calculator' ? '#960018' : '#64748B'} 
             />
             <Text style={[styles.tabButtonText, activeTab === 'calculator' && styles.tabButtonTextActive]}>
               Calculator
@@ -2220,33 +2220,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0F172A',
     paddingTop: 56,
-    paddingBottom: 24,
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   logoContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     alignSelf: 'flex-start',
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerLogo: {
-    width: 120,
-    height: 40,
+    width: 100,
+    height: 32,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   headerSubtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#94A3B8',
     marginTop: 4,
     fontWeight: '400',
@@ -2256,10 +2261,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: 16,
     marginTop: 16,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
     padding: 4,
     zIndex: 100,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   tabButton: {
     flex: 1,
@@ -2272,15 +2279,21 @@ const styles = StyleSheet.create({
     cursor: 'pointer',
   },
   tabButtonActive: {
-    backgroundColor: '#960018',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   tabButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: '500',
+    color: '#64748B',
   },
   tabButtonTextActive: {
-    color: '#fff',
+    color: '#960018',
+    fontWeight: '600',
   },
   // Search Section Styles
   searchSection: {
