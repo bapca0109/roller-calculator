@@ -2816,26 +2816,16 @@ async def create_quote(
     # Check if user is a customer
     is_customer = current_user["role"] == UserRole.CUSTOMER
     
-    # Calculate pricing with discounts and premiums
+    # Calculate pricing - no system discount, admin will set during approval
     subtotal = 0.0
-    total_discount = 0.0
     
     processed_products = []
     for item in quote.products:
         # Calculate base line total
         line_total = item.quantity * item.unit_price
         
-        # Apply quantity discount (example: 5% for 10+, 10% for 50+, 15% for 100+)
-        discount = 0.0
-        if item.quantity >= 100:
-            discount = line_total * 0.15
-        elif item.quantity >= 50:
-            discount = line_total * 0.10
-        elif item.quantity >= 10:
-            discount = line_total * 0.05
-        
-        item.calculated_discount = discount
-        total_discount += discount
+        # No system discount - admin will set during approval
+        item.calculated_discount = 0
         subtotal += line_total
         
         processed_products.append(item.dict())
@@ -2954,16 +2944,16 @@ async def create_roller_quote(
         "customer_details": quote_data.customer_details,  # Full customer info for PDF
         "products": [product],
         "subtotal": pricing.get("order_value", 0),
-        "total_discount": pricing.get("discount_amount", 0),
-        "packing_charges": pricing.get("packing_charges", 0),
-        "shipping_cost": quote_data.freight.get("freight_charges", 0) if quote_data.freight else 0,
+        "total_discount": 0,  # No system discount - admin will set during approval
+        "packing_charges": 0,  # Admin will set during approval
+        "shipping_cost": 0,  # Admin will set during approval
         "delivery_location": quote_data.freight.get("destination_pincode") if quote_data.freight else None,
-        "total_price": quote_data.grand_total,
+        "total_price": pricing.get("order_value", 0),  # Original value, no discount yet
         "status": QuoteStatus.PENDING,
         "notes": quote_data.notes,
         "cost_breakdown": quote_data.cost_breakdown,
         "pricing_details": quote_data.pricing,
-        "freight_details": quote_data.freight,
+        "freight_details": None,  # Admin will set during approval
         "created_at": ist_now,
         "updated_at": ist_now
     }

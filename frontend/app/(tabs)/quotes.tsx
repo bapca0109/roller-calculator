@@ -563,107 +563,50 @@ export default function QuotesScreen() {
     }
   };
 
-  // Calculate freight amount from percentage OR from pincode-based calculation
+  // Calculate freight amount - simple calculation based on admin input
   const calculateFreightAmount = () => {
     const quote = approveModalQuote || selectedQuote;
     if (!quote) return 0;
     
-    // If custom freight is explicitly selected, use the custom amount
+    // If custom freight amount is entered, use it directly
     if (useCustomFreight) {
       return parseFloat(customFreightAmount) || 0;
     }
     
-    // If freight percentage is set (> 0), calculate based on current discounted subtotal
+    // Calculate freight as percentage of (discounted subtotal + packing)
     const percent = parseFloat(freightPercent) || 0;
-    if (percent > 0) {
-      // Calculate subtotal from editable products (admin's current changes)
-      const currentSubtotal = editableProducts.length > 0 
-        ? editableProducts.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0)
-        : (quote.subtotal || 0);
-      
-      // Calculate discount based on admin's entered values, not original quote values
-      let currentDiscount = 0;
-      if (useItemDiscount) {
-        // Item-wise discount
-        currentDiscount = editableProducts.reduce((total, product, index) => {
-          const itemSubtotal = product.unit_price * product.quantity;
-          const itemDiscountPct = parseFloat(itemDiscounts[index] || '0') || 0;
-          return total + (itemSubtotal * (itemDiscountPct / 100));
-        }, 0);
-      } else {
-        // Total discount
-        const discountPct = parseFloat(totalDiscountPercent) || 0;
-        currentDiscount = currentSubtotal * (discountPct / 100);
-      }
-      
-      // Calculate packing based on admin's entered packing type
-      let packingPercent = 0;
-      if (editPackingType === 'standard') packingPercent = 1;
-      else if (editPackingType === 'pallet') packingPercent = 4;
-      else if (editPackingType === 'wooden_box') packingPercent = 8;
-      else if (editPackingType === 'custom') packingPercent = parseFloat(customPackingPercent) || 0;
-      
-      const discountedSubtotal = currentSubtotal - currentDiscount;
-      const packingCharges = discountedSubtotal * (packingPercent / 100);
-      
-      const taxableAmount = discountedSubtotal + packingCharges;
-      return taxableAmount * (percent / 100);
+    if (percent === 0) return 0;
+    
+    // Get current subtotal from editable products
+    const currentSubtotal = editableProducts.length > 0 
+      ? editableProducts.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0)
+      : (quote.subtotal || 0);
+    
+    // Calculate discount based on admin's entered values
+    let currentDiscount = 0;
+    if (useItemDiscount) {
+      currentDiscount = editableProducts.reduce((total, product, index) => {
+        const itemSubtotal = product.unit_price * product.quantity;
+        const itemDiscountPct = parseFloat(itemDiscounts[index] || '0') || 0;
+        return total + (itemSubtotal * (itemDiscountPct / 100));
+      }, 0);
+    } else {
+      const discountPct = parseFloat(totalDiscountPercent) || 0;
+      currentDiscount = currentSubtotal * (discountPct / 100);
     }
     
-    // If we have a pincode-calculated freight and percent is 0, use pincode-calculated value
-    // This is weight-based freight that doesn't change with discount
-    if (calculatedFreightFromPincode > 0) {
-      return calculatedFreightFromPincode;
-    }
+    // Get packing percentage
+    let packingPercent = 0;
+    if (editPackingType === 'standard') packingPercent = 1;
+    else if (editPackingType === 'pallet') packingPercent = 4;
+    else if (editPackingType === 'wooden_box') packingPercent = 8;
+    else if (editPackingType === 'custom') packingPercent = parseFloat(customPackingPercent) || 0;
     
-    // If no freight percentage and no pincode calculation, check if there was an original freight
-    // and calculate it as a percentage of the NEW discounted subtotal
-    const originalFreight = quote.shipping_cost || 0;
-    if (originalFreight > 0) {
-      // Try to determine original freight percentage
-      const originalSubtotal = quote.subtotal || 0;
-      const originalDiscount = quote.total_discount || 0;
-      const originalDiscountedSubtotal = originalSubtotal - originalDiscount;
-      const originalPacking = quote.packing_charges || 0;
-      const originalTaxable = originalDiscountedSubtotal + originalPacking;
-      
-      // If we can calculate original freight percentage, apply it to new values
-      if (originalTaxable > 0) {
-        const originalFreightPercent = (originalFreight / originalTaxable) * 100;
-        
-        // Calculate NEW values
-        const currentSubtotal = editableProducts.length > 0 
-          ? editableProducts.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0)
-          : originalSubtotal;
-        
-        let currentDiscount = 0;
-        if (useItemDiscount) {
-          currentDiscount = editableProducts.reduce((total, product, index) => {
-            const itemSubtotal = product.unit_price * product.quantity;
-            const itemDiscountPct = parseFloat(itemDiscounts[index] || '0') || 0;
-            return total + (itemSubtotal * (itemDiscountPct / 100));
-          }, 0);
-        } else {
-          const discountPct = parseFloat(totalDiscountPercent) || 0;
-          currentDiscount = currentSubtotal * (discountPct / 100);
-        }
-        
-        let packingPercent = 0;
-        if (editPackingType === 'standard') packingPercent = 1;
-        else if (editPackingType === 'pallet') packingPercent = 4;
-        else if (editPackingType === 'wooden_box') packingPercent = 8;
-        else if (editPackingType === 'custom') packingPercent = parseFloat(customPackingPercent) || 0;
-        
-        const newDiscountedSubtotal = currentSubtotal - currentDiscount;
-        const newPackingCharges = newDiscountedSubtotal * (packingPercent / 100);
-        const newTaxable = newDiscountedSubtotal + newPackingCharges;
-        
-        // Apply original freight percentage to new taxable amount
-        return newTaxable * (originalFreightPercent / 100);
-      }
-    }
+    const discountedSubtotal = currentSubtotal - currentDiscount;
+    const packingCharges = discountedSubtotal * (packingPercent / 100);
+    const taxableBase = discountedSubtotal + packingCharges;
     
-    return 0;
+    return taxableBase * (percent / 100);
   };
 
   // Calculate freight based on pincode and product weight
