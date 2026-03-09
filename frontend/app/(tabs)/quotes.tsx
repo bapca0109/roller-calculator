@@ -97,6 +97,7 @@ export default function QuotesScreen() {
   const [editedProducts, setEditedProducts] = useState<QuoteProduct[]>([]);
   const [editedDiscount, setEditedDiscount] = useState<string>('0');
   const [editedFreight, setEditedFreight] = useState<string>('0');  // Editable freight for Edit Quote modal
+  const [editedPackingType, setEditedPackingType] = useState<string>('standard');  // Editable packing type
   const [useItemDiscounts, setUseItemDiscounts] = useState(false);
   const [bulkDiscountPercent, setBulkDiscountPercent] = useState<string>('0');
   const [savingEdit, setSavingEdit] = useState(false);
@@ -439,6 +440,15 @@ export default function QuotesScreen() {
     setEditedDiscount(discountPercent);
     // Initialize freight with existing value
     setEditedFreight((quote.shipping_cost || 0).toString());
+    // Initialize packing type - handle custom_X format
+    const packingType = quote.packing_type || 'standard';
+    if (packingType.startsWith('custom_')) {
+      setEditedPackingType('custom');
+      setCustomPackingPercent(packingType.split('_')[1] || '0');
+    } else {
+      setEditedPackingType(packingType);
+      setCustomPackingPercent('');
+    }
   };
 
   const updateProductItemDiscount = (index: number, newDiscount: string) => {
@@ -462,6 +472,16 @@ export default function QuotesScreen() {
     let subtotal = 0;
     let totalItemDiscount = 0;
     
+    // Helper function to get packing percent from editedPackingType
+    const getPackingPercent = () => {
+      if (editedPackingType === 'standard') return 1;
+      if (editedPackingType === 'pallet') return 4;
+      if (editedPackingType === 'wooden_box') return 8;
+      if (editedPackingType === 'custom') return parseFloat(customPackingPercent) || 0;
+      if (editedPackingType.startsWith('custom_')) return parseFloat(editedPackingType.split('_')[1]) || 0;
+      return 0;
+    };
+    
     if (useItemDiscounts) {
       // Calculate with item-level discounts
       editedProducts.forEach(p => {
@@ -473,40 +493,36 @@ export default function QuotesScreen() {
       });
       
       const afterDiscount = subtotal - totalItemDiscount;
-      // Get packing percent from packing_type, not from stored values
-      let packingPercent = 0;
-      const packingType = editingQuote?.packing_type || 'standard';
-      if (packingType === 'standard') packingPercent = 1;
-      else if (packingType === 'pallet') packingPercent = 4;
-      else if (packingType === 'wooden_box') packingPercent = 8;
-      else if (packingType.startsWith('custom_')) packingPercent = parseFloat(packingType.split('_')[1]) || 0;
+      const packingPercent = getPackingPercent();
       const newPacking = afterDiscount * packingPercent / 100;
+      const freightAmount = parseFloat(editedFreight) || 0;
+      const taxableAmount = afterDiscount + newPacking + freightAmount;
+      const grandTotal = taxableAmount * 1.18; // Include 18% GST
       return {
         subtotal,
         discountAmount: totalItemDiscount,
         afterDiscount,
         packingCharges: newPacking,
-        total: afterDiscount + newPacking + (parseFloat(editedFreight) || 0)
+        taxableAmount,
+        total: grandTotal // Grand total with GST
       };
     } else {
       // Use total discount percentage
       subtotal = editedProducts.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0);
       const discountAmount = (subtotal * (parseFloat(editedDiscount) || 0)) / 100;
       const afterDiscount = subtotal - discountAmount;
-      // Get packing percent from packing_type, not from stored values
-      let packingPercent = 0;
-      const packingType = editingQuote?.packing_type || 'standard';
-      if (packingType === 'standard') packingPercent = 1;
-      else if (packingType === 'pallet') packingPercent = 4;
-      else if (packingType === 'wooden_box') packingPercent = 8;
-      else if (packingType.startsWith('custom_')) packingPercent = parseFloat(packingType.split('_')[1]) || 0;
+      const packingPercent = getPackingPercent();
       const newPacking = afterDiscount * packingPercent / 100;
+      const freightAmount = parseFloat(editedFreight) || 0;
+      const taxableAmount = afterDiscount + newPacking + freightAmount;
+      const grandTotal = taxableAmount * 1.18; // Include 18% GST
       return {
         subtotal,
         discountAmount,
         afterDiscount,
         packingCharges: newPacking,
-        total: afterDiscount + newPacking + (parseFloat(editedFreight) || 0)
+        taxableAmount,
+        total: grandTotal // Grand total with GST
       };
     }
   };
@@ -518,12 +534,19 @@ export default function QuotesScreen() {
     try {
       const totals = calculateEditedTotal();
       const freightAmount = parseFloat(editedFreight) || 0;
+      
+      // Determine packing type string for storage
+      const packingTypeToSave = editedPackingType === 'custom' 
+        ? `custom_${customPackingPercent}` 
+        : editedPackingType;
+      
       const updateData: any = {
         products: editedProducts,
         subtotal: totals.subtotal,
         total_discount: totals.discountAmount,
         use_item_discounts: useItemDiscounts,
         packing_charges: totals.packingCharges,
+        packing_type: packingTypeToSave,  // Include edited packing type
         shipping_cost: freightAmount,  // Include edited freight
         total_price: totals.total,
       };
@@ -3017,6 +3040,65 @@ export default function QuotesScreen() {
                     )}
                   </View>
 
+                  {/* Packing Type Selection */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Packing Type</Text>
+                    <View style={styles.packingOptions}>
+                      {[
+                        { value: 'standard', label: 'Standard (1%)' },
+                        { value: 'pallet', label: 'Pallet (4%)' },
+                        { value: 'wooden_box', label: 'Wooden Box (8%)' },
+                        { value: 'custom', label: 'Custom' }
+                      ].map((option) => (
+                        <TouchableOpacity
+                          key={option.value}
+                          style={[
+                            styles.packingOption,
+                            editedPackingType === option.value && styles.packingOptionActive
+                          ]}
+                          onPress={() => setEditedPackingType(option.value)}
+                        >
+                          <Ionicons 
+                            name={editedPackingType === option.value ? 'radio-button-on' : 'radio-button-off'} 
+                            size={20} 
+                            color={editedPackingType === option.value ? '#960018' : '#666'} 
+                          />
+                          <Text style={[
+                            styles.packingOptionText,
+                            editedPackingType === option.value && styles.packingOptionTextActive
+                          ]}>{option.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    
+                    {/* Custom Packing Percentage Input */}
+                    {editedPackingType === 'custom' && (
+                      <View style={styles.customPackingRow}>
+                        <Text style={styles.customPackingLabel}>Custom Percentage:</Text>
+                        <View style={styles.freightInputWrapper}>
+                          <TextInput
+                            style={styles.freightInput}
+                            value={customPackingPercent}
+                            onChangeText={setCustomPackingPercent}
+                            keyboardType="numeric"
+                            placeholder="0"
+                          />
+                          <Text style={styles.freightInputSuffix}>%</Text>
+                        </View>
+                      </View>
+                    )}
+                    
+                    {/* Show original packing type if different */}
+                    {editingQuote?.packing_type && editedPackingType !== editingQuote.packing_type && (
+                      <Text style={{ color: '#666', fontSize: 12, marginTop: 8 }}>
+                        Original: {editingQuote.packing_type === 'standard' ? 'Standard (1%)' :
+                                   editingQuote.packing_type === 'pallet' ? 'Pallet (4%)' :
+                                   editingQuote.packing_type === 'wooden_box' ? 'Wooden Box (8%)' :
+                                   editingQuote.packing_type}
+                      </Text>
+                    )}
+                  </View>
+
                   {/* Calculated Totals */}
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>Summary</Text>
@@ -3049,7 +3131,7 @@ export default function QuotesScreen() {
                     <View style={styles.pricingRow}>
                       <Text style={styles.pricingLabel}>Taxable Amount</Text>
                       <Text style={styles.pricingValue}>
-                        Rs. {((calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount) + calculateEditedTotal().packingCharges + (parseFloat(editedFreight) || 0)).toFixed(2)}
+                        Rs. {calculateEditedTotal().taxableAmount.toFixed(2)}
                       </Text>
                     </View>
                     
@@ -3057,7 +3139,7 @@ export default function QuotesScreen() {
                     <View style={styles.pricingRow}>
                       <Text style={styles.pricingLabel}>CGST @ 9%</Text>
                       <Text style={styles.pricingValue}>
-                        Rs. {(((calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount) + calculateEditedTotal().packingCharges + (parseFloat(editedFreight) || 0)) * 0.09).toFixed(2)}
+                        Rs. {(calculateEditedTotal().taxableAmount * 0.09).toFixed(2)}
                       </Text>
                     </View>
                     
@@ -3065,7 +3147,7 @@ export default function QuotesScreen() {
                     <View style={styles.pricingRow}>
                       <Text style={styles.pricingLabel}>SGST @ 9%</Text>
                       <Text style={styles.pricingValue}>
-                        Rs. {(((calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount) + calculateEditedTotal().packingCharges + (parseFloat(editedFreight) || 0)) * 0.09).toFixed(2)}
+                        Rs. {(calculateEditedTotal().taxableAmount * 0.09).toFixed(2)}
                       </Text>
                     </View>
                     

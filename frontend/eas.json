@@ -6,7 +6,7 @@
         "withoutCredentials": true
       },
       "env": {
-        "EXPO_PUBLIC_BACKEND_URL": "https://roller-quote.preview.emergentagent.com",
+        "EXPO_PUBLIC_BACKEND_URL": "https://quote-admin-hub-1.preview.emergentagent.com",
         "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
       }
     }
