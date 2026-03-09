@@ -77,6 +77,27 @@ Sales teams, engineers, and industrial professionals in the conveyor equipment i
 
 ### March 9, 2026 (Latest Session - Current)
 
+- **P0 FEATURE: EDITABLE PACKING TYPE IN EDIT QUOTE MODAL** - COMPLETED ✅
+  - **Issue**: When admin revises an already approved quote, they could not change the packing type
+  - **Implementation**:
+    1. **Frontend**: Added Packing Type selector UI in Edit Quote modal (`quotes.tsx` lines 3040-3100)
+       - Shows 4 radio button options: Standard (1%), Pallet (4%), Wooden Box (8%), Custom
+       - Custom option shows percentage input field when selected
+       - Dynamic calculation updates Summary section in real-time
+       - Shows "Original: [packing type]" when changed from original value
+    2. **State Management**: Added `editedPackingType` and `customPackingPercent` state variables
+    3. **Calculation Logic**: Updated `calculateEditedTotal()` function with `getPackingPercent()` helper
+       - Returns correct percentage based on selected packing type
+       - Handles both "custom" (UI selection) and "custom_5" (saved format)
+       - GST calculation now included in Grand Total
+    4. **Save Logic**: Updated `saveEditedQuote()` to pass `packing_type` to backend
+       - Custom packing type saved as "custom_X" format (e.g., "custom_5")
+    5. **Initialization**: Updated `openEditQuote()` to parse and initialize packing type
+       - Handles "custom_X" format by extracting percentage into separate state
+  - **Files Changed**:
+    - `frontend/app/(tabs)/quotes.tsx` - Added Packing Type UI section, updated calculation and save functions
+  - **Testing**: Testing agent verified 100% - Backend API update, Frontend UI display, all packing type options functional
+
 - **P0 FEATURE: AUTOMATIC FREIGHT CALCULATION** - COMPLETED ✅
   - **Issue**: Freight charges were not being automatically calculated when admin reviewed an RFQ. Admin had to manually calculate or enter freight.
   - **Root Cause**: Missing `/api/calculate-freight` backend endpoint and frontend handlers were not triggering freight calculation on pincode input.
