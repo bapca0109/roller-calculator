@@ -327,14 +327,24 @@ export default function QuotesScreen() {
   };
 
   // Update product quantity
-  const updateProductQuantity = (index: number, newQty: number) => {
-    if (newQty < 1) return;
+  const updateProductQuantity = (index: number, newQty: number | string) => {
+    const qty = typeof newQty === 'string' ? parseInt(newQty) || 0 : newQty;
+    if (qty < 1) return;
     const updatedProducts = [...editableProducts];
     updatedProducts[index] = {
       ...updatedProducts[index],
-      quantity: newQty
+      quantity: qty
     };
     setEditableProducts(updatedProducts);
+  };
+
+  // Update quantity in editedProducts (for Edit Quote modal on approved quotes)
+  const updateEditedProductQuantity = (index: number, newQty: string) => {
+    const qty = parseInt(newQty) || 0;
+    if (qty < 1) return;
+    const updated = [...editedProducts];
+    updated[index] = { ...updated[index], quantity: qty };
+    setEditedProducts(updated);
   };
 
   // Delete product from list
@@ -2757,7 +2767,7 @@ export default function QuotesScreen() {
                               <TextInput
                                 style={styles.smallInput}
                                 value={product.quantity.toString()}
-                                onChangeText={(text) => updateProductQuantity(index, text)}
+                                onChangeText={(text) => updateEditedProductQuantity(index, text)}
                                 keyboardType="numeric"
                               />
                             </View>
