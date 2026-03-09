@@ -750,15 +750,8 @@ export default function QuotesScreen() {
       
       const packingCharges = discountedSubtotal * (packingPercent / 100);
       
-      // Calculate freight based on DISCOUNTED subtotal (calculated here, not using calculateFreightAmount)
-      let freightAmount = 0;
-      const freightPct = parseFloat(freightPercent) || 0;
-      if (useCustomFreight) {
-        freightAmount = parseFloat(customFreightAmount) || 0;
-      } else if (freightPct > 0) {
-        // Freight = discounted subtotal × freight%
-        freightAmount = discountedSubtotal * (freightPct / 100);
-      }
+      // Get freight amount directly from custom input
+      const freightAmount = parseFloat(customFreightAmount) || 0;
       
       // Calculate final total price
       const taxableAmount = discountedSubtotal + packingCharges + freightAmount;
@@ -778,9 +771,7 @@ export default function QuotesScreen() {
         delivery_location: editDeliveryPincode,
         total_price: totalPrice,
         freight_details: {
-          freight_percent: freightPct,
-          freight_amount: freightAmount,
-          use_custom_amount: useCustomFreight
+          freight_amount: freightAmount
         }
       });
       
@@ -1521,10 +1512,12 @@ export default function QuotesScreen() {
                 <span class="summary-value">Rs. ${quote.packing_charges?.toFixed(2)}</span>
               </div>
             ` : ''}
+            ${(quote.shipping_cost || 0) > 0 ? `
             <div class="summary-row">
-              <span class="summary-label">Freight Charges (${(((quote.shipping_cost || 0) / ((quote.subtotal || 1) - (quote.total_discount || 0))) * 100).toFixed(1)}%)</span>
+              <span class="summary-label">Freight Charges</span>
               <span class="summary-value">Rs. ${(quote.shipping_cost || 0).toFixed(2)}</span>
             </div>
+            ` : ''}
             <div class="summary-row" style="background: #f5f5f5;">
               <span class="summary-label"><strong>Taxable Amount</strong></span>
               <span class="summary-value"><strong>Rs. ${taxableAmount.toFixed(2)}</strong></span>
@@ -1942,63 +1935,19 @@ export default function QuotesScreen() {
               </Text>
             )}
             
-            {/* Freight Mode Toggle */}
-            <View style={styles.discountModeToggle}>
-              <TouchableOpacity 
-                style={[styles.modeButton, !useCustomFreight && styles.modeButtonActive]}
-                onPress={() => setUseCustomFreight(false)}
-              >
-                <Ionicons name="calculator-outline" size={18} color={!useCustomFreight ? "#fff" : "#666"} />
-                <Text style={[styles.modeButtonText, !useCustomFreight && styles.modeButtonTextActive]}>
-                  Freight %
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modeButton, useCustomFreight && styles.modeButtonActive]}
-                onPress={() => setUseCustomFreight(true)}
-              >
-                <Ionicons name="cash-outline" size={18} color={useCustomFreight ? "#fff" : "#666"} />
-                <Text style={[styles.modeButtonText, useCustomFreight && styles.modeButtonTextActive]}>
-                  Custom Amount
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Freight Input */}
-            {!useCustomFreight ? (
-              <View style={styles.freightInputRow}>
-                <Text style={styles.freightInputLabel}>Freight Percentage:</Text>
-                <View style={styles.freightInputWrapper}>
-                  <TextInput
-                    style={styles.freightInput}
-                    value={freightPercent}
-                    onChangeText={setFreightPercent}
-                    keyboardType="numeric"
-                    placeholder="0"
-                  />
-                  <Text style={styles.freightInputSuffix}>%</Text>
-                </View>
+            {/* Freight Input - Custom Amount Only */}
+            <View style={styles.freightInputRow}>
+              <Text style={styles.freightInputLabel}>Freight Charges:</Text>
+              <View style={styles.freightInputWrapper}>
+                <Text style={styles.freightInputPrefix}>Rs.</Text>
+                <TextInput
+                  style={styles.freightInput}
+                  value={customFreightAmount}
+                  onChangeText={setCustomFreightAmount}
+                  keyboardType="numeric"
+                  placeholder="0"
+                />
               </View>
-            ) : (
-              <View style={styles.freightInputRow}>
-                <Text style={styles.freightInputLabel}>Custom Amount:</Text>
-                <View style={styles.freightInputWrapper}>
-                  <Text style={styles.freightInputPrefix}>Rs.</Text>
-                  <TextInput
-                    style={styles.freightInput}
-                    value={customFreightAmount}
-                    onChangeText={setCustomFreightAmount}
-                    keyboardType="numeric"
-                    placeholder="0"
-                  />
-                </View>
-              </View>
-            )}
-
-            {/* Calculated Freight */}
-            <View style={styles.calculatedFreightRow}>
-              <Text style={styles.calculatedFreightLabel}>Freight Amount:</Text>
-              <Text style={styles.calculatedFreightValue}>Rs. {calculateFreightAmount().toFixed(2)}</Text>
             </View>
           </View>
 
@@ -2348,12 +2297,10 @@ export default function QuotesScreen() {
                       </View>
                     )}
                     
-                    {/* Freight Charges with % - use stored freight percentage */}
+                    {/* Freight Charges */}
                     {(selectedQuote.shipping_cost || 0) > 0 && (
                       <View style={styles.pricingRow}>
-                        <Text style={styles.pricingLabel}>
-                          Freight Charges ({(selectedQuote.freight_details?.freight_percent || 0).toFixed(1)}%)
-                        </Text>
+                        <Text style={styles.pricingLabel}>Freight Charges</Text>
                         <Text style={styles.pricingValue}>Rs. {(selectedQuote.shipping_cost || 0).toFixed(2)}</Text>
                       </View>
                     )}
@@ -2571,62 +2518,19 @@ export default function QuotesScreen() {
                       
                       {/* Freight Mode Toggle */}
                       <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Freight Charges</Text>
-                      <View style={styles.discountModeToggle}>
-                        <TouchableOpacity 
-                          style={[styles.modeButton, !useCustomFreight && styles.modeButtonActive]}
-                          onPress={() => setUseCustomFreight(false)}
-                        >
-                          <Ionicons name="calculator-outline" size={18} color={!useCustomFreight ? "#fff" : "#666"} />
-                          <Text style={[styles.modeButtonText, !useCustomFreight && styles.modeButtonTextActive]}>
-                            Freight %
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={[styles.modeButton, useCustomFreight && styles.modeButtonActive]}
-                          onPress={() => setUseCustomFreight(true)}
-                        >
-                          <Ionicons name="cash-outline" size={18} color={useCustomFreight ? "#fff" : "#666"} />
-                          <Text style={[styles.modeButtonText, useCustomFreight && styles.modeButtonTextActive]}>
-                            Custom Amount
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      {/* Freight Input */}
-                      {!useCustomFreight ? (
-                        <View style={styles.freightInputRow}>
-                          <Text style={styles.freightInputLabel}>Freight Percentage:</Text>
-                          <View style={styles.freightInputWrapper}>
-                            <TextInput
-                              style={styles.freightInput}
-                              value={freightPercent}
-                              onChangeText={setFreightPercent}
-                              keyboardType="numeric"
-                              placeholder="0"
-                            />
-                            <Text style={styles.freightInputSuffix}>%</Text>
-                          </View>
+                      {/* Freight Input - Custom Amount Only */}
+                      <View style={styles.freightInputRow}>
+                        <Text style={styles.freightInputLabel}>Freight Charges:</Text>
+                        <View style={styles.freightInputWrapper}>
+                          <Text style={styles.freightInputPrefix}>Rs.</Text>
+                          <TextInput
+                            style={styles.freightInput}
+                            value={customFreightAmount}
+                            onChangeText={setCustomFreightAmount}
+                            keyboardType="numeric"
+                            placeholder="0"
+                          />
                         </View>
-                      ) : (
-                        <View style={styles.freightInputRow}>
-                          <Text style={styles.freightInputLabel}>Custom Amount:</Text>
-                          <View style={styles.freightInputWrapper}>
-                            <Text style={styles.freightInputPrefix}>Rs.</Text>
-                            <TextInput
-                              style={styles.freightInput}
-                              value={customFreightAmount}
-                              onChangeText={setCustomFreightAmount}
-                              keyboardType="numeric"
-                              placeholder="0"
-                            />
-                          </View>
-                        </View>
-                      )}
-
-                      {/* Calculated Freight */}
-                      <View style={styles.calculatedFreightRow}>
-                        <Text style={styles.calculatedFreightLabel}>Freight Amount:</Text>
-                        <Text style={styles.calculatedFreightValue}>Rs. {calculateFreightAmount().toFixed(2)}</Text>
                       </View>
                     </View>
                   ) : (
@@ -2651,10 +2555,10 @@ export default function QuotesScreen() {
                             <Text style={styles.infoValue}>{selectedQuote.delivery_location}</Text>
                           </View>
                         )}
-                        {selectedQuote.freight_details?.freight_percent > 0 && (
+                        {selectedQuote.shipping_cost > 0 && (
                           <View style={styles.infoRow}>
                             <Text style={styles.infoLabel}>Freight:</Text>
-                            <Text style={styles.infoValue}>{selectedQuote.freight_details.freight_percent}%</Text>
+                            <Text style={styles.infoValue}>Rs. {selectedQuote.shipping_cost.toFixed(2)}</Text>
                           </View>
                         )}
                       </View>
@@ -3105,12 +3009,10 @@ export default function QuotesScreen() {
                       </View>
                     )}
                     
-                    {/* Freight Charges with % */}
+                    {/* Freight Charges */}
                     {editingQuote.shipping_cost > 0 && (
                       <View style={styles.pricingRow}>
-                        <Text style={styles.pricingLabel}>
-                          Freight Charges ({((editingQuote.shipping_cost / (calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount || 1)) * 100).toFixed(1)}%)
-                        </Text>
+                        <Text style={styles.pricingLabel}>Freight Charges</Text>
                         <Text style={styles.pricingValue}>Rs. {editingQuote.shipping_cost.toFixed(2)}</Text>
                       </View>
                     )}
