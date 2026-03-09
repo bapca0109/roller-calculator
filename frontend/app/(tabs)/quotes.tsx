@@ -2220,7 +2220,26 @@ export default function QuotesScreen() {
                                 <Ionicons name="add" size={18} color="#333" />
                               </TouchableOpacity>
                             </View>
-                            <Text style={styles.productPrice}>Rs. {(product.unit_price * product.quantity).toFixed(2)}</Text>
+                            {/* Show price with discount info for editable products */}
+                            {(() => {
+                              const originalPrice = product.unit_price * product.quantity;
+                              const discountPct = useItemDiscount 
+                                ? (parseFloat(itemDiscounts[index] || '0') || 0)
+                                : (parseFloat(totalDiscountPercent) || 0);
+                              const discountedPrice = originalPrice * (1 - discountPct / 100);
+                              if (discountPct > 0) {
+                                return (
+                                  <View style={{ alignItems: 'flex-end' }}>
+                                    <Text style={[styles.productPrice, { textDecorationLine: 'line-through', color: '#999', fontSize: 12 }]}>
+                                      Rs. {originalPrice.toFixed(2)}
+                                    </Text>
+                                    <Text style={styles.productPrice}>Rs. {discountedPrice.toFixed(2)}</Text>
+                                    <Text style={{ fontSize: 10, color: '#059669' }}>({discountPct}% off)</Text>
+                                  </View>
+                                );
+                              }
+                              return <Text style={styles.productPrice}>Rs. {originalPrice.toFixed(2)}</Text>;
+                            })()}
                           </View>
                           {product.specifications && (
                             <View style={styles.specsContainer}>
@@ -2250,9 +2269,25 @@ export default function QuotesScreen() {
                           <Text style={styles.productName}>{product.product_name || product.product_id}</Text>
                           <View style={styles.productDetails}>
                             <Text style={styles.productQty}>Qty: {product.quantity}</Text>
-                            {/* Hide price for customers unless quote is approved */}
+                            {/* Hide price for customers unless quote is approved - show discounted value */}
                             {(!isCustomer || selectedQuote.status === 'approved') && (
-                              <Text style={styles.productPrice}>Rs. {(product.unit_price * product.quantity).toFixed(2)}</Text>
+                              (() => {
+                                const originalPrice = product.unit_price * product.quantity;
+                                const discountPct = product.item_discount_percent || 0;
+                                const discountedPrice = originalPrice * (1 - discountPct / 100);
+                                if (discountPct > 0) {
+                                  return (
+                                    <View style={{ alignItems: 'flex-end' }}>
+                                      <Text style={[styles.productPrice, { textDecorationLine: 'line-through', color: '#999', fontSize: 12 }]}>
+                                        Rs. {originalPrice.toFixed(2)}
+                                      </Text>
+                                      <Text style={styles.productPrice}>Rs. {discountedPrice.toFixed(2)}</Text>
+                                      <Text style={{ fontSize: 10, color: '#059669' }}>({discountPct}% off)</Text>
+                                    </View>
+                                  );
+                                }
+                                return <Text style={styles.productPrice}>Rs. {originalPrice.toFixed(2)}</Text>;
+                              })()
                             )}
                           </View>
                           {product.specifications && (
