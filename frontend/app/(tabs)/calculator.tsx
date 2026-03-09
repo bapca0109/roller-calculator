@@ -215,10 +215,6 @@ export default function CalculatorScreen() {
   const [packingType, setPackingType] = useState<string>('standard');
   const [freightPincode, setFreightPincode] = useState<string>('');
   
-  // Shaft end type state
-  const [shaftEndType, setShaftEndType] = useState<string>('A');
-  const [customShaftExtension, setCustomShaftExtension] = useState<string>('');
-  
   // Custom discount state
   const [customDiscount, setCustomDiscount] = useState<string>('');
   const [useCustomDiscount, setUseCustomDiscount] = useState(false);
@@ -231,7 +227,6 @@ export default function CalculatorScreen() {
     pipeLength?: string;
     quantity?: string;
     freightPincode?: string;
-    customShaftExtension?: string;
   }>({});
 
   useEffect(() => {
@@ -699,13 +694,7 @@ export default function CalculatorScreen() {
         pipe_type: pipeType,
         quantity: parseInt(quantity),
         packing_type: packingType,
-        shaft_end_type: shaftEndType,
       };
-
-      // Add custom shaft length if custom type selected (user enters total shaft length)
-      if (shaftEndType === 'custom' && customShaftExtension) {
-        payload.custom_shaft_length = parseInt(customShaftExtension);
-      }
 
       if (rollerType === 'impact' && rubberDiameter) {
         payload.rubber_diameter = rubberDiameter;
@@ -1393,44 +1382,6 @@ export default function CalculatorScreen() {
             options={standards?.shaft_diameters.map((dia) => ({ label: `${dia} mm`, value: dia })) || []}
             placeholder="Select shaft diameter"
           />
-
-          <CustomDropdown
-            label="Shaft End Type"
-            value={shaftEndType}
-            onValueChange={(value) => setShaftEndType(value)}
-            options={[
-              { label: 'Type A (+26mm)', value: 'A' },
-              { label: 'Type B (+36mm)', value: 'B' },
-              { label: 'Type C (+56mm)', value: 'C' },
-              { label: 'Custom', value: 'custom' },
-            ]}
-            placeholder="Select shaft end type"
-          />
-
-          {shaftEndType === 'custom' && (
-            <View style={styles.inputRow}>
-              <Text style={styles.label}>Total Shaft Length (mm)</Text>
-              <TextInput
-                style={[styles.input, errors.customShaftExtension ? styles.inputError : null]}
-                value={customShaftExtension}
-                onChangeText={(value) => {
-                  setCustomShaftExtension(value);
-                  const pipeLengthNum = parseInt(pipeLength) || 200;
-                  const shaftLen = parseInt(value);
-                  if (value && (isNaN(shaftLen) || shaftLen <= pipeLengthNum || shaftLen > pipeLengthNum + 200)) {
-                    setErrors(prev => ({ ...prev, customShaftExtension: `Enter value between ${pipeLengthNum + 10} - ${pipeLengthNum + 200}mm` }));
-                  } else {
-                    setErrors(prev => ({ ...prev, customShaftExtension: '' }));
-                  }
-                }}
-                placeholder={`e.g. ${(parseInt(pipeLength) || 200) + 50}`}
-                keyboardType="numeric"
-              />
-              {errors.customShaftExtension ? (
-                <Text style={styles.errorText}>{errors.customShaftExtension}</Text>
-              ) : null}
-            </View>
-          )}
 
           <CustomDropdown
             label="Bearing Number"
