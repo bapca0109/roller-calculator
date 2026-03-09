@@ -2415,9 +2415,9 @@ export default function QuotesScreen() {
                   {/* Date */}
                   <View style={styles.detailSection}>
                     <Text style={styles.dateText}>
-                      {selectedQuote.status?.toLowerCase() === 'approved' && selectedQuote.approved_at 
-                        ? `Approved: ${formatDate(selectedQuote.approved_at)}`
-                        : `Created: ${formatDate(selectedQuote.created_at)}`}
+                      {selectedQuote.status?.toLowerCase() === 'approved' && (selectedQuote.approved_at_ist || selectedQuote.approved_at)
+                        ? `Approved: ${selectedQuote.approved_at_ist || formatDate(selectedQuote.approved_at)}`
+                        : `Created: ${selectedQuote.created_at_ist || formatDate(selectedQuote.created_at)}`}
                     </Text>
                   </View>
 
