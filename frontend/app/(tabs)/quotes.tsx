@@ -1838,13 +1838,6 @@ export default function QuotesScreen() {
               <Text style={styles.subtotalLabel}>Subtotal:</Text>
               <Text style={styles.subtotalValue}>Rs. {((approveModalQuote.subtotal || 0) - (approveModalQuote.total_discount || 0)).toFixed(2)}</Text>
             </View>
-            {approveModalQuote.total_discount > 0 && (
-              <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-                <Text style={{ color: '#059669', fontSize: 12 }}>
-                  (Discount Applied: {approveModalQuote.subtotal > 0 ? ((approveModalQuote.total_discount / approveModalQuote.subtotal) * 100).toFixed(1) : 0}% = Rs. {approveModalQuote.total_discount?.toFixed(2)})
-                </Text>
-              </View>
-            )}
           </View>
 
           {/* Packing Type Selection */}
@@ -2254,46 +2247,58 @@ export default function QuotesScreen() {
                   {(!isCustomer || selectedQuote.status === 'approved') && (
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>Pricing Summary</Text>
+                    
+                    {/* Subtotal (after discount) */}
                     <View style={styles.pricingRow}>
                       <Text style={styles.pricingLabel}>Subtotal</Text>
                       <Text style={styles.pricingValue}>Rs. {((selectedQuote.subtotal || 0) - (selectedQuote.total_discount || 0)).toFixed(2)}</Text>
                     </View>
-                    {selectedQuote.total_discount > 0 && (
+                    
+                    {/* Packing Charges with % */}
+                    {(selectedQuote.packing_charges || 0) > 0 && (
                       <View style={styles.pricingRow}>
-                        <Text style={styles.pricingLabelGreen}>
-                          (Discount Applied: {selectedQuote.subtotal > 0 ? ((selectedQuote.total_discount / selectedQuote.subtotal) * 100).toFixed(1) : 0}% = Rs. {selectedQuote.total_discount?.toFixed(2)})
+                        <Text style={styles.pricingLabel}>
+                          Packing Charges ({((selectedQuote.packing_charges || 0) / ((selectedQuote.subtotal || 1) - (selectedQuote.total_discount || 0)) * 100).toFixed(1)}%)
                         </Text>
-                      </View>
-                    )}
-                    {selectedQuote.packing_charges && selectedQuote.packing_charges > 0 && (
-                      <View style={styles.pricingRow}>
-                        <Text style={styles.pricingLabel}>Packing</Text>
-                        <Text style={styles.pricingValue}>Rs. {selectedQuote.packing_charges?.toFixed(2)}</Text>
-                      </View>
-                    )}
-                    {selectedQuote.shipping_cost > 0 && (
-                      <View style={styles.pricingRow}>
-                        <Text style={styles.pricingLabel}>Freight</Text>
-                        <Text style={styles.pricingValue}>Rs. {selectedQuote.shipping_cost?.toFixed(2)}</Text>
+                        <Text style={styles.pricingValue}>Rs. {(selectedQuote.packing_charges || 0).toFixed(2)}</Text>
                       </View>
                     )}
                     
-                    {/* Taxable Amount */}
+                    {/* Freight Charges with % */}
+                    {(selectedQuote.shipping_cost || 0) > 0 && (
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabel}>
+                          Freight Charges ({((selectedQuote.shipping_cost || 0) / ((selectedQuote.subtotal || 1) - (selectedQuote.total_discount || 0)) * 100).toFixed(1)}%)
+                        </Text>
+                        <Text style={styles.pricingValue}>Rs. {(selectedQuote.shipping_cost || 0).toFixed(2)}</Text>
+                      </View>
+                    )}
+                    
+                    {/* Taxable Amount = Subtotal + Packing + Freight */}
                     <View style={styles.pricingRow}>
                       <Text style={styles.pricingLabel}>Taxable Amount</Text>
                       <Text style={styles.pricingValue}>
-                        Rs. {((selectedQuote.subtotal || 0) - (selectedQuote.total_discount || 0) + (selectedQuote.packing_charges || 0)).toFixed(2)}
+                        Rs. {((selectedQuote.subtotal || 0) - (selectedQuote.total_discount || 0) + (selectedQuote.packing_charges || 0) + (selectedQuote.shipping_cost || 0)).toFixed(2)}
                       </Text>
                     </View>
                     
-                    {/* GST 18% */}
+                    {/* CGST @ 9% */}
                     <View style={styles.pricingRow}>
-                      <Text style={styles.pricingLabel}>GST (18%)</Text>
+                      <Text style={styles.pricingLabel}>CGST @ 9%</Text>
                       <Text style={styles.pricingValue}>
-                        Rs. {(((selectedQuote.subtotal || 0) - (selectedQuote.total_discount || 0) + (selectedQuote.packing_charges || 0)) * 0.18).toFixed(2)}
+                        Rs. {(((selectedQuote.subtotal || 0) - (selectedQuote.total_discount || 0) + (selectedQuote.packing_charges || 0) + (selectedQuote.shipping_cost || 0)) * 0.09).toFixed(2)}
                       </Text>
                     </View>
                     
+                    {/* SGST @ 9% */}
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>SGST @ 9%</Text>
+                      <Text style={styles.pricingValue}>
+                        Rs. {(((selectedQuote.subtotal || 0) - (selectedQuote.total_discount || 0) + (selectedQuote.packing_charges || 0) + (selectedQuote.shipping_cost || 0)) * 0.09).toFixed(2)}
+                      </Text>
+                    </View>
+                    
+                    {/* Grand Total */}
                     <View style={[styles.pricingRow, styles.totalRow]}>
                       <Text style={styles.totalLabel2}>GRAND TOTAL</Text>
                       <Text style={styles.totalValue}>
@@ -2999,31 +3004,60 @@ export default function QuotesScreen() {
                   {/* Calculated Totals */}
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>Summary</Text>
+                    
+                    {/* Subtotal (after discount) */}
                     <View style={styles.pricingRow}>
                       <Text style={styles.pricingLabel}>Subtotal</Text>
                       <Text style={styles.pricingValue}>Rs. {(calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount).toFixed(2)}</Text>
                     </View>
-                    {calculateEditedTotal().discountAmount > 0 && (
-                      <View style={styles.pricingRow}>
-                        <Text style={styles.pricingLabelGreen}>
-                          (Discount Applied: {useItemDiscounts ? 'Item-wise' : `${editedDiscount}%`} = Rs. {calculateEditedTotal().discountAmount.toFixed(2)})
-                        </Text>
-                      </View>
-                    )}
+                    
+                    {/* Packing Charges with % */}
                     {calculateEditedTotal().packingCharges > 0 && (
                       <View style={styles.pricingRow}>
-                        <Text style={styles.pricingLabel}>Packing</Text>
+                        <Text style={styles.pricingLabel}>
+                          Packing Charges ({((calculateEditedTotal().packingCharges / (calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount || 1)) * 100).toFixed(1)}%)
+                        </Text>
                         <Text style={styles.pricingValue}>Rs. {calculateEditedTotal().packingCharges.toFixed(2)}</Text>
                       </View>
                     )}
+                    
+                    {/* Freight Charges with % */}
                     {editingQuote.shipping_cost > 0 && (
                       <View style={styles.pricingRow}>
-                        <Text style={styles.pricingLabel}>Shipping</Text>
+                        <Text style={styles.pricingLabel}>
+                          Freight Charges ({((editingQuote.shipping_cost / (calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount || 1)) * 100).toFixed(1)}%)
+                        </Text>
                         <Text style={styles.pricingValue}>Rs. {editingQuote.shipping_cost.toFixed(2)}</Text>
                       </View>
                     )}
+                    
+                    {/* Taxable Amount */}
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>Taxable Amount</Text>
+                      <Text style={styles.pricingValue}>
+                        Rs. {((calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount) + calculateEditedTotal().packingCharges + (editingQuote.shipping_cost || 0)).toFixed(2)}
+                      </Text>
+                    </View>
+                    
+                    {/* CGST @ 9% */}
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>CGST @ 9%</Text>
+                      <Text style={styles.pricingValue}>
+                        Rs. {(((calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount) + calculateEditedTotal().packingCharges + (editingQuote.shipping_cost || 0)) * 0.09).toFixed(2)}
+                      </Text>
+                    </View>
+                    
+                    {/* SGST @ 9% */}
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>SGST @ 9%</Text>
+                      <Text style={styles.pricingValue}>
+                        Rs. {(((calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount) + calculateEditedTotal().packingCharges + (editingQuote.shipping_cost || 0)) * 0.09).toFixed(2)}
+                      </Text>
+                    </View>
+                    
+                    {/* Grand Total */}
                     <View style={[styles.pricingRow, styles.totalRow]}>
-                      <Text style={styles.totalLabel}>Total</Text>
+                      <Text style={styles.totalLabel}>GRAND TOTAL</Text>
                       <Text style={styles.totalValue}>Rs. {calculateEditedTotal().total.toFixed(2)}</Text>
                     </View>
                   </View>
