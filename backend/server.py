@@ -327,6 +327,7 @@ class QuoteCreate(BaseModel):
     products: List[QuoteProduct]
     delivery_location: Optional[str] = None
     packing_type: Optional[str] = None  # standard, pallet, wooden_box
+    shipping_cost: Optional[float] = 0.0  # Freight calculated from pincode
     notes: Optional[str] = None
     customer_rfq_no: Optional[str] = None  # Customer's own reference number (optional)
 
@@ -2848,7 +2849,7 @@ async def create_quote(
         "products": processed_products,
         "subtotal": subtotal,
         "total_discount": 0,  # No system discount - admin will set during approval
-        "shipping_cost": 0.0,
+        "shipping_cost": quote.shipping_cost or 0.0,  # Use freight from customer if provided
         "delivery_location": quote.delivery_location,
         "packing_type": quote.packing_type,  # Packing type from cart submission
         "total_price": total_price,

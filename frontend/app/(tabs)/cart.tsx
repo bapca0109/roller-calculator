@@ -38,6 +38,10 @@ export default function CartScreen() {
   const [pincodeValid, setPincodeValid] = useState<boolean | null>(null);
   const [pincodeError, setPincodeError] = useState('');
   const [validatingPincode, setValidatingPincode] = useState(false);
+  
+  // Freight calculation state
+  const [calculatedFreight, setCalculatedFreight] = useState(0);
+  const [calculatingFreight, setCalculatingFreight] = useState(false);
 
   // Success state
   const [showSuccess, setShowSuccess] = useState(false);
@@ -120,9 +124,52 @@ export default function CartScreen() {
     if (cleaned.length < 6) {
       setPincodeValid(null);
       setPincodeError(cleaned.length > 0 ? 'Please enter a valid 6-digit pincode' : '');
+      setCalculatedFreight(0);
     } else if (cleaned.length === 6) {
       // Validate when 6 digits are entered
       validatePincode(cleaned);
+      // Calculate freight
+      calculateFreight(cleaned);
+    }
+  };
+
+  // Calculate freight based on pincode and cart items weight
+  const calculateFreight = async (pincode: string) => {
+    if (!pincode || pincode.length !== 6) {
+      setCalculatedFreight(0);
+      return;
+    }
+
+    // Calculate total weight from cart items
+    // Estimate weight: Carrying ~5kg, Impact ~7kg, Return ~4kg per roller
+    const totalWeight = cartItems.reduce((sum, item) => {
+      const rollerType = item.product_name?.toLowerCase() || '';
+      let weightPerUnit = 5; // Default
+      if (rollerType.includes('impact')) weightPerUnit = 7;
+      else if (rollerType.includes('return')) weightPerUnit = 4;
+      return sum + (weightPerUnit * item.quantity);
+    }, 0);
+
+    if (totalWeight === 0) {
+      setCalculatedFreight(0);
+      return;
+    }
+
+    setCalculatingFreight(true);
+    try {
+      const response = await api.post('/calculate-freight', {
+        pincode: pincode,
+        total_weight_kg: totalWeight
+      });
+      
+      if (response.data && response.data.freight_charges) {
+        setCalculatedFreight(response.data.freight_charges);
+      }
+    } catch (error) {
+      console.error('Freight calculation error:', error);
+      setCalculatedFreight(0);
+    } finally {
+      setCalculatingFreight(false);
     }
   };
 
@@ -172,6 +219,7 @@ export default function CartScreen() {
         customer_id: null,
         delivery_location: freightPincode || null,
         packing_type: packingType,
+        shipping_cost: calculatedFreight || 0,  // Send calculated freight
         notes: `${isCustomer ? 'RFQ' : 'Quote'} with ${cartItems.length} items`,
         customer_rfq_no: customerRfqNo || null,
       });
@@ -443,6 +491,17 @@ export default function CartScreen() {
                 {pincodeError ? (
                   <Text style={styles.errorText}>{pincodeError}</Text>
                 ) : null}
+                {calculatingFreight && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                    <ActivityIndicator size="small" color="#960018" />
+                    <Text style={{ marginLeft: 8, color: '#666' }}>Calculating freight...</Text>
+                  </View>
+                )}
+                {calculatedFreight > 0 && !calculatingFreight && (
+                  <Text style={{ color: '#059669', fontSize: 14, marginTop: 8, fontWeight: '600' }}>
+                    Estimated Freight: Rs. {calculatedFreight.toFixed(2)}
+                  </Text>
+                )}
               </View>
 
               {/* Customer RFQ No */}
