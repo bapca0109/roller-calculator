@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   TextInput,
   ActivityIndicator,
   Alert,
@@ -1078,9 +1079,13 @@ export default function CalculatorScreen() {
 
         {/* Tab Switcher: Calculator / Search */}
         <View style={styles.tabSwitcher}>
-          <TouchableOpacity
+          <Pressable
             style={[styles.tabButton, activeTab === 'search' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('search')}
+            onPress={() => {
+              console.log('Search tab pressed');
+              setActiveTab('search');
+            }}
+            data-testid="search-tab-button"
           >
             <Ionicons 
               name="search-outline" 
@@ -1090,10 +1095,14 @@ export default function CalculatorScreen() {
             <Text style={[styles.tabButtonText, activeTab === 'search' && styles.tabButtonTextActive]}>
               Search
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </Pressable>
+          <Pressable
             style={[styles.tabButton, activeTab === 'calculator' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('calculator')}
+            onPress={() => {
+              console.log('Calculator tab pressed');
+              setActiveTab('calculator');
+            }}
+            data-testid="calculator-tab-button"
           >
             <Ionicons 
               name="calculator-outline" 
@@ -1103,7 +1112,7 @@ export default function CalculatorScreen() {
             <Text style={[styles.tabButtonText, activeTab === 'calculator' && styles.tabButtonTextActive]}>
               Calculator
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         {/* Search Tab Content */}
@@ -2264,6 +2273,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E2E8F0',
     borderRadius: 10,
     padding: 4,
+    zIndex: 100,
   },
   tabButton: {
     flex: 1,
@@ -2273,6 +2283,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     gap: 6,
+    cursor: 'pointer',
   },
   tabButtonActive: {
     backgroundColor: '#960018',
