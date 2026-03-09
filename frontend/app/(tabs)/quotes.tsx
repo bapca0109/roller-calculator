@@ -702,9 +702,6 @@ export default function QuotesScreen() {
     
     setApprovingId(quote.id);
     try {
-      const freightAmount = calculateFreightAmount();
-      const freightPct = useCustomFreight ? 0 : (parseFloat(freightPercent) || 0);
-      
       // Use editableProducts if available, otherwise fall back to quote's original products
       const productsToUse = editableProducts.length > 0 ? editableProducts : (quote.products || []);
       
@@ -752,6 +749,16 @@ export default function QuotesScreen() {
       else if (editPackingType === 'custom') packingPercent = parseFloat(customPackingPercent) || 0;
       
       const packingCharges = discountedSubtotal * (packingPercent / 100);
+      
+      // Calculate freight based on DISCOUNTED subtotal (calculated here, not using calculateFreightAmount)
+      let freightAmount = 0;
+      const freightPct = parseFloat(freightPercent) || 0;
+      if (useCustomFreight) {
+        freightAmount = parseFloat(customFreightAmount) || 0;
+      } else if (freightPct > 0) {
+        // Freight = discounted subtotal × freight%
+        freightAmount = discountedSubtotal * (freightPct / 100);
+      }
       
       // Calculate final total price
       const taxableAmount = discountedSubtotal + packingCharges + freightAmount;
