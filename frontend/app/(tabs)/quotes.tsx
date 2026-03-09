@@ -1836,8 +1836,15 @@ export default function QuotesScreen() {
             ))}
             <View style={[styles.subtotalRow, { backgroundColor: '#fff' }]}>
               <Text style={styles.subtotalLabel}>Subtotal:</Text>
-              <Text style={styles.subtotalValue}>Rs. {approveModalQuote.subtotal?.toFixed(2)}</Text>
+              <Text style={styles.subtotalValue}>Rs. {((approveModalQuote.subtotal || 0) - (approveModalQuote.total_discount || 0)).toFixed(2)}</Text>
             </View>
+            {approveModalQuote.total_discount > 0 && (
+              <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+                <Text style={{ color: '#059669', fontSize: 12 }}>
+                  (Discount Applied: {approveModalQuote.subtotal > 0 ? ((approveModalQuote.total_discount / approveModalQuote.subtotal) * 100).toFixed(1) : 0}% = Rs. {approveModalQuote.total_discount?.toFixed(2)})
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Packing Type Selection */}
@@ -2249,14 +2256,13 @@ export default function QuotesScreen() {
                     <Text style={styles.sectionTitle}>Pricing Summary</Text>
                     <View style={styles.pricingRow}>
                       <Text style={styles.pricingLabel}>Subtotal</Text>
-                      <Text style={styles.pricingValue}>Rs. {selectedQuote.subtotal?.toFixed(2)}</Text>
+                      <Text style={styles.pricingValue}>Rs. {((selectedQuote.subtotal || 0) - (selectedQuote.total_discount || 0)).toFixed(2)}</Text>
                     </View>
                     {selectedQuote.total_discount > 0 && (
                       <View style={styles.pricingRow}>
                         <Text style={styles.pricingLabelGreen}>
-                          Discount ({selectedQuote.subtotal > 0 ? ((selectedQuote.total_discount / selectedQuote.subtotal) * 100).toFixed(1) : 0}%)
+                          (Discount Applied: {selectedQuote.subtotal > 0 ? ((selectedQuote.total_discount / selectedQuote.subtotal) * 100).toFixed(1) : 0}% = Rs. {selectedQuote.total_discount?.toFixed(2)})
                         </Text>
-                        <Text style={styles.pricingValueGreen}>- Rs. {selectedQuote.total_discount?.toFixed(2)}</Text>
                       </View>
                     )}
                     {selectedQuote.packing_charges && selectedQuote.packing_charges > 0 && (
@@ -2995,14 +3001,15 @@ export default function QuotesScreen() {
                     <Text style={styles.sectionTitle}>Summary</Text>
                     <View style={styles.pricingRow}>
                       <Text style={styles.pricingLabel}>Subtotal</Text>
-                      <Text style={styles.pricingValue}>Rs. {calculateEditedTotal().subtotal.toFixed(2)}</Text>
+                      <Text style={styles.pricingValue}>Rs. {(calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount).toFixed(2)}</Text>
                     </View>
-                    <View style={styles.pricingRow}>
-                      <Text style={styles.pricingLabelGreen}>
-                        {useItemDiscounts ? 'Item Discounts (Total)' : `Discount (${editedDiscount}%)`}
-                      </Text>
-                      <Text style={styles.pricingValueGreen}>- Rs. {calculateEditedTotal().discountAmount.toFixed(2)}</Text>
-                    </View>
+                    {calculateEditedTotal().discountAmount > 0 && (
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabelGreen}>
+                          (Discount Applied: {useItemDiscounts ? 'Item-wise' : `${editedDiscount}%`} = Rs. {calculateEditedTotal().discountAmount.toFixed(2)})
+                        </Text>
+                      </View>
+                    )}
                     {calculateEditedTotal().packingCharges > 0 && (
                       <View style={styles.pricingRow}>
                         <Text style={styles.pricingLabel}>Packing</Text>
