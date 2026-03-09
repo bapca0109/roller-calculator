@@ -665,8 +665,11 @@ export default function QuotesScreen() {
       const freightAmount = calculateFreightAmount();
       const freightPct = useCustomFreight ? 0 : (parseFloat(freightPercent) || 0);
       
-      // Calculate updated subtotal from editable products
-      const updatedSubtotal = editableProducts.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0);
+      // Use editableProducts if available, otherwise fall back to quote's original products
+      const productsToUse = editableProducts.length > 0 ? editableProducts : (quote.products || []);
+      
+      // Calculate updated subtotal from products
+      const updatedSubtotal = productsToUse.reduce((sum, p) => sum + (p.unit_price * p.quantity), 0);
       
       // Calculate packing charges based on packing type
       let packingPercent = 0;
@@ -680,11 +683,11 @@ export default function QuotesScreen() {
       // Calculate discount values
       // NOTE: When admin enters discount (total or item-wise), system-calculated discount is replaced
       let totalDiscountAmount = 0;
-      let updatedProducts = [...editableProducts];
+      let updatedProducts = [...productsToUse];
       
       if (useItemDiscount) {
         // Item-wise discount mode - update each product with its discount
-        updatedProducts = editableProducts.map((product, index) => {
+        updatedProducts = productsToUse.map((product, index) => {
           const itemDiscountPct = parseFloat(itemDiscounts[index] || '0') || 0;
           const itemSubtotal = product.unit_price * product.quantity;
           const itemDiscountAmount = itemSubtotal * (itemDiscountPct / 100);
@@ -700,7 +703,7 @@ export default function QuotesScreen() {
         const discountPct = parseFloat(totalDiscountPercent) || 0;
         totalDiscountAmount = updatedSubtotal * (discountPct / 100);
         // Apply the same discount percentage to all items
-        updatedProducts = editableProducts.map(product => ({
+        updatedProducts = productsToUse.map(product => ({
           ...product,
           item_discount_percent: parseFloat(totalDiscountPercent) || 0,
           calculated_discount: 0  // Clear system discount - admin discount replaces it
@@ -2590,18 +2593,25 @@ export default function QuotesScreen() {
 
                   {/* Action Buttons Row */}
                   <View style={styles.detailActionsRow}>
-                    {/* Review & Approve Button - Admin only, for pending RFQs */}
+                    {/* Approve & Reject Buttons - Admin only, for pending RFQs */}
                     {isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() !== 'approved' && selectedQuote.status?.toLowerCase() !== 'rejected' && (
                       <>
                         <TouchableOpacity 
                           style={styles.approveConfirmButton}
                           onPress={() => {
-                            // Open approval modal with freight calculation
-                            approveRfq(selectedQuote);
+                            // Directly approve with current freight/packing values
+                            confirmApproveRfq(selectedQuote);
                           }}
+                          disabled={approvingId === selectedQuote.id}
                         >
-                          <Ionicons name="create-outline" size={24} color="#fff" />
-                          <Text style={styles.approveConfirmButtonText}>Review & Approve</Text>
+                          {approvingId === selectedQuote.id ? (
+                            <ActivityIndicator color="#fff" />
+                          ) : (
+                            <>
+                              <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                              <Text style={styles.approveConfirmButtonText}>Approve</Text>
+                            </>
+                          )}
                         </TouchableOpacity>
                         
                         <TouchableOpacity 
