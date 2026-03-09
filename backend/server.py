@@ -1075,10 +1075,10 @@ def generate_quote_html(quote_data: dict) -> str:
     
     packing = quote_data.get('packing_charges', 0)
     shipping = quote_data.get('shipping_cost', 0)
-    taxable_amount = subtotal_after_discount + packing
+    taxable_amount = subtotal_after_discount + packing + shipping
     cgst = taxable_amount * 0.09
     sgst = taxable_amount * 0.09
-    grand_total = (taxable_amount + shipping) * 1.18
+    grand_total = taxable_amount * 1.18
     
     # Customer details
     customer_code = quote_data.get('customer_code', '')
