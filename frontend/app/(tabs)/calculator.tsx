@@ -1350,6 +1350,27 @@ export default function CalculatorScreen() {
             placeholder="Select pipe diameter"
           />
 
+          {/* Rubber Diameter - Show right after Pipe Diameter for Impact Rollers */}
+          {rollerType === 'impact' && (
+            <>
+              {availableRubberDiameters.length > 0 ? (
+                <CustomDropdown
+                  label="Rubber Diameter"
+                  value={rubberDiameter}
+                  onValueChange={(value) => setRubberDiameter(value)}
+                  options={availableRubberDiameters.map((dia) => ({ label: `${dia} mm`, value: dia }))}
+                  placeholder="Select rubber diameter"
+                />
+              ) : (
+                <View style={styles.noOptionsContainer}>
+                  <Text style={styles.noOptionsText}>
+                    No rubber options available for {pipeDiameter}mm pipe
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+
           <Text style={styles.label}>Pipe Length (mm)</Text>
           <TextInput
             style={[styles.input, errors.pipeLength ? styles.inputError : null]}
@@ -1399,28 +1420,6 @@ export default function CalculatorScreen() {
             placeholder="Select bearing make"
           />
         </View>
-
-        {/* Impact Roller Options - Always show when Impact is selected */}
-        {rollerType === 'impact' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Rubber Lagging</Text>
-            {availableRubberDiameters.length > 0 ? (
-              <CustomDropdown
-                label="Rubber Diameter"
-                value={rubberDiameter}
-                onValueChange={(value) => setRubberDiameter(value)}
-                options={availableRubberDiameters.map((dia) => ({ label: `${dia} mm`, value: dia }))}
-                placeholder="Select rubber diameter"
-              />
-            ) : (
-              <View style={styles.noOptionsContainer}>
-                <Text style={styles.noOptionsText}>
-                  No rubber options available for {pipeDiameter}mm pipe
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
 
         {/* Quantity & Packing */}
         <View style={styles.section}>
