@@ -9,7 +9,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://belt-roller-tool.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://freight-quote-pro.preview.emergentagent.com').rstrip('/')
 
 class TestRevisionHistory:
     """Test revision history feature for quotes"""
