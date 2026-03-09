@@ -34,6 +34,11 @@ export default function CartScreen() {
   const [customerRfqNo, setCustomerRfqNo] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Pincode validation state
+  const [pincodeValid, setPincodeValid] = useState<boolean | null>(null);
+  const [pincodeError, setPincodeError] = useState('');
+  const [validatingPincode, setValidatingPincode] = useState(false);
+
   // Success state
   const [showSuccess, setShowSuccess] = useState(false);
   const [submittedNumber, setSubmittedNumber] = useState('');
@@ -67,10 +72,80 @@ export default function CartScreen() {
     setEditQty('');
   };
 
+  // Pincode validation function
+  const validatePincode = async (pincode: string) => {
+    if (!pincode || pincode.length === 0) {
+      // Empty pincode is valid (it's optional)
+      setPincodeValid(null);
+      setPincodeError('');
+      return;
+    }
+
+    // Basic format check
+    if (!/^\d{6}$/.test(pincode)) {
+      setPincodeValid(false);
+      setPincodeError('Please enter a valid 6-digit pincode');
+      return;
+    }
+
+    // Validate with API
+    setValidatingPincode(true);
+    try {
+      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const data = await response.json();
+      
+      if (data[0]?.Status === 'Success' && data[0]?.PostOffice?.length > 0) {
+        setPincodeValid(true);
+        setPincodeError('');
+      } else {
+        setPincodeValid(false);
+        setPincodeError('Invalid pincode. Please enter a valid Indian pincode.');
+      }
+    } catch (error) {
+      // If API fails, allow the pincode (don't block submission)
+      setPincodeValid(true);
+      setPincodeError('');
+    } finally {
+      setValidatingPincode(false);
+    }
+  };
+
+  // Handle pincode change with debounce
+  const handlePincodeChange = (value: string) => {
+    // Only allow digits
+    const cleaned = value.replace(/\D/g, '');
+    setFreightPincode(cleaned);
+    
+    // Reset validation state while typing
+    if (cleaned.length < 6) {
+      setPincodeValid(null);
+      setPincodeError(cleaned.length > 0 ? 'Please enter a valid 6-digit pincode' : '');
+    } else if (cleaned.length === 6) {
+      // Validate when 6 digits are entered
+      validatePincode(cleaned);
+    }
+  };
+
   const handleSubmit = async () => {
     if (cartItems.length === 0) {
       Alert.alert('Error', 'No items in cart');
       return;
+    }
+
+    // Check if pincode is entered but invalid
+    if (freightPincode && freightPincode.length > 0) {
+      if (freightPincode.length !== 6) {
+        Alert.alert('Invalid Pincode', 'Please enter a valid 6-digit pincode');
+        return;
+      }
+      if (pincodeValid === false) {
+        Alert.alert('Invalid Pincode', 'Please enter a valid Indian pincode or leave it empty');
+        return;
+      }
+      if (validatingPincode) {
+        Alert.alert('Please Wait', 'Pincode validation in progress');
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -113,6 +188,8 @@ export default function CartScreen() {
       setPackingType('standard');
       setFreightPincode('');
       setCustomerRfqNo('');
+      setPincodeValid(null);
+      setPincodeError('');
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to submit');
     } finally {
@@ -332,15 +409,40 @@ export default function CartScreen() {
               {/* Freight Pincode */}
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldLabel}>Delivery Pincode (Optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={freightPincode}
-                  onChangeText={setFreightPincode}
-                  placeholder="Enter 6-digit pincode for freight"
-                  placeholderTextColor="#94A3B8"
-                  keyboardType="numeric"
-                  maxLength={6}
-                />
+                <View style={styles.pincodeInputContainer}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.pincodeInput,
+                      pincodeValid === false && styles.inputError,
+                      pincodeValid === true && styles.inputSuccess,
+                    ]}
+                    value={freightPincode}
+                    onChangeText={handlePincodeChange}
+                    placeholder="Enter 6-digit pincode for freight"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="numeric"
+                    maxLength={6}
+                  />
+                  {validatingPincode && (
+                    <View style={styles.pincodeStatusIcon}>
+                      <ActivityIndicator size="small" color="#960018" />
+                    </View>
+                  )}
+                  {!validatingPincode && pincodeValid === true && (
+                    <View style={styles.pincodeStatusIcon}>
+                      <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                    </View>
+                  )}
+                  {!validatingPincode && pincodeValid === false && (
+                    <View style={styles.pincodeStatusIcon}>
+                      <Ionicons name="close-circle" size={24} color="#DC3545" />
+                    </View>
+                  )}
+                </View>
+                {pincodeError ? (
+                  <Text style={styles.errorText}>{pincodeError}</Text>
+                ) : null}
               </View>
 
               {/* Customer RFQ No */}
@@ -365,12 +467,20 @@ export default function CartScreen() {
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+                style={[
+                  styles.submitButton, 
+                  (submitting || validatingPincode || (freightPincode.length > 0 && pincodeValid === false)) && styles.submitButtonDisabled
+                ]}
                 onPress={handleSubmit}
-                disabled={submitting}
+                disabled={submitting || validatingPincode || (freightPincode.length > 0 && pincodeValid === false)}
               >
                 {submitting ? (
                   <ActivityIndicator color="#fff" />
+                ) : validatingPincode ? (
+                  <>
+                    <ActivityIndicator color="#fff" size="small" />
+                    <Text style={styles.submitButtonText}>Validating...</Text>
+                  </>
                 ) : (
                   <>
                     <Ionicons name="send" size={20} color="#fff" />
@@ -827,5 +937,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Pincode validation styles
+  pincodeInputContainer: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pincodeInput: {
+    flex: 1,
+    paddingRight: 45,
+  },
+  pincodeStatusIcon: {
+    position: 'absolute',
+    right: 12,
+    top: '50%',
+    transform: [{ translateY: -12 }],
+  },
+  inputError: {
+    borderColor: '#DC3545',
+    borderWidth: 2,
+  },
+  inputSuccess: {
+    borderColor: '#4CAF50',
+    borderWidth: 2,
+  },
+  errorText: {
+    color: '#DC3545',
+    fontSize: 12,
+    marginTop: 4,
   },
 });
