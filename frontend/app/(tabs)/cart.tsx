@@ -141,13 +141,11 @@ export default function CartScreen() {
       return;
     }
 
-    // Calculate total weight from cart items
-    // Estimate weight: Carrying ~5kg, Impact ~7kg, Return ~4kg per roller
+    // Calculate total weight from cart items using actual weight_kg
     const totalWeight = cartItems.reduce((sum, item) => {
-      const rollerType = item.product_name?.toLowerCase() || '';
-      let weightPerUnit = 5; // Default
-      if (rollerType.includes('impact')) weightPerUnit = 7;
-      else if (rollerType.includes('return')) weightPerUnit = 4;
+      // Use actual weight from specifications or item weight
+      const specs = item.specifications || {};
+      const weightPerUnit = specs.weight_kg || item.weight_kg || item.weight || 5; // Fallback to 5kg if not available
       return sum + (weightPerUnit * item.quantity);
     }, 0);
 
