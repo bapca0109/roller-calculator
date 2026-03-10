@@ -120,7 +120,7 @@ def get_pdf_header_html(doc_title: str, doc_number: str, doc_date: str, rfq_ref:
         <div class="header">
           <div class="logo-section">
             {logo_html}
-            <div class="company-tagline">SOLUTIONS</div>
+            <div class="company-tagline">Rolling towards the future</div>
           </div>
           <div class="doc-type">
             <div class="doc-title">{doc_title}</div>
@@ -129,6 +129,15 @@ def get_pdf_header_html(doc_title: str, doc_number: str, doc_date: str, rfq_ref:
             <div class="doc-date">{doc_date}</div>
           </div>
         </div>
+        <div class="company-info-header">
+          <span>Plot No. 39, Swapnil Industrial Park, Beside Shiv Aaradhna Estate, Ahmedabad-Indore Highway, Village-Kuha, Ahmedabad, Gujarat 382433</span>
+          <span>|</span>
+          <span>info@convero.in</span>
+          <span>|</span>
+          <span>www.convero.in</span>
+          <span>|</span>
+          <span>GSTIN: 24BAUPP4310D2ZT</span>
+        </div>
         <div class="report-generated">
           Report Generated: {report_generated}
         </div>
@@ -136,14 +145,20 @@ def get_pdf_header_html(doc_title: str, doc_number: str, doc_date: str, rfq_ref:
 
 
 def get_pdf_footer_html():
-    """Generate PDF footer HTML with timestamp"""
+    """Generate PDF footer HTML with company details"""
     generated_time = get_ist_now().strftime("%d %b %Y, %I:%M %p IST")
     return f'''
         <div class="footer">
           <div class="footer-left">
-            <div class="footer-company">Convero Solutions</div>
-            <div>Conveyor Roller Manufacturer</div>
-            <div>Ahmedabad, Gujarat - India</div>
+            <div class="footer-company">CONVERO SOLUTIONS</div>
+            <div class="footer-tagline">Rolling towards the future</div>
+            <div>Plot No. 39, Swapnil Industrial Park,</div>
+            <div>Beside Shiv Aaradhna Estate, Ahmedabad-Indore Highway,</div>
+            <div>Village-Kuha, Ahmedabad, Gujarat 382433</div>
+            <div style="margin-top: 5px;">
+              <strong>Email:</strong> info@convero.in | <strong>Web:</strong> www.convero.in
+            </div>
+            <div><strong>GSTIN:</strong> 24BAUPP4310D2ZT</div>
           </div>
           <div class="footer-right">
             <div class="footer-signature">Authorized Signature</div>
@@ -845,7 +860,9 @@ def generate_rfq_html(rfq_data: dict) -> str:
             .logo {{ font-size: 26px; font-weight: 800; letter-spacing: -1px; color: #1a1a1a; }}
             .logo span {{ color: #960018; }}
             .logo-section img {{ height: 45px; width: auto; }}
-            .company-tagline {{ font-size: 9px; color: #666; letter-spacing: 3px; margin-top: 2px; }}
+            .company-tagline {{ font-size: 9px; color: #960018; letter-spacing: 2px; margin-top: 2px; font-style: italic; }}
+            .company-info-header {{ font-size: 8px; color: #666; text-align: center; margin-bottom: 10px; padding: 5px; background: #f9f9f9; border-radius: 3px; }}
+            .company-info-header span {{ margin: 0 3px; }}
             .report-generated {{ font-size: 8px; color: #666; text-align: right; margin-bottom: 10px; font-style: italic; }}
             .doc-type {{ text-align: right; }}
             .doc-title {{ font-size: 18px; font-weight: 700; color: #960018; letter-spacing: 1px; }}
@@ -869,7 +886,7 @@ def generate_rfq_html(rfq_data: dict) -> str:
         <div class="header">
             <div class="logo-section">
                 <img src="data:image/png;base64,{logo_base64}" style="height: 45px; width: auto;" alt="Convero" />
-                <div class="company-tagline">SOLUTIONS</div>
+                <div class="company-tagline">Rolling towards the future</div>
             </div>
             <div class="doc-type">
                 <div class="doc-title">REQUEST FOR QUOTATION</div>
@@ -877,18 +894,34 @@ def generate_rfq_html(rfq_data: dict) -> str:
                 <div class="doc-date">{display_date}</div>
             </div>
         </div>
+        <div class="company-info-header">
+            <span>Plot No. 39, Swapnil Industrial Park, Beside Shiv Aaradhna Estate, Ahmedabad-Indore Highway, Village-Kuha, Ahmedabad, Gujarat 382433</span>
+            <span>|</span>
+            <span>info@convero.in</span>
+            <span>|</span>
+            <span>www.convero.in</span>
+            <span>|</span>
+            <span>GSTIN: 24BAUPP4310D2ZT</span>
+        </div>
         <div class="report-generated">Report Generated: {report_generated}</div>
 
         <div class="info-section">
             <div class="info-box">
                 <div class="info-box-title">From</div>
-                <div class="info-company">Convero Solutions</div>
+                <div class="info-company">CONVERO SOLUTIONS</div>
+                <div style="font-size: 9px; color: #960018; font-style: italic; margin-bottom: 4px;">Rolling towards the future</div>
                 <div style="font-size: 10px; color: #555; margin-top: 4px; line-height: 1.5;">
-                    Conveyor Roller Manufacturer<br>
-                    Ahmedabad, Gujarat - India
+                    Plot No. 39, Swapnil Industrial Park,<br>
+                    Beside Shiv Aaradhna Estate,<br>
+                    Ahmedabad-Indore Highway,<br>
+                    Village-Kuha, Ahmedabad,<br>
+                    Gujarat 382433
                 </div>
                 <div style="font-size: 9px; color: #666; margin-top: 6px;">
-                    info@convero.in | www.convero.in
+                    <strong>Email:</strong> info@convero.in | <strong>Web:</strong> www.convero.in
+                </div>
+                <div style="font-size: 9px; color: #666; margin-top: 3px;">
+                    <strong>GSTIN:</strong> 24BAUPP4310D2ZT
                 </div>
             </div>
             <div class="info-box">
@@ -935,8 +968,9 @@ def generate_rfq_html(rfq_data: dict) -> str:
         <div class="footer">
             <div class="footer-left">
                 <div class="footer-company">CONVERO SOLUTIONS</div>
-                <div>Conveyor Roller Manufacturer</div>
-                <div>www.convero.in</div>
+                <div style="font-size: 8px; color: #960018; font-style: italic;">Rolling towards the future</div>
+                <div style="font-size: 8px; margin-top: 3px;">Plot No. 39, Swapnil Industrial Park, Village-Kuha, Ahmedabad, Gujarat 382433</div>
+                <div style="font-size: 8px;"><strong>Email:</strong> info@convero.in | <strong>Web:</strong> www.convero.in | <strong>GSTIN:</strong> 24BAUPP4310D2ZT</div>
             </div>
         </div>
         
@@ -1368,9 +1402,22 @@ def generate_quote_html(quote_data: dict) -> str:
           .logo span {{ color: #960018; }}
           .company-tagline {{
             font-size: 9px;
-            color: #666;
-            letter-spacing: 3px;
+            color: #960018;
+            letter-spacing: 2px;
             margin-top: 2px;
+            font-style: italic;
+          }}
+          .company-info-header {{
+            font-size: 8px;
+            color: #666;
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 5px;
+            background: #f9f9f9;
+            border-radius: 3px;
+          }}
+          .company-info-header span {{
+            margin: 0 3px;
           }}
           .report-generated {{
             font-size: 8px;
@@ -1623,7 +1670,7 @@ def generate_quote_html(quote_data: dict) -> str:
         <div class="header">
           <div class="logo-section">
             <img src="data:image/png;base64,{logo_base64}" style="height: 45px; width: auto;" alt="Convero" />
-            <div class="company-tagline">SOLUTIONS</div>
+            <div class="company-tagline">Rolling towards the future</div>
           </div>
           <div class="doc-type">
             <div class="doc-title">{doc_label_full}</div>
@@ -1632,19 +1679,35 @@ def generate_quote_html(quote_data: dict) -> str:
             <div class="doc-date">{display_date}</div>
           </div>
         </div>
+        <div class="company-info-header">
+          <span>Plot No. 39, Swapnil Industrial Park, Beside Shiv Aaradhna Estate, Ahmedabad-Indore Highway, Village-Kuha, Ahmedabad, Gujarat 382433</span>
+          <span>|</span>
+          <span>info@convero.in</span>
+          <span>|</span>
+          <span>www.convero.in</span>
+          <span>|</span>
+          <span>GSTIN: 24BAUPP4310D2ZT</span>
+        </div>
         <div class="report-generated">Report Generated: {report_generated}</div>
 
         <!-- Info Section -->
         <div class="info-section">
           <div class="info-box">
             <div class="info-box-title">From</div>
-            <div class="info-company">Convero Solutions</div>
+            <div class="info-company">CONVERO SOLUTIONS</div>
+            <div style="font-size: 9px; color: #960018; font-style: italic; margin-bottom: 4px;">Rolling towards the future</div>
             <div class="info-address">
-              Conveyor Roller Manufacturer<br>
-              Ahmedabad, Gujarat - India
+              Plot No. 39, Swapnil Industrial Park,<br>
+              Beside Shiv Aaradhna Estate,<br>
+              Ahmedabad-Indore Highway,<br>
+              Village-Kuha, Ahmedabad,<br>
+              Gujarat 382433
             </div>
             <div class="info-contact">
-              info@convero.in | www.convero.in
+              <strong>Email:</strong> info@convero.in | <strong>Web:</strong> www.convero.in
+            </div>
+            <div class="info-contact" style="margin-top: 3px;">
+              <strong>GSTIN:</strong> 24BAUPP4310D2ZT
             </div>
           </div>
           <div class="info-box">
@@ -1779,8 +1842,9 @@ def generate_quote_html(quote_data: dict) -> str:
         <div class="footer">
           <div class="footer-left">
             <div class="footer-company">CONVERO SOLUTIONS</div>
-            <div>Conveyor Roller Manufacturer</div>
-            <div>www.convero.in</div>
+            <div style="font-size: 8px; color: #960018; font-style: italic;">Rolling towards the future</div>
+            <div style="font-size: 8px; margin-top: 3px;">Plot No. 39, Swapnil Industrial Park, Village-Kuha, Ahmedabad, Gujarat 382433</div>
+            <div style="font-size: 8px;"><strong>Email:</strong> info@convero.in | <strong>Web:</strong> www.convero.in | <strong>GSTIN:</strong> 24BAUPP4310D2ZT</div>
           </div>
           <div class="footer-right">
             <div style="height: 40px;"></div>
