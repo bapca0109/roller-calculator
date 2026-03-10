@@ -204,6 +204,8 @@ export default function CartScreen() {
         product_name: item.product_name,
         quantity: item.quantity,
         unit_price: item.unit_price,
+        weight: item.weight_kg,  // Include weight for PDF generation
+        weight_kg: item.weight_kg,  // Include weight_kg for PDF generation
         specifications: item.specifications,
         calculated_discount: 0,
         custom_premium: 0,

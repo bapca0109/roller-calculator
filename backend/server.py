@@ -339,6 +339,8 @@ class QuoteProduct(BaseModel):
     product_name: str
     quantity: int
     unit_price: float
+    weight: Optional[float] = None  # Weight per unit in kg
+    weight_kg: Optional[float] = None  # Weight per unit in kg (alias)
     specifications: Optional[Dict[str, Any]] = None
     calculated_discount: float = 0.0  # Quantity discount applied
     custom_premium: float = 0.0  # Premium for custom specs
@@ -727,8 +729,15 @@ def generate_rfq_html(rfq_data: dict) -> str:
     for idx, product in enumerate(products, 1):
         qty = product.get('quantity', 0)
         
-        # Get weight information
-        unit_weight = product.get('weight', 0) or product.get('specifications', {}).get('weight', 0) or 0
+        # Get weight information - check multiple possible field names
+        unit_weight = (
+            product.get('weight') or 
+            product.get('weight_kg') or 
+            product.get('specifications', {}).get('weight') or 
+            product.get('specifications', {}).get('weight_kg') or 
+            product.get('specifications', {}).get('single_roller_weight_kg') or 
+            0
+        )
         total_weight = unit_weight * qty
         grand_total_weight += total_weight
         
@@ -1111,8 +1120,15 @@ def generate_quote_html(quote_data: dict) -> str:
         qty = product.get('quantity', 0)
         unit_price = product.get('unit_price', 0)
         
-        # Get weight information
-        unit_weight = product.get('weight', 0) or product.get('specifications', {}).get('weight', 0) or 0
+        # Get weight information - check multiple possible field names
+        unit_weight = (
+            product.get('weight') or 
+            product.get('weight_kg') or 
+            product.get('specifications', {}).get('weight') or 
+            product.get('specifications', {}).get('weight_kg') or 
+            product.get('specifications', {}).get('single_roller_weight_kg') or 
+            0
+        )
         total_weight = unit_weight * qty
         grand_total_weight += total_weight
         
@@ -2013,7 +2029,14 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
         
         for idx, product in enumerate(products, 1):
             qty = product.get('quantity', 0)
-            unit_weight = product.get('weight', 0) or product.get('specifications', {}).get('weight', 0) or 0
+            unit_weight = (
+                product.get('weight') or 
+                product.get('weight_kg') or 
+                product.get('specifications', {}).get('weight') or 
+                product.get('specifications', {}).get('weight_kg') or 
+                product.get('specifications', {}).get('single_roller_weight_kg') or 
+                0
+            )
             total_weight = unit_weight * qty
             unit_weight_str = f"{unit_weight:.2f}" if unit_weight > 0 else "-"
             total_weight_str = f"{total_weight:.2f}" if total_weight > 0 else "-"
@@ -3930,7 +3953,14 @@ async def send_quote_revision_email(quote_data: dict, customer_email: str, revis
         grand_total_weight = 0
         for p in products:
             qty = p.get('quantity', 1)
-            unit_weight = p.get('weight', 0) or p.get('specifications', {}).get('weight', 0) or 0
+            unit_weight = (
+                p.get('weight') or 
+                p.get('weight_kg') or 
+                p.get('specifications', {}).get('weight') or 
+                p.get('specifications', {}).get('weight_kg') or 
+                p.get('specifications', {}).get('single_roller_weight_kg') or 
+                0
+            )
             total_weight = unit_weight * qty
             grand_total_weight += total_weight
             unit_weight_str = f"{unit_weight:.2f}" if unit_weight > 0 else "-"
