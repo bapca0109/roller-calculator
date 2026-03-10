@@ -1350,9 +1350,10 @@ export default function QuotesScreen() {
           .logo span { color: #960018; }
           .company-tagline {
             font-size: 9px;
-            color: #666;
-            letter-spacing: 3px;
+            color: #960018;
+            letter-spacing: 2px;
             margin-top: 2px;
+            font-style: italic;
           }
           .doc-type {
             text-align: right;
@@ -1598,46 +1599,63 @@ export default function QuotesScreen() {
         <div class="header">
           <div class="logo-section">
             <div class="logo">C<span>O</span>NVER<span>O</span></div>
-            <div class="company-tagline">SOLUTIONS</div>
+            <div class="company-tagline">Rolling towards the future</div>
           </div>
           <div class="doc-type">
-            <div class="doc-title">${pdfDocLabelFull}</div>
-            <div class="doc-number">${quote.quote_number || `#${quote.id.slice(-6).toUpperCase()}`}</div>
-            ${quote.original_rfq_number ? `<div class="doc-ref">Ref: ${quote.original_rfq_number}</div>` : ''}
-            <div class="doc-date">${displayDate}</div>
+            <div class="doc-title">\${pdfDocLabelFull}</div>
+            <div class="doc-number">\${quote.quote_number || `#\${quote.id.slice(-6).toUpperCase()}`}</div>
+            \${quote.original_rfq_number ? `<div class="doc-ref">Ref: \${quote.original_rfq_number}</div>` : ''}
+            <div class="doc-date">\${displayDate}</div>
           </div>
+        </div>
+        
+        <div class="company-info-header" style="font-size: 8px; color: #666; text-align: center; margin-bottom: 10px; padding: 5px; background: #f9f9f9; border-radius: 3px;">
+          <span>Plot No. 39, Swapnil Industrial Park, Beside Shiv Aaradhna Estate, Ahmedabad-Indore Highway, Village-Kuha, Ahmedabad, Gujarat 382433</span>
+          <span>|</span>
+          <span>info@convero.in</span>
+          <span>|</span>
+          <span>www.convero.in</span>
+          <span>|</span>
+          <span>GSTIN: 24BAUPP4310D2ZT</span>
         </div>
 
         <!-- Info Section -->
         <div class="info-section">
           <div class="info-box">
             <div class="info-box-title">From</div>
-            <div class="info-company">Convero Solutions</div>
+            <div class="info-company">CONVERO SOLUTIONS</div>
+            <div style="font-size: 9px; color: #960018; font-style: italic; margin-bottom: 4px;">Rolling towards the future</div>
             <div class="info-address">
-              Conveyor Roller Manufacturer<br>
-              Ahmedabad, Gujarat - India
+              Plot No. 39, Swapnil Industrial Park,<br>
+              Beside Shiv Aaradhna Estate,<br>
+              Ahmedabad-Indore Highway,<br>
+              Village-Kuha, Ahmedabad,<br>
+              Gujarat 382433
             </div>
             <div class="info-contact">
-              info@convero.in | www.convero.in
+              <strong>Email:</strong> info@convero.in | <strong>Web:</strong> www.convero.in
+            </div>
+            <div class="info-contact" style="margin-top: 3px;">
+              <strong>GSTIN:</strong> 24BAUPP4310D2ZT
             </div>
           </div>
           <div class="info-box">
             <div class="info-box-title">Bill To</div>
-            ${quote.customer_code ? `<div class="customer-code" style="color: #960018; font-weight: bold; margin-bottom: 4px;">Customer Code: ${quote.customer_code}</div>` : ''}
-            <div class="info-company">${quote.customer_company || quote.customer_details?.company || quote.customer_details?.name || quote.customer_name}</div>
-            ${quote.customer_details?.address ? `
+            \${quote.customer_code ? `<div class="customer-code" style="color: #960018; font-weight: bold; margin-bottom: 4px;">Customer Code: \${quote.customer_code}</div>` : ''}
+            <div class="info-company">\${quote.customer_company || quote.customer_details?.company || quote.customer_details?.name || quote.customer_name}</div>
+            \${quote.customer_details?.address ? `
               <div class="info-address">
-                ${quote.customer_details.address}${quote.customer_details.city ? `<br>${quote.customer_details.city}` : ''}${quote.customer_details.state ? `, ${quote.customer_details.state}` : ''}${quote.customer_details.pincode ? ` - ${quote.customer_details.pincode}` : ''}
+                \${quote.customer_details.address}\${quote.customer_details.city ? `<br>\${quote.customer_details.city}` : ''}\${quote.customer_details.state ? `, \${quote.customer_details.state}` : ''}\${quote.customer_details.pincode ? ` - \${quote.customer_details.pincode}` : ''}
               </div>
             ` : ''}
-            ${quote.customer_details?.gst_number ? `
-              <div class="info-gst">GSTIN: ${quote.customer_details.gst_number}</div>
+            \${quote.customer_details?.gst_number ? `
+              <div class="info-gst">GSTIN: \${quote.customer_details.gst_number}</div>
             ` : ''}
-            ${quote.customer_details?.phone || quote.customer_details?.email ? `
+            \${quote.customer_details?.phone || quote.customer_details?.email ? `
               <div class="info-contact">
-                ${quote.customer_details.phone ? `Ph: ${quote.customer_details.phone}` : ''}
-                ${quote.customer_details.phone && quote.customer_details.email ? ' | ' : ''}
-                ${quote.customer_details.email || ''}
+                \${quote.customer_details.phone ? `Ph: \${quote.customer_details.phone}` : ''}
+                \${quote.customer_details.phone && quote.customer_details.email ? ' | ' : ''}
+                \${quote.customer_details.email || ''}
               </div>
             ` : ''}
           </div>
@@ -1808,8 +1826,9 @@ export default function QuotesScreen() {
         <div class="footer">
           <div class="footer-left">
             <div class="footer-company">CONVERO SOLUTIONS</div>
-            <div>Conveyor Roller Manufacturer</div>
-            <div>www.convero.in</div>
+            <div style="font-size: 8px; color: #960018; font-style: italic;">Rolling towards the future</div>
+            <div style="font-size: 8px; margin-top: 3px;">Plot No. 39, Swapnil Industrial Park, Village-Kuha, Ahmedabad, Gujarat 382433</div>
+            <div style="font-size: 8px;"><strong>Email:</strong> info@convero.in | <strong>Web:</strong> www.convero.in | <strong>GSTIN:</strong> 24BAUPP4310D2ZT</div>
           </div>
           <div class="footer-right">
             <div style="height: 40px;"></div>
