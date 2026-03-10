@@ -1461,18 +1461,6 @@ export default function CalculatorScreen() {
           {errors.quantity ? (
             <Text style={styles.errorText}>{errors.quantity}</Text>
           ) : null}
-
-          {/* Product Remark */}
-          <Text style={styles.label}>Remark (Optional)</Text>
-          <TextInput
-            style={[styles.input, styles.remarkInput]}
-            value={productRemark}
-            onChangeText={setProductRemark}
-            placeholder="Add specific comment or requirement for this product"
-            multiline={true}
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
         </View>
 
         {/* Attachment Section - Available for both Admin and Customer */}
@@ -2601,10 +2589,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#FFFFFF',
     color: '#0F172A',
-  },
-  remarkInput: {
-    minHeight: 80,
-    paddingTop: 12,
   },
   inputError: {
     borderColor: '#EF4444',
