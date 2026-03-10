@@ -1,7 +1,13 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 import api from '../utils/api';
+import { 
+  registerForPushNotificationsAsync, 
+  savePushToken, 
+  removePushToken,
+  addNotificationListeners 
+} from '../utils/notifications';
 
 // Auto-logout after 7 days of inactivity (in milliseconds)
 const INACTIVITY_TIMEOUT_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -163,6 +169,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[AuthContext] Login successful, user role:', userData.role);
       setUserState(userData);
       setIsAuthenticated(true);
+
+      // Register for push notifications for admins (only on native platforms)
+      if (userData.role === 'admin' && Platform.OS !== 'web') {
+        try {
+          console.log('[AuthContext] Registering admin for push notifications...');
+          const pushToken = await registerForPushNotificationsAsync();
+          if (pushToken) {
+            await savePushToken(pushToken);
+            console.log('[AuthContext] Push token registered successfully');
+          }
+        } catch (pushError) {
+          console.error('[AuthContext] Push notification registration failed:', pushError);
+          // Don't throw - push notification failure shouldn't block login
+        }
+      }
     } catch (error: any) {
       console.error('[AuthContext] Login failed:', error.response?.data?.detail);
       throw new Error(error.response?.data?.detail || 'Login failed');
@@ -197,6 +218,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     console.log('[AuthContext] Logging out...');
+    
+    // Remove push token from backend before clearing local storage
+    if (Platform.OS !== 'web') {
+      try {
+        await removePushToken();
+      } catch (error) {
+        console.error('[AuthContext] Error removing push token:', error);
+      }
+    }
+    
     await AsyncStorage.removeItem('token');
     await AsyncStorage.removeItem('user');
     await AsyncStorage.removeItem(LAST_ACTIVITY_KEY);

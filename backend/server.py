@@ -2841,6 +2841,83 @@ async def reset_password(request: ResetPasswordRequest):
         "success": True
     }
 
+# ============= PUSH NOTIFICATION ROUTES =============
+
+class PushTokenRequest(BaseModel):
+    push_token: str
+
+@api_router.post("/users/push-token")
+async def save_push_token(request: PushTokenRequest, current_user: dict = Depends(get_current_user)):
+    """Save push notification token for the current user"""
+    try:
+        await db.users.update_one(
+            {"email": current_user["email"]},
+            {"$set": {"push_token": request.push_token, "push_token_updated_at": datetime.utcnow()}}
+        )
+        logging.info(f"Push token saved for user: {current_user['email']}")
+        return {"message": "Push token saved successfully"}
+    except Exception as e:
+        logging.error(f"Error saving push token: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save push token")
+
+@api_router.delete("/users/push-token")
+async def remove_push_token(current_user: dict = Depends(get_current_user)):
+    """Remove push notification token for the current user"""
+    try:
+        await db.users.update_one(
+            {"email": current_user["email"]},
+            {"$unset": {"push_token": "", "push_token_updated_at": ""}}
+        )
+        logging.info(f"Push token removed for user: {current_user['email']}")
+        return {"message": "Push token removed successfully"}
+    except Exception as e:
+        logging.error(f"Error removing push token: {e}")
+        raise HTTPException(status_code=500, detail="Failed to remove push token")
+
+async def send_push_notification_to_admins(title: str, body: str, data: dict = None):
+    """Send push notification to all admin users with registered tokens"""
+    try:
+        # Get all admin users with push tokens
+        admins = await db.users.find(
+            {"role": "admin", "push_token": {"$exists": True, "$ne": None}}
+        ).to_list(length=100)
+        
+        if not admins:
+            logging.info("No admin users with push tokens found")
+            return
+        
+        # Prepare notification payload for Expo Push API
+        messages = []
+        for admin in admins:
+            push_token = admin.get("push_token")
+            if push_token and push_token.startswith("ExponentPushToken"):
+                messages.append({
+                    "to": push_token,
+                    "sound": "default",
+                    "title": title,
+                    "body": body,
+                    "data": data or {},
+                    "channelId": "rfq",  # Android notification channel
+                })
+        
+        if not messages:
+            logging.info("No valid Expo push tokens found")
+            return
+        
+        # Send to Expo Push API
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://exp.host/--/api/v2/push/send",
+                json=messages,
+                headers={"Content-Type": "application/json"}
+            ) as response:
+                result = await response.json()
+                logging.info(f"Push notification sent to {len(messages)} admins: {result}")
+                
+    except Exception as e:
+        logging.error(f"Error sending push notification: {e}")
+
 # ============= PRODUCT ROUTES =============
 
 @api_router.get("/products", response_model=List[ProductInDB])
@@ -3024,6 +3101,17 @@ async def create_quote(
     # If customer created RFQ, send email to admins
     if is_customer:
         await send_rfq_notification_email(quote_dict, current_user)
+        # Send push notification to admins
+        await send_push_notification_to_admins(
+            title="New RFQ Received! 📋",
+            body=f"New RFQ {quote_number} from {current_user['name']} ({len(quote.products)} items)",
+            data={
+                "type": "new_rfq",
+                "quote_id": str(result.inserted_id),
+                "quote_number": quote_number,
+                "customer_name": current_user["name"]
+            }
+        )
     
     return QuoteInDB(**quote_dict)
 
