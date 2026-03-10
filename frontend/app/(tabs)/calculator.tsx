@@ -369,14 +369,39 @@ export default function CalculatorScreen() {
   };
 
   useEffect(() => {
-    // Auto-select first bearing when shaft diameter changes
-    if (standards && shaftDiameter) {
-      const bearings = standards.bearing_options[shaftDiameter.toString()];
-      if (bearings && bearings.length > 0) {
-        setBearingNumber(bearings[0]);
+    // Auto-select compatible bearing when pipe or shaft diameter changes
+    const fetchCompatibleBearings = async () => {
+      if (standards && shaftDiameter && pipeDiameter) {
+        try {
+          const response = await api.get(`/compatible-bearings-for-pipe/${pipeDiameter}/${shaftDiameter}`);
+          const compatibleBearings = response.data.compatible_bearings;
+          if (compatibleBearings && compatibleBearings.length > 0) {
+            // Auto-select first compatible bearing
+            setBearingNumber(compatibleBearings[0].number);
+          } else {
+            // No compatible bearings - show error or reset
+            const allBearings = standards.bearing_options[shaftDiameter.toString()];
+            if (allBearings && allBearings.length > 0) {
+              setBearingNumber(allBearings[0]);
+            }
+          }
+        } catch (error) {
+          // Fallback to first bearing for shaft
+          const bearings = standards.bearing_options[shaftDiameter.toString()];
+          if (bearings && bearings.length > 0) {
+            setBearingNumber(bearings[0]);
+          }
+        }
+      } else if (standards && shaftDiameter) {
+        // If no pipe diameter selected, just use first bearing for shaft
+        const bearings = standards.bearing_options[shaftDiameter.toString()];
+        if (bearings && bearings.length > 0) {
+          setBearingNumber(bearings[0]);
+        }
       }
-    }
-  }, [shaftDiameter, standards]);
+    };
+    fetchCompatibleBearings();
+  }, [shaftDiameter, pipeDiameter, standards]);
 
   useEffect(() => {
     // Auto-select rubber diameter for impact rollers

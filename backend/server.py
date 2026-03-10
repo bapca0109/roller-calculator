@@ -4626,6 +4626,44 @@ async def get_compatible_bearings(shaft_dia: int, current_user: dict = Depends(g
         raise HTTPException(status_code=404, detail=f"No bearings found for shaft diameter {shaft_dia}mm")
     return {"shaft_diameter": shaft_dia, "bearings": bearings}
 
+@api_router.get("/compatible-bearings-for-pipe/{pipe_dia}/{shaft_dia}")
+async def get_compatible_bearings_for_pipe(
+    pipe_dia: float, 
+    shaft_dia: int, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Get bearings compatible with both pipe diameter (via housing) and shaft diameter"""
+    # Get all bearings for the shaft diameter
+    all_bearings = rs.BEARING_OPTIONS.get(shaft_dia, [])
+    if not all_bearings:
+        raise HTTPException(status_code=404, detail=f"No bearings found for shaft diameter {shaft_dia}mm")
+    
+    # Get housing bores available for this pipe
+    housings = await db.housings.find({"pipe_dia": pipe_dia}).to_list(length=100)
+    available_bores = set(h.get("bearing_bore") for h in housings)
+    
+    if not available_bores:
+        raise HTTPException(status_code=404, detail=f"No housings found for pipe diameter {pipe_dia}mm")
+    
+    # Filter bearings to only those with OD matching available housing bores
+    compatible_bearings = []
+    for bearing_num in all_bearings:
+        bearing_info = await db.bearings.find_one({"number": bearing_num, "shaft_dia": shaft_dia})
+        if bearing_info and bearing_info.get("od") in available_bores:
+            compatible_bearings.append({
+                "number": bearing_num,
+                "od": bearing_info.get("od"),
+                "series": bearing_info.get("series")
+            })
+    
+    return {
+        "pipe_diameter": pipe_dia,
+        "shaft_diameter": shaft_dia,
+        "compatible_bearings": compatible_bearings,
+        "all_bearings_for_shaft": all_bearings,
+        "note": "Only bearings with OD matching available housing bores are compatible" if len(compatible_bearings) < len(all_bearings) else None
+    }
+
 @api_router.get("/compatible-housing/{pipe_dia}/{bearing}")
 async def get_compatible_housing(
     pipe_dia: float,
