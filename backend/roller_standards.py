@@ -611,111 +611,92 @@ FREIGHT_RATES_PER_KG = {
 
 def get_distance_from_pincode(destination_pincode):
     """
-    Calculate distance from dispatch location (382433) to destination pincode.
-    
-    NOTE: This is a simplified implementation using pincode-based zones.
-    For production, integrate with a pincode distance API like:
-    - India Post Pincode API
-    - Google Distance Matrix API
-    - Delhivery/Other logistics APIs
+    Calculate actual road distance from dispatch location (382433) to destination pincode.
+    Uses geocoding to get coordinates and calculates estimated road distance.
     
     Returns distance in km.
     """
-    # Simplified zone-based distance estimation
-    # First 2 digits of pincode indicate region
-    origin_zone = DISPATCH_PINCODE[:2]  # "38" = Gujarat
+    from geopy.geocoders import Nominatim
+    from geopy.distance import geodesic
+    import logging
+    
+    if not destination_pincode or len(destination_pincode) != 6:
+        return 500  # Default for invalid pincode
+    
+    # Cache for origin coordinates (Ahmedabad - 382433)
+    origin_coords = (23.0005237, 72.6723069)  # Pre-cached for performance
+    
+    try:
+        geolocator = Nominatim(user_agent="convero_freight_calculator", timeout=10)
+        
+        # Geocode destination pincode
+        dest_query = f"{destination_pincode}, India"
+        dest_location = geolocator.geocode(dest_query)
+        
+        if dest_location:
+            dest_coords = (dest_location.latitude, dest_location.longitude)
+            
+            # Calculate straight-line distance
+            straight_distance = geodesic(origin_coords, dest_coords).km
+            
+            # Estimate road distance (typically 1.25-1.4x straight line in India)
+            # Using 1.3 as average factor for Indian roads
+            road_distance = straight_distance * 1.3
+            
+            logging.info(f"Distance calculated: {destination_pincode} -> {road_distance:.0f} km (straight: {straight_distance:.0f} km)")
+            
+            return round(road_distance)
+        else:
+            logging.warning(f"Could not geocode pincode: {destination_pincode}, using fallback")
+            return _get_fallback_distance(destination_pincode)
+            
+    except Exception as e:
+        logging.warning(f"Geocoding failed for {destination_pincode}: {str(e)}, using fallback")
+        return _get_fallback_distance(destination_pincode)
+
+
+def _get_fallback_distance(destination_pincode):
+    """
+    Fallback zone-based distance estimation when geocoding fails.
+    Uses first 2 digits of pincode to estimate distance.
+    """
     dest_zone = destination_pincode[:2] if destination_pincode else "00"
     
-    # Simplified distance mapping based on pincode zones
-    # Gujarat (38) to various regions - distances in km from Ahmedabad
+    # Approximate distances from Ahmedabad (382433) to major zones
     zone_distances = {
-        # Gujarat
-        "36": 200,    # Gujarat (Kutch/Jamnagar)
-        "37": 300,    # Gujarat (Rajkot/Bhavnagar)
-        "38": 100,    # Gujarat (Ahmedabad - local)
-        "39": 200,    # Gujarat (Surat/Valsad)
+        # Gujarat (local)
+        "36": 250, "37": 200, "38": 50, "39": 300,
         # Rajasthan
-        "30": 400,    # Rajasthan (Jaipur)
-        "31": 500,    # Rajasthan (Jodhpur)
-        "32": 450,    # Rajasthan (Udaipur)
-        "33": 550,    # Rajasthan (Bikaner)
-        "34": 600,    # Rajasthan (Kota)
+        "30": 650, "31": 450, "32": 300, "33": 600, "34": 550,
         # Maharashtra
-        "40": 550,    # Maharashtra (Mumbai)
-        "41": 500,    # Maharashtra (Pune)
-        "42": 650,    # Maharashtra (Nashik)
-        "43": 700,    # Maharashtra (Aurangabad)
-        "44": 800,    # Maharashtra (Nagpur)
+        "40": 550, "41": 650, "42": 450, "43": 550, "44": 900,
         # Madhya Pradesh
-        "45": 700,    # MP (Indore)
-        "46": 800,    # MP (Bhopal)
-        "47": 900,    # MP (Jabalpur)
-        "48": 850,    # MP (Gwalior)
-        "49": 950,    # MP (Rewa)
-        # Chhattisgarh
-        "49": 1100,   # Chhattisgarh (Raipur)
+        "45": 400, "46": 600, "47": 850, "48": 750, "49": 1000,
         # Delhi/NCR
-        "11": 950,    # Delhi
-        "12": 900,    # Haryana (Gurgaon)
-        "13": 1050,   # Punjab
-        "14": 1200,   # Himachal Pradesh
-        "15": 1400,   # Jammu & Kashmir
-        "16": 1100,   # Chandigarh
-        "17": 1350,   # Uttarakhand
+        "11": 950, "12": 900, "13": 1100, "14": 1200, "15": 1500, "16": 1050, "17": 1200,
         # Uttar Pradesh
-        "20": 850,    # UP (Agra/Aligarh)
-        "21": 900,    # UP (Lucknow)
-        "22": 1000,   # UP (Varanasi)
-        "23": 1100,   # UP (Gorakhpur)
-        "24": 1000,   # UP (Kanpur)
-        "25": 950,    # UP (Meerut)
-        "26": 1050,   # UP (Allahabad)
-        "27": 1150,   # UP (Bareilly)
-        "28": 1200,   # UP (East)
+        "20": 850, "21": 1050, "22": 1200, "23": 1350, "24": 1000, "25": 950, "26": 1150, "27": 1100, "28": 1300,
         # Bihar & Jharkhand
-        "80": 1400,   # Bihar (Patna)
-        "81": 1450,   # Bihar (Muzaffarpur)
-        "82": 1500,   # Bihar (Bhagalpur)
-        "83": 1350,   # Jharkhand (Ranchi)
-        "84": 1400,   # Jharkhand (Jamshedpur)
+        "80": 1550, "81": 1600, "82": 1650, "83": 1450, "84": 1500,
         # West Bengal
-        "70": 1600,   # West Bengal (Kolkata)
-        "71": 1650,   # West Bengal (North)
-        "72": 1700,   # West Bengal (South)
-        "73": 1550,   # West Bengal (Asansol)
+        "70": 1900, "71": 1950, "72": 2000, "73": 1700,
         # Odisha
-        "75": 1550,   # Odisha (Cuttack/Bhubaneswar)
-        "76": 1600,   # Odisha (South)
-        "77": 1500,   # Odisha (West)
+        "75": 1800, "76": 1850, "77": 1650,
         # Andhra Pradesh & Telangana
-        "50": 1200,   # Telangana (Hyderabad)
-        "51": 1250,   # Telangana
-        "52": 1300,   # Andhra Pradesh (North)
-        "53": 1400,   # Andhra Pradesh (Visakhapatnam)
-        "54": 1350,   # Andhra Pradesh
+        "50": 1100, "51": 1150, "52": 1200, "53": 1450, "54": 1300,
         # Karnataka
-        "56": 1300,   # Karnataka (Bangalore)
-        "57": 1200,   # Karnataka (North)
-        "58": 1150,   # Karnataka (Belgaum)
-        "59": 1250,   # Karnataka (Mangalore)
+        "56": 1500, "57": 900, "58": 700, "59": 1200,
         # Tamil Nadu
-        "60": 1600,   # Tamil Nadu (Chennai)
-        "61": 1650,   # Tamil Nadu (Coimbatore)
-        "62": 1700,   # Tamil Nadu (Madurai)
-        "63": 1750,   # Tamil Nadu (South)
-        "64": 1550,   # Tamil Nadu (Vellore)
+        "60": 1750, "61": 1500, "62": 1800, "63": 1900, "64": 1650,
         # Kerala
-        "67": 1650,   # Kerala (Kozhikode)
-        "68": 1700,   # Kerala (Kochi)
-        "69": 1750,   # Kerala (Trivandrum)
+        "67": 1600, "68": 1700, "69": 1850,
         # Goa
-        "40": 900,    # Goa
+        "40": 750,
         # North East
-        "78": 2100,   # Assam (Guwahati)
-        "79": 2200,   # North East (Other states)
+        "78": 2500, "79": 2600,
     }
     
-    return zone_distances.get(dest_zone, 1000)  # Default 1000 km if zone unknown
+    return zone_distances.get(dest_zone, 1000)
 
 def get_freight_rate_per_kg(distance_km):
     """Get freight rate per kg based on distance"""
