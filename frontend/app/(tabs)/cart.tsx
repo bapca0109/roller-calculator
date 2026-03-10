@@ -9,6 +9,8 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
@@ -308,7 +310,11 @@ export default function CartScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -337,7 +343,12 @@ export default function CartScreen() {
         </View>
       ) : (
         <>
-          <ScrollView style={styles.itemsList} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.itemsList} 
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 100 }}
+          >
             {cartItems.map((item, index) => (
               <View key={item.id} style={styles.cartItem}>
                 <View style={styles.itemHeader}>
@@ -652,7 +663,7 @@ export default function CartScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
