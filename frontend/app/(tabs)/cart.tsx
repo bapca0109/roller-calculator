@@ -148,17 +148,37 @@ export default function CartScreen() {
       let weightPerUnit = item.weight_kg || 0;
       
       // If weight_kg is 0 or missing, try to get it from the API
-      if (weightPerUnit === 0 && item.product_code) {
-        try {
-          // Extract specs from product_code or use stored specifications
-          const specs = item.specifications || {};
-          if (specs.pipe_diameter && specs.pipe_length && specs.shaft_diameter) {
+      if (weightPerUnit === 0) {
+        const specs = item.specifications || {};
+        
+        // Try to extract specs from product_code if not in specifications
+        // Product code format: CR25 89 1000B 62C = roller_type shaft pipe_dia lengthPipe_type bearing
+        let pipeD = specs.pipe_diameter;
+        let pipeL = specs.pipe_length;
+        let shaftD = specs.shaft_diameter;
+        let pipeT = specs.pipe_type || 'B';
+        
+        // If specs are missing, try to parse from product_code
+        if ((!pipeD || !pipeL || !shaftD) && item.product_code) {
+          const parts = item.product_code.split(' ');
+          if (parts.length >= 4) {
+            // CR25 89 1000B 62C
+            shaftD = shaftD || parseInt(parts[0].replace(/\D/g, '')) || 25;
+            pipeD = pipeD || parseFloat(parts[1]) || 88.9;
+            const lengthPart = parts[2] || '1000B';
+            pipeL = pipeL || parseInt(lengthPart.replace(/\D/g, '')) || 1000;
+            pipeT = pipeT || (lengthPart.match(/[ABC]/)?.[0]) || 'B';
+          }
+        }
+        
+        if (pipeD && pipeL && shaftD) {
+          try {
             const response = await api.post('/calculate-detailed-cost', {
               roller_type: item.roller_type || 'carrying',
-              pipe_diameter: specs.pipe_diameter,
-              pipe_length: specs.pipe_length,
-              pipe_type: specs.pipe_type || 'B',
-              shaft_diameter: specs.shaft_diameter,
+              pipe_diameter: pipeD,
+              pipe_length: pipeL,
+              pipe_type: pipeT,
+              shaft_diameter: shaftD,
               bearing: specs.bearing || '6205',
               bearing_number: specs.bearing || '6205',
               bearing_make: specs.bearing_make || 'skf',
@@ -170,9 +190,9 @@ export default function CartScreen() {
               weightPerUnit = response.data.cost_breakdown.single_roller_weight_kg;
               console.log(`Fetched weight for ${item.product_code}: ${weightPerUnit} kg`);
             }
+          } catch (err) {
+            console.log('Could not fetch weight for item:', item.product_code, err);
           }
-        } catch (err) {
-          console.log('Could not fetch weight for item:', item.product_code);
         }
       }
       
