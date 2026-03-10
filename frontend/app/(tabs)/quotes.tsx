@@ -744,12 +744,16 @@ export default function QuotesScreen() {
     
     // Calculate total weight from products
     // Weight can be in multiple places: weight_kg, base_weight_kg, specifications.weight_kg, cost_breakdown.total_weight_kg
-    const totalWeight = products.reduce((sum, p) => {
+    let totalWeight = 0;
+    
+    for (const p of products) {
       let weight = 0;
       
       // Try different sources for weight
       if (p.weight_kg) {
         weight = p.weight_kg;
+      } else if (p.weight) {
+        weight = p.weight;
       } else if (p.base_weight_kg) {
         weight = p.base_weight_kg;
       } else if (p.specifications?.weight_kg) {
@@ -759,20 +763,46 @@ export default function QuotesScreen() {
       } else if (p.pricing_details?.single_roller_weight_kg) {
         weight = p.pricing_details.single_roller_weight_kg;
       } else {
-        // Estimate weight based on roller type if no weight data available
-        // Average weight: Carrying ~5kg, Impact ~7kg, Return ~4kg
-        const rollerType = p.specifications?.roller_type || p.product_name?.toLowerCase() || '';
-        if (rollerType.includes('impact')) {
-          weight = 7;
-        } else if (rollerType.includes('return')) {
-          weight = 4;
-        } else {
-          weight = 5; // Default carrying roller
+        // Try to calculate weight from specifications via API
+        const specs = p.specifications || {};
+        if (specs.pipe_diameter && specs.pipe_length && specs.shaft_diameter) {
+          try {
+            const response = await api.post('/calculate-detailed-cost', {
+              roller_type: specs.roller_type || p.roller_type || 'carrying',
+              pipe_diameter: specs.pipe_diameter,
+              pipe_length: specs.pipe_length,
+              pipe_type: specs.pipe_type || 'B',
+              shaft_diameter: specs.shaft_diameter,
+              bearing: specs.bearing || '6205',
+              bearing_number: specs.bearing || '6205',
+              bearing_make: specs.bearing_make || 'skf',
+              housing: specs.housing || 'CI Machined',
+              quantity: 1
+            });
+            
+            if (response.data?.cost_breakdown?.single_roller_weight_kg) {
+              weight = response.data.cost_breakdown.single_roller_weight_kg;
+            }
+          } catch (err) {
+            console.log('Could not fetch weight for product:', p.product_id);
+          }
+        }
+        
+        // Final fallback based on roller type (improved estimates)
+        if (weight === 0) {
+          const rollerType = specs.roller_type || p.product_name?.toLowerCase() || '';
+          if (rollerType.includes('impact')) {
+            weight = 15;
+          } else if (rollerType.includes('return')) {
+            weight = 8;
+          } else {
+            weight = 12; // Default carrying roller - improved estimate
+          }
         }
       }
       
-      return sum + (weight * (p.quantity || 1));
-    }, 0);
+      totalWeight += weight * (p.quantity || 1);
+    }
     
     if (totalWeight === 0) {
       setCalculatedFreightFromPincode(0);
