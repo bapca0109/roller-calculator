@@ -2436,8 +2436,9 @@ export default function QuotesScreen() {
                     )}
                   </View>
 
-                  {/* Pricing Summary - Hide for admin viewing pending RFQs (they see real-time Summary instead) */}
-                  {!(isAdmin && selectedQuote.status?.toLowerCase() === 'pending') && (
+                  {/* Pricing Summary - Hide for customers viewing pending/non-approved quotes AND for admin viewing pending RFQs */}
+                  {!(isAdmin && selectedQuote.status?.toLowerCase() === 'pending') && 
+                   !(isCustomer && selectedQuote.status?.toLowerCase() !== 'approved') && (
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>Pricing Summary</Text>
                     
@@ -2505,13 +2506,17 @@ export default function QuotesScreen() {
                   </View>
                   )}
                   
-                  {/* Show message for customers on pending RFQs */}
-                  {isCustomer && selectedQuote.status === 'pending' && (
+                  {/* Show message for customers on non-approved quotes */}
+                  {isCustomer && selectedQuote.status?.toLowerCase() !== 'approved' && (
                     <View style={styles.detailSection}>
                       <View style={styles.pendingPriceMessage}>
                         <Ionicons name="time-outline" size={24} color="#F59E0B" />
                         <Text style={styles.pendingPriceText}>
-                          Pricing will be available once your RFQ is approved by admin
+                          {selectedQuote.status?.toLowerCase() === 'pending' 
+                            ? 'Pricing will be available once your RFQ is approved by admin'
+                            : selectedQuote.status?.toLowerCase() === 'rejected'
+                            ? 'This quote was rejected. Please contact us for more information.'
+                            : 'Pricing details are being processed'}
                         </Text>
                       </View>
                     </View>
