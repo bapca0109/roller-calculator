@@ -104,6 +104,8 @@ export default function Login() {
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
+                returnKeyType="go"
+                onSubmitEditing={handleLogin}
               />
               <TouchableOpacity 
                 onPress={() => setShowPassword(!showPassword)}
