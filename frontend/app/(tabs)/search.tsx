@@ -12,6 +12,8 @@ import {
   ScrollView,
   Platform,
   Linking,
+  ActionSheetIOS,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,6 +22,8 @@ import api from '../../utils/api';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FloatingCartButton from '../../components/FloatingCartButton';
 import CartViewModal from '../../components/CartViewModal';
@@ -111,6 +115,9 @@ export default function SearchScreen() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailRecipient, setEmailRecipient] = useState('');
   const [emailDrawingData, setEmailDrawingData] = useState<{product: ProductResult, length: LengthDetail} | null>(null);
+
+  // Attachment state for search items
+  const [searchAttachments, setSearchAttachments] = useState<Array<{name: string; type: string; uri: string; base64?: string}>>([]);
 
   useEffect(() => {
     fetchCustomers();
@@ -231,7 +238,113 @@ export default function SearchScreen() {
   const openAddToQuote = (product: ProductResult, length: LengthDetail) => {
     setSelectedLength({ product, length });
     setQuantityInput('1');
+    setSearchAttachments([]);  // Reset attachments for new item
     setShowQuantityModal(true);
+  };
+
+  // Attachment functions for search items
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Camera permission is required to take photos');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      setSearchAttachments([...searchAttachments, {
+        name: `photo_${Date.now()}.jpg`,
+        type: 'image/jpeg',
+        uri: asset.uri,
+        base64: asset.base64,
+      }]);
+    }
+  };
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Media library permission is required');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      setSearchAttachments([...searchAttachments, {
+        name: asset.fileName || `image_${Date.now()}.jpg`,
+        type: asset.mimeType || 'image/jpeg',
+        uri: asset.uri,
+        base64: asset.base64,
+      }]);
+    }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        // Read file as base64
+        const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        setSearchAttachments([...searchAttachments, {
+          name: asset.name,
+          type: asset.mimeType || 'application/octet-stream',
+          uri: asset.uri,
+          base64: base64,
+        }]);
+      }
+    } catch (error) {
+      console.error('Document picker error:', error);
+      Alert.alert('Error', 'Failed to pick document');
+    }
+  };
+
+  const showAttachmentOptions = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Library', 'Choose Document'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) takePhoto();
+          else if (buttonIndex === 2) pickImage();
+          else if (buttonIndex === 3) pickDocument();
+        }
+      );
+    } else {
+      Alert.alert(
+        'Add Attachment',
+        'Choose attachment source',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Take Photo', onPress: takePhoto },
+          { text: 'Choose from Library', onPress: pickImage },
+          { text: 'Choose Document', onPress: pickDocument },
+        ]
+      );
+    }
+  };
+
+  const removeSearchAttachment = (index: number) => {
+    const newAttachments = [...searchAttachments];
+    newAttachments.splice(index, 1);
+    setSearchAttachments(newAttachments);
   };
 
   const addToQuote = () => {
@@ -270,7 +383,7 @@ export default function SearchScreen() {
     // Add to local quote items (for backward compatibility)
     setQuoteItems([...quoteItems, newItem]);
     
-    // Also add to shared cart
+    // Also add to shared cart with attachments
     addToCart({
       product_id: length.product_code,
       product_name: `${product.roller_type.charAt(0).toUpperCase() + product.roller_type.slice(1)} Roller - ${length.product_code}`,
@@ -291,14 +404,20 @@ export default function SearchScreen() {
         belt_widths: length.belt_widths,
       },
       source: 'search',
+      attachments: searchAttachments.map(att => ({
+        name: att.name,
+        type: att.type,
+        base64: att.base64 || '',
+      })),
     });
     
     setShowQuantityModal(false);
     setSelectedLength(null);
+    setSearchAttachments([]);  // Reset attachments
     
     Alert.alert(
       'Added to Cart!', 
-      `${length.product_code} x ${qty} added.\nItems in cart: ${quoteItems.length + 1}`,
+      `${length.product_code} x ${qty} added${searchAttachments.length > 0 ? ` with ${searchAttachments.length} attachment(s)` : ''}.\nItems in cart: ${quoteItems.length + 1}`,
       [{ text: 'OK' }, { text: 'View Cart', onPress: () => setShowCartView(true) }]
     );
   };
@@ -925,7 +1044,7 @@ export default function SearchScreen() {
           <View style={styles.quantityModal}>
             <Text style={styles.modalTitle}>Add to Quote</Text>
             {selectedLength && (
-              <>
+              <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalProductCode}>{selectedLength.length.product_code}</Text>
                 <View style={styles.modalDetails}>
                   <Text style={styles.modalDetailText}>Length: {selectedLength.length.length_mm}mm</Text>
@@ -941,6 +1060,65 @@ export default function SearchScreen() {
                   placeholder="Enter quantity"
                   data-testid="quantity-input"
                 />
+                
+                {/* Attachment Section */}
+                <View style={styles.attachmentSection}>
+                  <Text style={styles.attachmentLabel}>Attachments (Optional)</Text>
+                  <View style={styles.attachmentButtons}>
+                    <TouchableOpacity 
+                      style={styles.attachmentBtn} 
+                      onPress={takePhoto}
+                      data-testid="search-camera-btn"
+                    >
+                      <Ionicons name="camera" size={20} color="#960018" />
+                      <Text style={styles.attachmentBtnText}>Camera</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={styles.attachmentBtn} 
+                      onPress={pickImage}
+                      data-testid="search-gallery-btn"
+                    >
+                      <Ionicons name="image" size={20} color="#960018" />
+                      <Text style={styles.attachmentBtnText}>Gallery</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={styles.attachmentBtn} 
+                      onPress={pickDocument}
+                      data-testid="search-document-btn"
+                    >
+                      <Ionicons name="document" size={20} color="#960018" />
+                      <Text style={styles.attachmentBtnText}>File</Text>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Display Added Attachments */}
+                  {searchAttachments.length > 0 && (
+                    <View style={styles.attachmentList}>
+                      {searchAttachments.map((attachment, index) => (
+                        <View key={index} style={styles.attachmentItem}>
+                          {attachment.type.startsWith('image') ? (
+                            <Image source={{ uri: attachment.uri }} style={styles.attachmentThumbnail} />
+                          ) : (
+                            <View style={styles.attachmentDocIcon}>
+                              <Ionicons name="document-text" size={24} color="#960018" />
+                            </View>
+                          )}
+                          <Text style={styles.attachmentName} numberOfLines={1}>{attachment.name}</Text>
+                          <TouchableOpacity 
+                            style={styles.removeAttachmentBtn}
+                            onPress={() => removeSearchAttachment(index)}
+                            data-testid={`remove-attachment-${index}`}
+                          >
+                            <Ionicons name="close-circle" size={20} color="#E53935" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+                
                 <View style={styles.modalButtons}>
                   <TouchableOpacity 
                     style={styles.cancelButton}
@@ -956,7 +1134,7 @@ export default function SearchScreen() {
                     <Text style={styles.confirmButtonText}>Add to Quote</Text>
                   </TouchableOpacity>
                 </View>
-              </>
+              </ScrollView>
             )}
           </View>
         </View>
@@ -1710,6 +1888,7 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '85%',
     maxWidth: 400,
+    maxHeight: '80%',
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
@@ -2070,5 +2249,77 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Attachment Styles
+  attachmentSection: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  attachmentLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  attachmentButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  attachmentBtn: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 4,
+  },
+  attachmentBtnText: {
+    fontSize: 11,
+    color: '#960018',
+    fontWeight: '600',
+  },
+  attachmentList: {
+    marginTop: 12,
+  },
+  attachmentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  attachmentThumbnail: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    backgroundColor: '#E2E8F0',
+  },
+  attachmentDocIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    backgroundColor: '#FFF5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachmentName: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0F172A',
+  },
+  removeAttachmentBtn: {
+    padding: 4,
   },
 });

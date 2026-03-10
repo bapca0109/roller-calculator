@@ -1120,13 +1120,16 @@ def generate_quote_html(quote_data: dict) -> str:
         qty = product.get('quantity', 0)
         unit_price = product.get('unit_price', 0)
         
+        # Get specifications safely (handle null/None values)
+        specs = product.get('specifications') or {}
+        
         # Get weight information - check multiple possible field names
         unit_weight = (
             product.get('weight') or 
             product.get('weight_kg') or 
-            product.get('specifications', {}).get('weight') or 
-            product.get('specifications', {}).get('weight_kg') or 
-            product.get('specifications', {}).get('single_roller_weight_kg') or 
+            specs.get('weight') or 
+            specs.get('weight_kg') or 
+            specs.get('single_roller_weight_kg') or 
             0
         )
         total_weight = unit_weight * qty
@@ -1146,8 +1149,6 @@ def generate_quote_html(quote_data: dict) -> str:
         
         calculated_subtotal += line_total
         total_item_discount += item_discount_amount
-        
-        specs = product.get('specifications', {})
         specs_html = ""
         if specs:
             spec_parts = []
@@ -3663,6 +3664,42 @@ async def approve_rfq(
     new_quote_number = await generate_quote_number()
     ist_now = get_ist_now()
     
+    # Auto-calculate freight if delivery_location (pincode) is provided
+    freight_details = quote.get("freight_details")
+    shipping_cost = quote.get("shipping_cost", 0)
+    delivery_location = quote.get("delivery_location")
+    total_price = quote.get("total_price", 0)
+    
+    # Calculate total weight from products
+    products = quote.get("products", [])
+    total_weight = 0.0
+    for product in products:
+        specs = product.get("specifications") or {}  # Handle null specifications
+        item_weight = specs.get("weight_kg", 0) or product.get("weight_kg", 0) or product.get("weight", 0) or 0
+        quantity = product.get("quantity", 1)
+        total_weight += item_weight * quantity
+    
+    # If pincode is provided and no freight has been calculated yet, auto-calculate
+    if delivery_location and (not freight_details or not shipping_cost):
+        try:
+            freight_calc = rs.calculate_freight_charges(total_weight, delivery_location)
+            freight_details = {
+                "destination_pincode": delivery_location,
+                "total_weight_kg": round(total_weight, 2),
+                "distance_km": freight_calc["distance_km"],
+                "freight_rate_per_kg": freight_calc["freight_rate_per_kg"],
+                "freight_charges": freight_calc["freight_charges"],
+                "auto_calculated": True
+            }
+            shipping_cost = freight_calc["freight_charges"]
+            # Update total price to include freight
+            subtotal_before_freight = quote.get("subtotal", 0) - quote.get("total_discount", 0) + quote.get("packing_charges", 0)
+            gst_amount = subtotal_before_freight * 0.18  # 18% GST
+            total_price = subtotal_before_freight + gst_amount + shipping_cost
+            logging.info(f"Auto-calculated freight for quote {old_number}: Rs. {shipping_cost} for {total_weight} kg to {delivery_location}")
+        except Exception as e:
+            logging.warning(f"Could not auto-calculate freight: {str(e)}")
+    
     # Update the quote
     update_result = await db.quotes.update_one(
         {"_id": obj_id},
@@ -3673,7 +3710,10 @@ async def approve_rfq(
             "status": QuoteStatus.APPROVED,
             "approved_by": current_user["email"],
             "approved_at": ist_now,
-            "updated_at": ist_now
+            "updated_at": ist_now,
+            "freight_details": freight_details,
+            "shipping_cost": shipping_cost,
+            "total_price": total_price
         }}
     )
     
@@ -3704,6 +3744,7 @@ async def approve_rfq(
     customer_email = quote.get("customer_email")
     if customer_email:
         # Pass the complete updated quote for PDF generation - include ALL fields
+        # Use the newly calculated freight values
         await send_quote_approval_email({
             "quote_number": new_quote_number,
             "original_rfq_number": old_number,
@@ -3717,21 +3758,24 @@ async def approve_rfq(
             "use_item_discounts": quote.get("use_item_discounts", False),
             "discount_percent": quote.get("discount_percent", 0),
             "packing_charges": quote.get("packing_charges", 0),
-            "shipping_cost": quote.get("shipping_cost", 0),
-            "delivery_location": quote.get("delivery_location"),
-            "total_price": quote.get("total_price", 0),
+            "shipping_cost": shipping_cost,  # Use auto-calculated value
+            "delivery_location": delivery_location,
+            "total_price": total_price,  # Use updated total
             "notes": quote.get("notes"),
             "approved_at": updated_quote.get("approved_at"),
             "cost_breakdown": quote.get("cost_breakdown"),
             "pricing_details": quote.get("pricing_details"),
-            "freight_details": quote.get("freight_details")
+            "freight_details": freight_details  # Use auto-calculated freight details
         }, customer_email)
     
     return {
         "message": "RFQ approved successfully",
         "old_number": old_number,
         "new_quote_number": new_quote_number,
-        "status": QuoteStatus.APPROVED
+        "status": QuoteStatus.APPROVED,
+        "freight_auto_calculated": freight_details.get("auto_calculated", False) if freight_details else False,
+        "shipping_cost": shipping_cost,
+        "freight_details": freight_details
     }
 
 @api_router.post("/quotes/{quote_id}/reject")
