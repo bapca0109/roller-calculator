@@ -2012,15 +2012,22 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
         has_attachments = False
         
         for idx, product in enumerate(products, 1):
+            qty = product.get('quantity', 0)
+            unit_weight = product.get('weight', 0) or product.get('specifications', {}).get('weight', 0) or 0
+            total_weight = unit_weight * qty
+            unit_weight_str = f"{unit_weight:.2f}" if unit_weight > 0 else "-"
+            total_weight_str = f"{total_weight:.2f}" if total_weight > 0 else "-"
             products_html += f"""
             <tr>
                 <td>{idx}</td>
                 <td>{product.get('product_id', 'N/A')}</td>
                 <td>{product.get('product_name', 'N/A')}</td>
-                <td>{product.get('quantity', 0)}</td>
+                <td>{qty}</td>
+                <td style="text-align: right;">{unit_weight_str}</td>
+                <td style="text-align: right;">{total_weight_str}</td>
             </tr>
             """
-            products_text += f"{idx}. {product.get('product_id', 'N/A')} - {product.get('product_name', 'N/A')} x {product.get('quantity', 0)}\n"
+            products_text += f"{idx}. {product.get('product_id', 'N/A')} - {product.get('product_name', 'N/A')} x {qty}\n"
             
             # Group attachments by product
             product_attachments = product.get('attachments', [])
@@ -2160,6 +2167,8 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
                             <th>Product Code</th>
                             <th>Description</th>
                             <th>Qty</th>
+                            <th style="text-align: right;">Wt/Pc (kg)</th>
+                            <th style="text-align: right;">Total Wt (kg)</th>
                         </tr>
                         {products_html}
                     </table>
@@ -2302,6 +2311,8 @@ async def send_rfq_notification_email(rfq_data: dict, customer: dict):
                             <th>Product Code</th>
                             <th>Description</th>
                             <th>Qty</th>
+                            <th style="text-align: right;">Wt/Pc (kg)</th>
+                            <th style="text-align: right;">Total Wt (kg)</th>
                         </tr>
                         {products_html}
                     </table>
@@ -3370,14 +3381,31 @@ async def send_quote_approval_email(quote_data: dict, customer_email: str):
         # Get product details
         products = quote_data.get('products', [])
         products_html = ""
+        grand_total_weight = 0
         for p in products:
+            qty = p.get('quantity', 1)
+            unit_weight = p.get('weight', 0) or p.get('specifications', {}).get('weight', 0) or 0
+            total_weight = unit_weight * qty
+            grand_total_weight += total_weight
+            unit_weight_str = f"{unit_weight:.2f}" if unit_weight > 0 else "-"
+            total_weight_str = f"{total_weight:.2f}" if total_weight > 0 else "-"
             products_html += f"""
             <tr style="border-bottom: 1px solid #eee;">
                 <td style="padding: 12px;">{p.get('product_name', 'Product')}</td>
-                <td style="padding: 12px; text-align: center;">{p.get('quantity', 1)}</td>
+                <td style="padding: 12px; text-align: center;">{qty}</td>
+                <td style="padding: 12px; text-align: right;">{unit_weight_str}</td>
+                <td style="padding: 12px; text-align: right;">{total_weight_str}</td>
                 <td style="padding: 12px; text-align: right;">Rs. {p.get('unit_price', 0):,.2f}</td>
             </tr>
             """
+        # Add grand total weight row
+        weight_total_row = f"""
+        <tr style="background: #f0f9ff; font-weight: bold;">
+            <td colspan="3" style="padding: 12px; text-align: right;">Grand Total Weight:</td>
+            <td style="padding: 12px; text-align: right;">{grand_total_weight:.2f} kg</td>
+            <td></td>
+        </tr>
+        """ if grand_total_weight > 0 else ""
         
         html_content = f"""
         <!DOCTYPE html>
@@ -3426,9 +3454,12 @@ async def send_quote_approval_email(quote_data: dict, customer_email: str):
                         <tr style="background: #f8f9fa;">
                             <th style="padding: 12px; text-align: left;">Product</th>
                             <th style="padding: 12px; text-align: center;">Qty</th>
+                            <th style="padding: 12px; text-align: right;">Wt/Pc (kg)</th>
+                            <th style="padding: 12px; text-align: right;">Total Wt (kg)</th>
                             <th style="padding: 12px; text-align: right;">Unit Price</th>
                         </tr>
                         {products_html}
+                        {weight_total_row}
                     </table>
                     
                     <div class="total-box">
@@ -3808,14 +3839,31 @@ async def send_quote_revision_email(quote_data: dict, customer_email: str, revis
         # Get product details
         products = quote_data.get('products', [])
         products_html = ""
+        grand_total_weight = 0
         for p in products:
+            qty = p.get('quantity', 1)
+            unit_weight = p.get('weight', 0) or p.get('specifications', {}).get('weight', 0) or 0
+            total_weight = unit_weight * qty
+            grand_total_weight += total_weight
+            unit_weight_str = f"{unit_weight:.2f}" if unit_weight > 0 else "-"
+            total_weight_str = f"{total_weight:.2f}" if total_weight > 0 else "-"
             products_html += f"""
             <tr style="border-bottom: 1px solid #eee;">
                 <td style="padding: 12px;">{p.get('product_name', 'Product')}</td>
-                <td style="padding: 12px; text-align: center;">{p.get('quantity', 1)}</td>
+                <td style="padding: 12px; text-align: center;">{qty}</td>
+                <td style="padding: 12px; text-align: right;">{unit_weight_str}</td>
+                <td style="padding: 12px; text-align: right;">{total_weight_str}</td>
                 <td style="padding: 12px; text-align: right;">Rs. {p.get('unit_price', 0):,.2f}</td>
             </tr>
             """
+        # Add grand total weight row
+        weight_total_row = f"""
+        <tr style="background: #f0f9ff; font-weight: bold;">
+            <td colspan="3" style="padding: 12px; text-align: right;">Grand Total Weight:</td>
+            <td style="padding: 12px; text-align: right;">{grand_total_weight:.2f} kg</td>
+            <td></td>
+        </tr>
+        """ if grand_total_weight > 0 else ""
         
         discount_percent = quote_data.get('discount_percent', 0)
         discount_amount = quote_data.get('total_discount', 0)
@@ -3866,9 +3914,12 @@ async def send_quote_revision_email(quote_data: dict, customer_email: str, revis
                         <tr style="background: #f8f9fa;">
                             <th style="padding: 12px; text-align: left;">Product</th>
                             <th style="padding: 12px; text-align: center;">Qty</th>
+                            <th style="padding: 12px; text-align: right;">Wt/Pc (kg)</th>
+                            <th style="padding: 12px; text-align: right;">Total Wt (kg)</th>
                             <th style="padding: 12px; text-align: right;">Unit Price</th>
                         </tr>
                         {products_html}
+                        {weight_total_row}
                     </table>
                     
                     <div class="discount-box">
