@@ -7,7 +7,9 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 ```
 /app
 ├── backend
-│   └── server.py        # FastAPI backend with MongoDB + Export endpoints
+│   ├── server.py           # FastAPI backend with MongoDB + Auto-freight calculation
+│   ├── roller_standards.py # Pricing data & freight calculation logic
+│   └── tests/              # Backend test files
 └── frontend
     ├── app
     │   ├── auth/login.tsx      # REDESIGNED: Modern industrial login
@@ -20,7 +22,7 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
     │       ├── admin.tsx       # Admin panel (REDESIGNED)
     │       ├── profile.tsx     # User profile (REDESIGNED)
     │       ├── dashboard.tsx   # Admin dashboard (REDESIGNED)
-    │       └── search.tsx      # Product search + Export (REDESIGNED)
+    │       └── search.tsx      # Product search + Attachments (UPDATED)
     ├── components
     │   ├── quotes/             # Extracted quote components
     │   └── shared/
@@ -42,29 +44,25 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 - [x] Export to PDF/Excel functionality
 - [x] Tab renamed from "Calculator" to "Products"
 - [x] Component refactoring (QuoteCard, modals extracted)
+- [x] Push notifications for admins (requires APK build for testing)
 
-### March 2026 (This Session) - UI Redesign
+### March 10, 2026 (This Session) - P0 Completions
+- [x] **Search Tab Attachments**: Added Camera, Gallery, Document buttons to the "Add to Quote" modal in search.tsx
+  - Attachment state management with reset on modal close
+  - Proper base64 encoding for cart integration
+  - Styles for attachment preview and removal
+- [x] **Auto-Freight Calculation**: Implemented automatic freight calculation during RFQ approval
+  - Calculates total weight from products
+  - Uses delivery_location (pincode) to calculate distance
+  - Auto-applies freight charges and updates total price
+  - Returns `freight_auto_calculated` flag in API response
+- [x] **Bug Fix**: Fixed NoneType error in approve_rfq when product.specifications is null
+
+### Previous Session - UI Redesign
 - [x] **Login Page**: Complete redesign with modern two-tone layout
-  - Carmine Red (#960018) header section
-  - White form card with rounded top corners
-  - Modern input fields with icons and labels
-  - Clean Sign In button design
-- [x] **Theme System**: Enhanced `/app/frontend/theme/index.ts`
-  - Comprehensive color palette with primary/secondary/status colors
-  - Typography system with h1-h3, body, caption styles
-  - Component presets for buttons, cards, inputs
-  - Common styles exported for header consistency
-- [x] **Header Redesign (All Main Screens)**:
-  - Dark slate (#0F172A) background
-  - 20px border radius on bottom corners
-  - Consistent 56px top padding for status bar
-  - White titles with 24px font size
-  - Slate gray (#94A3B8) subtitles
-- [x] **Card Styling Updates**:
-  - White background with subtle border (#F1F5F9)
-  - 12px border radius
-  - Subtle shadow with 0.05 opacity
-- [x] **Design Guidelines Created**: `/app/design_guidelines.json`
+- [x] **Theme System**: Enhanced design tokens
+- [x] **Header Redesign (All Main Screens)**: Dark slate headers
+- [x] **Card Styling Updates**: White background with subtle borders
 
 ## Design System
 
@@ -90,54 +88,48 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 - Caption: 12px / 400 weight / 16px line height
 - Label: 12px / 600 weight / uppercase / 0.5 letter spacing
 
-### Component Patterns
-- **Headers**: Dark background, 20px bottom radius, 56px top padding
-- **Cards**: White, 12px radius, 1px border, subtle shadow
-- **Buttons**: 12px radius, 54px height, primary color
-- **Inputs**: 12px radius, 52px height, light border
-
 ## Known Issues
 
 ### P1 - High Priority
-- [ ] **Login button click issue on web**: TouchableOpacity events not firing reliably in React Native Web. Workaround: JavaScript click() method works.
-- [ ] **iOS logout functionality**: Not working (recurring issue, 3x)
+- [ ] **iOS logout functionality**: Not working (recurring issue, 4x)
+- [ ] **Android navigation bar overlap**: System nav bar overlaps bottom tab bar
 
 ### P2 - Medium Priority
-- [ ] Android navigation bar overlaps bottom tab bar
-- [ ] Login background image doesn't load on web view
+- [ ] Login background image doesn't load on web view (may be obsolete with new design)
 
 ### P3 - Low Priority
 - [ ] Expo Tunnel instability (ERR_NGROK_3200) - environment issue
 
 ## Prioritized Backlog
 
-### P0 - Critical
-- [ ] Investigate and fix login button click events for React Native Web
+### P0 - Critical (COMPLETED)
+- [x] Search tab attachments - DONE
+- [x] Automate freight calculation - DONE
+
+### P0 - Critical (PENDING)
 - [ ] Complete refactoring of quotes.tsx (4700+ lines)
 - [ ] Complete refactoring of calculator.tsx (3600+ lines)
 
 ### P1 - Important
-- [ ] Automate freight calculation based on weight
 - [ ] Test Export to PDF/Excel functionality end-to-end
 - [ ] Refactor backend/server.py into FastAPI routers
+- [ ] Test Push Notifications (requires APK build)
+- [ ] Fix iOS logout functionality
+- [ ] Fix Android navigation bar overlap
 
 ### P2 - Nice to Have
 - [ ] CRM features (leads, activity timeline, follow-ups)
 - [ ] Excel upload for raw material costs
 - [ ] Show original RFQ number on quote cards
+- [ ] Code cleanup - delete unused files
 
 ## Files Modified This Session
-- `/app/frontend/theme/index.ts` - Enhanced with comprehensive design tokens
-- `/app/frontend/app/auth/login.tsx` - Complete UI redesign
-- `/app/frontend/app/(tabs)/calculator.tsx` - Header styling updated
-- `/app/frontend/app/(tabs)/quotes.tsx` - Header styling updated
-- `/app/frontend/app/(tabs)/cart.tsx` - Header styling updated
-- `/app/frontend/app/(tabs)/customers.tsx` - Header styling updated
-- `/app/frontend/app/(tabs)/admin.tsx` - Header/tab styling updated
-- `/app/frontend/app/(tabs)/profile.tsx` - Card styling updated
-- `/app/frontend/app/(tabs)/search.tsx` - Header styling updated
-- `/app/frontend/app/(tabs)/dashboard.tsx` - Header styling updated
-- `/app/design_guidelines.json` - New file with detailed design specs
+- `/app/frontend/app/(tabs)/search.tsx` - Added attachment UI and styles
+- `/app/backend/server.py` - Auto-freight calculation in approve_rfq, NoneType fix
+- `/app/backend/tests/test_approve_rfq_auto_freight.py` - New test file
+
+## Test Reports
+- `/app/test_reports/iteration_22.json` - P0 features tested, 12/12 backend tests passed
 
 ## Test Credentials
 - **Admin**: test@test.com / test123
