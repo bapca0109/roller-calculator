@@ -142,12 +142,53 @@ export default function CartScreen() {
     }
 
     // Calculate total weight from cart items using actual weight_kg
-    const totalWeight = cartItems.reduce((sum, item) => {
-      // Use actual weight from specifications or item weight
-      const specs = item.specifications || {};
-      const weightPerUnit = specs.weight_kg || item.weight_kg || item.weight || 5; // Fallback to 5kg if not available
-      return sum + (weightPerUnit * item.quantity);
-    }, 0);
+    let totalWeight = 0;
+    
+    for (const item of cartItems) {
+      let weightPerUnit = item.weight_kg || 0;
+      
+      // If weight_kg is 0 or missing, try to get it from the API
+      if (weightPerUnit === 0 && item.product_code) {
+        try {
+          // Extract specs from product_code or use stored specifications
+          const specs = item.specifications || {};
+          if (specs.pipe_diameter && specs.pipe_length && specs.shaft_diameter) {
+            const response = await api.post('/calculate-detailed-cost', {
+              roller_type: item.roller_type || 'carrying',
+              pipe_diameter: specs.pipe_diameter,
+              pipe_length: specs.pipe_length,
+              pipe_type: specs.pipe_type || 'B',
+              shaft_diameter: specs.shaft_diameter,
+              bearing: specs.bearing || '6205',
+              bearing_number: specs.bearing || '6205',
+              bearing_make: specs.bearing_make || 'skf',
+              housing: specs.housing || 'CI Machined',
+              quantity: 1
+            });
+            
+            if (response.data?.cost_breakdown?.single_roller_weight_kg) {
+              weightPerUnit = response.data.cost_breakdown.single_roller_weight_kg;
+              console.log(`Fetched weight for ${item.product_code}: ${weightPerUnit} kg`);
+            }
+          }
+        } catch (err) {
+          console.log('Could not fetch weight for item:', item.product_code);
+        }
+      }
+      
+      // Fallback to estimated weight based on roller type if still 0
+      if (weightPerUnit === 0) {
+        const rollerType = (item.roller_type || item.product_name || '').toLowerCase();
+        if (rollerType.includes('impact')) weightPerUnit = 15;
+        else if (rollerType.includes('return')) weightPerUnit = 8;
+        else weightPerUnit = 12; // Carrying roller average
+        console.log(`Using estimated weight for ${item.product_code}: ${weightPerUnit} kg`);
+      }
+      
+      totalWeight += weightPerUnit * item.quantity;
+    }
+
+    console.log('Total calculated weight:', totalWeight, 'kg');
 
     if (totalWeight === 0) {
       setCalculatedFreight(0);
