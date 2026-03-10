@@ -3829,10 +3829,13 @@ const styles = StyleSheet.create({
   filterTabs: {
     flexDirection: 'row',
     marginHorizontal: 16,
+    marginTop: 16,
     marginBottom: 12,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
     padding: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   filterTab: {
     flex: 1,
@@ -3841,15 +3844,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   filterTabActive: {
-    backgroundColor: '#960018',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   filterTabText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#64748B',
   },
   filterTabTextActive: {
-    color: '#fff',
+    color: '#960018',
+    fontWeight: '600',
   },
   tabWithBadge: {
     flexDirection: 'row',
