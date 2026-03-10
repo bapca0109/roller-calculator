@@ -3248,6 +3248,24 @@ async def get_quotes(current_user: dict = Depends(get_current_user)):
         quote.setdefault("customer_email", "")
         quote.setdefault("read_by_admin", False)  # Default for legacy quotes
         
+        # Calculate missing weights for products
+        for product in quote.get("products", []):
+            if not product.get("weight_kg") and not product.get("weight"):
+                # Try to calculate weight from specifications
+                specs = product.get("specifications") or {}
+                if specs.get("pipe_diameter") and specs.get("pipe_length") and specs.get("shaft_diameter"):
+                    try:
+                        weight = rs.calculate_roller_weight(
+                            pipe_dia=float(specs.get("pipe_diameter", 0)),
+                            pipe_length_mm=float(specs.get("pipe_length", 0)),
+                            shaft_dia=float(specs.get("shaft_diameter", 0)),
+                            pipe_type=specs.get("pipe_type", "B")
+                        )
+                        product["weight_kg"] = weight
+                        product["weight"] = weight
+                    except Exception as e:
+                        logging.warning(f"Could not calculate weight for product: {e}")
+        
         # Generate quote_number for legacy quotes that don't have one
         if not quote.get("quote_number"):
             quote["quote_number"] = f"QT-{quote['id'][-6:].upper()}"
@@ -3312,6 +3330,23 @@ async def get_quote(quote_id: str, current_user: dict = Depends(get_current_user
     # Check permissions
     if current_user["role"] == UserRole.CUSTOMER and quote["customer_id"] != current_user["id"]:
         raise HTTPException(status_code=403, detail="Not authorized to view this quote")
+    
+    # Calculate missing weights for products
+    for product in quote.get("products", []):
+        if not product.get("weight_kg") and not product.get("weight"):
+            specs = product.get("specifications", {})
+            if specs.get("pipe_diameter") and specs.get("pipe_length") and specs.get("shaft_diameter"):
+                try:
+                    weight = rs.calculate_roller_weight(
+                        pipe_dia=float(specs.get("pipe_diameter", 0)),
+                        pipe_length_mm=float(specs.get("pipe_length", 0)),
+                        shaft_dia=float(specs.get("shaft_diameter", 0)),
+                        pipe_type=specs.get("pipe_type", "B")
+                    )
+                    product["weight_kg"] = weight
+                    product["weight"] = weight
+                except Exception as e:
+                    logging.warning(f"Could not calculate weight for product: {e}")
     
     quote["id"] = str(quote["_id"])
     del quote["_id"]
