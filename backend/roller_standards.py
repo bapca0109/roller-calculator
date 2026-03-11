@@ -3,10 +3,10 @@ PIPE_DIAMETERS = [60.8, 76.1, 88.9, 114.3, 127.0, 139.7, 152.4, 159.0, 165.0]
 
 # Pipe-Shaft Compatibility Mapping
 # Defines which shaft diameters are compatible with each pipe diameter
-# Note: Some combinations work without housing (marked in comments)
+# Note: Some combinations work without housing (marked in PIPES_WITHOUT_HOUSING)
 PIPE_SHAFT_COMPATIBILITY = {
-    60.8: [20, 25],           # 20, 25 fit but WITHOUT housing
-    76.1: [20, 25, 30],       # 20, 25, 30 fit but WITHOUT housing
+    60.8: [20, 25],           # 20 with housing, 25 without housing
+    76.1: [20, 25, 30],       # 20, 25 with housing, 30 without housing
     88.9: [20, 25, 30],
     114.3: [20, 25, 30, 35],
     127.0: [20, 25, 30, 35, 40],
@@ -16,10 +16,10 @@ PIPE_SHAFT_COMPATIBILITY = {
     165.0: [20, 25, 30, 35, 40, 45, 50],
 }
 
-# Pipes where shaft fits WITHOUT housing (warning needed)
+# Pipes where specific shafts fit WITHOUT housing (warning needed)
 PIPES_WITHOUT_HOUSING = {
-    60.8: [20, 25],      # All compatible shafts work without housing
-    76.1: [20, 25, 30],  # All compatible shafts work without housing
+    60.8: [25],      # Only 25mm shaft works without housing
+    76.1: [30],      # Only 30mm shaft works without housing
 }
 
 def get_compatible_shafts(pipe_dia):
