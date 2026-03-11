@@ -746,12 +746,92 @@ def get_all_lengths_with_belt_widths(roller_type="carrying"):
     return result
 
 
+def calculate_rubber_ring_weight(ring_id_mm, ring_od_mm, ring_width_mm=35, rubber_density=1.15):
+    """
+    Calculate weight of a single rubber ring based on ID, OD, and width.
+    
+    Args:
+        ring_id_mm: Inner diameter in mm (typically = pipe OD)
+        ring_od_mm: Outer diameter in mm (rubber OD)
+        ring_width_mm: Width/thickness of ring in mm (default 35mm)
+        rubber_density: Density in g/cm³ (default 1.15 for standard rubber)
+    
+    Returns:
+        Weight of single ring in kg
+    
+    Formula:
+        Volume = π × ((OD² - ID²) / 4) × width
+        Weight = Volume × density
+    """
+    import math
+    
+    # Convert mm to cm for volume calculation
+    ring_id_cm = ring_id_mm / 10
+    ring_od_cm = ring_od_mm / 10
+    ring_width_cm = ring_width_mm / 10
+    
+    # Volume of hollow cylinder (ring) in cm³
+    # V = π × ((OD² - ID²) / 4) × width
+    volume_cm3 = math.pi * ((ring_od_cm ** 2) - (ring_id_cm ** 2)) / 4 * ring_width_cm
+    
+    # Weight in grams, then convert to kg
+    weight_grams = volume_cm3 * rubber_density
+    weight_kg = weight_grams / 1000
+    
+    return round(weight_kg, 3)
+
+
+def calculate_total_rubber_weight(pipe_dia_mm, rubber_dia_mm, pipe_length_mm, ring_width_mm=35, rubber_density=1.15):
+    """
+    Calculate total rubber weight for impact roller based on number of rings.
+    
+    Args:
+        pipe_dia_mm: Pipe outer diameter in mm (= Ring ID)
+        rubber_dia_mm: Rubber outer diameter in mm (= Ring OD)
+        pipe_length_mm: Total pipe/roller length in mm
+        ring_width_mm: Width of each ring in mm (default 35mm)
+        rubber_density: Density in g/cm³ (default 1.15)
+    
+    Returns:
+        dict with number_of_rings, single_ring_weight_kg, total_rubber_weight_kg
+    
+    Example:
+        250mm roller length → 250/35 = 7 rings
+    """
+    # Calculate number of rings that fit
+    number_of_rings = int(pipe_length_mm // ring_width_mm)
+    
+    # Calculate single ring weight
+    single_ring_weight = calculate_rubber_ring_weight(
+        ring_id_mm=pipe_dia_mm,
+        ring_od_mm=rubber_dia_mm,
+        ring_width_mm=ring_width_mm,
+        rubber_density=rubber_density
+    )
+    
+    # Total rubber weight
+    total_rubber_weight = single_ring_weight * number_of_rings
+    
+    return {
+        "number_of_rings": number_of_rings,
+        "ring_width_mm": ring_width_mm,
+        "single_ring_weight_kg": round(single_ring_weight, 3),
+        "total_rubber_weight_kg": round(total_rubber_weight, 2)
+    }
+
+
 def calculate_roller_weight(pipe_dia, pipe_length_mm, shaft_dia, pipe_type, rubber_dia=None, shaft_end_type="B", custom_shaft_extension=None):
     """
     Calculate total roller weight in kg
-    Includes: pipe + shaft + rubber (if impact roller)
+    Includes: pipe + shaft + rubber rings (if impact roller)
     (Bearings, housing, seals, circlips weight is negligible)
     Uses database values with fallback to hardcoded defaults.
+    
+    For Impact Rollers:
+        - Ring ID = Pipe OD
+        - Ring OD = rubber_dia
+        - Ring Width = 35mm (fixed)
+        - Number of Rings = Pipe Length / 35mm
     """
     import price_loader
     
@@ -766,13 +846,22 @@ def calculate_roller_weight(pipe_dia, pipe_length_mm, shaft_dia, pipe_type, rubb
     shaft_weight_per_m = price_loader.get_shaft_weight(shaft_dia, SHAFT_WEIGHT_PER_METER)
     shaft_weight = shaft_weight_per_m * shaft_length_m
     
-    # Rubber weight (if impact roller)
+    # Rubber weight (if impact roller - calculated from ring dimensions)
     rubber_weight = 0
     if rubber_dia:
-        # Simplified rubber weight calculation
-        # Rubber ring weight ≈ volume × density
-        # Approximation: add 30-50% to pipe weight for rubber lagging
-        rubber_weight = pipe_weight * 0.4  # Approximate
+        # Calculate accurate rubber ring weight based on:
+        # Ring ID = pipe_dia (pipe OD)
+        # Ring OD = rubber_dia
+        # Ring Width = 35mm fixed
+        # Number of rings = pipe_length / 35
+        rubber_calc = calculate_total_rubber_weight(
+            pipe_dia_mm=pipe_dia,
+            rubber_dia_mm=rubber_dia,
+            pipe_length_mm=pipe_length_mm,
+            ring_width_mm=35,
+            rubber_density=1.15  # Standard rubber density g/cm³
+        )
+        rubber_weight = rubber_calc["total_rubber_weight_kg"]
     
     total_weight = pipe_weight + shaft_weight + rubber_weight
     return round(total_weight, 2)
