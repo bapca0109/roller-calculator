@@ -2177,10 +2177,10 @@ export default function QuotesScreen() {
                           disabled={approvingId === selectedQuote.id}
                         >
                           {approvingId === selectedQuote.id ? (
-                            <ActivityIndicator color="#fff" />
+                            <ActivityIndicator color="#22C55E" />
                           ) : (
                             <>
-                              <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                              <Ionicons name="checkmark-circle" size={28} color="#22C55E" />
                               <Text style={styles.approveConfirmButtonText}>Approve</Text>
                             </>
                           )}
@@ -2193,7 +2193,7 @@ export default function QuotesScreen() {
                             openRejectModal(selectedQuote);
                           }}
                         >
-                          <Ionicons name="close-circle" size={24} color="#fff" />
+                          <Ionicons name="close-circle" size={28} color="#EF4444" />
                           <Text style={styles.rejectButtonText}>Reject</Text>
                         </TouchableOpacity>
                       </>
@@ -2208,8 +2208,8 @@ export default function QuotesScreen() {
                           openEditQuote(selectedQuote);
                         }}
                       >
-                        <Ionicons name="create-outline" size={24} color="#fff" />
-                        <Text style={styles.editQuoteButtonText}>Edit Quote</Text>
+                        <Ionicons name="create-outline" size={28} color="#4CAF50" />
+                        <Text style={styles.editQuoteButtonText}>Edit</Text>
                       </TouchableOpacity>
                     )}
 
@@ -2221,10 +2221,10 @@ export default function QuotesScreen() {
                         disabled={loadingHistory}
                       >
                         {loadingHistory ? (
-                          <ActivityIndicator color="#fff" size="small" />
+                          <ActivityIndicator color="#64748B" size="small" />
                         ) : (
                           <>
-                            <Ionicons name="time-outline" size={24} color="#fff" />
+                            <Ionicons name="time-outline" size={28} color="#64748B" />
                             <Text style={styles.historyButtonText}>History</Text>
                           </>
                         )}
@@ -2238,10 +2238,10 @@ export default function QuotesScreen() {
                       disabled={generatingPdf}
                     >
                       {generatingPdf ? (
-                        <ActivityIndicator color="#fff" />
+                        <ActivityIndicator color="#960018" />
                       ) : (
                         <>
-                          <Ionicons name="download-outline" size={24} color="#fff" />
+                          <Ionicons name="download-outline" size={28} color="#960018" />
                           <Text style={styles.exportButtonText}>Export PDF</Text>
                         </>
                       )}
@@ -3055,42 +3055,63 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   exportButton: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#960018',
+    backgroundColor: '#fff',
     paddingVertical: 16,
-    borderRadius: 12,
-    gap: 10,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    gap: 6,
     flex: 1,
+    minWidth: 75,
+    borderWidth: 1.5,
+    borderColor: '#960018',
+    shadowColor: '#960018',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
   },
   exportButtonText: {
-    color: '#fff',
-    fontSize: 18,
+    color: '#960018',
+    fontSize: 13,
     fontWeight: '700',
+    textAlign: 'center',
   },
-  // Detail Actions Row
+  // Detail Actions Row - Modern Card-Style Buttons
   detailActionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 20,
+    gap: 10,
+    marginTop: 24,
     marginBottom: 30,
+    paddingHorizontal: 4,
   },
   editQuoteButton: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4CAF50',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    gap: 8,
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    gap: 6,
+    flex: 1,
+    minWidth: 80,
+    borderWidth: 1.5,
+    borderColor: '#4CAF50',
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
   },
   editQuoteButtonText: {
-    color: '#fff',
-    fontSize: 18,
+    color: '#4CAF50',
+    fontSize: 13,
     fontWeight: '700',
+    textAlign: 'center',
   },
   // Edit Quote Modal Styles
   editProductRow: {
@@ -3696,19 +3717,29 @@ const styles = StyleSheet.create({
     color: '#960018',
   },
   approveConfirmButton: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4CAF50',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    gap: 6,
     flex: 1,
+    minWidth: 75,
+    borderWidth: 1.5,
+    borderColor: '#22C55E',
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
   },
   approveConfirmButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#22C55E',
+    textAlign: 'center',
   },
   // New styles for Edit RFQ modal
   approveCompanyName: {
@@ -3812,19 +3843,29 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   rejectButton: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#DC3545',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    gap: 6,
     flex: 1,
+    minWidth: 75,
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
   },
   rejectButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#EF4444',
+    textAlign: 'center',
   },
   // Reject Modal styles
   rejectModalSubtitle: {
@@ -3996,19 +4037,29 @@ const styles = StyleSheet.create({
   },
   // Revision History styles
   historyButton: {
-    backgroundColor: '#475569',
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#fff',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    gap: 8,
+    borderRadius: 16,
+    gap: 6,
+    flex: 1,
+    minWidth: 75,
+    borderWidth: 1.5,
+    borderColor: '#64748B',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
   },
   historyButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   revisionEntry: {
     paddingVertical: 16,
