@@ -1602,10 +1602,10 @@ export default function QuotesScreen() {
             <div class="company-tagline">Rolling towards the future</div>
           </div>
           <div class="doc-type">
-            <div class="doc-title">\${pdfDocLabelFull}</div>
-            <div class="doc-number">\${quote.quote_number || `#\${quote.id.slice(-6).toUpperCase()}`}</div>
-            \${quote.original_rfq_number ? `<div class="doc-ref">Ref: \${quote.original_rfq_number}</div>` : ''}
-            <div class="doc-date">\${displayDate}</div>
+            <div class="doc-title">${pdfDocLabelFull}</div>
+            <div class="doc-number">${quote.quote_number || `#${quote.id.slice(-6).toUpperCase()}`}</div>
+            ${quote.original_rfq_number ? `<div class="doc-ref">Ref: ${quote.original_rfq_number}</div>` : ''}
+            <div class="doc-date">${displayDate}</div>
           </div>
         </div>
         
@@ -1641,21 +1641,21 @@ export default function QuotesScreen() {
           </div>
           <div class="info-box">
             <div class="info-box-title">Bill To</div>
-            \${quote.customer_code ? `<div class="customer-code" style="color: #960018; font-weight: bold; margin-bottom: 4px;">Customer Code: \${quote.customer_code}</div>` : ''}
-            <div class="info-company">\${quote.customer_company || quote.customer_details?.company || quote.customer_details?.name || quote.customer_name}</div>
-            \${quote.customer_details?.address ? `
+            ${quote.customer_code ? `<div class="customer-code" style="color: #960018; font-weight: bold; margin-bottom: 4px;">Customer Code: ${quote.customer_code}</div>` : ''}
+            <div class="info-company">${quote.customer_company || quote.customer_details?.company || quote.customer_details?.name || quote.customer_name}</div>
+            ${quote.customer_details?.address ? `
               <div class="info-address">
-                \${quote.customer_details.address}\${quote.customer_details.city ? `<br>\${quote.customer_details.city}` : ''}\${quote.customer_details.state ? `, \${quote.customer_details.state}` : ''}\${quote.customer_details.pincode ? ` - \${quote.customer_details.pincode}` : ''}
+                ${quote.customer_details.address}${quote.customer_details.city ? `<br>${quote.customer_details.city}` : ''}${quote.customer_details.state ? `, ${quote.customer_details.state}` : ''}${quote.customer_details.pincode ? ` - ${quote.customer_details.pincode}` : ''}
               </div>
             ` : ''}
-            \${quote.customer_details?.gst_number ? `
-              <div class="info-gst">GSTIN: \${quote.customer_details.gst_number}</div>
+            ${quote.customer_details?.gst_number ? `
+              <div class="info-gst">GSTIN: ${quote.customer_details.gst_number}</div>
             ` : ''}
-            \${quote.customer_details?.phone || quote.customer_details?.email ? `
+            ${quote.customer_details?.phone || quote.customer_details?.email ? `
               <div class="info-contact">
-                \${quote.customer_details.phone ? `Ph: \${quote.customer_details.phone}` : ''}
-                \${quote.customer_details.phone && quote.customer_details.email ? ' | ' : ''}
-                \${quote.customer_details.email || ''}
+                ${quote.customer_details.phone ? `Ph: ${quote.customer_details.phone}` : ''}
+                ${quote.customer_details.phone && quote.customer_details.email ? ' | ' : ''}
+                ${quote.customer_details.email || ''}
               </div>
             ` : ''}
           </div>
