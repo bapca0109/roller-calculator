@@ -58,12 +58,21 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - Returns `freight_auto_calculated` flag in API response
 - [x] **Bug Fix**: Fixed NoneType error in approve_rfq when product.specifications is null
 
-### December 9, 2025 (This Session) - Deployment Fix
+### December 9, 2025 (This Session) - Deployment Fix & Refactoring
 - [x] **Fixed Deployment-Blocking Syntax Error**: Removed 14 instances of escaped template literal syntax (`\${...}` → `${...}`) in `frontend/app/(tabs)/quotes.tsx`
   - Lines 1605-1608: Header doc-type section
   - Lines 1644-1660: Customer info section (Bill To)
   - Error was: `SyntaxError: Expecting Unicode escape sequence \uXXXX`
   - Deployment agent verified: Application ready for production deployment
+
+- [x] **quotes.tsx Refactoring - Phase 1**: Extracted ~700 lines of code from quotes.tsx (4828 → 4119 lines)
+  - **New files created in `/app/frontend/components/quotes/`**:
+    - `utils.ts`: Extracted `getStatusColor`, `getStatusIcon`, `formatDate`, `getPackingPercent`, `calculateTotals`
+    - `generatePdfHtml.ts`: Extracted PDF HTML generation logic (~500 lines)
+    - `styles.ts`: Extracted shared modal and component styles
+    - Updated `index.ts` to export new utilities
+  - Removed duplicate `generatePdfHtml` function definition
+  - Updated quotes.tsx to import utilities from components/quotes
 
 ### Previous Session - UI Redesign
 - [x] **Login Page**: Complete redesign with modern two-tone layout
