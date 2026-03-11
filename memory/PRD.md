@@ -74,6 +74,18 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - Removed duplicate `generatePdfHtml` function definition
   - Updated quotes.tsx to import utilities from components/quotes
 
+- [x] **Rubber Ring Weight Calculation**: Implemented accurate ring weight calculation based on ID/OD
+  - Added `calculate_rubber_ring_weight()` function using volume formula: π × ((OD² - ID²) / 4) × width
+  - Added `calculate_total_rubber_weight()` to calculate total weight based on number of rings (35mm each)
+  - Created Excel template for user to provide actual ring weights: `/app/frontend/public/ring_weights_template.xlsx`
+
+- [x] **Pipe-Shaft Compatibility Filtering**: Implemented filtering to show only compatible shafts for selected pipe
+  - Added `PIPE_SHAFT_COMPATIBILITY` mapping in `roller_standards.py`
+  - Added `PIPES_WITHOUT_HOUSING` for warning about shafts that work without housing (60.8mm, 76.1mm pipes)
+  - Added API endpoint: `GET /api/compatible-shafts/{pipe_dia}`
+  - Updated frontend calculator to filter shaft dropdown based on selected pipe
+  - Added warning message when selected shaft works without housing
+
 ### Previous Session - UI Redesign
 - [x] **Login Page**: Complete redesign with modern two-tone layout
 - [x] **Theme System**: Enhanced design tokens

@@ -40,6 +40,7 @@ interface RollerStandards {
   shaft_diameters: number[];
   bearing_options: { [key: string]: string[] };
   roller_lengths_by_belt_width: { [key: string]: number[] };
+  pipe_shaft_compatibility?: { [key: string]: number[] };
 }
 
 interface CostResult {
@@ -367,6 +368,36 @@ export default function CalculatorScreen() {
       setGstVerifying(false);
     }
   };
+
+  // State to track compatible shafts for current pipe
+  const [compatibleShafts, setCompatibleShafts] = useState<number[]>([]);
+  const [shaftsWithoutHousing, setShaftsWithoutHousing] = useState<number[]>([]);
+
+  // Update compatible shafts when pipe diameter changes
+  useEffect(() => {
+    if (standards && pipeDiameter) {
+      // Get compatible shafts from the standards data
+      const pipeKey = pipeDiameter.toString();
+      const compatible = standards.pipe_shaft_compatibility?.[pipeKey] || standards.shaft_diameters;
+      setCompatibleShafts(compatible);
+      
+      // Check if current shaft is compatible, if not auto-select first compatible
+      if (!compatible.includes(shaftDiameter)) {
+        setShaftDiameter(compatible[0]);
+      }
+      
+      // Fetch detailed info including housing warnings
+      const fetchShaftInfo = async () => {
+        try {
+          const response = await api.get(`/compatible-shafts/${pipeDiameter}`);
+          setShaftsWithoutHousing(response.data.shafts_without_housing || []);
+        } catch (error) {
+          setShaftsWithoutHousing([]);
+        }
+      };
+      fetchShaftInfo();
+    }
+  }, [pipeDiameter, standards]);
 
   useEffect(() => {
     // Auto-select compatible bearing when pipe or shaft diameter changes
@@ -1431,9 +1462,25 @@ export default function CalculatorScreen() {
             label="Shaft Diameter"
             value={shaftDiameter}
             onValueChange={(value) => setShaftDiameter(value)}
-            options={standards?.shaft_diameters.map((dia) => ({ label: `${dia} mm`, value: dia })) || []}
+            options={compatibleShafts.length > 0 
+              ? compatibleShafts.map((dia) => ({ 
+                  label: shaftsWithoutHousing.includes(dia) 
+                    ? `${dia} mm (without housing)` 
+                    : `${dia} mm`, 
+                  value: dia 
+                }))
+              : standards?.shaft_diameters.map((dia) => ({ label: `${dia} mm`, value: dia })) || []
+            }
             placeholder="Select shaft diameter"
           />
+          {shaftsWithoutHousing.includes(shaftDiameter) && (
+            <View style={styles.warningBox}>
+              <Ionicons name="warning" size={16} color="#F59E0B" />
+              <Text style={styles.warningText}>
+                Note: {shaftDiameter}mm shaft fits {pipeDiameter}mm pipe WITHOUT housing
+              </Text>
+            </View>
+          )}
 
           <CustomDropdown
             label="Bearing Number"
@@ -2222,6 +2269,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#92400E',
+    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,

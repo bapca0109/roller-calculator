@@ -4788,7 +4788,26 @@ async def get_roller_standards(current_user: dict = Depends(get_current_user)):
         "pipe_diameters": rs.PIPE_DIAMETERS,
         "shaft_diameters": rs.SHAFT_DIAMETERS,
         "bearing_options": rs.BEARING_OPTIONS,
-        "roller_lengths_by_belt_width": rs.ROLLER_LENGTHS
+        "roller_lengths_by_belt_width": rs.ROLLER_LENGTHS,
+        "pipe_shaft_compatibility": rs.PIPE_SHAFT_COMPATIBILITY,
+    }
+
+@api_router.get("/compatible-shafts/{pipe_dia}")
+async def get_compatible_shafts(pipe_dia: float, current_user: dict = Depends(get_current_user)):
+    """Get compatible shaft diameters for a given pipe diameter"""
+    compatible_shafts = rs.get_compatible_shafts(pipe_dia)
+    
+    # Check if any shafts work without housing
+    no_housing_warning = None
+    shafts_without_housing = rs.PIPES_WITHOUT_HOUSING.get(pipe_dia, [])
+    if shafts_without_housing:
+        no_housing_warning = f"Note: For {pipe_dia}mm pipe, shafts {shafts_without_housing} fit WITHOUT housing"
+    
+    return {
+        "pipe_diameter": pipe_dia,
+        "compatible_shafts": compatible_shafts,
+        "shafts_without_housing": shafts_without_housing,
+        "warning": no_housing_warning
     }
 
 @api_router.get("/compatible-bearings/{shaft_dia}")

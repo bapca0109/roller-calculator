@@ -1,6 +1,36 @@
 # IS-9295:2024 - Standard Pipe Diameters (mm) - UPDATED
 PIPE_DIAMETERS = [60.8, 76.1, 88.9, 114.3, 127.0, 139.7, 152.4, 159.0, 165.0]
 
+# Pipe-Shaft Compatibility Mapping
+# Defines which shaft diameters are compatible with each pipe diameter
+# Note: Some combinations work without housing (marked in comments)
+PIPE_SHAFT_COMPATIBILITY = {
+    60.8: [20, 25],           # 20, 25 fit but WITHOUT housing
+    76.1: [20, 25, 30],       # 20, 25, 30 fit but WITHOUT housing
+    88.9: [20, 25, 30],
+    114.3: [20, 25, 30, 35],
+    127.0: [20, 25, 30, 35, 40],
+    139.7: [20, 25, 30, 35, 40],
+    152.4: [20, 25, 30, 35, 40, 45, 50],
+    159.0: [20, 25, 30, 35, 40, 45, 50],
+    165.0: [20, 25, 30, 35, 40, 45, 50],
+}
+
+# Pipes where shaft fits WITHOUT housing (warning needed)
+PIPES_WITHOUT_HOUSING = {
+    60.8: [20, 25],      # All compatible shafts work without housing
+    76.1: [20, 25, 30],  # All compatible shafts work without housing
+}
+
+def get_compatible_shafts(pipe_dia):
+    """Get list of compatible shaft diameters for a given pipe diameter"""
+    return PIPE_SHAFT_COMPATIBILITY.get(pipe_dia, SHAFT_DIAMETERS)
+
+def requires_no_housing(pipe_dia, shaft_dia):
+    """Check if this pipe-shaft combination works without housing"""
+    no_housing_shafts = PIPES_WITHOUT_HOUSING.get(pipe_dia, [])
+    return shaft_dia in no_housing_shafts
+
 # Pipe diameter display codes for product codes (actual OD -> display code)
 # Based on industry standard notation
 PIPE_DIAMETER_CODES = {
