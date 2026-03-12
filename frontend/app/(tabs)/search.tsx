@@ -1046,7 +1046,11 @@ export default function SearchScreen() {
           <View style={styles.quantityModal}>
             <Text style={styles.modalTitle}>Add to Quote</Text>
             {selectedLength && (
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView 
+                showsVerticalScrollIndicator={true}
+                style={{ maxHeight: 400 }}
+                contentContainerStyle={{ paddingBottom: 20 }}
+              >
                 <Text style={styles.modalProductCode}>{selectedLength.length.product_code}</Text>
                 <View style={styles.modalDetails}>
                   <Text style={styles.modalDetailText}>Length: {selectedLength.length.length_mm}mm</Text>
