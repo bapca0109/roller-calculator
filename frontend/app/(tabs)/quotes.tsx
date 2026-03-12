@@ -61,7 +61,7 @@ export default function QuotesScreen() {
   const [useCustomFreight, setUseCustomFreight] = useState(false);
   const [calculatedFreightFromPincode, setCalculatedFreightFromPincode] = useState<number>(0);
   const [freightLoading, setFreightLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'active' | 'history'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Approval success popup state
@@ -1034,7 +1034,20 @@ export default function QuotesScreen() {
     let filtered = quotes;
     
     // First filter by tab
-    if (!isCustomer) {
+    if (isCustomer) {
+      // Customer tabs: Active (pending RFQs) vs History (approved/rejected)
+      switch (activeTab) {
+        case 'active':
+          filtered = filtered.filter(q => q.status?.toLowerCase() === 'pending');
+          break;
+        case 'history':
+          filtered = filtered.filter(q => q.status?.toLowerCase() === 'approved' || q.status?.toLowerCase() === 'rejected');
+          break;
+        default:
+          break;
+      }
+    } else {
+      // Admin tabs
       switch (activeTab) {
         case 'pending':
           filtered = filtered.filter(q => q.quote_number?.startsWith('RFQ') && q.status?.toLowerCase() !== 'approved' && q.status?.toLowerCase() !== 'rejected');
@@ -1582,6 +1595,30 @@ export default function QuotesScreen() {
             onPress={() => setActiveTab('rejected')}
           >
             <Text style={[styles.filterTabText, activeTab === 'rejected' && styles.filterTabTextActive]}>Rejected</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Customer Filter Tabs */}
+      {isCustomer && (
+        <View style={styles.filterTabs}>
+          <TouchableOpacity
+            style={[styles.filterTab, activeTab === 'all' && styles.filterTabActive]}
+            onPress={() => setActiveTab('all')}
+          >
+            <Text style={[styles.filterTabText, activeTab === 'all' && styles.filterTabTextActive]}>All</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterTab, activeTab === 'active' && styles.filterTabActive]}
+            onPress={() => setActiveTab('active')}
+          >
+            <Text style={[styles.filterTabText, activeTab === 'active' && styles.filterTabTextActive]}>Active RFQs</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterTab, activeTab === 'history' && styles.filterTabActive]}
+            onPress={() => setActiveTab('history')}
+          >
+            <Text style={[styles.filterTabText, activeTab === 'history' && styles.filterTabTextActive]}>History</Text>
           </TouchableOpacity>
         </View>
       )}
