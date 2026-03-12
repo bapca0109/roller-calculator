@@ -3156,13 +3156,10 @@ async def create_quote(
     # Calculate total price (no system discount, admin will set later)
     total_price = subtotal  # Original value without discount
     
-    # Generate sequential quote/RFQ number based on user role
-    if is_customer:
-        quote_number = await generate_rfq_number()
-        quote_type = "rfq"
-    else:
-        quote_number = await generate_quote_number()
-        quote_type = "quote"
+    # Generate sequential RFQ number - both customers AND admins create RFQs first
+    # Admin will approve RFQ to convert it to a Quote
+    quote_number = await generate_rfq_number()
+    quote_type = "rfq"
     
     ist_now = get_ist_now()
     
