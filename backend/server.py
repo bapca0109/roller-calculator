@@ -3,6 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import FileResponse, StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -199,6 +200,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
 # Create the main app
 app = FastAPI()
+
+# Add GZip compression for faster responses
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
 api_router = APIRouter(prefix="/api")
 
 # Root endpoint for health checks and basic info
@@ -7396,6 +7401,31 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+@app.on_event("startup")
+async def startup_db_indexes():
+    """Create database indexes for faster queries"""
+    try:
+        # Quotes indexes
+        await db.quotes.create_index("quote_number")
+        await db.quotes.create_index("customer_id")
+        await db.quotes.create_index("status")
+        await db.quotes.create_index("created_at")
+        await db.quotes.create_index([("customer_id", 1), ("status", 1)])
+        
+        # Users indexes
+        await db.users.create_index("email", unique=True)
+        await db.users.create_index("customer_code")
+        await db.users.create_index("role")
+        
+        # Customers indexes (non-unique to avoid duplicates issue)
+        await db.customers.create_index("customer_code")
+        await db.customers.create_index("email")
+        await db.customers.create_index("name")
+        
+        logging.info("Database indexes created successfully")
+    except Exception as e:
+        logging.warning(f"Index creation warning: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
