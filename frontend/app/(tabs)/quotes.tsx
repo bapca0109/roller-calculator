@@ -2278,8 +2278,8 @@ export default function QuotesScreen() {
                       </TouchableOpacity>
                     )}
 
-                    {/* View History Button - Admin only */}
-                    {isAdmin && (
+                    {/* View History Button - For approved quotes (Admin and Customer) */}
+                    {selectedQuote.status?.toLowerCase() === 'approved' && (
                       <TouchableOpacity 
                         style={styles.historyButton}
                         onPress={() => fetchRevisionHistory(selectedQuote.id)}
