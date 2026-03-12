@@ -11,6 +11,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
@@ -829,7 +830,11 @@ export default function CartScreen() {
               </View>
             </View>
             
-            <ScrollView style={styles.modalBody}>
+            <ScrollView 
+              style={styles.modalBody}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={true}
+            >
               {customers
                 .filter(customer => {
                   if (!customerSearchQuery) return true;
@@ -842,11 +847,17 @@ export default function CartScreen() {
                   );
                 })
                 .map((customer) => (
-                <TouchableOpacity
+                <Pressable
                   key={customer.id}
-                  style={[
+                  style={({ pressed }) => [
                     styles.packingOption,
-                    { paddingVertical: 12, marginBottom: 8, backgroundColor: selectedCustomer?.id === customer.id ? '#FEF2F2' : '#F8FAFC', borderRadius: 8 }
+                    { 
+                      paddingVertical: 14, 
+                      marginBottom: 8, 
+                      backgroundColor: pressed ? '#E5E7EB' : (selectedCustomer?.id === customer.id ? '#FEF2F2' : '#F8FAFC'), 
+                      borderRadius: 8,
+                      minHeight: 50,
+                    }
                   ]}
                   onPress={() => {
                     setSelectedCustomer(customer);
@@ -860,10 +871,10 @@ export default function CartScreen() {
                     color={selectedCustomer?.id === customer.id ? '#960018' : '#94A3B8'}
                   />
                   <View style={{ marginLeft: 12, flex: 1 }}>
-                    <Text style={{ fontWeight: '600', color: '#333' }}>{customer.name}</Text>
+                    <Text style={{ fontWeight: '600', color: '#333', fontSize: 15 }}>{customer.name}</Text>
                     <Text style={{ fontSize: 12, color: '#64748B' }}>{customer.customer_code} • {customer.company || 'No company'}</Text>
                   </View>
-                </TouchableOpacity>
+                </Pressable>
               ))}
               {customers.filter(customer => {
                 if (!customerSearchQuery) return true;
