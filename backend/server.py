@@ -1215,8 +1215,8 @@ def generate_quote_html(quote_data: dict) -> str:
                   <td class="cell-center">{qty}</td>
                   <td class="cell-right">{unit_weight_str}</td>
                   <td class="cell-right">{total_weight_str}</td>
-                  <td class="cell-right">Rs. {unit_price:,.2f}</td>
                   <td class="cell-center">{item_discount_percent:.1f}%</td>
+                  <td class="cell-right">Rs. {value_after_discount:,.2f}</td>
                   <td class="cell-right"><strong>Rs. {line_total:,.2f}</strong></td>
                 </tr>
             """
@@ -1347,9 +1347,9 @@ def generate_quote_html(quote_data: dict) -> str:
               <th style="width: 6%;">QTY</th>
               <th style="width: 10%; text-align: right;">WT/PC (kg)</th>
               <th style="width: 10%; text-align: right;">TOTAL WT</th>
-              <th style="width: 12%; text-align: right;">RATE</th>
               <th style="width: 8%;">DISC %</th>
-              <th style="width: 14%; text-align: right;">TOTAL</th>
+              <th style="width: 14%; text-align: right;">PRICE/PC</th>
+              <th style="width: 14%; text-align: right;">AMOUNT</th>
             </tr>
         '''
     else:
@@ -1975,12 +1975,25 @@ def generate_quote_pdf_fallback(quote_data: dict) -> bytes:
     pdf.set_font('Helvetica', '', 7)
     products = quote_data.get('products', [])
     subtotal = 0
+    
+    # Calculate overall discount percentage for fallback
+    quote_subtotal = quote_data.get('subtotal', 0)
+    total_discount = quote_data.get('total_discount', 0)
+    overall_discount_percent = (total_discount / quote_subtotal * 100) if quote_subtotal > 0 else 0
+    use_item_discounts = quote_data.get('use_item_discounts', False)
+    
     for idx, product in enumerate(products, 1):
         qty = product.get('quantity', 0)
         unit_price = product.get('unit_price', 0)
-        item_discount_percent = product.get('item_discount_percent', 0)
+        
+        # Use item-level discount if available, otherwise use overall discount percentage
+        if use_item_discounts and product.get('item_discount_percent') is not None:
+            item_discount_percent = product.get('item_discount_percent', 0)
+        else:
+            item_discount_percent = overall_discount_percent
+        
         # Calculate price after discount per piece
-        price_after_discount = unit_price * (1 - item_discount_percent / 100) if item_discount_percent > 0 else unit_price
+        price_after_discount = unit_price * (1 - item_discount_percent / 100)
         amount = qty * price_after_discount
         subtotal += amount
         
