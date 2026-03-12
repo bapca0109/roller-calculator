@@ -99,6 +99,7 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
     
     const remarkHtml = product.remark ? `<div class="product-remark">Note: ${product.remark}</div>` : '';
     
+    // For RFQ (prices hidden) - show weight columns but no price columns
     if (shouldHidePrices) {
       return `
         <tr>
@@ -109,6 +110,8 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
             ${remarkHtml}
           </td>
           <td class="cell-center">${product.quantity}</td>
+          <td class="cell-right">${unitWeightStr}</td>
+          <td class="cell-right">${totalWeightStr}</td>
         </tr>
       `;
     }
@@ -144,9 +147,11 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
   // Dynamic table header (matching backend format with weight columns)
   const tableHeader = shouldHidePrices ? `
     <tr>
-      <th style="width: 8%;">SR.</th>
-      <th style="width: 72%; text-align: left;">ITEM CODE / DESCRIPTION</th>
-      <th style="width: 20%;">QTY</th>
+      <th style="width: 6%;">#</th>
+      <th style="width: 50%; text-align: left;">Description</th>
+      <th style="width: 10%;">Qty</th>
+      <th style="width: 14%; text-align: right;">Wt/Pc (kg)</th>
+      <th style="width: 14%; text-align: right;">Total Wt</th>
     </tr>
   ` : `
     <tr>
@@ -216,7 +221,33 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
   // Original RFQ reference
   const rfqRefHtml = quote.original_rfq_number ? `<div class="doc-ref">Ref: ${quote.original_rfq_number}</div>` : '';
   
-  // Delivery location
+  // Packing type labels
+  const packingTypeLabels: { [key: string]: string } = {
+    'standard': 'Standard (1%)',
+    'pallet': 'Pallet (4%)',
+    'wooden_box': 'Wooden Box (8%)'
+  };
+  
+  // Packing & Delivery info for RFQ (shown even when prices hidden)
+  const packingType = (quote as any).packing_type;
+  let packingDeliveryHtml = '';
+  if (packingType || quote.delivery_location) {
+    let items = [];
+    if (packingType) {
+      const packingLabel = packingTypeLabels[packingType] || packingType;
+      items.push(`<strong>Packing Type:</strong> ${packingLabel}`);
+    }
+    if (quote.delivery_location) {
+      items.push(`<strong>Delivery Pincode:</strong> ${quote.delivery_location}`);
+    }
+    packingDeliveryHtml = `
+      <div class="packing-delivery-box">
+        ${items.join('<span class="separator">|</span>')}
+      </div>
+    `;
+  }
+  
+  // Delivery location (detailed box)
   const deliveryHtml = quote.delivery_location ? `
     <div class="delivery-box">
       <strong>Delivery Location:</strong> PIN Code ${quote.delivery_location}
@@ -227,6 +258,14 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
   const notesHtml = (quote as any).notes ? `
     <div class="delivery-box notes-box">
       <strong>Notes:</strong> ${(quote as any).notes}
+    </div>
+  ` : '';
+  
+  // RFQ Notice (shown when prices are hidden)
+  const rfqNoticeHtml = shouldHidePrices ? `
+    <div class="rfq-notice">
+      <strong>This is a Request for Quotation</strong><br>
+      <span style="color: #666; font-size: 10px;">Pricing will be provided upon review by our team. You will receive a formal quotation via email.</span>
     </div>
   ` : '';
 
@@ -374,6 +413,40 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
         .notes-box {
           background: #fff5f5;
           border-left: 3px solid #960018;
+        }
+        
+        .packing-delivery-box {
+          padding: 10px;
+          background: #f5f5f5;
+          border-radius: 4px;
+          margin-bottom: 15px;
+          font-size: 10px;
+          display: flex;
+          gap: 20px;
+          flex-wrap: wrap;
+        }
+        .packing-delivery-box .separator {
+          color: #ccc;
+          margin: 0 10px;
+        }
+        
+        .rfq-notice {
+          padding: 15px;
+          background: #FFF3CD;
+          border: 1px solid #FFEEBA;
+          border-radius: 8px;
+          margin-top: 20px;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+        
+        .weight-footer-row {
+          background: #e8f4fc !important;
+          font-weight: bold;
+        }
+        .weight-footer-row td {
+          color: #0066cc;
+          padding: 8px 10px;
         }
         
         .section-title {
@@ -620,9 +693,10 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
       
       ${deliveryHtml}
       ${notesHtml}
+      ${packingDeliveryHtml}
 
       <!-- Products Table -->
-      <div class="section-title">Product Details</div>
+      <div class="section-title">${shouldHidePrices ? 'Products Requested' : 'Product Details'}</div>
       <table>
         <thead>
           ${tableHeader}
@@ -630,9 +704,19 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
         <tbody>
           ${productsHtml}
         </tbody>
+        ${shouldHidePrices ? `
+        <tfoot>
+          <tr class="weight-footer-row">
+            <td colspan="4" style="text-align: right;">Grand Total Weight:</td>
+            <td style="text-align: right;">${grandTotalWeight.toFixed(2)} kg</td>
+          </tr>
+        </tfoot>
+        ` : ''}
       </table>
       
-      ${!shouldHidePrices ? `
+      ${shouldHidePrices ? `
+        ${rfqNoticeHtml}
+      ` : `
         <!-- Weight Section -->
         <div class="weight-section">
           <div class="weight-title">Total Estimated Weight</div>
@@ -667,7 +751,7 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
             </div>
           </div>
         </div>
-      ` : ''}
+      `}
 
       <!-- Terms and Conditions -->
       <div class="terms-container">
