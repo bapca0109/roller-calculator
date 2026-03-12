@@ -1,10 +1,31 @@
-// PDF HTML generation for quotes
+// PDF HTML generation for quotes - SYNCED WITH BACKEND FORMAT
 import { Quote } from './types';
 import { formatDate } from './utils';
 
 interface GeneratePdfOptions {
   isCustomer: boolean;
 }
+
+// Helper to format numbers with commas (matching backend)
+const formatNumber = (num: number): string => {
+  return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+// Get current timestamp in IST format
+const getReportTimestamp = (): string => {
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata'
+  };
+  return now.toLocaleString('en-IN', options) + ' IST';
+};
 
 export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): string => {
   const { isCustomer } = options;
@@ -22,21 +43,28 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
   // Check if prices should be hidden (for customers viewing unapproved quotes)
   const shouldHidePrices = isCustomer && !isApproved;
   
+  // Report generated timestamp
+  const reportGenerated = getReportTimestamp();
+  
   // ALWAYS use item-level discount format for PDF display
   const useItemDiscounts = true;
+  
+  // Calculate overall discount percentage for items without individual discounts
+  const overallDiscountPercent = quote.subtotal > 0 ? (quote.total_discount / quote.subtotal) * 100 : 0;
+  const hasPerItemDiscounts = quote.use_item_discounts;
   
   // Calculate totals with item discounts
   let calculatedSubtotal = 0;
   let totalItemDiscount = 0;
+  let grandTotalWeight = 0;
   
   const productsHtml = quote.products.map((product, index) => {
-    const hasItemDiscounts = quote.use_item_discounts && product.item_discount_percent !== undefined;
+    // Use individual item discount if available, otherwise use overall discount percentage
     let itemDiscountPercent = 0;
-    
-    if (hasItemDiscounts) {
-      itemDiscountPercent = product.item_discount_percent || 0;
+    if (hasPerItemDiscounts && product.item_discount_percent !== undefined) {
+      itemDiscountPercent = product.item_discount_percent;
     } else if (quote.total_discount > 0 && quote.subtotal > 0) {
-      itemDiscountPercent = (quote.total_discount / quote.subtotal) * 100;
+      itemDiscountPercent = overallDiscountPercent;
     }
     
     const valueAfterDiscount = product.unit_price * (1 - itemDiscountPercent / 100);
@@ -48,8 +76,28 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
     totalItemDiscount += itemDiscountAmount;
     
     // Get weight info from specifications
-    const weightKg = product.specifications?.weight_kg || 0;
-    const totalWeight = (weightKg * product.quantity).toFixed(2);
+    const unitWeight = product.specifications?.weight_kg || product.specifications?.single_roller_weight_kg || 0;
+    const totalWeight = unitWeight * product.quantity;
+    grandTotalWeight += totalWeight;
+    
+    // Format weight display
+    const unitWeightStr = unitWeight > 0 ? unitWeight.toFixed(2) : '-';
+    const totalWeightStr = totalWeight > 0 ? totalWeight.toFixed(2) : '-';
+    
+    // Build specs HTML
+    let specsHtml = '';
+    if (product.specifications) {
+      const specParts = [];
+      if (product.specifications.roller_type) specParts.push(`Type: ${product.specifications.roller_type}`);
+      if (product.specifications.pipe_diameter) specParts.push(`Pipe: ${product.specifications.pipe_diameter}mm`);
+      if (product.specifications.shaft_diameter) specParts.push(`Shaft: ${product.specifications.shaft_diameter}mm`);
+      if (product.specifications.bearing) specParts.push(`Bearing: ${product.specifications.bearing}`);
+      if (specParts.length > 0) {
+        specsHtml = `<div class="product-specs">${specParts.join(' | ')}</div>`;
+      }
+    }
+    
+    const remarkHtml = product.remark ? `<div class="product-remark">Note: ${product.remark}</div>` : '';
     
     if (shouldHidePrices) {
       return `
@@ -57,60 +105,43 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
           <td class="cell-center">${index + 1}</td>
           <td class="cell-left">
             <div class="product-name">${product.product_id}</div>
-            ${product.specifications ? `
-              <div class="product-specs">
-                ${product.specifications.roller_type ? `Type: ${product.specifications.roller_type}` : ''}
-                ${product.specifications.pipe_diameter ? ` | Pipe: ${product.specifications.pipe_diameter}mm` : ''}
-                ${product.specifications.shaft_diameter ? ` | Shaft: ${product.specifications.shaft_diameter}mm` : ''}
-                ${product.specifications.bearing ? ` | Bearing: ${product.specifications.bearing}` : ''}
-              </div>
-            ` : ''}
-            ${product.remark ? `<div class="product-remark">Note: ${product.remark}</div>` : ''}
+            ${specsHtml}
+            ${remarkHtml}
           </td>
           <td class="cell-center">${product.quantity}</td>
         </tr>
       `;
     }
     
+    // Full row with weight columns (matching backend format)
     return `
       <tr>
         <td class="cell-center">${index + 1}</td>
         <td class="cell-left">
           <div class="product-name">${product.product_id}</div>
-          ${product.specifications ? `
-            <div class="product-specs">
-              ${product.specifications.roller_type ? `Type: ${product.specifications.roller_type}` : ''}
-              ${product.specifications.pipe_diameter ? ` | Pipe: ${product.specifications.pipe_diameter}mm` : ''}
-              ${product.specifications.shaft_diameter ? ` | Shaft: ${product.specifications.shaft_diameter}mm` : ''}
-              ${product.specifications.bearing ? ` | Bearing: ${product.specifications.bearing}` : ''}
-              ${weightKg > 0 ? ` | Unit Wt: ${weightKg.toFixed(2)}kg` : ''}
-            </div>
-          ` : ''}
-          ${product.remark ? `<div class="product-remark">Note: ${product.remark}</div>` : ''}
+          ${specsHtml}
+          ${remarkHtml}
         </td>
         <td class="cell-center">${product.quantity}</td>
-        <td class="cell-right">Rs. ${product.unit_price?.toFixed(2)}</td>
+        <td class="cell-right">${unitWeightStr}</td>
+        <td class="cell-right">${totalWeightStr}</td>
+        <td class="cell-right">Rs. ${formatNumber(product.unit_price)}</td>
         <td class="cell-center">${itemDiscountPercent.toFixed(1)}%</td>
-        <td class="cell-right">Rs. ${valueAfterDiscount.toFixed(2)}</td>
-        <td class="cell-right"><strong>Rs. ${lineTotal.toFixed(2)}</strong></td>
+        <td class="cell-right"><strong>Rs. ${formatNumber(lineTotal)}</strong></td>
       </tr>
     `;
   }).join('');
 
   // Calculate totals
-  const subtotalAfterDiscount = useItemDiscounts ? calculatedSubtotal : ((quote.subtotal || 0) - (quote.total_discount || 0));
-  const taxableAmount = subtotalAfterDiscount + (quote.packing_charges || 0);
+  const subtotalAfterDiscount = calculatedSubtotal;
+  const packing = quote.packing_charges || 0;
+  const shipping = quote.shipping_cost || 0;
+  const taxableAmount = subtotalAfterDiscount + packing + shipping;
   const cgst = taxableAmount * 0.09;
   const sgst = taxableAmount * 0.09;
-  const grandTotal = (taxableAmount + (quote.shipping_cost || 0)) * 1.18;
+  const grandTotal = taxableAmount * 1.18;
   
-  // Calculate total weight
-  const totalWeight = quote.products.reduce((sum, p) => {
-    const wt = p.specifications?.weight_kg || 0;
-    return sum + (wt * p.quantity);
-  }, 0);
-  
-  // Dynamic table header
+  // Dynamic table header (matching backend format with weight columns)
   const tableHeader = shouldHidePrices ? `
     <tr>
       <th style="width: 8%;">SR.</th>
@@ -119,15 +150,85 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
     </tr>
   ` : `
     <tr>
-      <th style="width: 5%;">SR.</th>
-      <th style="width: 25%; text-align: left;">ITEM CODE</th>
-      <th style="width: 8%;">QTY</th>
-      <th style="width: 15%; text-align: right;">RATE</th>
-      <th style="width: 12%;">DISC %</th>
-      <th style="width: 17%; text-align: right;">VALUE AFTER DISC</th>
+      <th style="width: 4%;">SR.</th>
+      <th style="width: 22%; text-align: left;">ITEM CODE</th>
+      <th style="width: 6%;">QTY</th>
+      <th style="width: 10%; text-align: right;">WT/PC (kg)</th>
+      <th style="width: 10%; text-align: right;">TOTAL WT</th>
+      <th style="width: 12%; text-align: right;">RATE</th>
+      <th style="width: 8%;">DISC %</th>
       <th style="width: 18%; text-align: right;">TOTAL</th>
     </tr>
   `;
+  
+  // Discount HTML
+  let discountHtml = '';
+  if (totalItemDiscount > 0) {
+    discountHtml = `
+      <div class="summary-row discount-row">
+        <span class="summary-label">Item Discounts (Total)</span>
+        <span class="summary-value">- Rs. ${formatNumber(totalItemDiscount)}</span>
+      </div>
+    `;
+  }
+  
+  // Packing HTML
+  const packingHtml = packing > 0 ? `
+    <div class="summary-row">
+      <span class="summary-label">Packing Charges</span>
+      <span class="summary-value">Rs. ${formatNumber(packing)}</span>
+    </div>
+  ` : '';
+  
+  // Shipping/Freight HTML
+  const shippingHtml = shipping > 0 ? `
+    <div class="summary-row">
+      <span class="summary-label">Freight Charges${quote.delivery_location ? ` (to ${quote.delivery_location})` : ''}</span>
+      <span class="summary-value">Rs. ${formatNumber(shipping)}</span>
+    </div>
+  ` : '';
+  
+  // Customer details
+  const customerCode = quote.customer_code || '';
+  const customerCodeHtml = customerCode ? `<div class="customer-code">Customer Code: ${customerCode}</div>` : '';
+  
+  // Customer RFQ Reference
+  const customerRfqNo = (quote as any).customer_rfq_no;
+  const customerRfqNoHtml = customerRfqNo ? `<div class="customer-ref">Customer Ref: ${customerRfqNo}</div>` : '';
+  
+  // Address HTML
+  let addressHtml = '';
+  if (quote.customer_details?.address) {
+    const parts = [quote.customer_details.address];
+    if (quote.customer_details.city) parts.push(`<br>${quote.customer_details.city}`);
+    if (quote.customer_details.state) parts.push(`, ${quote.customer_details.state}`);
+    if (quote.customer_details.pincode) parts.push(` - ${quote.customer_details.pincode}`);
+    addressHtml = `<div class="info-address">${parts.join('')}</div>`;
+  }
+  
+  const gstHtml = quote.customer_details?.gst_number ? `<div class="info-gst">GSTIN: ${quote.customer_details.gst_number}</div>` : '';
+  
+  const contactParts = [];
+  if (quote.customer_details?.phone) contactParts.push(`Ph: ${quote.customer_details.phone}`);
+  if (quote.customer_details?.email) contactParts.push(quote.customer_details.email);
+  const contactHtml = contactParts.length > 0 ? `<div class="info-contact">${contactParts.join(' | ')}</div>` : '';
+  
+  // Original RFQ reference
+  const rfqRefHtml = quote.original_rfq_number ? `<div class="doc-ref">Ref: ${quote.original_rfq_number}</div>` : '';
+  
+  // Delivery location
+  const deliveryHtml = quote.delivery_location ? `
+    <div class="delivery-box">
+      <strong>Delivery Location:</strong> PIN Code ${quote.delivery_location}
+    </div>
+  ` : '';
+  
+  // Notes
+  const notesHtml = (quote as any).notes ? `
+    <div class="delivery-box notes-box">
+      <strong>Notes:</strong> ${(quote as any).notes}
+    </div>
+  ` : '';
 
   return `
     <!DOCTYPE html>
@@ -150,7 +251,7 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
           align-items: flex-start;
           padding-bottom: 15px;
           border-bottom: 2px solid #960018;
-          margin-bottom: 15px;
+          margin-bottom: 10px;
         }
         .logo {
           font-size: 26px;
@@ -195,10 +296,18 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
           font-size: 8px;
           color: #666;
           text-align: center;
-          margin-bottom: 10px;
+          margin-bottom: 8px;
           padding: 5px;
           background: #f9f9f9;
           border-radius: 3px;
+        }
+        
+        .report-generated {
+          font-size: 9px;
+          color: #888;
+          text-align: center;
+          margin-bottom: 15px;
+          font-style: italic;
         }
         
         .info-section {
@@ -242,6 +351,29 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
           color: #444;
           font-weight: 600;
           margin-top: 3px;
+        }
+        .customer-code {
+          color: #960018;
+          font-weight: bold;
+          margin-bottom: 4px;
+        }
+        .customer-ref {
+          color: #1565C0;
+          font-weight: bold;
+          margin-bottom: 4px;
+        }
+        
+        .delivery-box {
+          background: #e3f2fd;
+          border-left: 3px solid #1976d2;
+          padding: 10px;
+          border-radius: 4px;
+          margin-bottom: 10px;
+          font-size: 10px;
+        }
+        .notes-box {
+          background: #fff5f5;
+          border-left: 3px solid #960018;
         }
         
         .section-title {
@@ -295,35 +427,6 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
           margin-top: 2px;
         }
         
-        .totals-section {
-          display: flex;
-          justify-content: flex-end;
-          margin-bottom: 15px;
-        }
-        .totals-box {
-          width: 280px;
-          background: #f8f9fa;
-          border-radius: 6px;
-          padding: 12px;
-          border: 1px solid #e5e5e5;
-        }
-        .total-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 4px 0;
-          font-size: 10px;
-        }
-        .total-row.grand {
-          border-top: 2px solid #960018;
-          margin-top: 6px;
-          padding-top: 8px;
-          font-size: 13px;
-          font-weight: 700;
-          color: #960018;
-        }
-        .total-label { color: #666; }
-        .total-value { font-weight: 600; color: #1a1a1a; }
-        
         .weight-section {
           background: #fff3cd;
           border: 1px solid #ffc107;
@@ -340,6 +443,51 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
           font-size: 14px;
           font-weight: 700;
           color: #856404;
+        }
+        
+        .summary-section {
+          display: flex;
+          justify-content: flex-end;
+          margin-bottom: 15px;
+        }
+        .summary-box {
+          width: 300px;
+          background: #f8f9fa;
+          border-radius: 6px;
+          padding: 12px;
+          border: 1px solid #e5e5e5;
+        }
+        .summary-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 0;
+          font-size: 10px;
+          border-bottom: 1px solid #eee;
+        }
+        .summary-row:last-child {
+          border-bottom: none;
+        }
+        .discount-row {
+          color: #22C55E;
+        }
+        .summary-label {
+          color: #666;
+        }
+        .summary-value {
+          font-weight: 600;
+          color: #1a1a1a;
+        }
+        .summary-row.grand {
+          border-top: 2px solid #960018;
+          margin-top: 6px;
+          padding-top: 10px;
+          font-size: 14px;
+          font-weight: 700;
+        }
+        .summary-row.grand .summary-label,
+        .summary-row.grand .summary-value {
+          color: #960018;
+          font-weight: 700;
         }
         
         .terms-container {
@@ -382,6 +530,11 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
           font-weight: 700;
           color: #1a1a1a;
         }
+        .footer-tagline {
+          font-size: 8px;
+          color: #960018;
+          font-style: italic;
+        }
         .footer-signature {
           text-align: center;
           font-size: 10px;
@@ -389,6 +542,7 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
           border-top: 1px solid #333;
           padding-top: 5px;
           margin-top: 40px;
+          width: 150px;
         }
         .footer-note {
           text-align: center;
@@ -414,7 +568,7 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
         <div class="doc-type">
           <div class="doc-title">${pdfDocLabelFull}</div>
           <div class="doc-number">${quote.quote_number || `#${quote.id.slice(-6).toUpperCase()}`}</div>
-          ${quote.original_rfq_number ? `<div class="doc-ref">Ref: ${quote.original_rfq_number}</div>` : ''}
+          ${rfqRefHtml}
           <div class="doc-date">${displayDate}</div>
         </div>
       </div>
@@ -427,6 +581,10 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
         <span>www.convero.in</span>
         <span>|</span>
         <span>GSTIN: 24BAUPP4310D2ZT</span>
+      </div>
+      
+      <div class="report-generated">
+        Report Generated: ${reportGenerated}
       </div>
 
       <!-- Info Section -->
@@ -451,25 +609,17 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
         </div>
         <div class="info-box">
           <div class="info-box-title">Bill To</div>
-          ${quote.customer_code ? `<div class="customer-code" style="color: #960018; font-weight: bold; margin-bottom: 4px;">Customer Code: ${quote.customer_code}</div>` : ''}
+          ${customerCodeHtml}
+          ${customerRfqNoHtml}
           <div class="info-company">${quote.customer_company || quote.customer_details?.company || quote.customer_details?.name || quote.customer_name}</div>
-          ${quote.customer_details?.address ? `
-            <div class="info-address">
-              ${quote.customer_details.address}${quote.customer_details.city ? `<br>${quote.customer_details.city}` : ''}${quote.customer_details.state ? `, ${quote.customer_details.state}` : ''}${quote.customer_details.pincode ? ` - ${quote.customer_details.pincode}` : ''}
-            </div>
-          ` : ''}
-          ${quote.customer_details?.gst_number ? `
-            <div class="info-gst">GSTIN: ${quote.customer_details.gst_number}</div>
-          ` : ''}
-          ${quote.customer_details?.phone || quote.customer_details?.email ? `
-            <div class="info-contact">
-              ${quote.customer_details.phone ? `Ph: ${quote.customer_details.phone}` : ''}
-              ${quote.customer_details.phone && quote.customer_details.email ? ' | ' : ''}
-              ${quote.customer_details.email || ''}
-            </div>
-          ` : ''}
+          ${addressHtml}
+          ${gstHtml}
+          ${contactHtml}
         </div>
       </div>
+      
+      ${deliveryHtml}
+      ${notesHtml}
 
       <!-- Products Table -->
       <div class="section-title">Product Details</div>
@@ -486,43 +636,34 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
         <!-- Weight Section -->
         <div class="weight-section">
           <div class="weight-title">Total Estimated Weight</div>
-          <div class="weight-value">${totalWeight.toFixed(2)} kg</div>
+          <div class="weight-value">${grandTotalWeight.toFixed(2)} kg</div>
         </div>
         
-        <!-- Totals -->
-        <div class="totals-section">
-          <div class="totals-box">
-            <div class="total-row">
-              <span class="total-label">Subtotal (after item discounts)</span>
-              <span class="total-value">Rs. ${subtotalAfterDiscount.toFixed(2)}</span>
+        <!-- Summary/Totals -->
+        <div class="summary-section">
+          <div class="summary-box">
+            <div class="summary-row">
+              <span class="summary-label">Subtotal (after discounts)</span>
+              <span class="summary-value">Rs. ${formatNumber(subtotalAfterDiscount)}</span>
             </div>
-            ${(quote.packing_charges || 0) > 0 ? `
-              <div class="total-row">
-                <span class="total-label">Packing (${quote.packing_type || 'Standard'})</span>
-                <span class="total-value">Rs. ${(quote.packing_charges || 0).toFixed(2)}</span>
-              </div>
-            ` : ''}
-            ${(quote.shipping_cost || 0) > 0 ? `
-              <div class="total-row">
-                <span class="total-label">Freight${quote.delivery_location ? ` (to ${quote.delivery_location})` : ''}</span>
-                <span class="total-value">Rs. ${(quote.shipping_cost || 0).toFixed(2)}</span>
-              </div>
-            ` : ''}
-            <div class="total-row">
-              <span class="total-label">Taxable Amount</span>
-              <span class="total-value">Rs. ${(taxableAmount + (quote.shipping_cost || 0)).toFixed(2)}</span>
+            ${discountHtml}
+            ${packingHtml}
+            ${shippingHtml}
+            <div class="summary-row">
+              <span class="summary-label">Taxable Amount</span>
+              <span class="summary-value">Rs. ${formatNumber(taxableAmount)}</span>
             </div>
-            <div class="total-row">
-              <span class="total-label">CGST (9%)</span>
-              <span class="total-value">Rs. ${((taxableAmount + (quote.shipping_cost || 0)) * 0.09).toFixed(2)}</span>
+            <div class="summary-row">
+              <span class="summary-label">CGST (9%)</span>
+              <span class="summary-value">Rs. ${formatNumber(cgst)}</span>
             </div>
-            <div class="total-row">
-              <span class="total-label">SGST (9%)</span>
-              <span class="total-value">Rs. ${((taxableAmount + (quote.shipping_cost || 0)) * 0.09).toFixed(2)}</span>
+            <div class="summary-row">
+              <span class="summary-label">SGST (9%)</span>
+              <span class="summary-value">Rs. ${formatNumber(sgst)}</span>
             </div>
-            <div class="total-row grand">
-              <span>GRAND TOTAL</span>
-              <span>Rs. ${grandTotal.toFixed(2)}</span>
+            <div class="summary-row grand">
+              <span class="summary-label">GRAND TOTAL</span>
+              <span class="summary-value">Rs. ${formatNumber(grandTotal)}</span>
             </div>
           </div>
         </div>
@@ -575,18 +716,20 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
       <div class="footer">
         <div class="footer-left">
           <div class="footer-company">CONVERO SOLUTIONS</div>
-          <div style="font-size: 8px; color: #960018; font-style: italic;">Rolling towards the future</div>
-          <div style="font-size: 8px; margin-top: 3px;">Plot No. 39, Swapnil Industrial Park, Village-Kuha, Ahmedabad, Gujarat 382433</div>
-          <div style="font-size: 8px;"><strong>Email:</strong> info@convero.in | <strong>Web:</strong> www.convero.in | <strong>GSTIN:</strong> 24BAUPP4310D2ZT</div>
+          <div class="footer-tagline">Rolling towards the future</div>
+          <div style="font-size: 8px; margin-top: 3px;">Plot No. 39, Swapnil Industrial Park,</div>
+          <div style="font-size: 8px;">Beside Shiv Aaradhna Estate, Ahmedabad-Indore Highway,</div>
+          <div style="font-size: 8px;">Village-Kuha, Ahmedabad, Gujarat 382433</div>
+          <div style="font-size: 8px; margin-top: 5px;"><strong>Email:</strong> info@convero.in | <strong>Web:</strong> www.convero.in</div>
+          <div style="font-size: 8px;"><strong>GSTIN:</strong> 24BAUPP4310D2ZT</div>
         </div>
         <div class="footer-right">
-          <div style="height: 40px;"></div>
-          <div class="footer-signature">Authorized Signatory</div>
+          <div class="footer-signature">Authorized Signature</div>
         </div>
       </div>
       
       <div class="footer-note">
-        This is a computer-generated quotation. E&OE (Errors and Omissions Excepted)
+        This is a computer-generated document. Generated on ${reportGenerated}
       </div>
     </body>
     </html>
