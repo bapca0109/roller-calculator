@@ -901,6 +901,13 @@ export default function CalculatorScreen() {
   const addToQuote = () => {
     if (!result) return;
     
+    // Admin must select a customer before adding items to cart
+    if (!isCustomer && !selectedCustomer) {
+      Alert.alert('Customer Required', 'Please select a customer before adding items to cart.');
+      setShowCustomerPicker(true);
+      return;
+    }
+    
     // Add attachments and remark to the result
     const itemWithAttachments = {
       ...result,
@@ -1048,6 +1055,14 @@ export default function CalculatorScreen() {
 
   const addSearchItemToCart = () => {
     if (!selectedLength) return;
+    
+    // Admin must select a customer before adding items to cart
+    if (!isCustomer && !selectedCustomer) {
+      Alert.alert('Customer Required', 'Please select a customer before adding items to cart.');
+      setShowQuantityModal(false);
+      setShowCustomerPicker(true);
+      return;
+    }
     
     const qty = parseInt(quantityInput) || 1;
     if (qty < 1 || qty > 10000) {
