@@ -30,6 +30,11 @@ export default function CartScreen() {
   const { cartItems, removeFromCart, updateCartItem, getCartTotal, getCartWeight, clearCart } = useCart();
   const isCustomer = user?.role === 'customer';
 
+  // Customer selection state (for admin)
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+
   // Submission modal state
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [packingType, setPackingType] = useState('standard');
@@ -59,6 +64,21 @@ export default function CartScreen() {
   // Edit quantity state
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editQty, setEditQty] = useState('');
+
+  // Fetch customers for admin
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      if (!isCustomer) {
+        try {
+          const response = await api.get('/customers');
+          setCustomers(response.data.customers || []);
+        } catch (error) {
+          console.log('Failed to fetch customers');
+        }
+      }
+    };
+    fetchCustomers();
+  }, [isCustomer]);
 
   const startEditQty = (itemId: string, currentQty: number) => {
     setEditingItemId(itemId);
@@ -247,6 +267,12 @@ export default function CartScreen() {
       return;
     }
 
+    // Admin must select a customer before submitting
+    if (!isCustomer && !selectedCustomer) {
+      Alert.alert('Customer Required', 'Please select a customer before submitting the RFQ.');
+      return;
+    }
+
     // Check if pincode is entered but invalid
     if (freightPincode && freightPincode.length > 0) {
       if (freightPincode.length !== 6) {
@@ -286,12 +312,12 @@ export default function CartScreen() {
 
       const response = await api.post('/quotes', {
         products,
-        customer_id: null,
+        customer_id: selectedCustomer?.id || null,
         delivery_location: freightPincode || null,
         packing_type: useCustomPacking ? `custom_${customPackingPercent}` : packingType,
         shipping_cost: useCustomFreight ? (parseFloat(customFreightAmount) || 0) : (calculatedFreight || 0),
         freight_details: useCustomFreight ? { freight_amount: parseFloat(customFreightAmount) || 0 } : null,
-        notes: `${isCustomer ? 'RFQ' : 'Quote'} with ${cartItems.length} items`,
+        notes: `${isCustomer ? 'RFQ' : 'RFQ'} with ${cartItems.length} items`,
         customer_rfq_no: customerRfqNo || null,
       });
 
@@ -313,6 +339,7 @@ export default function CartScreen() {
       setUseCustomFreight(false);
       setCustomPackingPercent('');
       setUseCustomPacking(false);
+      setSelectedCustomer(null);
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to submit');
     } finally {
@@ -516,6 +543,26 @@ export default function CartScreen() {
             </View>
 
             <ScrollView style={styles.modalBody}>
+              {/* Customer Selection - Admin Only */}
+              {!isCustomer && (
+                <View style={styles.fieldSection}>
+                  <Text style={[styles.fieldLabel, { color: '#960018' }]}>Select Customer *</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.input,
+                      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+                      !selectedCustomer && { borderColor: '#DC2626' }
+                    ]}
+                    onPress={() => setShowCustomerPicker(true)}
+                  >
+                    <Text style={{ color: selectedCustomer ? '#333' : '#94A3B8' }}>
+                      {selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.customer_code})` : 'Select Customer (Required)'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="#94A3B8" />
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {/* Packing Type */}
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldLabel}>Packing Type (Optional)</Text>
@@ -735,6 +782,53 @@ export default function CartScreen() {
               <Ionicons name="checkmark" size={24} color="#fff" />
               <Text style={styles.successButtonText}>Done</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Customer Picker Modal - Admin Only */}
+      <Modal
+        visible={showCustomerPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCustomerPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '70%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Customer</Text>
+              <TouchableOpacity onPress={() => setShowCustomerPicker(false)}>
+                <Ionicons name="close" size={28} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalBody}>
+              {customers.map((customer) => (
+                <TouchableOpacity
+                  key={customer.id}
+                  style={[
+                    styles.packingOption,
+                    { paddingVertical: 12, marginBottom: 8, backgroundColor: selectedCustomer?.id === customer.id ? '#FEF2F2' : '#F8FAFC', borderRadius: 8 }
+                  ]}
+                  onPress={() => {
+                    setSelectedCustomer(customer);
+                    setShowCustomerPicker(false);
+                  }}
+                >
+                  <Ionicons
+                    name={selectedCustomer?.id === customer.id ? 'radio-button-on' : 'radio-button-off'}
+                    size={20}
+                    color={selectedCustomer?.id === customer.id ? '#960018' : '#94A3B8'}
+                  />
+                  <View style={{ marginLeft: 12, flex: 1 }}>
+                    <Text style={{ fontWeight: '600', color: '#333' }}>{customer.name}</Text>
+                    <Text style={{ fontSize: 12, color: '#64748B' }}>{customer.customer_code} • {customer.company || 'No company'}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              {customers.length === 0 && (
+                <Text style={{ textAlign: 'center', color: '#64748B', marginTop: 20 }}>No customers found</Text>
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
