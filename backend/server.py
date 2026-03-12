@@ -3618,6 +3618,34 @@ async def send_quote_approval_email(quote_data: dict, customer_email: str):
         </tr>
         """ if grand_total_weight > 0 else ""
         
+        # Calculate grand total properly (same as PDF)
+        # Get subtotal after discount - recalculate from products
+        use_item_discounts = quote_data.get('use_item_discounts', False)
+        subtotal_raw = quote_data.get('subtotal', 0)
+        total_discount_raw = quote_data.get('total_discount', 0)
+        overall_discount_percent = (total_discount_raw / subtotal_raw * 100) if subtotal_raw > 0 else 0
+        
+        calculated_subtotal = 0
+        for p in products:
+            qty = p.get('quantity', 0)
+            unit_price = p.get('unit_price', 0)
+            
+            # Use individual item discount if available, otherwise use overall discount percentage
+            if use_item_discounts and p.get('item_discount_percent') is not None:
+                item_discount_percent = p.get('item_discount_percent', 0)
+            else:
+                item_discount_percent = overall_discount_percent
+            
+            value_after_discount = unit_price * (1 - item_discount_percent / 100)
+            line_total = qty * value_after_discount
+            calculated_subtotal += line_total
+        
+        subtotal_after_discount = calculated_subtotal
+        packing = quote_data.get('packing_charges', 0) or 0
+        shipping = quote_data.get('shipping_cost', 0) or 0
+        taxable_amount = subtotal_after_discount + packing + shipping
+        grand_total = taxable_amount * 1.18  # Including 18% GST
+        
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -3675,7 +3703,7 @@ async def send_quote_approval_email(quote_data: dict, customer_email: str):
                     
                     <div class="total-box">
                         <span style="font-size: 14px;">TOTAL VALUE</span>
-                        <span style="font-size: 24px; font-weight: bold; margin-left: 10px;">Rs. {quote_data.get('total_price', 0):,.2f}</span>
+                        <span style="font-size: 24px; font-weight: bold; margin-left: 10px;">Rs. {grand_total:,.2f}</span>
                     </div>
                     
                     {f'''<div class="info-box" style="display: flex; gap: 30px; flex-wrap: wrap;">
