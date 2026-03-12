@@ -410,6 +410,7 @@ class QuoteInDB(Quote):
 
 class QuoteCreate(BaseModel):
     products: List[QuoteProduct]
+    customer_id: Optional[str] = None  # Required for admin, null for customers
     delivery_location: Optional[str] = None
     packing_type: Optional[str] = None  # standard, pallet, wooden_box
     shipping_cost: Optional[float] = 0.0  # Freight calculated from pincode
@@ -3138,6 +3139,13 @@ async def create_quote(
 ):
     # Check if user is a customer
     is_customer = current_user["role"] == UserRole.CUSTOMER
+    
+    # Admin must provide a customer_id when creating RFQ
+    if not is_customer and not quote.customer_id:
+        raise HTTPException(
+            status_code=400, 
+            detail="Customer selection is required for admin users"
+        )
     
     # Calculate pricing - no system discount, admin will set during approval
     subtotal = 0.0
