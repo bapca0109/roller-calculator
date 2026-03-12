@@ -216,10 +216,6 @@ export default function CalculatorScreen() {
   const [packingType, setPackingType] = useState<string>('standard');
   const [freightPincode, setFreightPincode] = useState<string>('');
   
-  // Custom discount state
-  const [customDiscount, setCustomDiscount] = useState<string>('');
-  const [useCustomDiscount, setUseCustomDiscount] = useState(false);
-  
   // Drawing generation state
   const [generatingDrawing, setGeneratingDrawing] = useState(false);
 
@@ -1756,60 +1752,7 @@ export default function CalculatorScreen() {
                 <Text style={styles.resultLabel}>Order Value</Text>
                 <Text style={styles.resultValue}>Rs. {result.pricing.order_value.toFixed(2)}</Text>
               </View>
-              {result.pricing.discount_percent > 0 && !useCustomDiscount && (
-                <View style={styles.discountRow}>
-                  <Text style={styles.discountLabel}>- Discount ({result.pricing.discount_percent}%)</Text>
-                  <Text style={styles.discountValue}>- Rs. {result.pricing.discount_amount.toFixed(2)}</Text>
-                </View>
-              )}
               
-              {/* Custom Discount Input */}
-              <View style={styles.customDiscountContainer}>
-                <View style={styles.customDiscountHeader}>
-                  <Text style={styles.customDiscountLabel}>Custom Discount %</Text>
-                  <TouchableOpacity 
-                    onPress={() => {
-                      setUseCustomDiscount(!useCustomDiscount);
-                      if (!useCustomDiscount) {
-                        setCustomDiscount(result.pricing.discount_percent.toString());
-                      }
-                    }}
-                    style={styles.editDiscountBtn}
-                  >
-                    <Ionicons 
-                      name={useCustomDiscount ? "checkmark-circle" : "pencil"} 
-                      size={20} 
-                      color={useCustomDiscount ? "#4CAF50" : "#960018"} 
-                    />
-                  </TouchableOpacity>
-                </View>
-                {useCustomDiscount && (
-                  <View style={styles.customDiscountInputRow}>
-                    <TextInput
-                      style={styles.customDiscountInput}
-                      value={customDiscount}
-                      onChangeText={setCustomDiscount}
-                      keyboardType="numeric"
-                      placeholder="Enter %"
-                      placeholderTextColor="#999"
-                    />
-                    <Text style={styles.customDiscountPercent}>%</Text>
-                    <Text style={styles.customDiscountAmount}>
-                      = Rs. {((result.pricing.order_value * (parseFloat(customDiscount) || 0)) / 100).toFixed(2)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              
-              <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>After Discount</Text>
-                <Text style={styles.resultValue}>
-                  Rs. {useCustomDiscount 
-                    ? (result.pricing.order_value - (result.pricing.order_value * (parseFloat(customDiscount) || 0) / 100)).toFixed(2)
-                    : result.pricing.price_after_discount.toFixed(2)
-                  }
-                </Text>
-              </View>
               {result.pricing.packing_charges > 0 && (
                 <View style={styles.resultRow}>
                   <Text style={styles.resultLabel}>+ Packing ({result.pricing.packing_type}, {result.pricing.packing_percent}%)</Text>

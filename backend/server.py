@@ -5016,25 +5016,12 @@ async def calculate_detailed_cost(
     # Calculate quantity
     quantity = request.quantity or 1
     
-    # Check if user is admin - admins should not see system discount
-    is_admin = current_user["role"] in [UserRole.ADMIN, UserRole.SALES]
-    
-    # Calculate final pricing with discount and packing charges
+    # Calculate final pricing (no system discount - admin sets discount during approval)
     pricing = rs.calculate_final_price(
         cost_breakdown["total_raw_material"],
         request.packing_type or "none",
         quantity
     )
-    
-    # For admin users, zero out system discount - admin will set discount during approval
-    if is_admin:
-        pricing["discount_percent"] = 0
-        pricing["discount_amount"] = 0
-        pricing["price_after_discount"] = pricing["order_value"]
-        # Recalculate packing on non-discounted amount
-        packing_percent = pricing["packing_percent"] / 100
-        pricing["packing_charges"] = round(pricing["order_value"] * packing_percent, 2)
-        pricing["final_price"] = round(pricing["order_value"] + pricing["packing_charges"], 2)
     
     # Always calculate weight of single roller
     single_roller_weight = rs.calculate_roller_weight(

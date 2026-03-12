@@ -1067,15 +1067,15 @@ def calculate_final_price(raw_material_cost, packing_type="none", quantity=1):
     profit = subtotal_with_layout * PROFIT_MARKUP
     unit_price = subtotal_with_layout + profit  # Price per roller before discount
     
-    # Calculate order value for discount calculation
+    # Calculate order value
     order_value = unit_price * quantity
     
-    # Get discount based on order value
-    discount_percent = get_discount_percent(order_value)
-    discount_amount = order_value * (discount_percent / 100)
-    price_after_discount = order_value - discount_amount
+    # No system discount - admin will set discount during approval
+    discount_percent = 0
+    discount_amount = 0
+    price_after_discount = order_value
     
-    # Calculate packing charges (on discounted total)
+    # Calculate packing charges (on order value - no discount)
     packing_percent = PACKING_CHARGES.get(packing_type, 0.0)
     packing_charges = price_after_discount * packing_percent
     
