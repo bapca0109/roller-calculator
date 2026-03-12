@@ -4157,6 +4157,9 @@ async def send_quote_revision_email(quote_data: dict, customer_email: str, revis
         discount_percent = quote_data.get('discount_percent', 0)
         discount_amount = quote_data.get('total_discount', 0)
         
+        # Calculate the revised total price
+        new_total_price = quote_data.get('total_price', 0)
+        
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -4211,16 +4214,9 @@ async def send_quote_revision_email(quote_data: dict, customer_email: str, revis
                         {weight_total_row}
                     </table>
                     
-                    <div class="discount-box">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-weight: bold; color: #2E7D32;">Special Discount Applied</span>
-                            <span style="font-size: 18px; font-weight: bold; color: #2E7D32;">{discount_percent:.1f}% (Rs. {discount_amount:,.2f})</span>
-                        </div>
-                    </div>
-                    
                     <div class="total-box">
                         <span style="font-size: 14px;">REVISED TOTAL</span>
-                        <span style="font-size: 28px; font-weight: bold; margin-left: 10px;">Rs. {quote_data.get('total_price', 0):,.2f}</span>
+                        <span style="font-size: 28px; font-weight: bold; margin-left: 10px;">Rs. {new_total_price:,.2f}</span>
                     </div>
                     
                     <div style="margin-top: 30px; padding: 20px; background: #FFF3E0; border-radius: 8px; text-align: center;">

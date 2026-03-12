@@ -20,7 +20,7 @@ import os
 import time
 
 # Use production URL from environment
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://freight-pricing-hub.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://belt-roller-calc-1.preview.emergentagent.com')
 if not BASE_URL.endswith('/api'):
     API_URL = f"{BASE_URL}/api"
 else:

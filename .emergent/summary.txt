@@ -12,122 +12,141 @@
 - **PDF Customization**: All generated PDFs must include the company logo (Convero), a generation timestamp, and detailed weight information (per-item and grand total).
 - **Quote Revision History**: Admins need to see a history of all changes made to a quote after it's approved.
 - **Push Notifications**: Admins should receive a push notification on their mobile app whenever a new RFQ is submitted by a customer.
+- **Live Freight Calculation**: Freight must be calculated dynamically based on total weight and the real-world distance between Ahmedabad (382433) and the customer's pincode.
+- **Company Branding**: All generated documents (PDFs, emails) must contain the full, standardized company address and branding.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack Expo (React Native for web/mobile) and FastAPI application for generating and managing quotes for belt conveyor rollers.
-
-In this session, the agent accomplished several major tasks:
-1.  **Full-App UI Redesign**: Applied a new modern, minimalist dark theme across the entire application, including the login screen and headers for all main pages (Products, Cart, Quotes, Profile, etc.).
-2.  **Login Flow Fix**: Resolved a critical bug where the redesigned login page failed to redirect after a successful login. This was a complex React Native Web event handling issue, solved by adding a Press Enter to login feature for robust submission.
-3.  **Weight in PDF/Email Fix**: Traced and fixed a data consistency issue, ensuring  is correctly saved when an item is added to a quote and displayed in all generated PDFs and email notifications.
-4.  **Price Visibility Fix**: Corrected the RBAC logic to ensure customers cannot see pricing details for quotes that are not yet in Approved status.
-5.  **Push Notifications (Foundation)**: Implemented the necessary frontend and backend code for sending push notifications to admins when a new RFQ is created. This feature requires a new APK build for testing.
-6.  **Expanded Product Configuration**: Added new housing data to the backend () as per user request, allowing pricing for previously incompatible product combinations (e.g., 139.7mm pipe with a 20mm shaft).
-7.  **Minor UI/UX**: Removed the Remark field from the Products/Calculator tab as requested.
-
-The agent also investigated user reports of missing data, explaining that the forked environment uses a fresh database, and then proceeded to seed it with new test accounts and customer data.
+A full-stack Expo (React Native) and FastAPI application. In this session, the agent performed a large number of fixes and feature enhancements. Key accomplishments include:
+- Fixing a critical deployment-blocking syntax error in .
+- Starting a major refactor of the monolithic  file by extracting PDF generation and utility functions into separate modules (, ).
+- Implementing several data-driven features: accurate rubber ring weight calculation, pipe-to-shaft compatibility filtering (with a new API endpoint), and updating backend housing data from a user-provided Excel file.
+- Fixing numerous data and UI consistency bugs, including syncing all frontend and backend PDF/email templates, ensuring product weight is consistently calculated and displayed, and fixing a grand total mismatch between emails and exported PDFs.
+- Addressing UI issues such as redesigning action buttons and fixing a bug where attachment options were not visible in the search modal.
+- Resolving a Metro cache issue that was serving stale UI components.
+- The session concluded while modifying the revised quote email template, which introduced a new bug.
 
 **Last working item**:
-- Last item agent was working: Adding attachment functionality to the **Search** tab () to match the functionality on the **Products** tab. The agent added the required state and helper functions but did not implement the UI for the attachment buttons or update the modal view.
-- Status: IN PROGRESS
+- Last item agent was working: The agent was modifying the  function in  to remove a Special Discount section from the email body, as requested by the user. However, this modification introduced a .
+- Status: BLOCKED
 - Agent Testing Done: N
-- Which testing method agent to use? frontend testing agent. The agent should verify that attachment buttons appear in the Add to Cart modal on the Search page and that adding an item with an attachment from this page works correctly.
 - User Testing Done: N
+- Which testing method agent to use? The next agent must first fix the bug in the  function. Manual testing by generating a revised quote and checking the email content and backend logs for errors will be sufficient.
 
 **All Pending/In progress Issue list**:
-  Issue 1: Logout functionality is still reported as not working on iOS. (P1)
-  Issue 2: Android system navigation bar overlaps with the app's bottom tab bar. (P1)
-  Issue 3: Background image on the redesigned login page does not load on the web view. (P3)
-  Issue 4: Unstable Expo Tunnel () is a recurring environment issue that blocks testing and causes misleading failures. (BLOCKER)
+  Issue 1: Revised quote email generation is broken. (P0 - BLOCKER)
+  Issue 2: Customer login still shows incorrect freight calculation. (P0)
+  Issue 3: iOS keyboard hides input fields on Products and Cart tabs. (P1)
+  Issue 4: Logout functionality is not working on iOS. (P2)
+  Issue 5: Android system navigation bar overlaps with the app's bottom tab bar. (P2)
   
   Issues Detail:
   - Issue 1: 
-     - Attempted fixes: None in this session. This is a recurring issue.
+     - Attempted fixes: The agent used  to remove the Special Discount section from the email template in .
      - Next debug checklist: 
-       1. Attempt to reproduce on an iOS device or simulator.
-       2. Review the  function in .
-       3. Check for any platform-specific code or navigation issues related to Expo on iOS.
-     - Why fix this issue and what will be achieved with the fix? A critical security and usability feature; allows users to securely sign out.
-     - Status:  NOT STARTED
-     - Is recurring issue? Y
-     - Should Test frontend/backend/both after fix? Frontend
+       1. View  and locate the  function.
+       2. The code now references a  variable that is not defined within the function's scope, causing a .
+       3. Pass the  from the calling function () to  or recalculate it inside the function.
+       4. Test by triggering a revised quote email.
+     - Why fix this issue and what will be achieved with the fix? This is a critical function for the quote revision workflow. Fixing it will allow admins to send corrected quotes to customers.
+     - Status:  IN PROGRESS
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Backend
      - Blocked on other issue: None
   - Issue 2: 
-     - Attempted fixes: None in this session.
+     - Attempted fixes: Multiple frontend and backend fixes were implemented in the previous session. The issue likely persists due to stale local data on the user's device.
      - Next debug checklist: 
-       1. Reproduce on an Android device/simulator.
-       2. Investigate using  or adding padding to the bottom tab bar layout file () specifically for the Android platform.
-     - Why fix this issue and what will be achieved with the fix? Fixes a UI layout bug that makes the bottom navigation hard to use on Android.
-     - Status:  NOT STARTED
+       1. Instruct the user to force close the app, clear the cart, and re-add items to test with fresh data.
+       2. If the issue persists, add logging to the frontend to trace the weight and specs being sent for freight calculation for customer accounts.
+     - Why fix this issue and what will be achieved with the fix? Ensures customers see accurate freight costs, which is critical for RFQ generation and trust.
+     - Status:  USER VERIFICATION PENDING
      - Is recurring issue? Y
      - Should Test frontend/backend/both after fix? Frontend
      - Blocked on other issue: None
   - Issue 3: 
-     - Attempted fixes: The login page was completely redesigned. The new design doesn't appear to use a background image, so this issue may be obsolete.
-     - Next debug checklist: Confirm with the user if the new login page design is acceptable and if this issue can be closed.
-     - Why fix this issue and what will be achieved with the fix? Ensures the login page appears as intended.
-     - Status:  USER VERIFICATION PENDING
+     - Attempted fixes:  was added to  and .
+     - Next debug checklist: A new EAS build is required to package these changes into an APK/IPA for testing on a physical device.
+     - Why fix this issue and what will be achieved with the fix? Improves usability on iOS by preventing the keyboard from obscuring critical input fields.
+     - Status:  IN PROGRESS
      - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? Frontend
+     - Should Test frontend/backend/both after fix? Frontend (on iOS device)
      - Blocked on other issue: None
   - Issue 4: 
-     - Attempted fixes: The agent had to use workarounds (e.g., using keyboard submission for login, restarting the frontend service).
-     - Next debug checklist: This is an environment-level issue. The next agent should be aware of it and use the same workarounds if necessary. If the issue persists and blocks critical work, it may need to be escalated.
-     - Why fix this issue and what will be achieved with the fix? Improves development velocity and allows for reliable testing.
-     - Status:  BLOCKED
+     - Attempted fixes: None. This is a long-standing issue.
+     - Next debug checklist: 
+       1. Attempt to reproduce on an iOS device or simulator.
+       2. Review the  function in .
+       3. Investigate platform-specific navigation issues in Expo for iOS.
+     - Why fix this issue and what will be achieved with the fix? A critical security and usability feature.
+     - Status:  NOT STARTED
      - Is recurring issue? Y
-     - Should Test frontend/backend/both after fix? NA
+     - Should Test frontend/backend/both after fix? Frontend
+     - Blocked on other issue: None
+  - Issue 5: 
+     - Attempted fixes: None. This is a long-standing issue.
+     - Next debug checklist: 
+       1. Reproduce on an Android device/simulator.
+       2. Investigate using  or platform-specific padding in the root layout file .
+     - Why fix this issue and what will be achieved with the fix? Fixes a UI layout bug on Android.
+     - Status:  NOT STARTED
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? Frontend
      - Blocked on other issue: None
 
 **In progress Task List**:
-  Task 1: Complete adding attachment options to the Search tab (P0)
-  Task 2: Test and Verify Push Notifications (P1)
-  Task 3: Complete and Test Export to PDF/Excel Feature (P2)
+  Task 1: Complete refactoring of . (P0)
+  Task 2: Implement user-provided rubber ring weights. (P1)
+  Task 3: Complete APK Build and Distribute. (P1)
 
  Task Detail:
   - Task 1: 
-     - Where to resume: . The logic is partially there. The next step is to add the UI elements for attachments (e.g., Camera, Gallery, Document buttons) inside the quantity selection modal and ensure the  state is passed correctly when adding an item to the cart.
-     - What will be achieved with this? Users will have a consistent experience, being able to add attachments to products found via search, not just from the main calculator.
+     - Where to resume: The agent successfully extracted  and . The next step is to extract the large modal components (, , ) into their own files within .
+     - What will be achieved with this? Drastically improve the maintainability and readability of , reducing the risk of introducing new bugs.
      - Status:  IN PROGRESS
      - Should Test frontend/backend/both after fix? Frontend
      - Blocked on something: None
   - Task 2: 
-     - Where to resume: The feature has been implemented. It now requires generating a new APK/IPA file and testing on a physical device to confirm that an admin user receives a push notification when a customer submits a new RFQ.
-     - What will be achieved with this? Admins will be notified in real-time of new business opportunities, improving response times.
-     - Status:  IN PROGRESS
-     - Should Test frontend/backend/both after fix? Both
-     - Blocked on something: Requires building a new native app binary (APK/IPA).
+     - Where to resume: The backend logic is in place, and a placeholder calculation is used. The agent has provided the user with an Excel template () to fill in the actual weights. The task is blocked until the user uploads the completed file.
+     - What will be achieved with this? Ensure 100% accurate weight calculation for impact rollers based on the user's manufacturing data.
+     - Status:  BLOCKED
+     - Should Test frontend/backend/both after fix? Backend
+     - Blocked on something: User to provide the completed Excel file with ring weights.
   - Task 3: 
-     - Where to resume: The feature's foundation was laid in a previous session. It needs end-to-end testing to verify that clicking the export buttons on the Quotes, Cart, and Search pages correctly downloads the data in PDF and Excel formats.
-     - What will be achieved with this? Allows users to export key business data for offline analysis, reporting, and record-keeping.
-     - Status:  IN PROGRESS
-     - Should Test frontend/backend/both after fix? Both
+     - Where to resume: The previous deployment blocker has been fixed. A new build can now be initiated using Input is required, but stdin is not readable. Failed to display prompt: Select platform.
+     - What will be achieved with this? Deliver a new APK/IPA containing all recent fixes, including the critical iOS keyboard fix and numerous UI/PDF improvements.
+     - Status:  NOT STARTED
+     - Should Test frontend/backend/both after fix? Frontend
      - Blocked on something: None
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
-    - **Task 1: Automate Freight Calculation (P0)**: Modify the  endpoint in  to automatically calculate freight charges based on total weight and destination pincode, instead of requiring manual admin input.
-    - **Task 2: User Acceptance Testing (P1)**: The user needs to verify the latest batch of major changes: the full-app UI redesign, the weight-in-PDF fix, the price visibility fix, and the new housing data.
+    - **Task 1: User Acceptance Testing (P1)**: After a new build is distributed, the user needs to verify the freight calculation fix, the iOS keyboard fix, and all the PDF/UI enhancements.
     
     Future Tasks:
-    - **Task 1: Refactor Frontend (P0 - CRITICAL)**: Continue breaking down the monolithic  (4700+ lines) and  (3600+ lines) files. This is essential for maintainability.
-    - **Task 2: Refactor Backend (P1)**: Restructure the monolithic  into a standard FastAPI project structure with routers.
-    - **Task 3: Implement CRM Features (P2)**: Add features like lead/opportunity management, a customer activity timeline, and follow-up reminders.
+    - **Task 1: Refactor  (P1 - CRITICAL)**: This file is over 3600 lines and needs to be broken down into smaller components.
+    - **Task 2: Refactor  (P1)**: Restructure the monolithic server file into a standard FastAPI project with routers for better organization.
+    - **Task 3: Implement CRM Features (P2)**: Add lead/opportunity management, customer activity timelines, and follow-up reminders.
     - **Task 4: Update Raw Material Costs from Excel (P2)**: Implement a feature for admins to upload an Excel sheet to update material costs.
     - **Task 5: Show Original RFQ Number on Quote Cards (P3)**.
-    - **Task 6: Code Cleanup (P3)**: Delete unused files.
+    - **Task 6: Code Cleanup (P3)**: Delete any identified unused files.
 
 **Completed work in this session**
-- **Full-App UI Redesign**: Successfully applied a modern, minimalist dark theme to the login page and the headers of all major screens.
-- **Login Redirect Fixed**: Resolved a critical bug preventing login redirection and implemented a robust Press Enter to login feature for web.
-- **Weight in PDF/Email Fixed**: Corrected data flow from frontend to backend to ensure product weights are saved and displayed correctly in all PDFs and email notifications.
-- **Price Visibility for Customers Fixed**: Modified frontend components to hide pricing information from customers on all non-approved quotes.
-- **Push Notifications Implemented**: Added frontend and backend code for sending push notifications to admins when a new RFQ is submitted.
-- **Expanded Housing Data**: Updated  to include new bearing bore options for multiple pipe diameters as requested by the user, enabling more product configurations.
-- **Removed Remark Field**: Removed the optional Remark text input from the Products/Calculator tab.
-- **Seeded Test Data**: Populated the fresh database with test user accounts and sample customer data to facilitate testing.
+- **Deployment Blocker Fixed**: Resolved a critical  in  that was preventing deployment.
+- ** Refactoring Started**: Extracted PDF generation logic into  and helper functions into , reducing the main file size by ~700 lines.
+- **Accurate Ring Weight Calculation**: Implemented logic to calculate impact roller weight based on rubber ring dimensions. Provided an Excel template for the user to input precise weights.
+- **Pipe/Shaft Compatibility Filter**: Created a backend endpoint and updated the frontend calculator to show only compatible shaft diameters for a selected pipe, including warnings for combinations that fit without housing.
+- **Housing Data Update**: Ingested a user-provided Excel file to update the backend housing availability and cost data.
+- **PDF/Email Template Sync**: Unified the design and data columns (adding weight, timestamps, etc.) for all generated documents:
+    - Synced frontend Quote export PDF with backend Quote email PDF.
+    - Synced frontend RFQ export PDF with backend RFQ email PDF.
+- **Action Button Redesign**: Redesigned the action buttons (Approve, Reject, etc.) on the RFQ detail modal with a more modern, aesthetic card style.
+- **Weight Calculation Bug Fixes**:
+    - Fixed a bug where products added from the search tab (especially via full product code search) were missing weight data in the cart and subsequent PDFs.
+    - Fixed a bug causing a mismatch in the grand total between exported PDFs and emailed PDFs by ensuring both use the same real-time calculation logic.
+- **UI/Cache Fixes**:
+    - Fixed a UI bug where attachment options were not visible in the search modal by correcting the  properties.
+    - Resolved a stubborn PDF formatting issue by identifying and clearing a stale Metro bundler cache ().
 
 **Earlier issues found/mentioned but not fixed**
    - Issue 1: Logout functionality on iOS remains unresolved.
@@ -135,75 +154,74 @@ The agent also investigated user reports of missing data, explaining that the fo
 
 **Known issue recurrence from previous fork**
   - Issue recurrence in previous fork: Logout functionality on iOS.
-  - Recurrence count: 4
+  - Recurrence count: 6
   - Status: NOT STARTED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Expo Push Notifications**: Integrating the  library to register devices and trigger push alerts from a FastAPI backend using .
-- **React Native Web Event Handling**: Diagnosing and debugging a critical  event bug on the web platform, which was caused by absolutely positioned background layers intercepting clicks. Workarounds included using  and adding an  keyboard handler for a more reliable login experience.
-- **Role-Based Access Control (RBAC)**: Implementing fine-grained conditional rendering in React components to control UI element visibility (e.g., pricing) based on user role and data status.
-- **Data Consistency Debugging**: Tracing a single data point () through the entire stack: from frontend state, through API payload, to backend Pydantic models, and finally into HTML templates for PDF/email generation, fixing discrepancies at each step.
+- **Monolith Refactoring**: Extracting utility functions () and complex logic () from a large React Native component () to improve maintainability.
+- **Data-Driven Configuration**: Using Python dictionaries in  to manage complex business rules like pipe-shaft compatibility and housing data, allowing for easy updates from external sources (like Excel files).
+- **Dynamic PDF Generation**: Debugging and synchronizing HTML-to-PDF generation logic across different contexts (frontend vs. backend, RFQ vs. Quote) to ensure data and visual consistency.
+- **Cache Busting**: Identifying and resolving client-side rendering issues caused by a stale bundler cache (Metro) by programmatically clearing the cache directory.
+- **API-Driven UI Filtering**: Creating a new backend endpoint () to provide data for dynamically filtering UI elements (shaft dropdown based on pipe selection) in the frontend.
+- **Spreadsheet Data Ingestion**: Reading and parsing an  file uploaded by the user to update backend data structures.
 
 **key DB schema**
-- **users**: The schema was implicitly updated. Documents for admin users now store a  field after they log in.
+  - No schema changes were made.
 
 **All files of reference**
-- : Major changes for push notifications, fixing weight display in emails/PDFs.
-- : Updated with new housing data.
-- : Complete rewrite for UI redesign and fixing login redirection.
-- : Modified to handle push token registration on login/logout.
-- : New file for managing push notification logic.
-- : Modified for UI redesign and fixing customer price visibility.
-- : Modified for UI redesign and removing the remark field.
-- : Modified to begin adding attachment functionality.
+- : Major changes for bug fixes (weight, email total), new API endpoint, and email template updates.
+- : Updated with pipe-shaft compatibility map and new housing data from user's Excel file.
+- : Major changes including fixing deployment error, starting refactor, redesigning buttons.
+- : Modified to consume the new compatibility API and filter shaft options.
+- : Fixed bugs related to adding items to cart and modal UI.
+- : New file extracted from  to handle all frontend PDF generation.
+- : New file for shared helper functions.
 
 **Areas that need refactoring**:
-- **CRITICAL**:  is still a massive 4700+ line component.
-- **CRITICAL**:  is a 3600+ line component.
-- ****: This single file contains all API logic and is becoming difficult to manage. It should be broken down into a standard FastAPI project with routers.
+- **CRITICAL**:  (4100+ lines). The refactoring has started but the large modal components still need to be extracted.
+- **CRITICAL**:  (3600+ lines).
+- ****: This monolithic file handles all API logic and is becoming difficult to manage.
 
 **key api endpoints**
-- : Stores an Expo push token for a user.
-- : Removes a user's push token (on logout).
-- : Modified to trigger a push notification to all admins upon successful RFQ creation.
+- : **(NEW)** Returns a list of compatible shaft diameters for a given pipe OD.
+- : Modified to correctly calculate and include weight for all search types, including exact product code matches.
+- : Modified to change email content, but is **currently broken** due to a .
 
 **Critical Info for New Agent**
-- **Environment is Unstable**: The Expo/ngrok tunnel () is highly unstable. It frequently disconnects, causing session logouts and, more insidiously, preventing click events from registering in the web preview. If UI interactions fail, suspect the tunnel first. Restarting the frontend service (frontend: ERROR (no such process)
-frontend: ERROR (no such process)) or using keyboard-based submission can be effective workarounds.
-- **Push Notification Testing**: The push notification feature is fully coded but **cannot be tested in the web preview**. It requires building a new native binary (An Expo user account is required to proceed.
-
-Log in to EAS with email or username (exit and run eas login --help to see other login options)
-Input is required, but stdin is not readable. Failed to display prompt: Email or username) and installing it on a physical device to receive notifications.
-- **In-Progress Task**: The add attachment from Search feature is half-finished. You need to complete the UI in the  modal and test the end-to-end flow.
-- **Prioritize Refactoring**: The user has approved a full UI redesign. This is the ideal time to aggressively refactor the massive  and  components. Tackle the refactoring alongside any further UI polishes.
+- **IMMEDIATE BLOCKER**: The  function in  is broken with a . You must fix this first by ensuring the  variable is correctly defined or passed into the function's scope.
+- **REFACTORING IN PROGRESS**: The refactoring of  has started. Your next step should be to continue this work by extracting the large modal components (, , ) into their own files.
+- **USER-PROVIDED DATA PENDING**: The system is waiting for the user to upload the  file. Until then, a formula-based approximation is used for impact roller weights.
+- **NEW BUILD REQUIRED**: The critical iOS keyboard fix and many other frontend improvements are implemented but not yet shipped. A new EAS build must be triggered to deliver these to the user for testing.
 
 **documents and test reports created in this job**
--  (updated with push notification requirement)
+- : Template for user to provide custom rubber ring weights.
+- : Template for user to provide custom housing data.
+- : Updated to reflect completed tasks.
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - 10. User asked to add a 52mm bearing bore option to the 159 OD pipe. -> **COMPLETED**
- - 9. User asked if a new APK is needed for recent changes. -> **COMPLETED** (Agent explained only push notifications require a new build).
- - 8. User asked to remove the Remark tab from the products page. -> **COMPLETED**
- - 7. User reported that weight was still not showing in PDF/email. -> **COMPLETED** (Agent found and fixed bugs in both frontend payload and backend templates).
- - 6. User asked for the Safari link. -> **COMPLETED**
- - 5. User asked for the Safari link again. -> **COMPLETED**
- - 4. User requested that the Search tab should also have an option to add attachments, same as the Calculator tab. -> **IN PROGRESS**
- - 3. User reported that they were still unable to see weights in PDFs or emails. (Duplicate report, led to the final fix). -> **COMPLETED**
- - 2. User asked for the Safari link. -> **COMPLETED**
- - 1. User reported that customers could still see prices on RFQs. -> **COMPLETED**
+ - 10. when generating revised offer r1 , r2 shows special discount in mail. we need to remove that. only revised grant total should be displayed. -> **IN PROGRESS (Introduced a bug)**
+ - 9. exported pdf from admin login of rfq is not showing weight -> **COMPLETED** (Fixed via Metro cache clearing)
+ - 8. while adding products from search tab. I m not able to see attachment option like I can see in calculator tab -> **COMPLETED** (Fixed modal scroll styles)
+ - 7. I want mail grand total should be same as pdf grand total. both screen shots attached. -> **COMPLETED** (Fixed backend email to recalculate total)
+ - 6. specifically when we add item with full product cone then only weight is not coming. -> **COMPLETED** (Fixed backend to calculate weight for exact match search)
+ - 5. I can see product added from search option are not showing weight. -> **COMPLETED** (Fixed logic in PDF generator and search component)
+ - 4. can u compare quote pdf grand total and mail grand total -> **COMPLETED** (Agent found a discrepancy, which led to the fix in message 7)
+ - 3. can u compare mail pdf of quote and exported pdf of quote? -> **COMPLETED** (Agent confirmed they were synced, except for the logo)
+ - 2. can u compare mail pdf of rfq and exported pdf of rfq? -> **COMPLETED** (Agent found discrepancies and synced them)
+ - 1. yes (confirming to sync RFQ PDFs) -> **COMPLETED**
 
 **Project Health Check:**
 - **Broken**:
-    - iOS logout functionality.
-    - Android system navigation bar overlapping the app's tab bar.
+    -  function in  is non-functional.
+    - iOS Logout (Recurring).
+    - Android UI Overlap (Recurring).
 - **Refactoring Needed**:
-    - **CRITICAL**: 
+    - **CRITICAL**:  (In Progress)
     - **CRITICAL**: 
     - 
-- **Mocked**: None.
 
 **3rd Party Integrations**
 - **api.postalpincode.in**: For address and pincode validation.
@@ -211,19 +229,20 @@ Input is required, but stdin is not readable. Failed to display prompt: Email or
 - **Gmail SMTP**: For sending email notifications.
 - **Expo / EAS**: For building and deploying the mobile application.
 - **Expo Push Notifications**: For sending push alerts to native devices.
+- **Geopy (Nominatim/OpenStreetMap)**: For converting pincodes to coordinates and calculating real-world distance.
+- **openpyxl**: For reading user-uploaded  files.
 
 **Testing status**
   - Testing agent used after significant changes: NO
   - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: None
-  - Known regressions: iOS logout and Android UI overlap issues are still pending from previous forks.
+  - Known regressions: iOS logout and Android UI overlap issues are still pending.
 
 **Credentials to test flow:**
 - **Admin User**:  / 
 - **Customer User**:  / 
 
 **What agent forgot to execute**
-- The agent started implementing the attachment feature in the Search tab but did not complete the UI portion or test it.
-- The recurring iOS logout and Android UI overlap issues, carried over from the previous fork, were not addressed.
-- The Export to PDF/Excel feature, implemented in a prior session, still lacks end-to-end testing.
-- The new requirement to automate freight calculation was identified but not implemented.</analysis>
+- The agent did not fully test the change to the  function, leaving it in a broken state with a .
+- A new EAS build was not initiated after the deployment blocker was resolved. This is a missed opportunity to ship the iOS keyboard fix and other completed frontend tasks for user testing.
+- The agent did not follow up on the long-standing iOS/Android UI bugs.</analysis>

@@ -7,7 +7,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://freight-pricing-hub.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://belt-roller-calc-1.preview.emergentagent.com').rstrip('/')
 
 class TestFreightCalculation:
     """Tests for freight calculation endpoint"""
