@@ -34,6 +34,7 @@ export default function CartScreen() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
 
   // Submission modal state
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -791,18 +792,56 @@ export default function CartScreen() {
         visible={showCustomerPicker}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowCustomerPicker(false)}
+        onRequestClose={() => {
+          setShowCustomerPicker(false);
+          setCustomerSearchQuery('');
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { maxHeight: '70%' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Customer</Text>
-              <TouchableOpacity onPress={() => setShowCustomerPicker(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowCustomerPicker(false);
+                setCustomerSearchQuery('');
+              }}>
                 <Ionicons name="close" size={28} color="#333" />
               </TouchableOpacity>
             </View>
+            
+            {/* Search Input */}
+            <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 12 }}>
+                <Ionicons name="search" size={20} color="#64748B" />
+                <TextInput
+                  style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, fontSize: 14, color: '#333' }}
+                  placeholder="Search by name, code or company..."
+                  placeholderTextColor="#94A3B8"
+                  value={customerSearchQuery}
+                  onChangeText={setCustomerSearchQuery}
+                  autoCapitalize="none"
+                />
+                {customerSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setCustomerSearchQuery('')}>
+                    <Ionicons name="close-circle" size={20} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+            
             <ScrollView style={styles.modalBody}>
-              {customers.map((customer) => (
+              {customers
+                .filter(customer => {
+                  if (!customerSearchQuery) return true;
+                  const query = customerSearchQuery.toLowerCase();
+                  return (
+                    customer.name?.toLowerCase().includes(query) ||
+                    customer.customer_code?.toLowerCase().includes(query) ||
+                    customer.company?.toLowerCase().includes(query) ||
+                    customer.email?.toLowerCase().includes(query)
+                  );
+                })
+                .map((customer) => (
                 <TouchableOpacity
                   key={customer.id}
                   style={[
@@ -812,6 +851,7 @@ export default function CartScreen() {
                   onPress={() => {
                     setSelectedCustomer(customer);
                     setShowCustomerPicker(false);
+                    setCustomerSearchQuery('');
                   }}
                 >
                   <Ionicons
@@ -825,8 +865,18 @@ export default function CartScreen() {
                   </View>
                 </TouchableOpacity>
               ))}
-              {customers.length === 0 && (
-                <Text style={{ textAlign: 'center', color: '#64748B', marginTop: 20 }}>No customers found</Text>
+              {customers.filter(customer => {
+                if (!customerSearchQuery) return true;
+                const query = customerSearchQuery.toLowerCase();
+                return (
+                  customer.name?.toLowerCase().includes(query) ||
+                  customer.customer_code?.toLowerCase().includes(query) ||
+                  customer.company?.toLowerCase().includes(query)
+                );
+              }).length === 0 && (
+                <Text style={{ textAlign: 'center', color: '#64748B', marginTop: 20 }}>
+                  {customerSearchQuery ? 'No customers match your search' : 'No customers found'}
+                </Text>
               )}
             </ScrollView>
           </View>
