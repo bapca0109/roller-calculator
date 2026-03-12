@@ -5223,6 +5223,13 @@ async def search_product_catalog(
                     pipe_display = rs.get_pipe_code(pipe_dia)
                     product_code = f"{parsed['type_code']}{shaft_dia} {pipe_display} {pipe_length}{pipe_type} {bearing_series}{make_code}"
                     
+                    # Calculate weight for exact match
+                    try:
+                        rubber_dia = parsed.get('rubber_diameter')
+                        base_weight = rs.calculate_roller_weight(pipe_dia, pipe_length, shaft_dia, pipe_type, rubber_dia)
+                    except:
+                        base_weight = 0
+                    
                     results.append({
                         "product_code": product_code,
                         "roller_type": parsed['roller_type'],
@@ -5236,7 +5243,16 @@ async def search_product_catalog(
                         "bearing_series": bearing_series,
                         "housing": housing,
                         "base_price": round(base_price, 2),
+                        "base_weight_kg": round(base_weight, 2),
+                        "weight_kg": round(base_weight, 2),
                         "available_lengths": [pipe_length],
+                        "length_details": [{
+                            "length_mm": pipe_length,
+                            "weight_kg": round(base_weight, 2),
+                            "price": round(base_price, 2),
+                            "product_code": product_code,
+                            "belt_widths": rs.get_belt_widths_for_length(pipe_length, parsed['roller_type']) if pipe_length else []
+                        }],
                         "description": f"{parsed['roller_type'].title()} Roller - {shaft_dia}mm shaft, {pipe_dia}mm x {pipe_length}mm pipe, {matching_bearing} ({bearing_make.upper()})",
                         "exact_match": True
                     })
