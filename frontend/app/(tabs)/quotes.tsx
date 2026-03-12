@@ -608,8 +608,22 @@ export default function QuotesScreen() {
         ? `custom_${customPackingPercent}` 
         : editedPackingType;
       
+      // Update products with correct item_discount_percent
+      const updatedProducts = editedProducts.map(product => {
+        if (!useItemDiscounts) {
+          // Total discount mode - apply the same discount to all products
+          return {
+            ...product,
+            item_discount_percent: parseFloat(editedDiscount) || 0
+          };
+        } else {
+          // Item-wise discount - keep existing item_discount_percent
+          return product;
+        }
+      });
+      
       const updateData: any = {
-        products: editedProducts,
+        products: updatedProducts,
         subtotal: totals.subtotal,
         total_discount: totals.discountAmount,
         use_item_discounts: useItemDiscounts,
@@ -652,8 +666,22 @@ export default function QuotesScreen() {
         ? `custom_${customPackingPercent}` 
         : editedPackingType;
       
+      // Update products with correct item_discount_percent
+      const updatedProducts = editedProducts.map(product => {
+        if (!useItemDiscounts) {
+          // Total discount mode - apply the same discount to all products
+          return {
+            ...product,
+            item_discount_percent: parseFloat(editedDiscount) || 0
+          };
+        } else {
+          // Item-wise discount - keep existing item_discount_percent
+          return product;
+        }
+      });
+      
       const updateData: any = {
-        products: editedProducts,
+        products: updatedProducts,
         subtotal: totals.subtotal,
         total_discount: totals.discountAmount,
         use_item_discounts: useItemDiscounts,
