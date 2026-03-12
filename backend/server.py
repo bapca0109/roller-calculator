@@ -1960,32 +1960,37 @@ def generate_quote_pdf_fallback(quote_data: dict) -> bytes:
     # Table header
     pdf.set_fill_color(30, 41, 59)
     pdf.set_text_color(255, 255, 255)
-    pdf.set_font('Helvetica', 'B', 8)
-    pdf.cell(10, 8, '#', fill=True, border=1, align='C')
-    pdf.cell(35, 8, 'Product Code', fill=True, border=1, align='C')
-    pdf.cell(60, 8, 'Description', fill=True, border=1, align='C')
-    pdf.cell(15, 8, 'Qty', fill=True, border=1, align='C')
-    pdf.cell(30, 8, 'Unit Price', fill=True, border=1, align='C')
-    pdf.cell(35, 8, 'Amount', fill=True, border=1, align='C')
+    pdf.set_font('Helvetica', 'B', 7)
+    pdf.cell(8, 8, '#', fill=True, border=1, align='C')
+    pdf.cell(30, 8, 'Product Code', fill=True, border=1, align='C')
+    pdf.cell(50, 8, 'Description', fill=True, border=1, align='C')
+    pdf.cell(12, 8, 'Qty', fill=True, border=1, align='C')
+    pdf.cell(15, 8, 'Disc%', fill=True, border=1, align='C')
+    pdf.cell(28, 8, 'Price/Pc', fill=True, border=1, align='C')
+    pdf.cell(30, 8, 'Amount', fill=True, border=1, align='C')
     pdf.ln()
     
     # Table rows
     pdf.set_text_color(0, 0, 0)
-    pdf.set_font('Helvetica', '', 8)
+    pdf.set_font('Helvetica', '', 7)
     products = quote_data.get('products', [])
     subtotal = 0
     for idx, product in enumerate(products, 1):
         qty = product.get('quantity', 0)
         unit_price = product.get('unit_price', 0)
-        amount = qty * unit_price
+        item_discount_percent = product.get('item_discount_percent', 0)
+        # Calculate price after discount per piece
+        price_after_discount = unit_price * (1 - item_discount_percent / 100) if item_discount_percent > 0 else unit_price
+        amount = qty * price_after_discount
         subtotal += amount
         
-        pdf.cell(10, 7, str(idx), border=1, align='C')
-        pdf.cell(35, 7, str(product.get('product_id', 'N/A'))[:18], border=1, align='C')
-        pdf.cell(60, 7, str(product.get('product_name', 'N/A'))[:32], border=1)
-        pdf.cell(15, 7, str(qty), border=1, align='C')
-        pdf.cell(30, 7, f'Rs. {unit_price:,.2f}', border=1, align='R')
-        pdf.cell(35, 7, f'Rs. {amount:,.2f}', border=1, align='R')
+        pdf.cell(8, 7, str(idx), border=1, align='C')
+        pdf.cell(30, 7, str(product.get('product_id', 'N/A'))[:16], border=1, align='C')
+        pdf.cell(50, 7, str(product.get('product_name', 'N/A'))[:28], border=1)
+        pdf.cell(12, 7, str(qty), border=1, align='C')
+        pdf.cell(15, 7, f'{item_discount_percent:.1f}%', border=1, align='C')
+        pdf.cell(28, 7, f'Rs. {price_after_discount:,.2f}', border=1, align='R')
+        pdf.cell(30, 7, f'Rs. {amount:,.2f}', border=1, align='R')
         pdf.ln()
     
     pdf.ln(3)

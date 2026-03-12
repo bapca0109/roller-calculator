@@ -128,8 +128,8 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
         <td class="cell-center">${product.quantity}</td>
         <td class="cell-right">${unitWeightStr}</td>
         <td class="cell-right">${totalWeightStr}</td>
-        <td class="cell-right">Rs. ${formatNumber(product.unit_price)}</td>
         <td class="cell-center">${itemDiscountPercent.toFixed(1)}%</td>
+        <td class="cell-right">Rs. ${formatNumber(valueAfterDiscount)}</td>
         <td class="cell-right"><strong>Rs. ${formatNumber(lineTotal)}</strong></td>
       </tr>
     `;
@@ -156,13 +156,13 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
   ` : `
     <tr>
       <th style="width: 4%;">SR.</th>
-      <th style="width: 22%; text-align: left;">ITEM CODE</th>
+      <th style="width: 20%; text-align: left;">ITEM CODE</th>
       <th style="width: 6%;">QTY</th>
-      <th style="width: 10%; text-align: right;">WT/PC (kg)</th>
+      <th style="width: 10%; text-align: right;">WT/PC</th>
       <th style="width: 10%; text-align: right;">TOTAL WT</th>
-      <th style="width: 12%; text-align: right;">RATE</th>
       <th style="width: 8%;">DISC %</th>
-      <th style="width: 18%; text-align: right;">TOTAL</th>
+      <th style="width: 14%; text-align: right;">PRICE/PC</th>
+      <th style="width: 16%; text-align: right;">AMOUNT</th>
     </tr>
   `;
   
