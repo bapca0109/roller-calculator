@@ -1215,7 +1215,6 @@ def generate_quote_html(quote_data: dict) -> str:
                   <td class="cell-center">{qty}</td>
                   <td class="cell-right">{unit_weight_str}</td>
                   <td class="cell-right">{total_weight_str}</td>
-                  <td class="cell-center">{item_discount_percent:.1f}%</td>
                   <td class="cell-right">Rs. {value_after_discount:,.2f}</td>
                   <td class="cell-right"><strong>Rs. {line_total:,.2f}</strong></td>
                 </tr>
@@ -1347,7 +1346,6 @@ def generate_quote_html(quote_data: dict) -> str:
               <th style="width: 6%;">QTY</th>
               <th style="width: 10%; text-align: right;">WT/PC (kg)</th>
               <th style="width: 10%; text-align: right;">TOTAL WT</th>
-              <th style="width: 8%;">DISC %</th>
               <th style="width: 14%; text-align: right;">PRICE/PC</th>
               <th style="width: 14%; text-align: right;">AMOUNT</th>
             </tr>
@@ -1962,12 +1960,11 @@ def generate_quote_pdf_fallback(quote_data: dict) -> bytes:
     pdf.set_text_color(255, 255, 255)
     pdf.set_font('Helvetica', 'B', 7)
     pdf.cell(8, 8, '#', fill=True, border=1, align='C')
-    pdf.cell(30, 8, 'Product Code', fill=True, border=1, align='C')
-    pdf.cell(50, 8, 'Description', fill=True, border=1, align='C')
+    pdf.cell(32, 8, 'Product Code', fill=True, border=1, align='C')
+    pdf.cell(55, 8, 'Description', fill=True, border=1, align='C')
     pdf.cell(12, 8, 'Qty', fill=True, border=1, align='C')
-    pdf.cell(15, 8, 'Disc%', fill=True, border=1, align='C')
-    pdf.cell(28, 8, 'Price/Pc', fill=True, border=1, align='C')
-    pdf.cell(30, 8, 'Amount', fill=True, border=1, align='C')
+    pdf.cell(30, 8, 'Price/Pc', fill=True, border=1, align='C')
+    pdf.cell(32, 8, 'Amount', fill=True, border=1, align='C')
     pdf.ln()
     
     # Table rows
@@ -1998,12 +1995,11 @@ def generate_quote_pdf_fallback(quote_data: dict) -> bytes:
         subtotal += amount
         
         pdf.cell(8, 7, str(idx), border=1, align='C')
-        pdf.cell(30, 7, str(product.get('product_id', 'N/A'))[:16], border=1, align='C')
-        pdf.cell(50, 7, str(product.get('product_name', 'N/A'))[:28], border=1)
+        pdf.cell(32, 7, str(product.get('product_id', 'N/A'))[:17], border=1, align='C')
+        pdf.cell(55, 7, str(product.get('product_name', 'N/A'))[:30], border=1)
         pdf.cell(12, 7, str(qty), border=1, align='C')
-        pdf.cell(15, 7, f'{item_discount_percent:.1f}%', border=1, align='C')
-        pdf.cell(28, 7, f'Rs. {price_after_discount:,.2f}', border=1, align='R')
-        pdf.cell(30, 7, f'Rs. {amount:,.2f}', border=1, align='R')
+        pdf.cell(30, 7, f'Rs. {price_after_discount:,.2f}', border=1, align='R')
+        pdf.cell(32, 7, f'Rs. {amount:,.2f}', border=1, align='R')
         pdf.ln()
     
     pdf.ln(3)
