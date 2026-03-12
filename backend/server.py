@@ -413,6 +413,7 @@ class QuoteCreate(BaseModel):
     delivery_location: Optional[str] = None
     packing_type: Optional[str] = None  # standard, pallet, wooden_box
     shipping_cost: Optional[float] = 0.0  # Freight calculated from pincode
+    freight_details: Optional[Dict[str, Any]] = None  # Custom freight details from admin
     notes: Optional[str] = None
     customer_rfq_no: Optional[str] = None  # Customer's own reference number (optional)
 
