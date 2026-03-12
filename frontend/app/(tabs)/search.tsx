@@ -350,13 +350,6 @@ export default function SearchScreen() {
   const addToQuote = () => {
     if (!selectedLength) return;
     
-    // Admin must select a customer before adding items to cart
-    if (!isCustomer && !selectedCustomer) {
-      Alert.alert('Customer Required', 'Please select a customer before adding items to cart.');
-      setShowQuantityModal(false);
-      return;
-    }
-    
     const qty = parseInt(quantityInput) || 1;
     if (qty < 1 || qty > 10000) {
       Alert.alert('Invalid Quantity', 'Please enter a quantity between 1 and 10,000');

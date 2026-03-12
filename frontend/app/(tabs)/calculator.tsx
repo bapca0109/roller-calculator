@@ -901,13 +901,6 @@ export default function CalculatorScreen() {
   const addToQuote = () => {
     if (!result) return;
     
-    // Admin must select a customer before adding items to cart
-    if (!isCustomer && !selectedCustomer) {
-      Alert.alert('Customer Required', 'Please select a customer before adding items to cart.');
-      setShowCustomerPicker(true);
-      return;
-    }
-    
     // Add attachments and remark to the result
     const itemWithAttachments = {
       ...result,
@@ -1055,14 +1048,6 @@ export default function CalculatorScreen() {
 
   const addSearchItemToCart = () => {
     if (!selectedLength) return;
-    
-    // Admin must select a customer before adding items to cart
-    if (!isCustomer && !selectedCustomer) {
-      Alert.alert('Customer Required', 'Please select a customer before adding items to cart.');
-      setShowQuantityModal(false);
-      setShowCustomerPicker(true);
-      return;
-    }
     
     const qty = parseInt(quantityInput) || 1;
     if (qty < 1 || qty > 10000) {
@@ -1860,39 +1845,6 @@ export default function CalculatorScreen() {
                 {result.gst ? ' + GST' : ''}
                 {result.freight ? ' + freight' : ''})
               </Text>
-            </View>
-            )}
-
-            {/* Customer Selection - Admin only */}
-            {!isCustomer && (
-            <View style={styles.customerSection}>
-              <Text style={styles.customerLabel}>Select Customer for Quote:</Text>
-              <TouchableOpacity
-                style={styles.customerSelector}
-                onPress={() => setShowCustomerPicker(true)}
-              >
-                {selectedCustomer ? (
-                  <View style={styles.selectedCustomer}>
-                    <Ionicons name="person" size={20} color="#960018" />
-                    <View style={styles.selectedCustomerInfo}>
-                      <Text style={styles.selectedCustomerName}>{selectedCustomer.name}</Text>
-                      {selectedCustomer.company && (
-                        <Text style={styles.selectedCustomerCompany}>{selectedCustomer.company}</Text>
-                      )}
-                    </View>
-                    <TouchableOpacity onPress={() => setSelectedCustomer(null)}>
-                      <Ionicons name="close-circle" size={20} color="#666" />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.noCustomerSelected}>
-                    <Ionicons name="person-add-outline" size={20} color="#666" />
-                    <Text style={styles.noCustomerText}>
-                      {customers.length > 0 ? 'Tap to select customer' : 'No customers - Add in Customers tab'}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
             </View>
             )}
 
