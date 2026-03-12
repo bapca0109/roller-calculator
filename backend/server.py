@@ -3789,10 +3789,13 @@ async def approve_rfq(
     ist_now = get_ist_now()
     
     # Auto-calculate freight if delivery_location (pincode) is provided
-    freight_details = quote.get("freight_details")
+    freight_details = quote.get("freight_details") or {}
     shipping_cost = quote.get("shipping_cost", 0)
     delivery_location = quote.get("delivery_location")
     total_price = quote.get("total_price", 0)
+    
+    # Check if admin manually set freight (freight_amount key exists in freight_details)
+    admin_set_freight = "freight_amount" in freight_details
     
     # Calculate total weight from products
     products = quote.get("products", [])
@@ -3803,8 +3806,10 @@ async def approve_rfq(
         quantity = product.get("quantity", 1)
         total_weight += item_weight * quantity
     
-    # If pincode is provided and no freight has been calculated yet, auto-calculate
-    if delivery_location and (not freight_details or not shipping_cost):
+    # Only auto-calculate freight if:
+    # 1. Pincode is provided AND
+    # 2. Admin did NOT manually set freight (no freight_amount in freight_details)
+    if delivery_location and not admin_set_freight:
         try:
             freight_calc = rs.calculate_freight_charges(total_weight, delivery_location)
             freight_details = {
