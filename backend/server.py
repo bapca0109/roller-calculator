@@ -3181,6 +3181,7 @@ async def create_quote(
         "subtotal": subtotal,
         "total_discount": 0,  # No system discount - admin will set during approval
         "shipping_cost": quote.shipping_cost or 0.0,  # Use freight from customer if provided
+        "freight_details": quote.freight_details,  # Custom freight details from admin
         "delivery_location": quote.delivery_location,
         "packing_type": quote.packing_type,  # Packing type from cart submission
         "total_price": total_price,

@@ -36,6 +36,12 @@ export default function CartScreen() {
   const [freightPincode, setFreightPincode] = useState('');
   const [customerRfqNo, setCustomerRfqNo] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  
+  // Admin custom fields
+  const [customFreightAmount, setCustomFreightAmount] = useState('');
+  const [useCustomFreight, setUseCustomFreight] = useState(false);
+  const [customPackingPercent, setCustomPackingPercent] = useState('');
+  const [useCustomPacking, setUseCustomPacking] = useState(false);
 
   // Pincode validation state
   const [pincodeValid, setPincodeValid] = useState<boolean | null>(null);
@@ -282,8 +288,9 @@ export default function CartScreen() {
         products,
         customer_id: null,
         delivery_location: freightPincode || null,
-        packing_type: packingType,
-        shipping_cost: calculatedFreight || 0,  // Send calculated freight
+        packing_type: useCustomPacking ? `custom_${customPackingPercent}` : packingType,
+        shipping_cost: useCustomFreight ? (parseFloat(customFreightAmount) || 0) : (calculatedFreight || 0),
+        freight_details: useCustomFreight ? { freight_amount: parseFloat(customFreightAmount) || 0 } : null,
         notes: `${isCustomer ? 'RFQ' : 'Quote'} with ${cartItems.length} items`,
         customer_rfq_no: customerRfqNo || null,
       });
@@ -302,6 +309,10 @@ export default function CartScreen() {
       setCustomerRfqNo('');
       setPincodeValid(null);
       setPincodeError('');
+      setCustomFreightAmount('');
+      setUseCustomFreight(false);
+      setCustomPackingPercent('');
+      setUseCustomPacking(false);
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to submit');
     } finally {
@@ -514,19 +525,22 @@ export default function CartScreen() {
                       key={type.value}
                       style={[
                         styles.packingOption,
-                        packingType === type.value && styles.packingOptionSelected,
+                        packingType === type.value && !useCustomPacking && styles.packingOptionSelected,
                       ]}
-                      onPress={() => setPackingType(type.value)}
+                      onPress={() => {
+                        setPackingType(type.value);
+                        setUseCustomPacking(false);
+                      }}
                     >
                       <Ionicons
-                        name={packingType === type.value ? 'radio-button-on' : 'radio-button-off'}
+                        name={packingType === type.value && !useCustomPacking ? 'radio-button-on' : 'radio-button-off'}
                         size={20}
-                        color={packingType === type.value ? '#960018' : '#94A3B8'}
+                        color={packingType === type.value && !useCustomPacking ? '#960018' : '#94A3B8'}
                       />
                       <Text
                         style={[
                           styles.packingOptionText,
-                          packingType === type.value && styles.packingOptionTextSelected,
+                          packingType === type.value && !useCustomPacking && styles.packingOptionTextSelected,
                         ]}
                       >
                         {type.label}
@@ -534,6 +548,38 @@ export default function CartScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
+                
+                {/* Custom Packing % - Admin Only */}
+                {!isCustomer && (
+                  <View style={{ marginTop: 12 }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.packingOption,
+                        useCustomPacking && styles.packingOptionSelected,
+                      ]}
+                      onPress={() => setUseCustomPacking(!useCustomPacking)}
+                    >
+                      <Ionicons
+                        name={useCustomPacking ? 'radio-button-on' : 'radio-button-off'}
+                        size={20}
+                        color={useCustomPacking ? '#960018' : '#94A3B8'}
+                      />
+                      <Text style={[styles.packingOptionText, useCustomPacking && styles.packingOptionTextSelected]}>
+                        Custom Packing %
+                      </Text>
+                    </TouchableOpacity>
+                    {useCustomPacking && (
+                      <TextInput
+                        style={[styles.input, { marginTop: 8 }]}
+                        value={customPackingPercent}
+                        onChangeText={setCustomPackingPercent}
+                        placeholder="Enter packing % (e.g., 2.5)"
+                        placeholderTextColor="#94A3B8"
+                        keyboardType="decimal-pad"
+                      />
+                    )}
+                  </View>
+                )}
               </View>
 
               {/* Freight Pincode */}
@@ -583,6 +629,35 @@ export default function CartScreen() {
                   <Text style={{ color: '#059669', fontSize: 14, marginTop: 8, fontWeight: '600' }}>
                     Estimated Freight: Rs. {calculatedFreight.toFixed(2)}
                   </Text>
+                )}
+                
+                {/* Custom Freight Amount - Admin Only */}
+                {!isCustomer && (
+                  <View style={{ marginTop: 12 }}>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}
+                      onPress={() => setUseCustomFreight(!useCustomFreight)}
+                    >
+                      <Ionicons
+                        name={useCustomFreight ? 'checkbox' : 'square-outline'}
+                        size={22}
+                        color={useCustomFreight ? '#960018' : '#94A3B8'}
+                      />
+                      <Text style={{ marginLeft: 8, fontSize: 14, color: '#333' }}>
+                        Use Custom Freight Amount
+                      </Text>
+                    </TouchableOpacity>
+                    {useCustomFreight && (
+                      <TextInput
+                        style={styles.input}
+                        value={customFreightAmount}
+                        onChangeText={setCustomFreightAmount}
+                        placeholder="Enter freight amount (e.g., 5000)"
+                        placeholderTextColor="#94A3B8"
+                        keyboardType="decimal-pad"
+                      />
+                    )}
+                  </View>
                 )}
               </View>
 
