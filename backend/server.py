@@ -3606,7 +3606,6 @@ async def send_quote_approval_email(quote_data: dict, customer_email: str):
                 <td style="padding: 12px; text-align: center;">{qty}</td>
                 <td style="padding: 12px; text-align: right;">{unit_weight_str}</td>
                 <td style="padding: 12px; text-align: right;">{total_weight_str}</td>
-                <td style="padding: 12px; text-align: right;">Rs. {p.get('unit_price', 0):,.2f}</td>
             </tr>
             """
         # Add grand total weight row
@@ -3614,7 +3613,6 @@ async def send_quote_approval_email(quote_data: dict, customer_email: str):
         <tr style="background: #f0f9ff; font-weight: bold;">
             <td colspan="3" style="padding: 12px; text-align: right;">Grand Total Weight:</td>
             <td style="padding: 12px; text-align: right;">{grand_total_weight:.2f} kg</td>
-            <td></td>
         </tr>
         """ if grand_total_weight > 0 else ""
         
@@ -3695,7 +3693,6 @@ async def send_quote_approval_email(quote_data: dict, customer_email: str):
                             <th style="padding: 12px; text-align: center;">Qty</th>
                             <th style="padding: 12px; text-align: right;">Wt/Pc (kg)</th>
                             <th style="padding: 12px; text-align: right;">Total Wt (kg)</th>
-                            <th style="padding: 12px; text-align: right;">Unit Price</th>
                         </tr>
                         {products_html}
                         {weight_total_row}
@@ -4142,7 +4139,6 @@ async def send_quote_revision_email(quote_data: dict, customer_email: str, revis
                 <td style="padding: 12px; text-align: center;">{qty}</td>
                 <td style="padding: 12px; text-align: right;">{unit_weight_str}</td>
                 <td style="padding: 12px; text-align: right;">{total_weight_str}</td>
-                <td style="padding: 12px; text-align: right;">Rs. {p.get('unit_price', 0):,.2f}</td>
             </tr>
             """
         # Add grand total weight row
@@ -4150,7 +4146,6 @@ async def send_quote_revision_email(quote_data: dict, customer_email: str, revis
         <tr style="background: #f0f9ff; font-weight: bold;">
             <td colspan="3" style="padding: 12px; text-align: right;">Grand Total Weight:</td>
             <td style="padding: 12px; text-align: right;">{grand_total_weight:.2f} kg</td>
-            <td></td>
         </tr>
         """ if grand_total_weight > 0 else ""
         
@@ -4208,7 +4203,6 @@ async def send_quote_revision_email(quote_data: dict, customer_email: str, revis
                             <th style="padding: 12px; text-align: center;">Qty</th>
                             <th style="padding: 12px; text-align: right;">Wt/Pc (kg)</th>
                             <th style="padding: 12px; text-align: right;">Total Wt (kg)</th>
-                            <th style="padding: 12px; text-align: right;">Unit Price</th>
                         </tr>
                         {products_html}
                         {weight_total_row}
