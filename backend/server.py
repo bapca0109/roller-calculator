@@ -3436,19 +3436,26 @@ async def get_quote(quote_id: str, current_user: dict = Depends(get_current_user
 @api_router.get("/quotes/{quote_id}/history")
 async def get_quote_revision_history(
     quote_id: str,
-    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+    current_user: dict = Depends(get_current_user)
 ):
-    """Get revision history for a specific quote"""
+    """Get revision history for a specific quote - accessible by admin, sales, and the quote owner"""
     try:
         quote = await db.quotes.find_one(
             {"_id": ObjectId(quote_id)},
-            {"revision_history": 1, "quote_number": 1}
+            {"revision_history": 1, "quote_number": 1, "customer_id": 1}
         )
     except:
         raise HTTPException(status_code=400, detail="Invalid quote ID")
     
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
+    
+    # Check access: Admin/Sales can view any, Customers can only view their own
+    is_admin_or_sales = current_user["role"] in [UserRole.ADMIN, UserRole.SALES]
+    is_quote_owner = quote.get("customer_id") == current_user["id"]
+    
+    if not is_admin_or_sales and not is_quote_owner:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     revision_history = quote.get("revision_history", [])
     
