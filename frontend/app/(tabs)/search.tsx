@@ -402,6 +402,8 @@ export default function SearchScreen() {
         housing: product.housing,
         rubber_diameter: product.rubber_diameter,
         belt_widths: length.belt_widths,
+        weight_kg: itemWeight,  // Also store weight in specifications for PDF
+        single_roller_weight_kg: itemWeight,  // Alias for compatibility
       },
       source: 'search',
       attachments: searchAttachments.map(att => ({

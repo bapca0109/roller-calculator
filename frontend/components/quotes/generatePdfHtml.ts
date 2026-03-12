@@ -75,8 +75,8 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
     calculatedSubtotal += lineTotal;
     totalItemDiscount += itemDiscountAmount;
     
-    // Get weight info from specifications
-    const unitWeight = product.specifications?.weight_kg || product.specifications?.single_roller_weight_kg || 0;
+    // Get weight info from specifications OR from product directly
+    const unitWeight = product.weight_kg || product.specifications?.weight_kg || product.specifications?.single_roller_weight_kg || 0;
     const totalWeight = unitWeight * product.quantity;
     grandTotalWeight += totalWeight;
     
