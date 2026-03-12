@@ -429,6 +429,7 @@ class QuoteUpdate(BaseModel):
     packing_type: Optional[str] = None  # standard, pallet, wooden_box
     delivery_location: Optional[str] = None  # Freight pincode
     total_price: Optional[float] = None
+    freight_details: Optional[Dict[str, Any]] = None  # Custom freight details from admin
 
 class QuoteReject(BaseModel):
     """Reject an RFQ with a reason"""
