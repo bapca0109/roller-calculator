@@ -1689,7 +1689,7 @@ export default function QuotesScreen() {
                 )}
               </View>
               <TouchableOpacity onPress={() => setSelectedQuote(null)}>
-                <Ionicons name="close" size={28} color="#333" />
+                <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -2910,22 +2910,21 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
   modalContainer: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     width: '100%',
-    maxWidth: 600,
-    maxHeight: '90%',
+    maxHeight: '95%',
+    minHeight: '85%',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 10,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 20,
   },
   fullScreenEditContainer: {
     flex: 1,
@@ -2945,24 +2944,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '85%',
+    flex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#1a1f36',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#960018',
+    color: '#fff',
   },
   rfqReference: {
     fontSize: 12,
-    color: '#0066cc',
+    color: '#94a3b8',
     marginTop: 2,
     fontWeight: '500',
   },
