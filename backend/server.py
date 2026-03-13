@@ -1124,7 +1124,7 @@ def generate_rfq_pdf_fallback(rfq_data: dict) -> bytes:
     
     return pdf.output()
 
-def generate_quote_html(quote_data: dict) -> str:
+def generate_quote_html(quote_data: dict, hide_prices: bool = False) -> str:
     """Generate HTML content for Quote PDF - EXACT MATCH with frontend export"""
     from datetime import datetime
     
@@ -1219,6 +1219,14 @@ def generate_quote_html(quote_data: dict) -> str:
         total_weight_str = f"{total_weight:.2f}" if total_weight > 0 else "-"
         
         # Always show discount columns (use_item_discounts is always True for PDF)
+        # Hide prices if hide_prices=True (for customer viewing RFQ)
+        if hide_prices:
+            price_display = "-"
+            amount_display = "-"
+        else:
+            price_display = f"Rs. {value_after_discount:,.2f}"
+            amount_display = f"<strong>Rs. {line_total:,.2f}</strong>"
+        
         if use_item_discounts:
             products_html += f"""
                 <tr>
@@ -1231,11 +1239,18 @@ def generate_quote_html(quote_data: dict) -> str:
                   <td class="cell-center">{qty}</td>
                   <td class="cell-right">{unit_weight_str}</td>
                   <td class="cell-right">{total_weight_str}</td>
-                  <td class="cell-right">Rs. {value_after_discount:,.2f}</td>
-                  <td class="cell-right"><strong>Rs. {line_total:,.2f}</strong></td>
+                  <td class="cell-right">{price_display}</td>
+                  <td class="cell-right">{amount_display}</td>
                 </tr>
             """
         else:
+            if hide_prices:
+                orig_price_display = "-"
+                orig_amount_display = "-"
+            else:
+                orig_price_display = f"Rs. {unit_price:,.2f}"
+                orig_amount_display = f"<strong>Rs. {original_amount:,.2f}</strong>"
+            
             products_html += f"""
                 <tr>
                   <td class="cell-center">{idx}</td>
@@ -1247,8 +1262,8 @@ def generate_quote_html(quote_data: dict) -> str:
                   <td class="cell-center">{qty}</td>
                   <td class="cell-right">{unit_weight_str}</td>
                   <td class="cell-right">{total_weight_str}</td>
-                  <td class="cell-right">Rs. {unit_price:,.2f}</td>
-                  <td class="cell-right"><strong>Rs. {original_amount:,.2f}</strong></td>
+                  <td class="cell-right">{orig_price_display}</td>
+                  <td class="cell-right">{orig_amount_display}</td>
                 </tr>
             """
     
@@ -1748,6 +1763,8 @@ def generate_quote_html(quote_data: dict) -> str:
         </table>
 
         <!-- Summary -->
+        <!-- Summary Section - Hidden for RFQs -->
+        {'<div class="summary-section"><div class="summary-table"><div class="summary-row" style="background: #e8f4fc; border-top: 2px solid #0066cc;"><span class="summary-label" style="color: #0066cc;"><strong>TOTAL WEIGHT</strong></span><span class="summary-value" style="color: #0066cc;"><strong>' + f"{grand_total_weight:.2f}" + ' kg</strong></span></div></div></div>' if hide_prices else f'''
         <div class="summary-section">
           <div class="summary-table">
             <div class="summary-row">
@@ -1778,6 +1795,7 @@ def generate_quote_html(quote_data: dict) -> str:
             </div>
           </div>
         </div>
+        '''}
 
         {delivery_html}
         {notes_html}
@@ -1875,17 +1893,17 @@ def generate_quote_html(quote_data: dict) -> str:
     """
     return html
 
-def generate_quote_pdf(quote_data: dict) -> bytes:
+def generate_quote_pdf(quote_data: dict, hide_prices: bool = False) -> bytes:
     """Generate PDF for Quote using weasyprint with HTML template matching frontend exactly"""
     try:
         from weasyprint import HTML
-        html_content = generate_quote_html(quote_data)
+        html_content = generate_quote_html(quote_data, hide_prices)
         pdf_bytes = HTML(string=html_content).write_pdf()
         return pdf_bytes
     except ImportError:
         # Fallback to fpdf2 if weasyprint not available
         logging.warning("weasyprint not available, using fpdf2 fallback")
-        return generate_quote_pdf_fallback(quote_data)
+        return generate_quote_pdf_fallback(quote_data, hide_prices)
 
 def generate_quote_pdf_fallback(quote_data: dict) -> bytes:
     """Fallback PDF generation using fpdf2"""
@@ -3541,7 +3559,7 @@ async def get_quote_pdf(
     token: Optional[str] = None,
     authorization: Optional[str] = Header(None)
 ):
-    """Generate and download PDF for a specific quote. Accepts token as query param or Authorization header."""
+    """Generate and download PDF for a specific quote/RFQ. Accepts token as query param or Authorization header."""
     # Validate token from query param OR Authorization header
     current_user = None
     auth_token = token
@@ -3575,17 +3593,25 @@ async def get_quote_pdf(
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
     
-    # Check access: Admin/Sales can view any, Customers can only view their own approved quotes
+    # Check access permissions
     is_admin_or_sales = current_user["role"] in [UserRole.ADMIN, UserRole.SALES]
     is_quote_owner = quote.get("customer_email") == current_user.get("email")
     is_approved = quote.get("status", "").lower() == "approved"
+    is_rfq = quote.get("quote_number", "").startswith("RFQ")
     
     if not is_admin_or_sales:
         if not is_quote_owner:
             raise HTTPException(status_code=403, detail="Access denied")
-        # Customers can only download approved quotes
-        if not is_approved:
+        # Customers can download:
+        # 1. Their own RFQs (any status) - prices will be hidden
+        # 2. Their own approved quotes - prices shown
+        # Customers CANNOT download pending/rejected quotes (non-RFQ)
+        if not is_rfq and not is_approved:
             raise HTTPException(status_code=403, detail="Quote not yet approved")
+    
+    # Determine if prices should be hidden
+    # Hide prices for: RFQs viewed by customers, OR unapproved quotes viewed by customers
+    hide_prices = not is_admin_or_sales and (is_rfq or not is_approved)
     
     try:
         # Prepare quote data for PDF generation
@@ -3613,8 +3639,8 @@ async def get_quote_pdf(
             "original_rfq_number": quote.get("original_rfq_number"),
         }
         
-        # Generate PDF
-        pdf_bytes = generate_quote_pdf(quote_data)
+        # Generate PDF with hide_prices flag for RFQs viewed by customers
+        pdf_bytes = generate_quote_pdf(quote_data, hide_prices=hide_prices)
         
         # Create filename
         safe_quote_number = quote.get("quote_number", "Quote").replace("/", "-")
