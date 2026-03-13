@@ -691,7 +691,7 @@ export default function AdminScreen() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Item Details</Text>
             <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
-              <Ionicons name="close" size={24} color="#333" />
+              <Ionicons name="close" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalBody}>
@@ -745,7 +745,7 @@ export default function AdminScreen() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Edit Item</Text>
             <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-              <Ionicons name="close" size={24} color="#333" />
+              <Ionicons name="close" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalBody}>
@@ -1300,27 +1300,30 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    minHeight: '50%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#1a1f36',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: '#fff',
   },
   modalBody: {
     padding: 20,

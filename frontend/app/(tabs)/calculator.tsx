@@ -1949,7 +1949,7 @@ export default function CalculatorScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Customer</Text>
               <TouchableOpacity onPress={() => setShowCustomerPicker(false)}>
-                <Ionicons name="close" size={28} color="#333" />
+                <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -2024,7 +2024,7 @@ export default function CalculatorScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Fetch Customer from GSTIN</Text>
               <TouchableOpacity onPress={() => setShowGstLookup(false)}>
-                <Ionicons name="close" size={28} color="#333" />
+                <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -2110,7 +2110,7 @@ export default function CalculatorScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{isCustomer ? 'RFQ Items' : 'Quote Builder'}</Text>
               <TouchableOpacity onPress={() => setShowQuoteBuilder(false)}>
-                <Ionicons name="close" size={28} color="#333" />
+                <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -2763,27 +2763,30 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    minHeight: '50%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#1a1f36',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#fff',
   },
   modalScroll: {
     maxHeight: 300,
