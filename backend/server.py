@@ -4055,7 +4055,9 @@ async def approve_rfq(
             "updated_at": ist_now,
             "freight_details": freight_details,
             "shipping_cost": shipping_cost,
-            "total_price": total_price
+            "total_price": total_price,
+            "revision_number": 0,  # First approval is R0, revisions will be R1, R2, etc.
+            "revision_history": []  # Initialize empty revision history
         }}
     )
     

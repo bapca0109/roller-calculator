@@ -64,8 +64,8 @@ export const QuoteCard: React.FC<QuoteCardProps> = ({
             {isApproved && (
               <View style={styles.revisionBadge}>
                 <Text style={styles.revisionText}>
-                  R{quote.revision_history && quote.revision_history.length > 0 
-                    ? quote.revision_history.length 
+                  R{quote.revision_number !== undefined && quote.revision_number !== null
+                    ? quote.revision_number 
                     : 0}
                 </Text>
               </View>
