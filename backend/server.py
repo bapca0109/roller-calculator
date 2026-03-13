@@ -5645,6 +5645,7 @@ async def get_all_prices(current_user: dict = Depends(get_current_user)):
             "shaft_cost_per_kg": custom_prices.get("shaft_cost_per_kg", rs.SHAFT_COST_PER_KG) if custom_prices else rs.SHAFT_COST_PER_KG,
         },
         "bearing_costs": custom_prices.get("bearing_costs", rs.BEARING_COSTS) if custom_prices else rs.BEARING_COSTS,
+        "housing_costs": custom_prices.get("housing_costs", rs.HOUSING_COSTS) if custom_prices else rs.HOUSING_COSTS,
         "seal_costs": custom_prices.get("seal_costs", rs.SEAL_COSTS) if custom_prices else rs.SEAL_COSTS,
         "circlip_costs": custom_prices.get("circlip_costs", rs.CIRCLIP_COSTS) if custom_prices else rs.CIRCLIP_COSTS,
         "rubber_ring_costs": custom_prices.get("rubber_ring_costs", rs.RUBBER_RING_COSTS) if custom_prices else rs.RUBBER_RING_COSTS,
@@ -5694,6 +5695,10 @@ async def update_price(request: PriceUpdateRequest, current_user: dict = Depends
         if "locking_ring_costs" not in custom_prices:
             custom_prices["locking_ring_costs"] = {str(k): v for k, v in rs.LOCKING_RING_COSTS.items()}
         custom_prices["locking_ring_costs"][request.key] = request.value
+    elif request.category == "housing":
+        if "housing_costs" not in custom_prices:
+            custom_prices["housing_costs"] = dict(rs.HOUSING_COSTS)
+        custom_prices["housing_costs"][request.key] = request.value
     elif request.category == "pipe_weight":
         if "pipe_weight" not in custom_prices:
             import copy

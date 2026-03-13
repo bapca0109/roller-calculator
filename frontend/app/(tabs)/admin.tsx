@@ -16,7 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 
 type MainTab = 'prices' | 'standards';
-type PriceCategory = 'basic' | 'bearing' | 'seal' | 'circlip' | 'rubber' | 'locking';
+type PriceCategory = 'basic' | 'bearing' | 'housing' | 'seal' | 'circlip' | 'rubber' | 'locking';
 
 interface Prices {
   basic_rates: {
@@ -24,6 +24,7 @@ interface Prices {
     shaft_cost_per_kg: number;
   };
   bearing_costs: Record<string, Record<string, number>>;
+  housing_costs: Record<string, number>;
   seal_costs: Record<string, number>;
   circlip_costs: Record<string, number>;
   rubber_ring_costs: Record<string, number>;
@@ -441,6 +442,22 @@ export default function AdminScreen() {
     </View>
   );
 
+  const renderHousingCosts = () => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Housing Costs (per piece)</Text>
+      <Text style={styles.sectionSubtitle}>Format: Housing OD / Bearing OD (mm)</Text>
+      {prices?.housing_costs && Object.entries(prices.housing_costs).map(([config, cost]) => (
+        renderEditableRow(
+          config,
+          cost,
+          `housing_${config}`,
+          'housing',
+          config
+        )
+      ))}
+    </View>
+  );
+
   const renderCirclipCosts = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Circlip Costs (per piece)</Text>
@@ -716,6 +733,7 @@ export default function AdminScreen() {
   const categories: { key: PriceCategory; label: string; icon: string }[] = [
     { key: 'basic', label: 'Basic', icon: 'cash-outline' },
     { key: 'bearing', label: 'Bearing', icon: 'ellipse-outline' },
+    { key: 'housing', label: 'Housing', icon: 'home-outline' },
     { key: 'seal', label: 'Seal', icon: 'disc-outline' },
     { key: 'circlip', label: 'Circlip', icon: 'radio-button-on-outline' },
     { key: 'rubber', label: 'Rubber', icon: 'albums-outline' },
@@ -796,6 +814,7 @@ export default function AdminScreen() {
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
               {activeCategory === 'basic' && renderBasicRates()}
               {activeCategory === 'bearing' && renderBearingCosts()}
+              {activeCategory === 'housing' && renderHousingCosts()}
               {activeCategory === 'seal' && renderSealCosts()}
               {activeCategory === 'circlip' && renderCirclipCosts()}
               {activeCategory === 'rubber' && renderRubberRingCosts()}
