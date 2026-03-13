@@ -846,7 +846,15 @@ def generate_rfq_html(rfq_data: dict) -> str:
     if packing_type or delivery_location:
         packing_delivery_html = '<div style="padding: 10px; background: #f5f5f5; border-radius: 4px; margin-bottom: 15px; font-size: 10px; display: flex; gap: 40px; flex-wrap: wrap;">'
         if packing_type:
-            packing_label = packing_type_labels.get(packing_type, packing_type)
+            # Handle custom packing types
+            if packing_type.startswith('custom_'):
+                try:
+                    custom_percent = float(packing_type.replace('custom_', ''))
+                    packing_label = f'Custom ({custom_percent:.1f}%)'
+                except:
+                    packing_label = packing_type_labels.get(packing_type, packing_type)
+            else:
+                packing_label = packing_type_labels.get(packing_type, packing_type)
             packing_delivery_html += f'<div><strong>Packing Type:</strong> {packing_label}</div>'
         if delivery_location:
             packing_delivery_html += f'<div><strong>Delivery Pincode:</strong> {delivery_location}</div>'
@@ -1347,10 +1355,34 @@ def generate_quote_html(quote_data: dict, hide_prices: bool = False) -> str:
                 </div>
             '''
     
-    # Packing row
+    # Packing row - with packing type percentage
     packing_html = ""
     if packing > 0:
-        packing_html = f'''
+        packing_type = quote_data.get('packing_type', '')
+        packing_type_labels = {
+            'standard': 'Standard (1%)',
+            'pallet': 'Pallet (4%)',
+            'wooden_box': 'Wooden Box (8%)'
+        }
+        # Handle custom packing types
+        if packing_type and packing_type.startswith('custom_'):
+            try:
+                custom_percent = float(packing_type.replace('custom_', ''))
+                packing_label = f'Custom ({custom_percent:.1f}%)'
+            except:
+                packing_label = packing_type_labels.get(packing_type, '')
+        else:
+            packing_label = packing_type_labels.get(packing_type, '')
+        
+        if packing_label:
+            packing_html = f'''
+            <div class="summary-row">
+              <span class="summary-label">Packing Charges - {packing_label}</span>
+              <span class="summary-value">Rs. {packing:,.2f}</span>
+            </div>
+        '''
+        else:
+            packing_html = f'''
             <div class="summary-row">
               <span class="summary-label">Packing Charges</span>
               <span class="summary-value">Rs. {packing:,.2f}</span>
