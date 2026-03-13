@@ -3603,15 +3603,11 @@ async def get_quote_pdf(
         if not is_quote_owner:
             raise HTTPException(status_code=403, detail="Access denied")
         # Customers can download:
-        # 1. Their own RFQs (any status) - prices will be hidden
-        # 2. Their own approved quotes - prices shown
+        # 1. Their own RFQs (any status) - uses RFQ PDF format (no prices)
+        # 2. Their own approved quotes - uses Quote PDF format (with prices)
         # Customers CANNOT download pending/rejected quotes (non-RFQ)
         if not is_rfq and not is_approved:
             raise HTTPException(status_code=403, detail="Quote not yet approved")
-    
-    # Determine if prices should be hidden
-    # Hide prices for: RFQs viewed by customers, OR unapproved quotes viewed by customers
-    hide_prices = not is_admin_or_sales and (is_rfq or not is_approved)
     
     try:
         # Prepare quote data for PDF generation
@@ -3639,8 +3635,15 @@ async def get_quote_pdf(
             "original_rfq_number": quote.get("original_rfq_number"),
         }
         
-        # Generate PDF with hide_prices flag for RFQs viewed by customers
-        pdf_bytes = generate_quote_pdf(quote_data, hide_prices=hide_prices)
+        # Use the correct PDF generator based on document type
+        # RFQs use the RFQ PDF format (same as email) - no prices shown
+        # Quotes use the Quote PDF format - with prices
+        if is_rfq:
+            # Use the same RFQ PDF generator that's used for emails
+            pdf_bytes = generate_rfq_pdf(quote_data)
+        else:
+            # Use the Quote PDF generator for approved quotes
+            pdf_bytes = generate_quote_pdf(quote_data)
         
         # Create filename
         safe_quote_number = quote.get("quote_number", "Quote").replace("/", "-")
