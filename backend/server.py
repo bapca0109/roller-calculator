@@ -5740,9 +5740,23 @@ async def reset_prices(current_user: dict = Depends(get_current_user)):
     return {"message": "All prices reset to default values"}
 
 @api_router.get("/admin/prices/export")
-async def export_prices_to_excel(current_user: dict = Depends(get_current_user)):
-    """Export all prices to Excel file"""
-    if current_user.get("role") != UserRole.ADMIN:
+async def export_prices_to_excel(token: Optional[str] = None):
+    """Export all prices to Excel file. Accepts token as query param for browser downloads."""
+    # Validate token from query param
+    current_user = None
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            if email:
+                user = await db.users.find_one({"email": email})
+                if user:
+                    current_user = user
+        except Exception as e:
+            logging.error(f"Token validation error: {e}")
+            raise HTTPException(status_code=401, detail="Invalid token")
+    
+    if not current_user or current_user.get("role") != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
     
     from openpyxl import Workbook
