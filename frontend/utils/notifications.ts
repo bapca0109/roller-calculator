@@ -82,7 +82,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 // Save push token to backend
 export async function savePushToken(token: string): Promise<boolean> {
   try {
-    await api.post('/api/users/push-token', { push_token: token });
+    await api.post('/users/push-token', { push_token: token });
     console.log('Push token saved to backend');
     return true;
   } catch (error) {
@@ -94,7 +94,7 @@ export async function savePushToken(token: string): Promise<boolean> {
 // Remove push token from backend (on logout)
 export async function removePushToken(): Promise<boolean> {
   try {
-    await api.delete('/api/users/push-token');
+    await api.delete('/users/push-token');
     console.log('Push token removed from backend');
     return true;
   } catch (error) {
