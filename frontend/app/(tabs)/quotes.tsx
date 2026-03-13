@@ -1543,111 +1543,116 @@ export default function QuotesScreen() {
             
             {commercialTermsOptions ? (
               <>
-                {/* Payment Terms */}
-                <View style={styles.commercialTermRow}>
-                  <Text style={styles.commercialTermLabel}>Payment Terms:</Text>
-                  <View style={styles.commercialTermDropdown}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                {/* Payment Terms Dropdown */}
+                <View style={styles.dropdownRow}>
+                  <Text style={styles.dropdownLabel}>Payment Terms:</Text>
+                  <View style={styles.dropdownContainer}>
+                    <select
+                      value={selectedPaymentTerms}
+                      onChange={(e: any) => setSelectedPaymentTerms(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: 12,
+                        fontSize: 14,
+                        borderRadius: 8,
+                        border: '1px solid #ddd',
+                        backgroundColor: '#fff',
+                        cursor: 'pointer'
+                      }}
+                    >
                       {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={[
-                            styles.commercialTermOption,
-                            selectedPaymentTerms === term && styles.commercialTermOptionActive
-                          ]}
-                          onPress={() => setSelectedPaymentTerms(term)}
-                        >
-                          <Text style={[
-                            styles.commercialTermOptionText,
-                            selectedPaymentTerms === term && styles.commercialTermOptionTextActive
-                          ]} numberOfLines={2}>{term}</Text>
-                        </TouchableOpacity>
+                        <option key={idx} value={term}>{term}</option>
                       ))}
-                    </ScrollView>
+                    </select>
                   </View>
                 </View>
                 
-                {/* Freight Terms */}
-                <View style={styles.commercialTermRow}>
-                  <Text style={styles.commercialTermLabel}>Freight Terms:</Text>
-                  <View style={styles.commercialTermDropdown}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                {/* Freight Terms Dropdown */}
+                <View style={styles.dropdownRow}>
+                  <Text style={styles.dropdownLabel}>Freight Terms:</Text>
+                  <View style={styles.dropdownContainer}>
+                    <select
+                      value={selectedFreightTerms}
+                      onChange={(e: any) => setSelectedFreightTerms(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: 12,
+                        fontSize: 14,
+                        borderRadius: 8,
+                        border: '1px solid #ddd',
+                        backgroundColor: '#fff',
+                        cursor: 'pointer'
+                      }}
+                    >
                       {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={[
-                            styles.commercialTermOption,
-                            selectedFreightTerms === term && styles.commercialTermOptionActive
-                          ]}
-                          onPress={() => setSelectedFreightTerms(term)}
-                        >
-                          <Text style={[
-                            styles.commercialTermOptionText,
-                            selectedFreightTerms === term && styles.commercialTermOptionTextActive
-                          ]}>{term}</Text>
-                        </TouchableOpacity>
+                        <option key={idx} value={term}>{term}</option>
                       ))}
-                    </ScrollView>
+                    </select>
                   </View>
                 </View>
                 
-                {/* Color/Finish */}
-                <View style={styles.commercialTermRow}>
-                  <Text style={styles.commercialTermLabel}>Color/Finish:</Text>
-                  <View style={styles.commercialTermDropdown}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                {/* Color/Finish Dropdown */}
+                <View style={styles.dropdownRow}>
+                  <Text style={styles.dropdownLabel}>Color/Finish:</Text>
+                  <View style={styles.dropdownContainer}>
+                    <select
+                      value={selectedColorFinish}
+                      onChange={(e: any) => setSelectedColorFinish(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: 12,
+                        fontSize: 14,
+                        borderRadius: 8,
+                        border: '1px solid #ddd',
+                        backgroundColor: '#fff',
+                        cursor: 'pointer'
+                      }}
+                    >
                       {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={[
-                            styles.commercialTermOption,
-                            selectedColorFinish === term && styles.commercialTermOptionActive,
-                            { minWidth: 200 }
-                          ]}
-                          onPress={() => setSelectedColorFinish(term)}
-                        >
-                          <Text style={[
-                            styles.commercialTermOptionText,
-                            selectedColorFinish === term && styles.commercialTermOptionTextActive
-                          ]} numberOfLines={2}>{term}</Text>
-                        </TouchableOpacity>
+                        <option key={idx} value={term}>{term}</option>
                       ))}
-                    </ScrollView>
+                    </select>
                   </View>
                 </View>
                 
-                {/* Delivery Timeline */}
-                <View style={styles.commercialTermRow}>
-                  <Text style={styles.commercialTermLabel}>Delivery:</Text>
-                  <View style={styles.commercialTermDropdown}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                {/* Delivery Timeline Dropdown */}
+                <View style={styles.dropdownRow}>
+                  <Text style={styles.dropdownLabel}>Delivery:</Text>
+                  <View style={styles.dropdownContainer}>
+                    <select
+                      value={selectedDeliveryTimeline}
+                      onChange={(e: any) => setSelectedDeliveryTimeline(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: 12,
+                        fontSize: 14,
+                        borderRadius: 8,
+                        border: '1px solid #ddd',
+                        backgroundColor: '#fff',
+                        cursor: 'pointer'
+                      }}
+                    >
                       {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={[
-                            styles.commercialTermOption,
-                            selectedDeliveryTimeline === term && styles.commercialTermOptionActive
-                          ]}
-                          onPress={() => setSelectedDeliveryTimeline(term)}
-                        >
-                          <Text style={[
-                            styles.commercialTermOptionText,
-                            selectedDeliveryTimeline === term && styles.commercialTermOptionTextActive
-                          ]}>{term}</Text>
-                        </TouchableOpacity>
+                        <option key={idx} value={term}>{term}</option>
                       ))}
-                    </ScrollView>
+                    </select>
                   </View>
                 </View>
                 
                 {/* Fixed Terms Display */}
-                <View style={[styles.commercialTermRow, { marginTop: 12 }]}>
-                  <Text style={[styles.commercialTermLabel, { fontWeight: '500' }]}>Warranty:</Text>
-                  <Text style={styles.commercialTermFixed}>{commercialTermsOptions.warranty}</Text>
+                <View style={[styles.dropdownRow, { marginTop: 16 }]}>
+                  <Text style={[styles.dropdownLabel, { fontWeight: '600' }]}>Warranty:</Text>
+                  <Text style={styles.fixedTermText}>{commercialTermsOptions.warranty}</Text>
                 </View>
-                <View style={styles.commercialTermRow}>
-                  <Text style={[styles.commercialTermLabel, { fontWeight: '500' }]}>Validity:</Text>
-                  <Text style={styles.commercialTermFixed}>{commercialTermsOptions.validity}</Text>
+                <View style={styles.dropdownRow}>
+                  <Text style={[styles.dropdownLabel, { fontWeight: '600' }]}>Validity:</Text>
+                  <Text style={styles.fixedTermText}>{commercialTermsOptions.validity}</Text>
+                </View>
+              </>
+            ) : (
+              <Text style={{ color: '#999', fontStyle: 'italic' }}>Loading...</Text>
+            )}
+          </View>
                 </View>
               </>
             ) : (
@@ -2373,103 +2378,110 @@ export default function QuotesScreen() {
                       
                       {commercialTermsOptions ? (
                         <>
-                          {/* Payment Terms */}
-                          <View style={styles.commercialTermRow}>
-                            <Text style={styles.commercialTermLabel}>Payment Terms:</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-                              {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
-                                <TouchableOpacity
-                                  key={idx}
-                                  style={[
-                                    styles.commercialTermOption,
-                                    selectedPaymentTerms === term && styles.commercialTermOptionActive
-                                  ]}
-                                  onPress={() => setSelectedPaymentTerms(term)}
-                                >
-                                  <Text style={[
-                                    styles.commercialTermOptionText,
-                                    selectedPaymentTerms === term && styles.commercialTermOptionTextActive
-                                  ]} numberOfLines={2}>{term}</Text>
-                                </TouchableOpacity>
-                              ))}
-                            </ScrollView>
+                          {/* Payment Terms Dropdown */}
+                          <View style={styles.dropdownRow}>
+                            <Text style={styles.dropdownLabel}>Payment Terms:</Text>
+                            <View style={styles.dropdownContainer}>
+                              <select
+                                value={selectedPaymentTerms}
+                                onChange={(e: any) => setSelectedPaymentTerms(e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: 12,
+                                  fontSize: 14,
+                                  borderRadius: 8,
+                                  border: '1px solid #ddd',
+                                  backgroundColor: '#fff',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
+                                  <option key={idx} value={term}>{term}</option>
+                                ))}
+                              </select>
+                            </View>
                           </View>
                           
-                          {/* Freight Terms */}
-                          <View style={styles.commercialTermRow}>
-                            <Text style={styles.commercialTermLabel}>Freight Terms:</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-                              {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
-                                <TouchableOpacity
-                                  key={idx}
-                                  style={[
-                                    styles.commercialTermOption,
-                                    selectedFreightTerms === term && styles.commercialTermOptionActive
-                                  ]}
-                                  onPress={() => setSelectedFreightTerms(term)}
-                                >
-                                  <Text style={[
-                                    styles.commercialTermOptionText,
-                                    selectedFreightTerms === term && styles.commercialTermOptionTextActive
-                                  ]}>{term}</Text>
-                                </TouchableOpacity>
-                              ))}
-                            </ScrollView>
+                          {/* Freight Terms Dropdown */}
+                          <View style={styles.dropdownRow}>
+                            <Text style={styles.dropdownLabel}>Freight Terms:</Text>
+                            <View style={styles.dropdownContainer}>
+                              <select
+                                value={selectedFreightTerms}
+                                onChange={(e: any) => setSelectedFreightTerms(e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: 12,
+                                  fontSize: 14,
+                                  borderRadius: 8,
+                                  border: '1px solid #ddd',
+                                  backgroundColor: '#fff',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
+                                  <option key={idx} value={term}>{term}</option>
+                                ))}
+                              </select>
+                            </View>
                           </View>
                           
-                          {/* Color/Finish */}
-                          <View style={styles.commercialTermRow}>
-                            <Text style={styles.commercialTermLabel}>Color/Finish:</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-                              {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
-                                <TouchableOpacity
-                                  key={idx}
-                                  style={[
-                                    styles.commercialTermOption,
-                                    selectedColorFinish === term && styles.commercialTermOptionActive,
-                                    { minWidth: 180 }
-                                  ]}
-                                  onPress={() => setSelectedColorFinish(term)}
-                                >
-                                  <Text style={[
-                                    styles.commercialTermOptionText,
-                                    selectedColorFinish === term && styles.commercialTermOptionTextActive
-                                  ]} numberOfLines={2}>{term}</Text>
-                                </TouchableOpacity>
-                              ))}
-                            </ScrollView>
+                          {/* Color/Finish Dropdown */}
+                          <View style={styles.dropdownRow}>
+                            <Text style={styles.dropdownLabel}>Color/Finish:</Text>
+                            <View style={styles.dropdownContainer}>
+                              <select
+                                value={selectedColorFinish}
+                                onChange={(e: any) => setSelectedColorFinish(e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: 12,
+                                  fontSize: 14,
+                                  borderRadius: 8,
+                                  border: '1px solid #ddd',
+                                  backgroundColor: '#fff',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
+                                  <option key={idx} value={term}>{term}</option>
+                                ))}
+                              </select>
+                            </View>
                           </View>
                           
-                          {/* Delivery Timeline */}
-                          <View style={styles.commercialTermRow}>
-                            <Text style={styles.commercialTermLabel}>Delivery:</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-                              {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
-                                <TouchableOpacity
-                                  key={idx}
-                                  style={[
-                                    styles.commercialTermOption,
-                                    selectedDeliveryTimeline === term && styles.commercialTermOptionActive
-                                  ]}
-                                  onPress={() => setSelectedDeliveryTimeline(term)}
-                                >
-                                  <Text style={[
-                                    styles.commercialTermOptionText,
-                                    selectedDeliveryTimeline === term && styles.commercialTermOptionTextActive
-                                  ]}>{term}</Text>
-                                </TouchableOpacity>
-                              ))}
-                            </ScrollView>
+                          {/* Delivery Timeline Dropdown */}
+                          <View style={styles.dropdownRow}>
+                            <Text style={styles.dropdownLabel}>Delivery:</Text>
+                            <View style={styles.dropdownContainer}>
+                              <select
+                                value={selectedDeliveryTimeline}
+                                onChange={(e: any) => setSelectedDeliveryTimeline(e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: 12,
+                                  fontSize: 14,
+                                  borderRadius: 8,
+                                  border: '1px solid #ddd',
+                                  backgroundColor: '#fff',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
+                                  <option key={idx} value={term}>{term}</option>
+                                ))}
+                              </select>
+                            </View>
                           </View>
                           
                           {/* Fixed Terms */}
-                          <View style={[styles.commercialTermRow, { marginTop: 12 }]}>
-                            <Text style={[styles.commercialTermLabel, { fontWeight: '600' }]}>Warranty:</Text>
-                            <Text style={styles.commercialTermFixed}>{commercialTermsOptions.warranty}</Text>
+                          <View style={[styles.dropdownRow, { marginTop: 16 }]}>
+                            <Text style={[styles.dropdownLabel, { fontWeight: '600' }]}>Warranty:</Text>
+                            <Text style={styles.fixedTermText}>{commercialTermsOptions.warranty}</Text>
                           </View>
-                          <View style={styles.commercialTermRow}>
-                            <Text style={[styles.commercialTermLabel, { fontWeight: '600' }]}>Validity:</Text>
-                            <Text style={styles.commercialTermFixed}>{commercialTermsOptions.validity}</Text>
+                          <View style={styles.dropdownRow}>
+                            <Text style={[styles.dropdownLabel, { fontWeight: '600' }]}>Validity:</Text>
+                            <Text style={styles.fixedTermText}>{commercialTermsOptions.validity}</Text>
                           </View>
                         </>
                       ) : (
@@ -2950,103 +2962,110 @@ export default function QuotesScreen() {
                     
                     {commercialTermsOptions ? (
                       <>
-                        {/* Payment Terms */}
-                        <View style={styles.commercialTermRow}>
-                          <Text style={styles.commercialTermLabel}>Payment Terms:</Text>
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-                            {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
-                              <TouchableOpacity
-                                key={idx}
-                                style={[
-                                  styles.commercialTermOption,
-                                  selectedPaymentTerms === term && styles.commercialTermOptionActive
-                                ]}
-                                onPress={() => setSelectedPaymentTerms(term)}
-                              >
-                                <Text style={[
-                                  styles.commercialTermOptionText,
-                                  selectedPaymentTerms === term && styles.commercialTermOptionTextActive
-                                ]} numberOfLines={2}>{term}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
+                        {/* Payment Terms Dropdown */}
+                        <View style={styles.dropdownRow}>
+                          <Text style={styles.dropdownLabel}>Payment Terms:</Text>
+                          <View style={styles.dropdownContainer}>
+                            <select
+                              value={selectedPaymentTerms}
+                              onChange={(e: any) => setSelectedPaymentTerms(e.target.value)}
+                              style={{
+                                width: '100%',
+                                padding: 12,
+                                fontSize: 14,
+                                borderRadius: 8,
+                                border: '1px solid #ddd',
+                                backgroundColor: '#fff',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
+                                <option key={idx} value={term}>{term}</option>
+                              ))}
+                            </select>
+                          </View>
                         </View>
                         
-                        {/* Freight Terms */}
-                        <View style={styles.commercialTermRow}>
-                          <Text style={styles.commercialTermLabel}>Freight Terms:</Text>
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-                            {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
-                              <TouchableOpacity
-                                key={idx}
-                                style={[
-                                  styles.commercialTermOption,
-                                  selectedFreightTerms === term && styles.commercialTermOptionActive
-                                ]}
-                                onPress={() => setSelectedFreightTerms(term)}
-                              >
-                                <Text style={[
-                                  styles.commercialTermOptionText,
-                                  selectedFreightTerms === term && styles.commercialTermOptionTextActive
-                                ]}>{term}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
+                        {/* Freight Terms Dropdown */}
+                        <View style={styles.dropdownRow}>
+                          <Text style={styles.dropdownLabel}>Freight Terms:</Text>
+                          <View style={styles.dropdownContainer}>
+                            <select
+                              value={selectedFreightTerms}
+                              onChange={(e: any) => setSelectedFreightTerms(e.target.value)}
+                              style={{
+                                width: '100%',
+                                padding: 12,
+                                fontSize: 14,
+                                borderRadius: 8,
+                                border: '1px solid #ddd',
+                                backgroundColor: '#fff',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
+                                <option key={idx} value={term}>{term}</option>
+                              ))}
+                            </select>
+                          </View>
                         </View>
                         
-                        {/* Color/Finish */}
-                        <View style={styles.commercialTermRow}>
-                          <Text style={styles.commercialTermLabel}>Color/Finish:</Text>
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-                            {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
-                              <TouchableOpacity
-                                key={idx}
-                                style={[
-                                  styles.commercialTermOption,
-                                  selectedColorFinish === term && styles.commercialTermOptionActive,
-                                  { minWidth: 180 }
-                                ]}
-                                onPress={() => setSelectedColorFinish(term)}
-                              >
-                                <Text style={[
-                                  styles.commercialTermOptionText,
-                                  selectedColorFinish === term && styles.commercialTermOptionTextActive
-                                ]} numberOfLines={2}>{term}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
+                        {/* Color/Finish Dropdown */}
+                        <View style={styles.dropdownRow}>
+                          <Text style={styles.dropdownLabel}>Color/Finish:</Text>
+                          <View style={styles.dropdownContainer}>
+                            <select
+                              value={selectedColorFinish}
+                              onChange={(e: any) => setSelectedColorFinish(e.target.value)}
+                              style={{
+                                width: '100%',
+                                padding: 12,
+                                fontSize: 14,
+                                borderRadius: 8,
+                                border: '1px solid #ddd',
+                                backgroundColor: '#fff',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
+                                <option key={idx} value={term}>{term}</option>
+                              ))}
+                            </select>
+                          </View>
                         </View>
                         
-                        {/* Delivery Timeline */}
-                        <View style={styles.commercialTermRow}>
-                          <Text style={styles.commercialTermLabel}>Delivery:</Text>
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-                            {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
-                              <TouchableOpacity
-                                key={idx}
-                                style={[
-                                  styles.commercialTermOption,
-                                  selectedDeliveryTimeline === term && styles.commercialTermOptionActive
-                                ]}
-                                onPress={() => setSelectedDeliveryTimeline(term)}
-                              >
-                                <Text style={[
-                                  styles.commercialTermOptionText,
-                                  selectedDeliveryTimeline === term && styles.commercialTermOptionTextActive
-                                ]}>{term}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
+                        {/* Delivery Timeline Dropdown */}
+                        <View style={styles.dropdownRow}>
+                          <Text style={styles.dropdownLabel}>Delivery:</Text>
+                          <View style={styles.dropdownContainer}>
+                            <select
+                              value={selectedDeliveryTimeline}
+                              onChange={(e: any) => setSelectedDeliveryTimeline(e.target.value)}
+                              style={{
+                                width: '100%',
+                                padding: 12,
+                                fontSize: 14,
+                                borderRadius: 8,
+                                border: '1px solid #ddd',
+                                backgroundColor: '#fff',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
+                                <option key={idx} value={term}>{term}</option>
+                              ))}
+                            </select>
+                          </View>
                         </View>
                         
                         {/* Fixed Terms */}
-                        <View style={[styles.commercialTermRow, { marginTop: 12 }]}>
-                          <Text style={[styles.commercialTermLabel, { fontWeight: '600' }]}>Warranty:</Text>
-                          <Text style={styles.commercialTermFixed}>{commercialTermsOptions.warranty}</Text>
+                        <View style={[styles.dropdownRow, { marginTop: 16 }]}>
+                          <Text style={[styles.dropdownLabel, { fontWeight: '600' }]}>Warranty:</Text>
+                          <Text style={styles.fixedTermText}>{commercialTermsOptions.warranty}</Text>
                         </View>
-                        <View style={styles.commercialTermRow}>
-                          <Text style={[styles.commercialTermLabel, { fontWeight: '600' }]}>Validity:</Text>
-                          <Text style={styles.commercialTermFixed}>{commercialTermsOptions.validity}</Text>
+                        <View style={styles.dropdownRow}>
+                          <Text style={[styles.dropdownLabel, { fontWeight: '600' }]}>Validity:</Text>
+                          <Text style={styles.fixedTermText}>{commercialTermsOptions.validity}</Text>
                         </View>
                       </>
                     ) : (
@@ -4721,5 +4740,27 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontStyle: 'italic',
     flex: 1,
+  },
+  // Dropdown styles for Commercial Terms
+  dropdownRow: {
+    marginBottom: 16,
+  },
+  dropdownLabel: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  dropdownContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  fixedTermText: {
+    fontSize: 13,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 });
