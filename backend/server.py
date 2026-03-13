@@ -522,6 +522,7 @@ class OTPRequest(BaseModel):
     city: str
     state: str
     company: str  # Required field
+    designation: Optional[str] = None  # Optional designation field
     password: str
 
 class OTPVerify(BaseModel):
@@ -533,6 +534,7 @@ class OTPVerify(BaseModel):
     city: str
     state: str
     company: str  # Required field
+    designation: Optional[str] = None  # Optional designation field
     password: str
 
 class ResendOTPRequest(BaseModel):
@@ -667,6 +669,10 @@ async def send_registration_notification_email(customer_data):
                             <td class="highlight">{customer_data.company}</td>
                         </tr>
                         <tr>
+                            <td><strong>Designation</strong></td>
+                            <td>{customer_data.designation or 'Not provided'}</td>
+                        </tr>
+                        <tr>
                             <td><strong>Email ID</strong></td>
                             <td>{customer_data.email}</td>
                         </tr>
@@ -709,6 +715,7 @@ async def send_registration_notification_email(customer_data):
         -----------------
         Customer Name: {customer_data.name}
         Company Name: {customer_data.company}
+        Designation: {customer_data.designation or 'Not provided'}
         Email ID: {customer_data.email}
         Mobile Number: {customer_data.mobile}
         Pin Code: {customer_data.pincode}
@@ -2600,6 +2607,7 @@ async def verify_otp(request: OTPVerify):
         "email": request.email,
         "name": request.name,
         "company": request.company,
+        "designation": request.designation,
         "mobile": request.mobile,
         "pincode": request.pincode,
         "city": request.city,
@@ -2618,6 +2626,7 @@ async def verify_otp(request: OTPVerify):
     customer_dict = {
         "name": request.name,
         "company": request.company,
+        "designation": request.designation,
         "email": request.email,
         "phone": request.mobile,
         "address": f"{request.city}, {request.state}",
@@ -2652,6 +2661,7 @@ async def verify_otp(request: OTPVerify):
             "name": request.name,
             "role": UserRole.CUSTOMER,
             "company": request.company,
+            "designation": request.designation,
             "customer_code": customer_code
         }
     }
@@ -2768,6 +2778,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         "name": current_user["name"],
         "role": current_user["role"],
         "company": current_user.get("company"),
+        "designation": current_user.get("designation"),
         "customer_code": current_user.get("customer_code")
     }
 

@@ -148,6 +148,7 @@ export default function Register() {
           city,
           state,
           company,
+          designation: designation.trim() || null,
           password,
         }),
       });
@@ -169,6 +170,7 @@ export default function Register() {
           city,
           state,
           company: company || '',
+          designation: designation.trim() || '',
           password,
         },
       });
@@ -276,6 +278,19 @@ export default function Register() {
               placeholderTextColor="#94A3B8"
               value={company}
               onChangeText={setCompany}
+            />
+          </View>
+
+          {/* Designation (Optional) */}
+          <View style={styles.inputContainer}>
+            <Ionicons name="briefcase-outline" size={20} color="#64748B" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Designation (Optional)"
+              placeholderTextColor="#94A3B8"
+              value={designation}
+              onChangeText={setDesignation}
+              autoCapitalize="words"
             />
           </View>
 

@@ -36,6 +36,7 @@ export default function VerifyOTP() {
   const city = params.city as string;
   const state = params.state as string;
   const company = params.company as string;
+  const designation = params.designation as string;
   const password = params.password as string;
 
   useEffect(() => {
@@ -99,6 +100,7 @@ export default function VerifyOTP() {
           city,
           state,
           company,
+          designation: designation || null,
           password,
         }),
       });

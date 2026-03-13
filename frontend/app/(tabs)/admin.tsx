@@ -125,23 +125,45 @@ export default function AdminScreen() {
     }
   };
 
-  const handleExportPrices = async () => {
+  const handleExportPrices = async (format: 'excel' | 'pdf' = 'excel') => {
     try {
       setSaving(true);
-      // For web, open the export URL in a new tab
+      const token = await AsyncStorage.getItem('token');
+      const endpoint = format === 'pdf' ? '/admin/prices/export/pdf' : '/admin/prices/export';
+      const extension = format === 'pdf' ? 'pdf' : 'xlsx';
+      const filename = `convero_prices_${new Date().toISOString().slice(0, 10)}.${extension}`;
+      
       if (Platform.OS === 'web') {
-        const token = await AsyncStorage.getItem('token');
+        // Web: Open URL directly
         const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-        window.open(`${backendUrl}/api/admin/prices/export?token=${token}`, '_blank');
-        Alert.alert('Success', 'Excel file download started');
+        window.open(`${backendUrl}/api${endpoint}?token=${token}`, '_blank');
+        Alert.alert('Success', `${format.toUpperCase()} file download started`);
       } else {
-        // For native, use expo-file-system and expo-sharing
-        const response = await api.get('/admin/prices/export', {
-          responseType: 'blob',
-        });
-        Alert.alert('Info', 'Export feature works best on web. Please use the web version to download the Excel file.');
+        // Native: Use FileSystem and Sharing
+        const FileSystem = require('expo-file-system');
+        const Sharing = require('expo-sharing');
+        
+        const url = `${api.defaults.baseURL}${endpoint}?token=${token}`;
+        const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+        
+        const downloadResult = await FileSystem.downloadAsync(url, fileUri);
+        
+        if (downloadResult.status === 200) {
+          const isAvailable = await Sharing.isAvailableAsync();
+          if (isAvailable) {
+            await Sharing.shareAsync(downloadResult.uri, {
+              mimeType: format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              dialogTitle: `Share ${format.toUpperCase()} File`,
+            });
+          } else {
+            Alert.alert('Download Complete', `File saved to: ${downloadResult.uri}`);
+          }
+        } else {
+          throw new Error('Download failed');
+        }
       }
     } catch (error: any) {
+      console.error('Export error:', error);
       Alert.alert('Error', error.response?.data?.detail || 'Failed to export prices');
     } finally {
       setSaving(false);
@@ -883,12 +905,21 @@ export default function AdminScreen() {
               {/* Import/Export Buttons */}
               <View style={styles.importExportContainer}>
                 <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: '#2196F3' }]}
-                  onPress={handleExportPrices}
+                  style={[styles.actionButton, { backgroundColor: '#217346' }]}
+                  onPress={() => handleExportPrices('excel')}
                   disabled={saving}
                 >
-                  <Ionicons name="download-outline" size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>Export to Excel</Text>
+                  <Ionicons name="grid-outline" size={20} color="#fff" />
+                  <Text style={styles.actionButtonText}>Excel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: '#960018' }]}
+                  onPress={() => handleExportPrices('pdf')}
+                  disabled={saving}
+                >
+                  <Ionicons name="document-outline" size={20} color="#fff" />
+                  <Text style={styles.actionButtonText}>PDF</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -897,7 +928,7 @@ export default function AdminScreen() {
                   disabled={saving}
                 >
                   <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>Import from Excel</Text>
+                  <Text style={styles.actionButtonText}>Import</Text>
                 </TouchableOpacity>
               </View>
 

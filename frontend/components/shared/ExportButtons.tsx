@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import api from '../../utils/api';
 
 interface ExportButtonsProps {
@@ -47,24 +49,27 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({
       const params = new URLSearchParams(queryParams).toString();
       const url = `${api.defaults.baseURL}${exportEndpoint}${params ? `?${params}` : ''}`;
       
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Export failed');
-      }
-
-      const blob = await response.blob();
       const extension = format === 'pdf' ? 'pdf' : 'xlsx';
       const filename = `${filenamePrefix}_${new Date().toISOString().slice(0, 10)}.${extension}`;
+      const mimeType = format === 'pdf' 
+        ? 'application/pdf' 
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
       if (Platform.OS === 'web') {
-        // Web: Create download link
+        // Web: Fetch and download
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Export failed');
+        }
+
+        const blob = await response.blob();
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
@@ -75,8 +80,42 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({
         document.body.removeChild(a);
         Alert.alert('Success', `${format.toUpperCase()} exported successfully!`);
       } else {
-        // Mobile: Show message
-        Alert.alert('Export', `${format.toUpperCase()} export is available on web version.`);
+        // iOS/Android: Download using FileSystem and share
+        const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+        
+        // Download file
+        const downloadResult = await FileSystem.downloadAsync(
+          url,
+          fileUri,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (downloadResult.status !== 200) {
+          throw new Error('Failed to download file');
+        }
+
+        // Check if sharing is available
+        const isAvailable = await Sharing.isAvailableAsync();
+        
+        if (isAvailable) {
+          // Share the file (allows saving to Files, sending via email, etc.)
+          await Sharing.shareAsync(downloadResult.uri, {
+            mimeType: mimeType,
+            dialogTitle: `Share ${format.toUpperCase()} File`,
+            UTI: format === 'pdf' ? 'com.adobe.pdf' : 'org.openxmlformats.spreadsheetml.sheet',
+          });
+        } else {
+          // Fallback alert if sharing not available
+          Alert.alert(
+            'Download Complete', 
+            `File saved to: ${downloadResult.uri}`,
+            [{ text: 'OK' }]
+          );
+        }
       }
     } catch (error: any) {
       console.error('Export error:', error);
