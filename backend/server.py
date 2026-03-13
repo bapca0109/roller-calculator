@@ -3032,6 +3032,47 @@ async def send_push_notification_to_admins(title: str, body: str, data: dict = N
     except Exception as e:
         logging.error(f"Error sending push notification: {e}")
 
+async def send_push_notification_to_user(user_email: str, title: str, body: str, data: dict = None):
+    """Send push notification to a specific user by email"""
+    try:
+        # Get user with push token
+        user = await db.users.find_one(
+            {"email": user_email, "push_token": {"$exists": True, "$ne": None}}
+        )
+        
+        if not user:
+            logging.info(f"No push token found for user: {user_email}")
+            return
+        
+        push_token = user.get("push_token")
+        if not push_token or not push_token.startswith("ExponentPushToken"):
+            logging.info(f"Invalid push token for user: {user_email}")
+            return
+        
+        # Prepare notification payload
+        message = {
+            "to": push_token,
+            "sound": "default",
+            "title": title,
+            "body": body,
+            "data": data or {},
+            "channelId": "default",
+        }
+        
+        # Send to Expo Push API
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://exp.host/--/api/v2/push/send",
+                json=[message],
+                headers={"Content-Type": "application/json"}
+            ) as response:
+                result = await response.json()
+                logging.info(f"Push notification sent to {user_email}: {result}")
+                
+    except Exception as e:
+        logging.error(f"Error sending push notification to user: {e}")
+
 # ============= PRODUCT ROUTES =============
 
 @api_router.get("/products", response_model=List[ProductInDB])
@@ -3935,6 +3976,19 @@ async def approve_rfq(
             "freight_details": freight_details  # Use auto-calculated freight details
         }, customer_email)
     
+    # Send push notification to customer about approval
+    await send_push_notification_to_user(
+        user_email=customer_email,
+        title="Quote Approved! ✅",
+        body=f"Your quote {new_quote_number} has been approved. Total: ₹{total_price:,.2f}",
+        data={
+            "type": "quote_approved",
+            "quote_id": str(quote["_id"]),
+            "quote_number": new_quote_number,
+            "total_price": total_price
+        }
+    )
+    
     return {
         "message": "RFQ approved successfully",
         "old_number": old_number,
@@ -4091,6 +4145,19 @@ async def reject_rfq(
             logging.info(f"Rejection email sent for RFQ: {quote_number}")
         except Exception as e:
             logging.error(f"Failed to send rejection email: {str(e)}")
+    
+    # Send push notification to customer about rejection
+    await send_push_notification_to_user(
+        user_email=customer_email,
+        title="RFQ Update ❌",
+        body=f"Your RFQ {quote_number} was not approved. Reason: {reason_text}",
+        data={
+            "type": "rfq_rejected",
+            "quote_id": quote_id,
+            "quote_number": quote_number,
+            "reason": reason_text
+        }
+    )
     
     return {
         "message": "RFQ rejected successfully",

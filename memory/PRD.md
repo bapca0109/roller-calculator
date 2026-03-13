@@ -107,6 +107,12 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - App Version display (1.0.0)
   - Clean card-based UI matching app design system
 
+- [x] **Extended Push Notifications**:
+  - Added `send_push_notification_to_user()` function for individual user notifications
+  - **Quote Approved**: Customer receives push notification with quote number and total price
+  - **RFQ Rejected**: Customer receives push notification with reason for rejection
+  - All notifications include actionable data (quote_id, type) for deep linking
+
 ### Previous Session - UI Redesign
 - [x] **Login Page**: Complete redesign with modern two-tone layout
 - [x] **Theme System**: Enhanced design tokens
