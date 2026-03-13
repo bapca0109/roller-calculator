@@ -3535,6 +3535,100 @@ async def get_quote_revision_history(
         "history": revision_history
     }
 
+@api_router.get("/quotes/{quote_id}/pdf")
+async def get_quote_pdf(
+    quote_id: str,
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """Generate and download PDF for a specific quote. Accepts token as query param or Authorization header."""
+    # Validate token from query param OR Authorization header
+    current_user = None
+    auth_token = token
+    
+    # Try to get token from Authorization header if not in query
+    if not auth_token and authorization:
+        if authorization.startswith("Bearer "):
+            auth_token = authorization[7:]
+    
+    if auth_token:
+        try:
+            payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            if email:
+                user = await db.users.find_one({"email": email})
+                if user:
+                    user["id"] = str(user["_id"])
+                    current_user = user
+        except Exception as e:
+            logging.error(f"Token validation error: {e}")
+            raise HTTPException(status_code=401, detail="Invalid token")
+    
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    try:
+        quote = await db.quotes.find_one({"_id": ObjectId(quote_id)})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid quote ID")
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    
+    # Check access: Admin/Sales can view any, Customers can only view their own approved quotes
+    is_admin_or_sales = current_user["role"] in [UserRole.ADMIN, UserRole.SALES]
+    is_quote_owner = quote.get("customer_email") == current_user.get("email")
+    is_approved = quote.get("status", "").lower() == "approved"
+    
+    if not is_admin_or_sales:
+        if not is_quote_owner:
+            raise HTTPException(status_code=403, detail="Access denied")
+        # Customers can only download approved quotes
+        if not is_approved:
+            raise HTTPException(status_code=403, detail="Quote not yet approved")
+    
+    try:
+        # Prepare quote data for PDF generation
+        quote_data = {
+            "quote_number": quote.get("quote_number", "N/A"),
+            "customer_name": quote.get("customer_name", "N/A"),
+            "customer_email": quote.get("customer_email", ""),
+            "customer_code": quote.get("customer_code", ""),
+            "customer_company": quote.get("customer_company", ""),
+            "customer_details": quote.get("customer_details", {}),
+            "customer_rfq_no": quote.get("customer_rfq_no"),
+            "products": quote.get("products", []),
+            "subtotal": quote.get("subtotal", 0),
+            "total_discount": quote.get("total_discount", 0),
+            "use_item_discounts": quote.get("use_item_discounts", False),
+            "packing_charges": quote.get("packing_charges", 0),
+            "packing_type": quote.get("packing_type"),
+            "shipping_cost": quote.get("shipping_cost", 0),
+            "delivery_location": quote.get("delivery_location"),
+            "total_price": quote.get("total_price", 0),
+            "notes": quote.get("notes"),
+            "status": quote.get("status"),
+            "created_at": quote.get("created_at"),
+            "approved_at": quote.get("approved_at"),
+            "original_rfq_number": quote.get("original_rfq_number"),
+        }
+        
+        # Generate PDF
+        pdf_bytes = generate_quote_pdf(quote_data)
+        
+        # Create filename
+        safe_quote_number = quote.get("quote_number", "Quote").replace("/", "-")
+        filename = f"{safe_quote_number}.pdf"
+        
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        logging.error(f"PDF generation error for quote {quote_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
+
 @api_router.put("/quotes/{quote_id}", response_model=QuoteInDB)
 async def update_quote(
     quote_id: str,

@@ -19,6 +19,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import extracted components and types
@@ -1183,26 +1184,62 @@ export default function QuotesScreen() {
     
     setGeneratingPdf(true);
     try {
-      const html = generatePdfHtmlForQuote(selectedQuote);
+      // For all platforms, try to use the backend PDF generation endpoint first
+      const token = await AsyncStorage.getItem('token');
+      const quoteId = selectedQuote.id || selectedQuote._id;
       
-      if (Platform.OS === 'web') {
-        // For web, open in new window and trigger print
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-          printWindow.document.write(html);
-          printWindow.document.close();
-          printWindow.focus();
-          setTimeout(() => {
-            printWindow.print();
-          }, 500);
+      if (token && quoteId) {
+        // Use backend endpoint for PDF generation
+        const pdfUrl = `${api.defaults.baseURL}/quotes/${quoteId}/pdf?token=${token}`;
+        
+        if (Platform.OS === 'web') {
+          // For web, open PDF in new tab
+          window.open(pdfUrl, '_blank');
         } else {
-          Alert.alert('Error', 'Please allow popups to export PDF');
+          // For mobile, download and share
+          const filename = `${selectedQuote.quote_number || 'Quote'}_${new Date().toISOString().slice(0, 10)}.pdf`;
+          const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+          
+          const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
+          
+          if (downloadResult.status === 200) {
+            const isAvailable = await Sharing.isAvailableAsync();
+            if (isAvailable) {
+              await Sharing.shareAsync(downloadResult.uri, {
+                mimeType: 'application/pdf',
+                dialogTitle: 'Share PDF',
+                UTI: 'com.adobe.pdf',
+              });
+            } else {
+              Alert.alert('Success', 'PDF downloaded successfully');
+            }
+          } else {
+            throw new Error('Failed to download PDF');
+          }
         }
       } else {
-        // For mobile, use Print.printAsync which opens native print dialog
-        await Print.printAsync({
-          html,
-        });
+        // Fallback to client-side generation
+        const html = generatePdfHtmlForQuote(selectedQuote);
+        
+        if (Platform.OS === 'web') {
+          // For web, open in new window and trigger print
+          const printWindow = window.open('', '_blank');
+          if (printWindow) {
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+              printWindow.print();
+            }, 500);
+          } else {
+            Alert.alert('Error', 'Please allow popups to export PDF');
+          }
+        } else {
+          // For mobile, use Print.printAsync which opens native print dialog
+          await Print.printAsync({
+            html,
+          });
+        }
       }
     } catch (error: any) {
       console.error('PDF generation error:', error);
