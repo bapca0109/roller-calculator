@@ -244,6 +244,7 @@ class User(BaseModel):
     email: EmailStr
     name: str
     company: Optional[str] = None
+    designation: Optional[str] = None
     role: str = UserRole.CUSTOMER
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -256,6 +257,7 @@ class UserRegister(BaseModel):
     password: str
     name: str
     company: Optional[str] = None
+    designation: Optional[str] = None
     role: str = UserRole.CUSTOMER
 
 class UserLogin(BaseModel):
@@ -2731,6 +2733,7 @@ async def register(user: UserRegister):
             "name": user.name,
             "role": user.role,
             "company": user.company,
+            "designation": user.designation,
             "customer_code": user_dict.get("customer_code")
         }
     }
@@ -2752,6 +2755,7 @@ async def login(credentials: UserLogin):
             "name": user["name"],
             "role": user["role"],
             "company": user.get("company"),
+            "designation": user.get("designation"),
             "customer_code": user.get("customer_code")
         }
     }

@@ -219,20 +219,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     console.log('[AuthContext] Logging out...');
     
-    // Remove push token from backend before clearing local storage
-    if (Platform.OS !== 'web') {
-      try {
-        await removePushToken();
-      } catch (error) {
-        console.error('[AuthContext] Error removing push token:', error);
-      }
-    }
-    
-    await AsyncStorage.removeItem('token');
-    await AsyncStorage.removeItem('user');
-    await AsyncStorage.removeItem(LAST_ACTIVITY_KEY);
+    // CRITICAL: Clear local state FIRST to immediately update UI
+    // This prevents any race conditions on iOS where state updates lag
     setUserState(null);
     setIsAuthenticated(false);
+    
+    // Clear all local storage immediately (don't await individually to ensure atomicity)
+    try {
+      await Promise.all([
+        AsyncStorage.removeItem('token'),
+        AsyncStorage.removeItem('user'),
+        AsyncStorage.removeItem(LAST_ACTIVITY_KEY),
+      ]);
+      console.log('[AuthContext] Local storage cleared');
+    } catch (storageError) {
+      console.error('[AuthContext] Error clearing storage:', storageError);
+      // Continue anyway - state is already cleared
+    }
+    
+    // Remove push token from backend AFTER clearing local storage
+    // This is non-critical and should not block logout
+    if (Platform.OS !== 'web') {
+      // Fire and forget - don't await, don't block logout
+      removePushToken().catch((error) => {
+        console.warn('[AuthContext] Push token removal failed (non-critical):', error);
+      });
+    }
+    
     console.log('[AuthContext] Logout complete');
   };
 

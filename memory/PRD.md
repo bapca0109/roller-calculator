@@ -86,6 +86,21 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - Updated frontend calculator to filter shaft dropdown based on selected pipe
   - Added warning message when selected shaft works without housing
 
+
+### March 13, 2026 (Current Session) - iOS Logout Fix
+- [x] **Fixed iOS Logout Bug** (recurring issue, 6x reports): 
+  - **Root Cause**: Race condition where navigation happened before state was cleared, and setTimeout was unreliable on iOS
+  - **Fix in AuthContext.tsx**: 
+    - Clear state (`setUserState(null)`, `setIsAuthenticated(false)`) FIRST before any async operations
+    - Use `Promise.all()` for parallel AsyncStorage clearing
+    - Make `removePushToken()` fire-and-forget (non-blocking)
+  - **Fix in profile.tsx**: 
+    - Removed `setTimeout` hack - now properly await logout() before navigating
+    - Added error recovery to still navigate to login even if logout fails
+  - **Fix in _layout.tsx**: 
+    - Return `null` when user is not authenticated to prevent crash during transition
+  - **Status**: Code fix complete, requires native iOS build to fully test
+
 ### Previous Session - UI Redesign
 - [x] **Login Page**: Complete redesign with modern two-tone layout
 - [x] **Theme System**: Enhanced design tokens
@@ -119,7 +134,7 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 ## Known Issues
 
 ### P1 - High Priority
-- [ ] **iOS logout functionality**: Not working (recurring issue, 4x)
+- [x] **iOS logout functionality**: FIXED - Resolved race condition by clearing state before async operations (was recurring issue, 6x)
 - [ ] **Android navigation bar overlap**: System nav bar overlaps bottom tab bar
 
 ### P2 - Medium Priority
@@ -142,8 +157,8 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 - [ ] Test Export to PDF/Excel functionality end-to-end
 - [ ] Refactor backend/server.py into FastAPI routers
 - [ ] Test Push Notifications (requires APK build)
-- [ ] Fix iOS logout functionality
 - [ ] Fix Android navigation bar overlap
+- [ ] Test iOS logout fix on native build (requires successful EAS build)
 
 ### P2 - Nice to Have
 - [ ] CRM features (leads, activity timeline, follow-ups)

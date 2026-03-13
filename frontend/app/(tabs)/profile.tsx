@@ -18,22 +18,23 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      // Navigate FIRST to prevent accessing null user in tabs layout
-      // Using dismissAll to clear the entire navigation stack
-      if (router.canDismiss()) {
-        router.dismissAll();
-      }
-      // Replace with login screen immediately
-      router.replace('/auth/login');
+      // FIXED: Call logout FIRST to clear state, then navigate
+      // The logout function now clears state synchronously before async operations
+      // This ensures isAuthenticated becomes false immediately
+      await logout();
       
-      // Then clear the auth state after navigation has started
-      // This prevents the tabs layout from accessing null user
-      setTimeout(async () => {
-        await logout();
-      }, 50);
+      // Navigation happens AFTER state is cleared
+      // The stack is replaced rather than pushed to prevent back navigation
+      router.replace('/auth/login');
     } catch (error) {
       console.error('Logout error:', error);
-      Alert.alert('Error', 'Failed to logout. Please try again.');
+      // Even on error, try to navigate to login
+      try {
+        router.replace('/auth/login');
+      } catch (navError) {
+        console.error('Navigation error:', navError);
+      }
+      Alert.alert('Error', 'Failed to logout completely. Please restart the app.');
     }
   };
 

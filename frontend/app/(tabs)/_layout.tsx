@@ -13,8 +13,13 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   
   // If user is not authenticated, don't render tabs (prevent crash during logout)
+  // Return null to prevent rendering while logout transition is happening
   // The navigation to login will be handled by the logout function
-  const isAdmin = isAuthenticated && user?.role === 'admin';
+  if (!isAuthenticated || !user) {
+    return null;
+  }
+  
+  const isAdmin = user?.role === 'admin';
 
   // Calculate bottom padding for Android navigation bar
   // On Android, we need extra padding to avoid overlap with system navigation

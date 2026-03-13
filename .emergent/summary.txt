@@ -3,91 +3,90 @@
 **PRODUCT REQUIREMENTS**:
 - **Core Function**: Calculate prices for Carrying, Impact, and Return belt conveyor rollers.
 - **Admin Panel**: Secure interface for CRUD operations, customer management, and sales analytics.
-- **Customer Management**: System to manage customers with unique, auto-incrementing customer codes.
+- **Customer Management**: System to manage customers with unique, auto-incrementing customer codes. A designation field was recently added to the signup process.
 - **Professional UI**: A corporate, minimalist, and aesthetic look and feel with a Carmine Red color scheme.
 - **Authentication**: Secure OTP-based signup and login.
 - **Role-Based Access Control (RBAC)**: Prices are hidden from customers until a quote is formally approved.
-- **RFQ & Quote Workflow**: A full lifecycle from customer RFQ submission to admin review, edit, approval, or rejection.
+- **RFQ & Quote Workflow**: A full lifecycle from customer RFQ submission to admin review, edit, approval, or rejection. Admins must now also create RFQs first.
 - **Data Export**: Ability to export quotes, customer lists, and search results to PDF and Excel.
-- **PDF Customization**: All generated PDFs must include the company logo (Convero), a generation timestamp, and detailed weight information (per-item and grand total).
-- **Quote Revision History**: Admins need to see a history of all changes made to a quote after it's approved.
+- **PDF Customization**: PDFs must include the company logo (Convero), a generation timestamp, and detailed weight information. The discount column has been removed in favor of a Value after discount column.
+- **Quote Revision History**: Admins and Customers need to see a history of all changes made to a quote after it's approved.
 - **Push Notifications**: Admins should receive a push notification on their mobile app whenever a new RFQ is submitted by a customer.
-- **Live Freight Calculation**: Freight must be calculated dynamically based on total weight and the real-world distance between Ahmedabad (382433) and the customer's pincode.
+- **Live Freight Calculation**: Freight must be calculated dynamically based on total weight and distance. Admins can override this with a custom amount.
 - **Company Branding**: All generated documents (PDFs, emails) must contain the full, standardized company address and branding.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack Expo (React Native) and FastAPI application. In this session, the agent performed a large number of fixes and feature enhancements. Key accomplishments include:
-- Fixing a critical deployment-blocking syntax error in .
-- Starting a major refactor of the monolithic  file by extracting PDF generation and utility functions into separate modules (, ).
-- Implementing several data-driven features: accurate rubber ring weight calculation, pipe-to-shaft compatibility filtering (with a new API endpoint), and updating backend housing data from a user-provided Excel file.
-- Fixing numerous data and UI consistency bugs, including syncing all frontend and backend PDF/email templates, ensuring product weight is consistently calculated and displayed, and fixing a grand total mismatch between emails and exported PDFs.
-- Addressing UI issues such as redesigning action buttons and fixing a bug where attachment options were not visible in the search modal.
-- Resolving a Metro cache issue that was serving stale UI components.
-- The session concluded while modifying the revised quote email template, which introduced a new bug.
+A full-stack Expo (React Native) and FastAPI application. This session focused heavily on bug fixing and implementing a large number of user-requested changes. Major accomplishments include:
+
+- **Core Workflow Fixes**: Resolved critical bugs in the revised quote email generation, custom freight calculation, and discount application logic. The admin workflow was changed to now also require RFQ creation before a quote can be approved.
+- **UI/UX Enhancements**: Implemented a quote history tab for customers, removed the discount column from PDFs to simplify them, added custom freight/packing inputs for admins in the cart, and made customer selection mandatory for admins when creating an RFQ. A search bar was added to the customer selection modal.
+- **Performance Optimization**: Improved backend performance by adding GZip compression and creating MongoDB indexes for faster queries on key collections.
+- **Deployment Issue Resolution**: Fixed a deployment-blocking error by correcting a double  prefix in a frontend API call.
+- **New Feature Implementation**: Started and completed the code implementation for adding a designation field to the customer signup form and database.
+
+The session ended while beginning the implementation of the designation field for new customer signups.
 
 **Last working item**:
-- Last item agent was working: The agent was modifying the  function in  to remove a Special Discount section from the email body, as requested by the user. However, this modification introduced a .
-- Status: BLOCKED
+- Last item agent was working: Adding a designation field to the customer signup process. The agent updated the backend User model and registration endpoint () and the frontend registration form () to include the new field.
+- Status: IN PROGRESS
 - Agent Testing Done: N
+- Which testing method agent to use? manual testing by curl. The agent should attempt to register a new user with a designation and verify the data is saved correctly in the database.
 - User Testing Done: N
-- Which testing method agent to use? The next agent must first fix the bug in the  function. Manual testing by generating a revised quote and checking the email content and backend logs for errors will be sufficient.
 
 **All Pending/In progress Issue list**:
-  Issue 1: Revised quote email generation is broken. (P0 - BLOCKER)
-  Issue 2: Customer login still shows incorrect freight calculation. (P0)
-  Issue 3: iOS keyboard hides input fields on Products and Cart tabs. (P1)
-  Issue 4: Logout functionality is not working on iOS. (P2)
-  Issue 5: Android system navigation bar overlaps with the app's bottom tab bar. (P2)
+  Issue 1: iOS build is stuck for over 17 hours. (P0 - BLOCKER)
+  Issue 2: Not able to select customer name in iPhone app. (P1)
+  Issue 3: Customer login still shows incorrect freight calculation. (P2)
+  Issue 4: iOS keyboard hides input fields on Products and Cart tabs. (P2)
+  Issue 5: Logout functionality is not working on iOS. (P2)
+  Issue 6: Android system navigation bar overlaps with the app's bottom tab bar. (P3)
   
   Issues Detail:
   - Issue 1: 
-     - Attempted fixes: The agent used  to remove the Special Discount section from the email template in .
-     - Next debug checklist: 
-       1. View  and locate the  function.
-       2. The code now references a  variable that is not defined within the function's scope, causing a .
-       3. Pass the  from the calling function () to  or recalculate it inside the function.
-       4. Test by triggering a revised quote email.
-     - Why fix this issue and what will be achieved with the fix? This is a critical function for the quote revision workflow. Fixing it will allow admins to send corrected quotes to customers.
-     - Status:  IN PROGRESS
+     - Attempted fixes: The agent identified that the EAS build process was stuck, which is an infrastructure issue, not a code issue.
+     - Next debug checklist: Instruct the user to cancel the stuck build and initiate a new one. If the problem persists, they will need to contact platform support.
+     - Why fix this issue and what will be achieved with the fix? This is a hard blocker for delivering any native app updates (including critical iOS fixes) to the user for testing.
+     - Status:  BLOCKED
      - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? Backend
-     - Blocked on other issue: None
+     - Should Test frontend/backend/both after fix? NA
+     - Blocked on other issue: External build infrastructure.
   - Issue 2: 
-     - Attempted fixes: Multiple frontend and backend fixes were implemented in the previous session. The issue likely persists due to stale local data on the user's device.
-     - Next debug checklist: 
-       1. Instruct the user to force close the app, clear the cart, and re-add items to test with fresh data.
-       2. If the issue persists, add logging to the frontend to trace the weight and specs being sent for freight calculation for customer accounts.
+     - Attempted fixes: The agent replaced  with  in the customer picker modal in  to improve touch handling on iOS.
+     - Next debug checklist: A new, successful EAS build is required to test this fix on a physical iOS device.
+     - Why fix this issue and what will be achieved with the fix? Fixes a critical usability issue preventing admins from selecting customers on iOS.
+     - Status:  USER VERIFICATION PENDING
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Frontend (on iOS device)
+     - Blocked on other issue: Issue 1: iOS build is stuck.
+  - Issue 3: 
+     - Attempted fixes: The agent verified via  that the backend freight calculation API works correctly. The issue is believed to be stale local data on the user's device.
+     - Next debug checklist: Instruct the user to force close the app, clear the cart, and re-add items to test with fresh data.
      - Why fix this issue and what will be achieved with the fix? Ensures customers see accurate freight costs, which is critical for RFQ generation and trust.
      - Status:  USER VERIFICATION PENDING
      - Is recurring issue? Y
      - Should Test frontend/backend/both after fix? Frontend
      - Blocked on other issue: None
-  - Issue 3: 
-     - Attempted fixes:  was added to  and .
-     - Next debug checklist: A new EAS build is required to package these changes into an APK/IPA for testing on a physical device.
-     - Why fix this issue and what will be achieved with the fix? Improves usability on iOS by preventing the keyboard from obscuring critical input fields.
+  - Issue 4: 
+     - Attempted fixes:  was previously added, but a new build is needed for testing. No new work was done in this session.
+     - Next debug checklist: A new EAS build is required to package these changes for testing on a physical iOS device.
+     - Why fix this issue and what will be achieved with the fix? Improves usability on iOS.
      - Status:  IN PROGRESS
      - Is recurring issue? N
      - Should Test frontend/backend/both after fix? Frontend (on iOS device)
-     - Blocked on other issue: None
-  - Issue 4: 
+     - Blocked on other issue: Issue 1: iOS build is stuck.
+  - Issue 5: 
      - Attempted fixes: None. This is a long-standing issue.
-     - Next debug checklist: 
-       1. Attempt to reproduce on an iOS device or simulator.
-       2. Review the  function in .
-       3. Investigate platform-specific navigation issues in Expo for iOS.
+     - Next debug checklist: Reproduce on an iOS device/simulator and review the  function in .
      - Why fix this issue and what will be achieved with the fix? A critical security and usability feature.
      - Status:  NOT STARTED
      - Is recurring issue? Y
      - Should Test frontend/backend/both after fix? Frontend
      - Blocked on other issue: None
-  - Issue 5: 
+  - Issue 6: 
      - Attempted fixes: None. This is a long-standing issue.
-     - Next debug checklist: 
-       1. Reproduce on an Android device/simulator.
-       2. Investigate using  or platform-specific padding in the root layout file .
+     - Next debug checklist: Reproduce on an Android device/simulator and investigate using  in .
      - Why fix this issue and what will be achieved with the fix? Fixes a UI layout bug on Android.
      - Status:  NOT STARTED
      - Is recurring issue? Y
@@ -95,58 +94,64 @@ A full-stack Expo (React Native) and FastAPI application. In this session, the a
      - Blocked on other issue: None
 
 **In progress Task List**:
-  Task 1: Complete refactoring of . (P0)
-  Task 2: Implement user-provided rubber ring weights. (P1)
-  Task 3: Complete APK Build and Distribute. (P1)
+  Task 1: Complete the implementation of the designation field for customer signup. (P0)
+  Task 2: Complete refactoring of . (P1)
+  Task 3: Implement user-provided rubber ring weights. (P2)
 
  Task Detail:
   - Task 1: 
-     - Where to resume: The agent successfully extracted  and . The next step is to extract the large modal components (, , ) into their own files within .
-     - What will be achieved with this? Drastically improve the maintainability and readability of , reducing the risk of introducing new bugs.
+     - Where to resume: The code is implemented. The next step is to test the full signup flow to ensure the new field is saved and retrieved correctly.
+     - What will be achieved with this? Fulfills a user requirement for capturing more detailed customer information.
+     - Status:  IN PROGRESS
+     - Should Test frontend/backend/both after fix? Both
+     - Blocked on something: None
+  - Task 2: 
+     - Where to resume: Extract the large modal components (, , ) into their own files within . No progress was made in this session.
+     - What will be achieved with this? Improve the maintainability of .
      - Status:  IN PROGRESS
      - Should Test frontend/backend/both after fix? Frontend
      - Blocked on something: None
-  - Task 2: 
-     - Where to resume: The backend logic is in place, and a placeholder calculation is used. The agent has provided the user with an Excel template () to fill in the actual weights. The task is blocked until the user uploads the completed file.
-     - What will be achieved with this? Ensure 100% accurate weight calculation for impact rollers based on the user's manufacturing data.
+  - Task 3: 
+     - Where to resume: Blocked until the user uploads the completed  file. No change in status.
+     - What will be achieved with this? Ensure 100% accurate weight calculation for impact rollers.
      - Status:  BLOCKED
      - Should Test frontend/backend/both after fix? Backend
-     - Blocked on something: User to provide the completed Excel file with ring weights.
-  - Task 3: 
-     - Where to resume: The previous deployment blocker has been fixed. A new build can now be initiated using Input is required, but stdin is not readable. Failed to display prompt: Select platform.
-     - What will be achieved with this? Deliver a new APK/IPA containing all recent fixes, including the critical iOS keyboard fix and numerous UI/PDF improvements.
-     - Status:  NOT STARTED
-     - Should Test frontend/backend/both after fix? Frontend
-     - Blocked on something: None
+     - Blocked on something: User to provide the completed Excel file.
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
-    - **Task 1: User Acceptance Testing (P1)**: After a new build is distributed, the user needs to verify the freight calculation fix, the iOS keyboard fix, and all the PDF/UI enhancements.
+    - **Task 1: User Acceptance Testing (P1)**: After a new build is distributed, the user needs to verify all recent fixes, especially the iOS-specific ones.
     
     Future Tasks:
-    - **Task 1: Refactor  (P1 - CRITICAL)**: This file is over 3600 lines and needs to be broken down into smaller components.
-    - **Task 2: Refactor  (P1)**: Restructure the monolithic server file into a standard FastAPI project with routers for better organization.
-    - **Task 3: Implement CRM Features (P2)**: Add lead/opportunity management, customer activity timelines, and follow-up reminders.
-    - **Task 4: Update Raw Material Costs from Excel (P2)**: Implement a feature for admins to upload an Excel sheet to update material costs.
+    - **Task 1: Refactor  (P1 - CRITICAL)**: This file is over 3600 lines.
+    - **Task 2: Refactor  (P1)**: Restructure the monolithic server file into routers.
+    - **Task 3: Implement CRM Features (P2)**: Lead/opportunity management, customer activity timelines, etc.
+    - **Task 4: Update Raw Material Costs from Excel (P2)**: Feature for admins to upload an Excel sheet to update costs.
     - **Task 5: Show Original RFQ Number on Quote Cards (P3)**.
     - **Task 6: Code Cleanup (P3)**: Delete any identified unused files.
 
 **Completed work in this session**
-- **Deployment Blocker Fixed**: Resolved a critical  in  that was preventing deployment.
-- ** Refactoring Started**: Extracted PDF generation logic into  and helper functions into , reducing the main file size by ~700 lines.
-- **Accurate Ring Weight Calculation**: Implemented logic to calculate impact roller weight based on rubber ring dimensions. Provided an Excel template for the user to input precise weights.
-- **Pipe/Shaft Compatibility Filter**: Created a backend endpoint and updated the frontend calculator to show only compatible shaft diameters for a selected pipe, including warnings for combinations that fit without housing.
-- **Housing Data Update**: Ingested a user-provided Excel file to update the backend housing availability and cost data.
-- **PDF/Email Template Sync**: Unified the design and data columns (adding weight, timestamps, etc.) for all generated documents:
-    - Synced frontend Quote export PDF with backend Quote email PDF.
-    - Synced frontend RFQ export PDF with backend RFQ email PDF.
-- **Action Button Redesign**: Redesigned the action buttons (Approve, Reject, etc.) on the RFQ detail modal with a more modern, aesthetic card style.
-- **Weight Calculation Bug Fixes**:
-    - Fixed a bug where products added from the search tab (especially via full product code search) were missing weight data in the cart and subsequent PDFs.
-    - Fixed a bug causing a mismatch in the grand total between exported PDFs and emailed PDFs by ensuring both use the same real-time calculation logic.
-- **UI/Cache Fixes**:
-    - Fixed a UI bug where attachment options were not visible in the search modal by correcting the  properties.
-    - Resolved a stubborn PDF formatting issue by identifying and clearing a stale Metro bundler cache ().
+- **Critical Bug Fixes**:
+  - Fixed  in  function in .
+  - Fixed backend logic to respect admin-entered custom freight, preventing it from being auto-recalculated.
+  - Fixed quote creation for admins, which was failing due to a missing  validation.
+- **Workflow & Business Logic Changes**:
+  - Changed admin workflow to create RFQs first, instead of creating Quotes directly.
+  - Made customer selection mandatory for admins when submitting an RFQ from the cart, with both frontend and backend validation.
+  - Removed system-wide automatic discount calculation entirely from the backend and frontend.
+- **UI/UX & PDF Improvements**:
+  - Implemented history tabs ('Active RFQs', 'History') on the quotes screen for customer users.
+  - Gave customers access to the quote revision history endpoint.
+  - Removed the Unit Price column from email bodies and the Disc % column from all generated PDFs, replacing them with a Value after discount per pc column for clarity.
+  - Added custom freight and packing percentage inputs for admins in the cart submission modal.
+  - Added a search bar to the customer selection modal in the cart.
+  - Removed the redundant customer selection UI from the calculator and search pages.
+- **Performance & Stability**:
+  - Implemented backend performance optimizations by adding GZip compression and MongoDB indexes.
+  - Fixed a deployment-blocking 404 error caused by a double  prefix in an API call.
+  - Addressed an iOS-specific touch issue in the customer selection modal by using .
+- **New Feature Implementation (In Progress)**:
+  - Added a designation field to the customer user model, registration endpoint, and frontend signup form.
 
 **Earlier issues found/mentioned but not fixed**
    - Issue 1: Logout functionality on iOS remains unresolved.
@@ -161,65 +166,67 @@ A full-stack Expo (React Native) and FastAPI application. In this session, the a
 
 
 **Key Technical Concepts**
-- **Monolith Refactoring**: Extracting utility functions () and complex logic () from a large React Native component () to improve maintainability.
-- **Data-Driven Configuration**: Using Python dictionaries in  to manage complex business rules like pipe-shaft compatibility and housing data, allowing for easy updates from external sources (like Excel files).
-- **Dynamic PDF Generation**: Debugging and synchronizing HTML-to-PDF generation logic across different contexts (frontend vs. backend, RFQ vs. Quote) to ensure data and visual consistency.
-- **Cache Busting**: Identifying and resolving client-side rendering issues caused by a stale bundler cache (Metro) by programmatically clearing the cache directory.
-- **API-Driven UI Filtering**: Creating a new backend endpoint () to provide data for dynamically filtering UI elements (shaft dropdown based on pipe selection) in the frontend.
-- **Spreadsheet Data Ingestion**: Reading and parsing an  file uploaded by the user to update backend data structures.
+- **Monolithic Refactoring**: The need for refactoring , , and  remains critical. No progress was made on this front.
+- **State Management & Caching**: Debugged and addressed multiple issues where the user was seeing stale UI due to client-side caching in the Expo app. This is a recurring theme.
+- **Backend Validation & Models**: Extensive work on Pydantic models (, , ) and FastAPI dependencies to enforce business rules like mandatory customer selection and to fix data submission bugs (e.g., saving ).
+- **Role-Based Logic**: Implemented several features that behave differently for 'admin' vs 'customer' roles (e.g., RFQ creation flow, visibility of custom inputs, API permissions).
+- **Performance Optimization**: Added server-side GZip compression and database indexes to improve API response times.
+- **Cross-Platform UI Fixes**: Addressed an iOS-specific touch issue by replacing  with .
 
 **key DB schema**
-  - No schema changes were made.
+  - **users**: The  model now includes an optional  field.
+  - **quotes**:
+    - The  and  Pydantic models were updated to include  and .
+    - The backend logic was changed to ensure  is correctly populated in the  array when a quote is revised.
 
 **All files of reference**
-- : Major changes for bug fixes (weight, email total), new API endpoint, and email template updates.
-- : Updated with pipe-shaft compatibility map and new housing data from user's Excel file.
-- : Major changes including fixing deployment error, starting refactor, redesigning buttons.
-- : Modified to consume the new compatibility API and filter shaft options.
-- : Fixed bugs related to adding items to cart and modal UI.
-- : New file extracted from  to handle all frontend PDF generation.
-- : New file for shared helper functions.
+- : Heavily modified for bug fixes, new features, and performance enhancements.
+- : Major changes to the cart submission modal for admin users.
+- : Modified to enable customer history and fix display bugs.
+- : Modified to add the new  field.
+- : Minor fix to an API path.
+- : Modified to update PDF table columns.
 
 **Areas that need refactoring**:
-- **CRITICAL**:  (4100+ lines). The refactoring has started but the large modal components still need to be extracted.
+- **CRITICAL**:  (still 4000+ lines). The planned refactoring of modals has not been done.
 - **CRITICAL**:  (3600+ lines).
-- ****: This monolithic file handles all API logic and is becoming difficult to manage.
+- ****: This single file still handles all API logic and is becoming unmanageable. It needs to be split into a standard FastAPI project structure with routers.
 
 **key api endpoints**
-- : **(NEW)** Returns a list of compatible shaft diameters for a given pipe OD.
-- : Modified to correctly calculate and include weight for all search types, including exact product code matches.
-- : Modified to change email content, but is **currently broken** due to a .
+- : Updated to accept and save a .
+- : Logic changed so admins create RFQs. Backend validation added to require  for admin requests.
+- : Now correctly accepts and saves  from admin users.
+- : Permissions changed to allow customers to view their own quote history.
+- : Frontend API call path fixed to remove duplicate .
 
 **Critical Info for New Agent**
-- **IMMEDIATE BLOCKER**: The  function in  is broken with a . You must fix this first by ensuring the  variable is correctly defined or passed into the function's scope.
-- **REFACTORING IN PROGRESS**: The refactoring of  has started. Your next step should be to continue this work by extracting the large modal components (, , ) into their own files.
-- **USER-PROVIDED DATA PENDING**: The system is waiting for the user to upload the  file. Until then, a formula-based approximation is used for impact roller weights.
-- **NEW BUILD REQUIRED**: The critical iOS keyboard fix and many other frontend improvements are implemented but not yet shipped. A new EAS build must be triggered to deliver these to the user for testing.
+- **EAS BUILD IS BLOCKED**: The most critical issue is that the iOS build process is stuck. This prevents any native app changes (like the iOS keyboard and touch fixes) from being tested by the user. The next agent must confirm if the user has canceled and retried the build.
+- **USER IS SEEING CACHED CODE**: The user frequently reports that fixes are not working, but it's often due to client-side caching. Be prepared to repeatedly instruct the user to force-close the app, clear cache, or hard-refresh the web preview.
+- **MANDATORY CUSTOMER SELECTION**: A significant change was making customer selection mandatory for admins. This logic is now centralized in the  submission modal, and the UI for it was removed from other screens.
+- **PERFORMANCE OPTIMIZATIONS**: Backend indexes and Gzip have been added. The agent noted a duplicate key error when creating a unique index on  and resolved it by making the index non-unique. This may need to be revisited to ensure data integrity while still allowing the index.
 
 **documents and test reports created in this job**
-- : Template for user to provide custom rubber ring weights.
-- : Template for user to provide custom housing data.
-- : Updated to reflect completed tasks.
+- None.
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - 10. when generating revised offer r1 , r2 shows special discount in mail. we need to remove that. only revised grant total should be displayed. -> **IN PROGRESS (Introduced a bug)**
- - 9. exported pdf from admin login of rfq is not showing weight -> **COMPLETED** (Fixed via Metro cache clearing)
- - 8. while adding products from search tab. I m not able to see attachment option like I can see in calculator tab -> **COMPLETED** (Fixed modal scroll styles)
- - 7. I want mail grand total should be same as pdf grand total. both screen shots attached. -> **COMPLETED** (Fixed backend email to recalculate total)
- - 6. specifically when we add item with full product cone then only weight is not coming. -> **COMPLETED** (Fixed backend to calculate weight for exact match search)
- - 5. I can see product added from search option are not showing weight. -> **COMPLETED** (Fixed logic in PDF generator and search component)
- - 4. can u compare quote pdf grand total and mail grand total -> **COMPLETED** (Agent found a discrepancy, which led to the fix in message 7)
- - 3. can u compare mail pdf of quote and exported pdf of quote? -> **COMPLETED** (Agent confirmed they were synced, except for the logo)
- - 2. can u compare mail pdf of rfq and exported pdf of rfq? -> **COMPLETED** (Agent found discrepancies and synced them)
- - 1. yes (confirming to sync RFQ PDFs) -> **COMPLETED**
+ - 10. Make app faster -> **COMPLETED** (Agent added backend indexes and Gzip).
+ - 9. Send me safari link -> **COMPLETED** (Agent provided the link).
+ - 8. Not able to select customer name in iphone app. -> **IN PROGRESS** (Fix implemented, but pending user verification via a new build).
+ - 7. add search option here so we can search customer -> **COMPLETED**.
+ - 6. I m still able to see customer selection -> **COMPLETED** (Resolved as a cache issue after removing the UI).
+ - 5. remove customer selection tab from here as there is already mandatory tab in cart submission -> **COMPLETED**.
+ - 4. clicking on car shows this error -> **COMPLETED** (Fixed  import bug in ).
+ - 3. Call Deployer Agent... -> **COMPLETED** (Health check run).
+ - 2. now submit button is not working -> **COMPLETED** (Fixed via frontend validation and clearing cache).
+ - 1. still I m able to generate rfq in admin login without selecting customer -> **COMPLETED** (Backend validation was added).
 
 **Project Health Check:**
 - **Broken**:
-    -  function in  is non-functional.
-    - iOS Logout (Recurring).
-    - Android UI Overlap (Recurring).
+    - The EAS (iOS/Android) build process is critically blocked/stuck.
+    - Logout functionality on iOS is a long-standing, unresolved bug.
+    - Android system navigation bar overlap is unresolved.
 - **Refactoring Needed**:
-    - **CRITICAL**:  (In Progress)
+    - **CRITICAL**: 
     - **CRITICAL**: 
     - 
 
@@ -227,22 +234,21 @@ A full-stack Expo (React Native) and FastAPI application. In this session, the a
 - **api.postalpincode.in**: For address and pincode validation.
 - **weasyprint**: For server-side HTML-to-PDF generation.
 - **Gmail SMTP**: For sending email notifications.
-- **Expo / EAS**: For building and deploying the mobile application.
+- **Expo / EAS**: For building and deploying the mobile application. (Currently experiencing a major issue with a stuck build).
 - **Expo Push Notifications**: For sending push alerts to native devices.
-- **Geopy (Nominatim/OpenStreetMap)**: For converting pincodes to coordinates and calculating real-world distance.
-- **openpyxl**: For reading user-uploaded  files.
+- **Geopy (Nominatim/OpenStreetMap)**: For distance calculation.
+- **openpyxl**: For reading  files.
 
 **Testing status**
   - Testing agent used after significant changes: NO
   - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: None
-  - Known regressions: iOS logout and Android UI overlap issues are still pending.
+  - Known regressions: iOS logout and Android UI overlap issues are still pending. A new critical issue with the EAS build process has emerged.
 
 **Credentials to test flow:**
 - **Admin User**:  / 
 - **Customer User**:  / 
 
 **What agent forgot to execute**
-- The agent did not fully test the change to the  function, leaving it in a broken state with a .
-- A new EAS build was not initiated after the deployment blocker was resolved. This is a missed opportunity to ship the iOS keyboard fix and other completed frontend tasks for user testing.
-- The agent did not follow up on the long-standing iOS/Android UI bugs.</analysis>
+- The agent did not continue the planned refactoring of .
+- After identifying the iOS build was stuck, the agent did not propose a plan to work on non-native-dependent tasks while the user resolved the build issue.</analysis>

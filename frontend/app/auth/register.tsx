@@ -23,6 +23,7 @@ export default function Register() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [company, setCompany] = useState('');
+  const [designation, setDesignation] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
