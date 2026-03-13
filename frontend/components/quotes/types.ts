@@ -62,7 +62,16 @@ export interface Quote {
   rejection_reason_text?: string;
   rejection_message?: string;
   revision_history?: RevisionHistoryEntry[];
+  revision_number?: number; // Current revision number (0, 1, 2, etc.)
   revision?: string; // Current revision label (R0, R1, R2, etc.)
+  commercial_terms?: {
+    payment_terms?: string;
+    freight_terms?: string;
+    color_finish?: string;
+    delivery_timeline?: string;
+    warranty?: string;
+    validity?: string;
+  };
   created_at: string;
   created_at_ist?: string;
   updated_at: string;

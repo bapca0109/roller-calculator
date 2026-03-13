@@ -233,6 +233,11 @@ async def api_health_check():
     except Exception as e:
         return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
 
+@api_router.get("/commercial-terms-options")
+async def get_commercial_terms_options():
+    """Get all available commercial terms options for dropdown selections"""
+    return COMMERCIAL_TERMS_OPTIONS
+
 # ============= MODELS =============
 
 class UserRole:
@@ -376,6 +381,55 @@ class QuoteStatus:
     APPROVED = "approved"
     REJECTED = "rejected"
 
+# Commercial Terms Options for Quote
+COMMERCIAL_TERMS_OPTIONS = {
+    "payment_terms": [
+        "100% Advance against pro-forma",
+        "100% Against pro-forma invoice before delivery",
+        "50% Advance + 50% against pro-forma invoice before delivery",
+        "25% Advance + 75% against pro-forma invoice before delivery",
+        "10% Advance + 90% against pro-forma invoice before delivery",
+        "7 days credit from date of invoice",
+        "15 days credit from date of invoice",
+        "30 days credit from date of invoice",
+        "45 days credit from date of invoice",
+    ],
+    "freight_terms": [
+        "Ex-Works",
+        "FOR your site",
+    ],
+    "color_finish": [
+        "0+1 : Standard finish paint black color approx 25-35 micron",
+        "1+1 : Red oxide + finish paint black color approx 50-60 micron",
+        "1+1 : Zinc rich primer + finish paint black color approx 60-70 micron",
+        "1+1+1 : Zinc rich primer + intermediate + finish paint black color approx 110-130 micron",
+        "1+2+1 : Zinc rich primer + 2 coat intermediate + finish paint black color approx 160-200 micron",
+    ],
+    "delivery_timeline": [
+        "7-10 working days",
+        "15-20 working days",
+        "25-30 working days",
+        "35-40 working days",
+        "45-50 working days",
+        "55-60 working days",
+        "75-80 working days",
+        "90-95 working days",
+        "110-120 working days",
+        "As per schedule",
+        "Immediate",
+    ],
+    "warranty": "Warranty stands for 12 months from date of invoice considering L10 life.",
+    "validity": "This offer stands valid for 30 days.",
+}
+
+class CommercialTerms(BaseModel):
+    payment_terms: Optional[str] = "100% Advance against pro-forma"
+    freight_terms: Optional[str] = "Ex-Works"
+    color_finish: Optional[str] = "1+1 : Red oxide + finish paint black color approx 50-60 micron"
+    delivery_timeline: Optional[str] = "25-30 working days"
+    warranty: Optional[str] = "Warranty stands for 12 months from date of invoice considering L10 life."
+    validity: Optional[str] = "This offer stands valid for 30 days."
+
 class Quote(BaseModel):
     quote_number: Optional[str] = None
     quote_type: Optional[str] = None
@@ -401,6 +455,7 @@ class Quote(BaseModel):
     pricing_details: Optional[Dict[str, Any]] = None
     freight_details: Optional[Dict[str, Any]] = None
     packing_charges: Optional[float] = 0.0
+    commercial_terms: Optional[Dict[str, str]] = None  # Commercial terms selections
     read_by_admin: bool = False  # Track if admin has read the RFQ
     original_rfq_number: Optional[str] = None  # Original RFQ number if approved
     approved_at: Optional[datetime] = None  # When the RFQ was approved
@@ -439,6 +494,7 @@ class QuoteUpdate(BaseModel):
     delivery_location: Optional[str] = None  # Freight pincode
     total_price: Optional[float] = None
     freight_details: Optional[Dict[str, Any]] = None  # Custom freight details from admin
+    commercial_terms: Optional[Dict[str, str]] = None  # Commercial terms selections
 
 class QuoteReject(BaseModel):
     """Reject an RFQ with a reason"""
@@ -1839,19 +1895,27 @@ def generate_quote_html(quote_data: dict, hide_prices: bool = False) -> str:
             <div class="terms-grid">
               <div class="term-item">
                 <div class="term-item-title">Payment Terms</div>
-                <div class="term-item-text">25% advance payment required at order confirmation. Remaining 75% payable against Proforma Invoice prior to dispatch.</div>
+                <div class="term-item-text">{quote_data.get('commercial_terms', {}).get('payment_terms', '100% Advance against pro-forma')}</div>
               </div>
               <div class="term-item">
                 <div class="term-item-title">Freight</div>
-                <div class="term-item-text">Freight charges applicable as per selection. If no PIN code selected, delivery terms: Ex-Works – Convero Solutions, Ahmedabad.</div>
+                <div class="term-item-text">{quote_data.get('commercial_terms', {}).get('freight_terms', 'Ex-Works')}</div>
               </div>
               <div class="term-item">
-                <div class="term-item-title">Color Charges</div>
-                <div class="term-item-text">Any color other than black shall be charged extra at 2%.</div>
+                <div class="term-item-title">Color/Finish</div>
+                <div class="term-item-text">{quote_data.get('commercial_terms', {}).get('color_finish', '1+1 : Red oxide + finish paint black color approx 50-60 micron')}</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Delivery</div>
+                <div class="term-item-text">{quote_data.get('commercial_terms', {}).get('delivery_timeline', '25-30 working days')}</div>
+              </div>
+              <div class="term-item">
+                <div class="term-item-title">Warranty</div>
+                <div class="term-item-text">{quote_data.get('commercial_terms', {}).get('warranty', 'Warranty stands for 12 months from date of invoice considering L10 life.')}</div>
               </div>
               <div class="term-item">
                 <div class="term-item-title">Quotation Validity</div>
-                <div class="term-item-text">This quotation is valid for 30 days from date of issue.</div>
+                <div class="term-item-text">{quote_data.get('commercial_terms', {}).get('validity', 'This offer stands valid for 30 days.')}</div>
               </div>
             </div>
           </div>
@@ -3665,6 +3729,7 @@ async def get_quote_pdf(
             "created_at": quote.get("created_at"),
             "approved_at": quote.get("approved_at"),
             "original_rfq_number": quote.get("original_rfq_number"),
+            "commercial_terms": quote.get("commercial_terms", {}),
         }
         
         # Use the correct PDF generator based on document type
@@ -4134,6 +4199,7 @@ async def approve_rfq(
             "use_item_discounts": quote.get("use_item_discounts", False),
             "discount_percent": quote.get("discount_percent", 0),
             "packing_charges": quote.get("packing_charges", 0),
+            "packing_type": quote.get("packing_type"),
             "shipping_cost": shipping_cost,  # Use auto-calculated value
             "delivery_location": delivery_location,
             "total_price": total_price,  # Use updated total
@@ -4141,7 +4207,8 @@ async def approve_rfq(
             "approved_at": updated_quote.get("approved_at"),
             "cost_breakdown": quote.get("cost_breakdown"),
             "pricing_details": quote.get("pricing_details"),
-            "freight_details": freight_details  # Use auto-calculated freight details
+            "freight_details": freight_details,  # Use auto-calculated freight details
+            "commercial_terms": quote.get("commercial_terms", {})
         }, customer_email)
     
     # Send push notification to customer about approval

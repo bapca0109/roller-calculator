@@ -78,6 +78,13 @@ export default function QuotesScreen() {
   // Revision history state
   const [showRevisionHistory, setShowRevisionHistory] = useState(false);
   const [revisionHistory, setRevisionHistory] = useState<RevisionHistoryEntry[]>([]);
+  
+  // Commercial terms state
+  const [commercialTermsOptions, setCommercialTermsOptions] = useState<any>(null);
+  const [selectedPaymentTerms, setSelectedPaymentTerms] = useState<string>('100% Advance against pro-forma');
+  const [selectedFreightTerms, setSelectedFreightTerms] = useState<string>('Ex-Works');
+  const [selectedColorFinish, setSelectedColorFinish] = useState<string>('1+1 : Red oxide + finish paint black color approx 50-60 micron');
+  const [selectedDeliveryTimeline, setSelectedDeliveryTimeline] = useState<string>('25-30 working days');
   const [loadingHistory, setLoadingHistory] = useState(false);
   
   // Edit RFQ modal state for viewing items
@@ -240,8 +247,19 @@ export default function QuotesScreen() {
     // Only fetch quotes when auth is loaded and user exists
     if (!authLoading && user) {
       fetchQuotes();
+      fetchCommercialTermsOptions();
     }
   }, [authLoading, user]);
+
+  // Fetch commercial terms options
+  const fetchCommercialTermsOptions = async () => {
+    try {
+      const response = await api.get('/commercial-terms-options');
+      setCommercialTermsOptions(response.data);
+    } catch (error: any) {
+      console.error('Error fetching commercial terms options:', error);
+    }
+  };
 
   // Recalculate freight when discount changes (if freight is percentage-based)
   useEffect(() => {
@@ -971,6 +989,14 @@ export default function QuotesScreen() {
         total_price: totalPrice,
         freight_details: {
           freight_amount: freightAmount
+        },
+        commercial_terms: {
+          payment_terms: selectedPaymentTerms,
+          freight_terms: selectedFreightTerms,
+          color_finish: selectedColorFinish,
+          delivery_timeline: selectedDeliveryTimeline,
+          warranty: commercialTermsOptions?.warranty || "Warranty stands for 12 months from date of invoice considering L10 life.",
+          validity: commercialTermsOptions?.validity || "This offer stands valid for 30 days."
         }
       });
       
@@ -1017,6 +1043,12 @@ export default function QuotesScreen() {
       discounts[idx] = p.item_discount_percent?.toString() || '0';
     });
     setItemDiscounts(discounts);
+    // Initialize commercial terms from quote or use defaults
+    const ct = quote.commercial_terms || {};
+    setSelectedPaymentTerms(ct.payment_terms || '100% Advance against pro-forma');
+    setSelectedFreightTerms(ct.freight_terms || 'Ex-Works');
+    setSelectedColorFinish(ct.color_finish || '1+1 : Red oxide + finish paint black color approx 50-60 micron');
+    setSelectedDeliveryTimeline(ct.delivery_timeline || '25-30 working days');
     // If there's an existing delivery pincode, auto-calculate freight
     if (quote.delivery_location && quote.delivery_location.length === 6) {
       // Validate and calculate freight after a short delay to let state settle
@@ -1468,6 +1500,120 @@ export default function QuotesScreen() {
               </View>
             )}
           </View>
+
+          {/* Commercial Terms Section */}
+          {commercialTermsOptions && (
+            <View style={[styles.detailSection, { backgroundColor: '#fff' }]}>
+              <Text style={styles.sectionTitle}>Commercial Terms</Text>
+              
+              {/* Payment Terms */}
+              <View style={styles.commercialTermRow}>
+                <Text style={styles.commercialTermLabel}>Payment Terms:</Text>
+                <View style={styles.commercialTermDropdown}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                    {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[
+                          styles.commercialTermOption,
+                          selectedPaymentTerms === term && styles.commercialTermOptionActive
+                        ]}
+                        onPress={() => setSelectedPaymentTerms(term)}
+                      >
+                        <Text style={[
+                          styles.commercialTermOptionText,
+                          selectedPaymentTerms === term && styles.commercialTermOptionTextActive
+                        ]} numberOfLines={2}>{term}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+              
+              {/* Freight Terms */}
+              <View style={styles.commercialTermRow}>
+                <Text style={styles.commercialTermLabel}>Freight Terms:</Text>
+                <View style={styles.commercialTermDropdown}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                    {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[
+                          styles.commercialTermOption,
+                          selectedFreightTerms === term && styles.commercialTermOptionActive
+                        ]}
+                        onPress={() => setSelectedFreightTerms(term)}
+                      >
+                        <Text style={[
+                          styles.commercialTermOptionText,
+                          selectedFreightTerms === term && styles.commercialTermOptionTextActive
+                        ]}>{term}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+              
+              {/* Color/Finish */}
+              <View style={styles.commercialTermRow}>
+                <Text style={styles.commercialTermLabel}>Color/Finish:</Text>
+                <View style={styles.commercialTermDropdown}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                    {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[
+                          styles.commercialTermOption,
+                          selectedColorFinish === term && styles.commercialTermOptionActive,
+                          { minWidth: 200 }
+                        ]}
+                        onPress={() => setSelectedColorFinish(term)}
+                      >
+                        <Text style={[
+                          styles.commercialTermOptionText,
+                          selectedColorFinish === term && styles.commercialTermOptionTextActive
+                        ]} numberOfLines={2}>{term}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+              
+              {/* Delivery Timeline */}
+              <View style={styles.commercialTermRow}>
+                <Text style={styles.commercialTermLabel}>Delivery:</Text>
+                <View style={styles.commercialTermDropdown}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                    {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[
+                          styles.commercialTermOption,
+                          selectedDeliveryTimeline === term && styles.commercialTermOptionActive
+                        ]}
+                        onPress={() => setSelectedDeliveryTimeline(term)}
+                      >
+                        <Text style={[
+                          styles.commercialTermOptionText,
+                          selectedDeliveryTimeline === term && styles.commercialTermOptionTextActive
+                        ]}>{term}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+              
+              {/* Fixed Terms Display */}
+              <View style={[styles.commercialTermRow, { marginTop: 12 }]}>
+                <Text style={[styles.commercialTermLabel, { fontWeight: '500' }]}>Warranty:</Text>
+                <Text style={styles.commercialTermFixed}>{commercialTermsOptions.warranty}</Text>
+              </View>
+              <View style={styles.commercialTermRow}>
+                <Text style={[styles.commercialTermLabel, { fontWeight: '500' }]}>Validity:</Text>
+                <Text style={styles.commercialTermFixed}>{commercialTermsOptions.validity}</Text>
+              </View>
+            </View>
+          )}
 
           {/* Summary Section - Real-time Calculation */}
           <View style={[styles.detailSection, { backgroundColor: '#fff' }]}>
@@ -4270,5 +4416,48 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Commercial Terms Styles
+  commercialTermRow: {
+    marginBottom: 12,
+  },
+  commercialTermLabel: {
+    fontSize: 13,
+    color: '#333',
+    marginBottom: 6,
+    fontWeight: '500',
+  },
+  commercialTermDropdown: {
+    flexDirection: 'row',
+  },
+  commercialTermOption: {
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 8,
+    minWidth: 100,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  commercialTermOptionActive: {
+    backgroundColor: '#960018',
+    borderColor: '#960018',
+  },
+  commercialTermOptionText: {
+    fontSize: 12,
+    color: '#333',
+    textAlign: 'center',
+  },
+  commercialTermOptionTextActive: {
+    color: '#fff',
+    fontWeight: '500',
+  },
+  commercialTermFixed: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+    fontStyle: 'italic',
+    flex: 1,
   },
 });
