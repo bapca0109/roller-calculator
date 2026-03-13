@@ -1854,21 +1854,19 @@ export default function QuotesScreen() {
                       <Text style={styles.pricingValue}>Rs. {((selectedQuote.subtotal || 0) - (selectedQuote.total_discount || 0)).toFixed(2)}</Text>
                     </View>
                     
-                    {/* Packing Charges with % - use actual packing type percentage */}
-                    {(selectedQuote.packing_charges || 0) > 0 && (
-                      <View style={styles.pricingRow}>
-                        <Text style={styles.pricingLabel}>
-                          Packing Charges ({
-                            selectedQuote.packing_type === 'standard' ? '1' :
-                            selectedQuote.packing_type === 'pallet' ? '4' :
-                            selectedQuote.packing_type === 'wooden_box' ? '8' :
-                            selectedQuote.packing_type?.startsWith('custom_') ? selectedQuote.packing_type.split('_')[1] :
-                            '0'
-                          }%)
-                        </Text>
-                        <Text style={styles.pricingValue}>Rs. {(selectedQuote.packing_charges || 0).toFixed(2)}</Text>
-                      </View>
-                    )}
+                    {/* Packing Charges with % - always show packing type */}
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>
+                        Packing ({
+                          selectedQuote.packing_type === 'standard' ? 'Standard 1' :
+                          selectedQuote.packing_type === 'pallet' ? 'Pallet 4' :
+                          selectedQuote.packing_type === 'wooden_box' ? 'Wooden Box 8' :
+                          selectedQuote.packing_type?.startsWith('custom_') ? `Custom ${selectedQuote.packing_type.split('_')[1]}` :
+                          'Standard 1'
+                        }%)
+                      </Text>
+                      <Text style={styles.pricingValue}>Rs. {(selectedQuote.packing_charges || 0).toFixed(2)}</Text>
+                    </View>
                     
                     {/* Freight Charges */}
                     {(selectedQuote.shipping_cost || 0) > 0 && (

@@ -8,6 +8,19 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Quote } from './types';
 
+// Helper function to get packing percentage from packing_type
+const getPackingPercentLabel = (packingType: string | undefined): string => {
+  if (!packingType) return 'Standard (1%)';
+  if (packingType === 'standard') return 'Standard (1%)';
+  if (packingType === 'pallet') return 'Pallet (4%)';
+  if (packingType === 'wooden_box') return 'Wooden Box (8%)';
+  if (packingType.startsWith('custom_')) {
+    const percent = packingType.split('_')[1] || '0';
+    return `Custom (${percent}%)`;
+  }
+  return packingType;
+};
+
 interface QuoteCardProps {
   quote: Quote;
   isAdmin: boolean;
@@ -98,9 +111,14 @@ export const QuoteCard: React.FC<QuoteCardProps> = ({
         <View>
           <Text style={styles.totalLabel}>{quote.products.length} item{quote.products.length !== 1 ? 's' : ''}</Text>
           {(!isCustomer || isApproved) && (
-            <Text style={styles.discountBadge}>
-              Discount: {quote.subtotal > 0 ? ((quote.total_discount / quote.subtotal) * 100).toFixed(1) : 0}%
-            </Text>
+            <>
+              <Text style={styles.discountBadge}>
+                Discount: {quote.subtotal > 0 ? ((quote.total_discount / quote.subtotal) * 100).toFixed(1) : 0}%
+              </Text>
+              <Text style={styles.packingBadge}>
+                Packing: {getPackingPercentLabel(quote.packing_type)}
+              </Text>
+            </>
           )}
         </View>
         {(!isCustomer || isApproved) && (
@@ -257,6 +275,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#4CAF50',
     fontWeight: 'bold',
+    marginTop: 2,
+  },
+  packingBadge: {
+    fontSize: 12,
+    color: '#2196F3',
+    fontWeight: '600',
     marginTop: 2,
   },
   totalPrice: {

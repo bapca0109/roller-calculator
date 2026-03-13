@@ -175,13 +175,14 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
     `;
   }
   
-  // Packing HTML
-  const packingHtml = packing > 0 ? `
+  // Packing HTML with type label
+  const packingTypeLabel = getPackingLabel((quote as any).packing_type);
+  const packingHtml = `
     <div class="summary-row">
-      <span class="summary-label">Packing Charges</span>
+      <span class="summary-label">Packing - ${packingTypeLabel}</span>
       <span class="summary-value">Rs. ${formatNumber(packing)}</span>
     </div>
-  ` : '';
+  `;
   
   // Shipping/Freight HTML
   const shippingHtml = shipping > 0 ? `
@@ -226,13 +227,24 @@ export const generatePdfHtml = (quote: Quote, options: GeneratePdfOptions): stri
     'wooden_box': 'Wooden Box (8%)'
   };
   
+  // Get packing label with custom support
+  const getPackingLabel = (type: string | undefined): string => {
+    if (!type) return 'Standard (1%)';
+    if (packingTypeLabels[type]) return packingTypeLabels[type];
+    if (type.startsWith('custom_')) {
+      const percent = type.split('_')[1] || '0';
+      return `Custom (${percent}%)`;
+    }
+    return type;
+  };
+  
   // Packing & Delivery info for RFQ (shown even when prices hidden)
   const packingType = (quote as any).packing_type;
   let packingDeliveryHtml = '';
   if (packingType || quote.delivery_location) {
     let items = [];
     if (packingType) {
-      const packingLabel = packingTypeLabels[packingType] || packingType;
+      const packingLabel = getPackingLabel(packingType);
       items.push(`<strong>Packing Type:</strong> ${packingLabel}`);
     }
     if (quote.delivery_location) {

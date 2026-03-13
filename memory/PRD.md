@@ -113,6 +113,13 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - **RFQ Rejected**: Customer receives push notification with reason for rejection
   - All notifications include actionable data (quote_id, type) for deep linking
 
+- [x] **Packing % Display Everywhere**:
+  - **Quote Cards**: Shows packing type (Standard/Pallet/Wooden Box/Custom with %) in blue text
+  - **Quote Detail Modal**: Always shows packing with type and percentage
+  - **PDF Generation**: Shows packing type in both summary section and info box
+  - Supports custom packing percentages (stored as `custom_X` format)
+  - Helper function `getPackingPercentLabel()` for consistent display across components
+
 ### Previous Session - UI Redesign
 - [x] **Login Page**: Complete redesign with modern two-tone layout
 - [x] **Theme System**: Enhanced design tokens
