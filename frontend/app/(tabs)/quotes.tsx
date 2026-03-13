@@ -525,7 +525,7 @@ export default function QuotesScreen() {
   }, []);
 
   // Edit quote functions
-  const openEditQuote = (quote: Quote) => {
+  const openEditQuote = async (quote: Quote) => {
     setEditingQuote(quote);
     setEditedProducts([...quote.products]);
     setUseItemDiscounts(quote.use_item_discounts || false);
@@ -544,6 +544,16 @@ export default function QuotesScreen() {
     } else {
       setEditedPackingType(packingType);
       setCustomPackingPercent('');
+    }
+    // Initialize commercial terms from quote or use defaults
+    const ct = quote.commercial_terms || {};
+    setSelectedPaymentTerms(ct.payment_terms || '100% Advance against pro-forma');
+    setSelectedFreightTerms(ct.freight_terms || 'Ex-Works');
+    setSelectedColorFinish(ct.color_finish || '1+1 : Red oxide + finish paint black color approx 50-60 micron');
+    setSelectedDeliveryTimeline(ct.delivery_timeline || '25-30 working days');
+    // Ensure commercial terms options are loaded
+    if (!commercialTermsOptions) {
+      await fetchCommercialTermsOptions();
     }
   };
 
@@ -660,6 +670,14 @@ export default function QuotesScreen() {
         packing_type: packingTypeToSave,
         shipping_cost: freightAmount,
         total_price: totals.total,
+        commercial_terms: {
+          payment_terms: selectedPaymentTerms,
+          freight_terms: selectedFreightTerms,
+          color_finish: selectedColorFinish,
+          delivery_timeline: selectedDeliveryTimeline,
+          warranty: commercialTermsOptions?.warranty || "Warranty stands for 12 months from date of invoice considering L10 life.",
+          validity: commercialTermsOptions?.validity || "This offer stands valid for 30 days."
+        }
       };
       
       // Only include discount_percent if using total discount mode
@@ -718,6 +736,14 @@ export default function QuotesScreen() {
         packing_type: packingTypeToSave,  // Include edited packing type
         shipping_cost: freightAmount,  // Include edited freight
         total_price: totals.total,
+        commercial_terms: {
+          payment_terms: selectedPaymentTerms,
+          freight_terms: selectedFreightTerms,
+          color_finish: selectedColorFinish,
+          delivery_timeline: selectedDeliveryTimeline,
+          warranty: commercialTermsOptions?.warranty || "Warranty stands for 12 months from date of invoice considering L10 life.",
+          validity: commercialTermsOptions?.validity || "This offer stands valid for 30 days."
+        }
       };
       
       // Only include discount_percent if using total discount mode
@@ -2915,6 +2941,116 @@ export default function QuotesScreen() {
                                    editingQuote.packing_type === 'wooden_box' ? 'Wooden Box (8%)' :
                                    editingQuote.packing_type}
                       </Text>
+                    )}
+                  </View>
+
+                  {/* Commercial Terms Section for Edit Quote */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Commercial Terms</Text>
+                    
+                    {commercialTermsOptions ? (
+                      <>
+                        {/* Payment Terms */}
+                        <View style={styles.commercialTermRow}>
+                          <Text style={styles.commercialTermLabel}>Payment Terms:</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                            {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
+                              <TouchableOpacity
+                                key={idx}
+                                style={[
+                                  styles.commercialTermOption,
+                                  selectedPaymentTerms === term && styles.commercialTermOptionActive
+                                ]}
+                                onPress={() => setSelectedPaymentTerms(term)}
+                              >
+                                <Text style={[
+                                  styles.commercialTermOptionText,
+                                  selectedPaymentTerms === term && styles.commercialTermOptionTextActive
+                                ]} numberOfLines={2}>{term}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                        
+                        {/* Freight Terms */}
+                        <View style={styles.commercialTermRow}>
+                          <Text style={styles.commercialTermLabel}>Freight Terms:</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                            {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
+                              <TouchableOpacity
+                                key={idx}
+                                style={[
+                                  styles.commercialTermOption,
+                                  selectedFreightTerms === term && styles.commercialTermOptionActive
+                                ]}
+                                onPress={() => setSelectedFreightTerms(term)}
+                              >
+                                <Text style={[
+                                  styles.commercialTermOptionText,
+                                  selectedFreightTerms === term && styles.commercialTermOptionTextActive
+                                ]}>{term}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                        
+                        {/* Color/Finish */}
+                        <View style={styles.commercialTermRow}>
+                          <Text style={styles.commercialTermLabel}>Color/Finish:</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                            {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
+                              <TouchableOpacity
+                                key={idx}
+                                style={[
+                                  styles.commercialTermOption,
+                                  selectedColorFinish === term && styles.commercialTermOptionActive,
+                                  { minWidth: 180 }
+                                ]}
+                                onPress={() => setSelectedColorFinish(term)}
+                              >
+                                <Text style={[
+                                  styles.commercialTermOptionText,
+                                  selectedColorFinish === term && styles.commercialTermOptionTextActive
+                                ]} numberOfLines={2}>{term}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                        
+                        {/* Delivery Timeline */}
+                        <View style={styles.commercialTermRow}>
+                          <Text style={styles.commercialTermLabel}>Delivery:</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                            {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
+                              <TouchableOpacity
+                                key={idx}
+                                style={[
+                                  styles.commercialTermOption,
+                                  selectedDeliveryTimeline === term && styles.commercialTermOptionActive
+                                ]}
+                                onPress={() => setSelectedDeliveryTimeline(term)}
+                              >
+                                <Text style={[
+                                  styles.commercialTermOptionText,
+                                  selectedDeliveryTimeline === term && styles.commercialTermOptionTextActive
+                                ]}>{term}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                        
+                        {/* Fixed Terms */}
+                        <View style={[styles.commercialTermRow, { marginTop: 12 }]}>
+                          <Text style={[styles.commercialTermLabel, { fontWeight: '600' }]}>Warranty:</Text>
+                          <Text style={styles.commercialTermFixed}>{commercialTermsOptions.warranty}</Text>
+                        </View>
+                        <View style={styles.commercialTermRow}>
+                          <Text style={[styles.commercialTermLabel, { fontWeight: '600' }]}>Validity:</Text>
+                          <Text style={styles.commercialTermFixed}>{commercialTermsOptions.validity}</Text>
+                        </View>
+                      </>
+                    ) : (
+                      <Text style={{ color: '#999', fontStyle: 'italic' }}>Loading...</Text>
                     )}
                   </View>
 
