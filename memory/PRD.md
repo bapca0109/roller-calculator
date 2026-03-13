@@ -87,7 +87,17 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - Added warning message when selected shaft works without housing
 
 
-### March 13, 2026 (Current Session) - iOS Logout Fix
+### March 13, 2026 (Current Session) - Designation Field & iOS Logout Fix
+- [x] **Designation Field for Customer Signup (P0)**: 
+  - Added optional "Designation" field to customer registration form
+  - Backend: Updated `OTPRequest` and `OTPVerify` models to include designation
+  - Backend: User creation in `verify_otp` saves designation to both users and customers collections
+  - Backend: Added designation to `/api/auth/me`, `/api/auth/login`, and `/api/auth/verify-otp` responses
+  - Backend: Admin registration notification email includes designation
+  - Frontend: Added designation input field to `register.tsx` (between Company Name and Password)
+  - Frontend: Updated `verify-otp.tsx` to pass designation to backend
+  - **Tested**: 9/9 backend tests passed, frontend UI verified
+
 - [x] **Fixed iOS Logout Bug** (recurring issue, 6x reports): 
   - **Root Cause**: Race condition where navigation happened before state was cleared, and setTimeout was unreliable on iOS
   - **Fix in AuthContext.tsx**: 
