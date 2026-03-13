@@ -1537,7 +1537,7 @@ export default function QuotesScreen() {
         <Text style={styles.title}>My {docLabel}s</Text>
         <View style={styles.headerActions}>
           <ExportButtons
-            endpoint="/api/quotes/export/excel"
+            endpoint="/quotes/export/excel"
             queryParams={{ status: activeTab === 'all' ? '' : activeTab }}
             filenamePrefix="Quotes"
             compact={true}
