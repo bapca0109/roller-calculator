@@ -147,6 +147,49 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Help & Support Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Help & Support</Text>
+
+          <View style={styles.infoCard}>
+            <TouchableOpacity style={styles.supportRow} onPress={() => Alert.alert(
+              'Frequently Asked Questions',
+              '📱 How to create a quote?\nGo to Products → Select items → Add to Cart → Submit RFQ\n\n💰 How are prices calculated?\nPrices are calculated based on roller specifications including pipe diameter, shaft size, and length.\n\n📧 Need more help?\nContact us at support@convero.in',
+              [{ text: 'Got it', style: 'default' }]
+            )}>
+              <View style={styles.supportLabel}>
+                <Ionicons name="help-circle-outline" size={20} color="#64748B" />
+                <Text style={styles.supportLabelText}>FAQs</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity style={styles.supportRow} onPress={() => Alert.alert(
+              'Contact Support',
+              '📧 Email: support@convero.in\n\n📞 Phone: +91 XXXXX XXXXX\n\n🕐 Hours: Mon-Sat, 9 AM - 6 PM IST\n\nWe typically respond within 24 hours.',
+              [{ text: 'OK', style: 'default' }]
+            )}>
+              <View style={styles.supportLabel}>
+                <Ionicons name="mail-outline" size={20} color="#64748B" />
+                <Text style={styles.supportLabelText}>Contact Us</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <View style={styles.supportRow}>
+              <View style={styles.supportLabel}>
+                <Ionicons name="information-circle-outline" size={20} color="#64748B" />
+                <Text style={styles.supportLabelText}>App Version</Text>
+              </View>
+              <Text style={styles.versionText}>1.0.0</Text>
+            </View>
+          </View>
+        </View>
+
         {Platform.OS === 'web' ? (
           <button
             onClick={handleLogout}
@@ -300,6 +343,26 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: '#E5E5EA',
+  },
+  supportRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  supportLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  supportLabelText: {
+    fontSize: 16,
+    color: '#3C3C43',
+  },
+  versionText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
   logoutButton: {
     flexDirection: 'row',

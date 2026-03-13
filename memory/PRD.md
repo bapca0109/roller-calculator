@@ -101,6 +101,12 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
     - Return `null` when user is not authenticated to prevent crash during transition
   - **Status**: Code fix complete, requires native iOS build to fully test
 
+- [x] **Added Help & Support Section to Profile**:
+  - FAQs button with popup showing common questions (quote creation, price calculation)
+  - Contact Us button with support email and phone info
+  - App Version display (1.0.0)
+  - Clean card-based UI matching app design system
+
 ### Previous Session - UI Redesign
 - [x] **Login Page**: Complete redesign with modern two-tone layout
 - [x] **Theme System**: Enhanced design tokens
