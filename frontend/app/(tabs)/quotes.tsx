@@ -357,7 +357,7 @@ export default function QuotesScreen() {
   };
 
   // Open quote detail and mark as read
-  const openQuoteDetail = (quote: Quote) => {
+  const openQuoteDetail = async (quote: Quote) => {
     setSelectedQuote(quote);
     // Initialize editable fields for admin
     setEditPackingType(quote.packing_type || 'standard');
@@ -373,6 +373,16 @@ export default function QuotesScreen() {
     // Initialize discount state
     setUseItemDiscount(quote.use_item_discounts || false);
     setTotalDiscountPercent(quote.discount_percent?.toString() || '0');
+    // Initialize commercial terms from quote or use defaults
+    const ct = quote.commercial_terms || {};
+    setSelectedPaymentTerms(ct.payment_terms || '100% Advance against pro-forma');
+    setSelectedFreightTerms(ct.freight_terms || 'Ex-Works');
+    setSelectedColorFinish(ct.color_finish || '1+1 : Red oxide + finish paint black color approx 50-60 micron');
+    setSelectedDeliveryTimeline(ct.delivery_timeline || '25-30 working days');
+    // Ensure commercial terms options are loaded
+    if (!commercialTermsOptions) {
+      await fetchCommercialTermsOptions();
+    }
     // Initialize item discounts from products - use item_discount_percent field
     const discounts: {[key: number]: string} = {};
     quote.products?.forEach((p, idx) => {
@@ -2328,6 +2338,118 @@ export default function QuotesScreen() {
                         )}
                       </View>
                     )
+                  )}
+
+                  {/* Commercial Terms Section - Only for pending RFQs that admin can edit */}
+                  {isAdmin && selectedQuote.quote_number?.startsWith('RFQ') && selectedQuote.status?.toLowerCase() === 'pending' && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.sectionTitle}>Commercial Terms</Text>
+                      
+                      {commercialTermsOptions ? (
+                        <>
+                          {/* Payment Terms */}
+                          <View style={styles.commercialTermRow}>
+                            <Text style={styles.commercialTermLabel}>Payment Terms:</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                              {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
+                                <TouchableOpacity
+                                  key={idx}
+                                  style={[
+                                    styles.commercialTermOption,
+                                    selectedPaymentTerms === term && styles.commercialTermOptionActive
+                                  ]}
+                                  onPress={() => setSelectedPaymentTerms(term)}
+                                >
+                                  <Text style={[
+                                    styles.commercialTermOptionText,
+                                    selectedPaymentTerms === term && styles.commercialTermOptionTextActive
+                                  ]} numberOfLines={2}>{term}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          </View>
+                          
+                          {/* Freight Terms */}
+                          <View style={styles.commercialTermRow}>
+                            <Text style={styles.commercialTermLabel}>Freight Terms:</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                              {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
+                                <TouchableOpacity
+                                  key={idx}
+                                  style={[
+                                    styles.commercialTermOption,
+                                    selectedFreightTerms === term && styles.commercialTermOptionActive
+                                  ]}
+                                  onPress={() => setSelectedFreightTerms(term)}
+                                >
+                                  <Text style={[
+                                    styles.commercialTermOptionText,
+                                    selectedFreightTerms === term && styles.commercialTermOptionTextActive
+                                  ]}>{term}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          </View>
+                          
+                          {/* Color/Finish */}
+                          <View style={styles.commercialTermRow}>
+                            <Text style={styles.commercialTermLabel}>Color/Finish:</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                              {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
+                                <TouchableOpacity
+                                  key={idx}
+                                  style={[
+                                    styles.commercialTermOption,
+                                    selectedColorFinish === term && styles.commercialTermOptionActive,
+                                    { minWidth: 180 }
+                                  ]}
+                                  onPress={() => setSelectedColorFinish(term)}
+                                >
+                                  <Text style={[
+                                    styles.commercialTermOptionText,
+                                    selectedColorFinish === term && styles.commercialTermOptionTextActive
+                                  ]} numberOfLines={2}>{term}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          </View>
+                          
+                          {/* Delivery Timeline */}
+                          <View style={styles.commercialTermRow}>
+                            <Text style={styles.commercialTermLabel}>Delivery:</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                              {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
+                                <TouchableOpacity
+                                  key={idx}
+                                  style={[
+                                    styles.commercialTermOption,
+                                    selectedDeliveryTimeline === term && styles.commercialTermOptionActive
+                                  ]}
+                                  onPress={() => setSelectedDeliveryTimeline(term)}
+                                >
+                                  <Text style={[
+                                    styles.commercialTermOptionText,
+                                    selectedDeliveryTimeline === term && styles.commercialTermOptionTextActive
+                                  ]}>{term}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          </View>
+                          
+                          {/* Fixed Terms */}
+                          <View style={[styles.commercialTermRow, { marginTop: 12 }]}>
+                            <Text style={[styles.commercialTermLabel, { fontWeight: '600' }]}>Warranty:</Text>
+                            <Text style={styles.commercialTermFixed}>{commercialTermsOptions.warranty}</Text>
+                          </View>
+                          <View style={styles.commercialTermRow}>
+                            <Text style={[styles.commercialTermLabel, { fontWeight: '600' }]}>Validity:</Text>
+                            <Text style={styles.commercialTermFixed}>{commercialTermsOptions.validity}</Text>
+                          </View>
+                        </>
+                      ) : (
+                        <Text style={{ color: '#999', fontStyle: 'italic' }}>Loading...</Text>
+                      )}
+                    </View>
                   )}
 
                   {/* Summary Section - Only for pending RFQs that admin can approve */}
