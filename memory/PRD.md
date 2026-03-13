@@ -120,6 +120,17 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - Supports custom packing percentages (stored as `custom_X` format)
   - Helper function `getPackingPercentLabel()` for consistent display across components
 
+- [x] **Housing Rates in Admin Panel**:
+  - Added `housing_costs` to backend GET/POST admin prices API
+  - Added Housing tab with home icon in admin panel
+  - Shows all 20+ housing OD/Bearing OD configurations with editable prices
+
+- [x] **Bulk Price Import/Export**:
+  - **Export to Excel**: `GET /api/admin/prices/export` generates Excel with 7 sheets (Basic, Bearing, Housing, Seal, Circlip, Rubber, Locking)
+  - **Import from Excel**: `POST /api/admin/prices/import` reads Excel and updates all prices
+  - Frontend buttons: Blue "Export to Excel" and Green "Import from Excel"
+  - Excel has professional styling with carmine headers
+
 ### Previous Session - UI Redesign
 - [x] **Login Page**: Complete redesign with modern two-tone layout
 - [x] **Theme System**: Enhanced design tokens

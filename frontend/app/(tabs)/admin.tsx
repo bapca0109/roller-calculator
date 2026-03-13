@@ -10,8 +10,10 @@ import {
   ActivityIndicator,
   Modal,
   FlatList,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 
@@ -120,6 +122,64 @@ export default function AdminScreen() {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to update price');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleExportPrices = async () => {
+    try {
+      setSaving(true);
+      // For web, open the export URL in a new tab
+      if (Platform.OS === 'web') {
+        const token = await AsyncStorage.getItem('token');
+        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+        window.open(`${backendUrl}/api/admin/prices/export?token=${token}`, '_blank');
+        Alert.alert('Success', 'Excel file download started');
+      } else {
+        // For native, use expo-file-system and expo-sharing
+        const response = await api.get('/admin/prices/export', {
+          responseType: 'blob',
+        });
+        Alert.alert('Info', 'Export feature works best on web. Please use the web version to download the Excel file.');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to export prices');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleImportPrices = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        // Create a file input and trigger it
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xlsx,.xls';
+        input.onchange = async (e: any) => {
+          const file = e.target.files[0];
+          if (file) {
+            setSaving(true);
+            try {
+              const formData = new FormData();
+              formData.append('file', file);
+              const response = await api.post('/admin/prices/import', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+              });
+              await fetchPrices();
+              Alert.alert('Success', response.data.message || 'Prices imported successfully');
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.detail || 'Failed to import prices');
+            } finally {
+              setSaving(false);
+            }
+          }
+        };
+        input.click();
+      } else {
+        Alert.alert('Info', 'Import feature works best on web. Please use the web version to import Excel files.');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to open file picker');
     }
   };
 
@@ -820,6 +880,27 @@ export default function AdminScreen() {
               {activeCategory === 'rubber' && renderRubberRingCosts()}
               {activeCategory === 'locking' && renderLockingRingCosts()}
 
+              {/* Import/Export Buttons */}
+              <View style={styles.importExportContainer}>
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: '#2196F3' }]}
+                  onPress={handleExportPrices}
+                  disabled={saving}
+                >
+                  <Ionicons name="download-outline" size={20} color="#fff" />
+                  <Text style={styles.actionButtonText}>Export to Excel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
+                  onPress={handleImportPrices}
+                  disabled={saving}
+                >
+                  <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
+                  <Text style={styles.actionButtonText}>Import from Excel</Text>
+                </TouchableOpacity>
+              </View>
+
               <TouchableOpacity
                 style={[styles.resetButton, { backgroundColor: '#C41E3A' }]}
                 onPress={async () => {
@@ -1367,5 +1448,33 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 15,
+  },
+  // Import/Export styles
+  importExportContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    marginBottom: 10,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });

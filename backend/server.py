@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import FileResponse, StreamingResponse
 from dotenv import load_dotenv
@@ -5738,6 +5738,283 @@ async def reset_prices(current_user: dict = Depends(get_current_user)):
     price_loader.invalidate_cache()
     
     return {"message": "All prices reset to default values"}
+
+@api_router.get("/admin/prices/export")
+async def export_prices_to_excel(current_user: dict = Depends(get_current_user)):
+    """Export all prices to Excel file"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from io import BytesIO
+    from fastapi.responses import StreamingResponse
+    
+    # Get current prices
+    custom_prices = await db.custom_prices.find_one({"_id": "prices"}) or {}
+    
+    wb = Workbook()
+    
+    # Style definitions
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="960018", end_color="960018", fill_type="solid")
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # Sheet 1: Basic Rates
+    ws_basic = wb.active
+    ws_basic.title = "Basic Rates"
+    ws_basic.append(["Item", "Cost (Rs)"])
+    ws_basic.append(["Pipe Cost per kg", custom_prices.get("pipe_cost_per_kg", rs.PIPE_COST_PER_KG)])
+    ws_basic.append(["Shaft Cost per kg", custom_prices.get("shaft_cost_per_kg", rs.SHAFT_COST_PER_KG)])
+    for cell in ws_basic[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    ws_basic.column_dimensions['A'].width = 25
+    ws_basic.column_dimensions['B'].width = 15
+    
+    # Sheet 2: Bearing Costs
+    ws_bearing = wb.create_sheet("Bearing Costs")
+    ws_bearing.append(["Bearing Type", "Shaft Dia (mm)", "Cost (Rs)"])
+    bearing_costs = custom_prices.get("bearing_costs", rs.BEARING_COSTS)
+    for bearing_type, shaft_costs in bearing_costs.items():
+        for shaft_dia, cost in shaft_costs.items():
+            ws_bearing.append([bearing_type, shaft_dia, cost])
+    for cell in ws_bearing[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    ws_bearing.column_dimensions['A'].width = 15
+    ws_bearing.column_dimensions['B'].width = 15
+    ws_bearing.column_dimensions['C'].width = 15
+    
+    # Sheet 3: Housing Costs
+    ws_housing = wb.create_sheet("Housing Costs")
+    ws_housing.append(["Housing Config (OD/Bearing)", "Cost (Rs)"])
+    housing_costs = custom_prices.get("housing_costs", rs.HOUSING_COSTS)
+    for config, cost in housing_costs.items():
+        ws_housing.append([config, cost])
+    for cell in ws_housing[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    ws_housing.column_dimensions['A'].width = 25
+    ws_housing.column_dimensions['B'].width = 15
+    
+    # Sheet 4: Seal Costs
+    ws_seal = wb.create_sheet("Seal Costs")
+    ws_seal.append(["Seal Type", "Cost (Rs)"])
+    seal_costs = custom_prices.get("seal_costs", rs.SEAL_COSTS)
+    for seal_type, cost in seal_costs.items():
+        ws_seal.append([seal_type, cost])
+    for cell in ws_seal[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    ws_seal.column_dimensions['A'].width = 15
+    ws_seal.column_dimensions['B'].width = 15
+    
+    # Sheet 5: Circlip Costs
+    ws_circlip = wb.create_sheet("Circlip Costs")
+    ws_circlip.append(["Shaft Dia (mm)", "Cost (Rs)"])
+    circlip_costs = custom_prices.get("circlip_costs", rs.CIRCLIP_COSTS)
+    for shaft, cost in circlip_costs.items():
+        ws_circlip.append([shaft, cost])
+    for cell in ws_circlip[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    ws_circlip.column_dimensions['A'].width = 15
+    ws_circlip.column_dimensions['B'].width = 15
+    
+    # Sheet 6: Rubber Ring Costs
+    ws_rubber = wb.create_sheet("Rubber Ring Costs")
+    ws_rubber.append(["Pipe/Rubber Config", "Cost (Rs)"])
+    rubber_costs = custom_prices.get("rubber_ring_costs", rs.RUBBER_RING_COSTS)
+    for config, cost in rubber_costs.items():
+        ws_rubber.append([config, cost])
+    for cell in ws_rubber[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    ws_rubber.column_dimensions['A'].width = 25
+    ws_rubber.column_dimensions['B'].width = 15
+    
+    # Sheet 7: Locking Ring Costs
+    ws_locking = wb.create_sheet("Locking Ring Costs")
+    ws_locking.append(["Pipe Dia (mm)", "Cost (Rs)"])
+    locking_costs = custom_prices.get("locking_ring_costs", rs.LOCKING_RING_COSTS)
+    for pipe, cost in locking_costs.items():
+        ws_locking.append([pipe, cost])
+    for cell in ws_locking[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    ws_locking.column_dimensions['A'].width = 15
+    ws_locking.column_dimensions['B'].width = 15
+    
+    # Save to BytesIO
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = f"convero_prices_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@api_router.post("/admin/prices/import")
+async def import_prices_from_excel(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Import prices from Excel file"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
+    
+    from openpyxl import load_workbook
+    from io import BytesIO
+    
+    try:
+        contents = await file.read()
+        wb = load_workbook(BytesIO(contents))
+        
+        # Get existing custom prices or create new
+        custom_prices = await db.custom_prices.find_one({"_id": "prices"}) or {"_id": "prices"}
+        
+        updates = {"basic": 0, "bearing": 0, "housing": 0, "seal": 0, "circlip": 0, "rubber": 0, "locking": 0}
+        
+        # Process Basic Rates sheet
+        if "Basic Rates" in wb.sheetnames:
+            ws = wb["Basic Rates"]
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0] and row[1] is not None:
+                    item_name = str(row[0]).lower()
+                    try:
+                        cost = float(row[1])
+                        if "pipe" in item_name:
+                            custom_prices["pipe_cost_per_kg"] = cost
+                            updates["basic"] += 1
+                        elif "shaft" in item_name:
+                            custom_prices["shaft_cost_per_kg"] = cost
+                            updates["basic"] += 1
+                    except (ValueError, TypeError):
+                        continue
+        
+        # Process Bearing Costs sheet
+        if "Bearing Costs" in wb.sheetnames:
+            ws = wb["Bearing Costs"]
+            if "bearing_costs" not in custom_prices:
+                custom_prices["bearing_costs"] = {}
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0] and row[1] and row[2] is not None:
+                    bearing_type = str(row[0])
+                    shaft_dia = str(row[1])
+                    try:
+                        cost = float(row[2])
+                        if bearing_type not in custom_prices["bearing_costs"]:
+                            custom_prices["bearing_costs"][bearing_type] = {}
+                        custom_prices["bearing_costs"][bearing_type][shaft_dia] = cost
+                        updates["bearing"] += 1
+                    except (ValueError, TypeError):
+                        continue
+        
+        # Process Housing Costs sheet
+        if "Housing Costs" in wb.sheetnames:
+            ws = wb["Housing Costs"]
+            if "housing_costs" not in custom_prices:
+                custom_prices["housing_costs"] = {}
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0] and row[1] is not None:
+                    config = str(row[0])
+                    try:
+                        cost = float(row[1])
+                        custom_prices["housing_costs"][config] = cost
+                        updates["housing"] += 1
+                    except (ValueError, TypeError):
+                        continue
+        
+        # Process Seal Costs sheet
+        if "Seal Costs" in wb.sheetnames:
+            ws = wb["Seal Costs"]
+            if "seal_costs" not in custom_prices:
+                custom_prices["seal_costs"] = {}
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0] and row[1] is not None:
+                    seal_type = str(row[0])
+                    try:
+                        cost = float(row[1])
+                        custom_prices["seal_costs"][seal_type] = cost
+                        updates["seal"] += 1
+                    except (ValueError, TypeError):
+                        continue
+        
+        # Process Circlip Costs sheet
+        if "Circlip Costs" in wb.sheetnames:
+            ws = wb["Circlip Costs"]
+            if "circlip_costs" not in custom_prices:
+                custom_prices["circlip_costs"] = {}
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0] and row[1] is not None:
+                    shaft = str(row[0])
+                    try:
+                        cost = float(row[1])
+                        custom_prices["circlip_costs"][shaft] = cost
+                        updates["circlip"] += 1
+                    except (ValueError, TypeError):
+                        continue
+        
+        # Process Rubber Ring Costs sheet
+        if "Rubber Ring Costs" in wb.sheetnames:
+            ws = wb["Rubber Ring Costs"]
+            if "rubber_ring_costs" not in custom_prices:
+                custom_prices["rubber_ring_costs"] = {}
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0] and row[1] is not None:
+                    config = str(row[0])
+                    try:
+                        cost = float(row[1])
+                        custom_prices["rubber_ring_costs"][config] = cost
+                        updates["rubber"] += 1
+                    except (ValueError, TypeError):
+                        continue
+        
+        # Process Locking Ring Costs sheet
+        if "Locking Ring Costs" in wb.sheetnames:
+            ws = wb["Locking Ring Costs"]
+            if "locking_ring_costs" not in custom_prices:
+                custom_prices["locking_ring_costs"] = {}
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0] and row[1] is not None:
+                    pipe = str(row[0])
+                    try:
+                        cost = float(row[1])
+                        custom_prices["locking_ring_costs"][pipe] = cost
+                        updates["locking"] += 1
+                    except (ValueError, TypeError):
+                        continue
+        
+        # Save to database
+        await db.custom_prices.replace_one({"_id": "prices"}, custom_prices, upsert=True)
+        
+        # Invalidate price cache
+        import price_loader
+        price_loader.invalidate_cache()
+        
+        total_updates = sum(updates.values())
+        
+        return {
+            "message": f"Successfully imported {total_updates} price entries",
+            "details": updates
+        }
+        
+    except Exception as e:
+        logging.error(f"Error importing prices: {e}")
+        raise HTTPException(status_code=400, detail=f"Error processing Excel file: {str(e)}")
 
 @api_router.post("/admin/make-admin")
 async def make_user_admin(email: str, current_user: dict = Depends(get_current_user)):
