@@ -62,6 +62,7 @@ export interface Quote {
   rejection_reason_text?: string;
   rejection_message?: string;
   revision_history?: RevisionHistoryEntry[];
+  revision?: string; // Current revision label (R0, R1, R2, etc.)
   created_at: string;
   created_at_ist?: string;
   updated_at: string;

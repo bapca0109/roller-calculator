@@ -60,6 +60,16 @@ export const QuoteCard: React.FC<QuoteCardProps> = ({
             <Text style={[styles.quoteId, isUnread && styles.unreadQuoteId]}>
               {quote.quote_number || `${docLabel} #${quote.id.slice(-6).toUpperCase()}`}
             </Text>
+            {/* Show revision badge for approved quotes */}
+            {isApproved && (
+              <View style={styles.revisionBadge}>
+                <Text style={styles.revisionText}>
+                  R{quote.revision_history && quote.revision_history.length > 0 
+                    ? quote.revision_history.length 
+                    : 0}
+                </Text>
+              </View>
+            )}
             {quote.original_rfq_number && (
               <Text style={styles.rfqRef}>({quote.original_rfq_number})</Text>
             )}
@@ -186,6 +196,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#0066cc',
     fontWeight: '500',
+  },
+  revisionBadge: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  revisionText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   unreadDot: {
     width: 10,
