@@ -14,6 +14,7 @@ import api from '../../utils/api';
 
 interface ExportButtonsProps {
   endpoint: string;
+  pdfEndpoint?: string;
   queryParams?: Record<string, string>;
   filenamePrefix?: string;
   showPdf?: boolean;
@@ -23,6 +24,7 @@ interface ExportButtonsProps {
 
 export const ExportButtons: React.FC<ExportButtonsProps> = ({
   endpoint,
+  pdfEndpoint,
   queryParams = {},
   filenamePrefix = 'Export',
   showPdf = false,
@@ -36,9 +38,14 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({
     try {
       const token = await AsyncStorage.getItem('token');
       
+      // Use pdfEndpoint for PDF if provided, otherwise derive from excel endpoint
+      const exportEndpoint = format === 'pdf' 
+        ? (pdfEndpoint || endpoint.replace('/excel', '/pdf'))
+        : endpoint;
+      
       // Build query string
       const params = new URLSearchParams(queryParams).toString();
-      const url = `${api.defaults.baseURL}${endpoint}${params ? `?${params}` : ''}`;
+      const url = `${api.defaults.baseURL}${exportEndpoint}${params ? `?${params}` : ''}`;
       
       const response = await fetch(url, {
         method: 'GET',

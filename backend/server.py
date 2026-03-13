@@ -1,6 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
@@ -5878,6 +5878,103 @@ async def export_prices_to_excel(token: Optional[str] = None):
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
+@api_router.get("/admin/prices/export/pdf")
+async def export_prices_to_pdf(token: Optional[str] = None):
+    """Export all prices to PDF file"""
+    current_user = None
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            if email:
+                user = await db.users.find_one({"email": email})
+                if user:
+                    current_user = user
+        except Exception as e:
+            logging.error(f"Token validation error: {e}")
+            raise HTTPException(status_code=401, detail="Invalid token")
+    
+    if not current_user or current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    custom_prices = await db.custom_prices.find_one({"_id": "prices"}) or {}
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Price List</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 20px; font-size: 11px; }}
+            h1 {{ color: #960018; border-bottom: 2px solid #960018; padding-bottom: 10px; font-size: 24px; }}
+            h2 {{ color: #960018; margin-top: 20px; font-size: 16px; }}
+            table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; }}
+            th {{ background-color: #960018; color: white; padding: 8px; text-align: left; }}
+            td {{ padding: 6px; border-bottom: 1px solid #ddd; }}
+            tr:nth-child(even) {{ background-color: #f9f9f9; }}
+            .two-col {{ display: flex; gap: 20px; }}
+            .two-col > div {{ flex: 1; }}
+            .footer {{ margin-top: 30px; text-align: center; color: #666; font-size: 10px; }}
+        </style>
+    </head>
+    <body>
+        <h1>Convero Price List</h1>
+        <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        
+        <h2>Basic Rates</h2>
+        <table>
+            <tr><th>Item</th><th>Cost (Rs)</th></tr>
+            <tr><td>Pipe Cost per kg</td><td>{custom_prices.get("pipe_cost_per_kg", rs.PIPE_COST_PER_KG)}</td></tr>
+            <tr><td>Shaft Cost per kg</td><td>{custom_prices.get("shaft_cost_per_kg", rs.SHAFT_COST_PER_KG)}</td></tr>
+        </table>
+        
+        <div class="two-col">
+            <div>
+                <h2>Housing Costs</h2>
+                <table>
+                    <tr><th>Config</th><th>Cost (Rs)</th></tr>
+    """
+    
+    housing_costs = custom_prices.get("housing_costs", rs.HOUSING_COSTS)
+    for config, cost in list(housing_costs.items())[:10]:
+        html_content += f"<tr><td>{config}</td><td>{cost}</td></tr>"
+    
+    html_content += """
+                </table>
+            </div>
+            <div>
+                <h2>Seal Costs</h2>
+                <table>
+                    <tr><th>Type</th><th>Cost (Rs)</th></tr>
+    """
+    
+    seal_costs = custom_prices.get("seal_costs", rs.SEAL_COSTS)
+    for seal_type, cost in seal_costs.items():
+        html_content += f"<tr><td>{seal_type}</td><td>{cost}</td></tr>"
+    
+    html_content += """
+                </table>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Convero - Belt Conveyor Roller Solutions</p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    from weasyprint import HTML
+    pdf_bytes = HTML(string=html_content).write_pdf()
+    
+    filename = f"convero_prices_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
 @api_router.post("/admin/prices/import")
 async def import_prices_from_excel(
     file: UploadFile = File(...),
@@ -7548,6 +7645,101 @@ async def export_quotes_excel(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/quotes/export/pdf")
+async def export_quotes_pdf(
+    status: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Export quotes to PDF file"""
+    try:
+        query = {}
+        if current_user.get("role") != "admin":
+            query["customer_email"] = current_user.get("email")
+        if status:
+            query["status"] = status
+        
+        quotes = await db.quotes.find(query).sort("created_at", -1).to_list(1000)
+        
+        # Generate PDF HTML
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Quotes Export</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                h1 {{ color: #960018; border-bottom: 2px solid #960018; padding-bottom: 10px; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+                th {{ background-color: #960018; color: white; padding: 12px; text-align: left; }}
+                td {{ padding: 10px; border-bottom: 1px solid #ddd; }}
+                tr:nth-child(even) {{ background-color: #f9f9f9; }}
+                .status {{ padding: 4px 8px; border-radius: 4px; font-size: 12px; }}
+                .approved {{ background-color: #4CAF50; color: white; }}
+                .pending {{ background-color: #FF9800; color: white; }}
+                .rejected {{ background-color: #f44336; color: white; }}
+                .footer {{ margin-top: 30px; text-align: center; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <h1>Quotes Export</h1>
+            <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Quote #</th>
+                        <th>Customer</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        
+        for quote in quotes:
+            status_class = quote.get('status', 'pending').lower().replace('rfq_', '')
+            created = quote.get('created_at', datetime.now())
+            if isinstance(created, str):
+                created = datetime.fromisoformat(created.replace('Z', '+00:00'))
+            
+            html_content += f"""
+                    <tr>
+                        <td>{quote.get('quote_number', 'N/A')}</td>
+                        <td>{quote.get('customer_name', 'N/A')}</td>
+                        <td>{len(quote.get('products', []))}</td>
+                        <td>Rs. {quote.get('total_price', 0):,.2f}</td>
+                        <td><span class="status {status_class}">{quote.get('status', 'N/A').upper()}</span></td>
+                        <td>{created.strftime('%Y-%m-%d')}</td>
+                    </tr>
+            """
+        
+        html_content += """
+                </tbody>
+            </table>
+            <div class="footer">
+                <p>Convero - Belt Conveyor Roller Solutions</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Generate PDF using weasyprint
+        from weasyprint import HTML
+        pdf_bytes = HTML(string=html_content).write_pdf()
+        
+        filename = f"quotes_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        logging.error(f"Quote PDF export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/customers/export/excel")
 async def export_customers_excel(
     search: str = None,
@@ -7615,6 +7807,99 @@ async def export_customers_excel(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/customers/export/pdf")
+async def export_customers_pdf(
+    search: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Export customers to PDF file - Admin only"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        query = {}
+        if search:
+            query["$or"] = [
+                {"name": {"$regex": search, "$options": "i"}},
+                {"email": {"$regex": search, "$options": "i"}},
+                {"company": {"$regex": search, "$options": "i"}}
+            ]
+        
+        customers = await db.users.find({**query, "role": "customer"}).sort("created_at", -1).to_list(1000)
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Customers Export</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                h1 {{ color: #960018; border-bottom: 2px solid #960018; padding-bottom: 10px; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+                th {{ background-color: #960018; color: white; padding: 12px; text-align: left; }}
+                td {{ padding: 10px; border-bottom: 1px solid #ddd; }}
+                tr:nth-child(even) {{ background-color: #f9f9f9; }}
+                .footer {{ margin-top: 30px; text-align: center; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <h1>Customer List</h1>
+            <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Total: {len(customers)} customers</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Customer Code</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Company</th>
+                        <th>Joined</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        
+        for customer in customers:
+            created = customer.get('created_at', datetime.now())
+            if isinstance(created, str):
+                created = datetime.fromisoformat(created.replace('Z', '+00:00'))
+            
+            html_content += f"""
+                    <tr>
+                        <td>{customer.get('customer_code', 'N/A')}</td>
+                        <td>{customer.get('name', 'N/A')}</td>
+                        <td>{customer.get('email', 'N/A')}</td>
+                        <td>{customer.get('phone', 'N/A')}</td>
+                        <td>{customer.get('company', 'N/A')}</td>
+                        <td>{created.strftime('%Y-%m-%d')}</td>
+                    </tr>
+            """
+        
+        html_content += """
+                </tbody>
+            </table>
+            <div class="footer">
+                <p>Convero - Belt Conveyor Roller Solutions</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        from weasyprint import HTML
+        pdf_bytes = HTML(string=html_content).write_pdf()
+        
+        filename = f"customers_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        logging.error(f"Customer PDF export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/products/export/excel")
 async def export_products_excel(
     search: str = None,
@@ -7675,6 +7960,96 @@ async def export_products_excel(
         )
     except Exception as e:
         logging.error(f"Product Excel export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/products/export/pdf")
+async def export_products_pdf(
+    search: str = None,
+    roller_type: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Export product catalog to PDF file"""
+    try:
+        query = {}
+        if search:
+            query["$or"] = [
+                {"product_code": {"$regex": search, "$options": "i"}},
+                {"product_name": {"$regex": search, "$options": "i"}}
+            ]
+        if roller_type:
+            query["roller_type"] = roller_type
+        
+        products = await db.products.find(query).to_list(500)
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Product Catalog</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                h1 {{ color: #960018; border-bottom: 2px solid #960018; padding-bottom: 10px; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }}
+                th {{ background-color: #960018; color: white; padding: 8px; text-align: left; }}
+                td {{ padding: 6px; border-bottom: 1px solid #ddd; }}
+                tr:nth-child(even) {{ background-color: #f9f9f9; }}
+                .footer {{ margin-top: 30px; text-align: center; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <h1>Product Catalog</h1>
+            <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Total: {len(products)} products</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Pipe Dia</th>
+                        <th>Shaft</th>
+                        <th>Length</th>
+                        <th>Weight</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        
+        for product in products:
+            html_content += f"""
+                    <tr>
+                        <td>{product.get('product_code', 'N/A')}</td>
+                        <td>{product.get('product_name', 'N/A')}</td>
+                        <td>{product.get('roller_type', 'N/A')}</td>
+                        <td>{product.get('pipe_diameter', 'N/A')}mm</td>
+                        <td>{product.get('shaft_diameter', 'N/A')}mm</td>
+                        <td>{product.get('roller_length', 'N/A')}mm</td>
+                        <td>{product.get('total_weight', 0):.2f}kg</td>
+                    </tr>
+            """
+        
+        html_content += """
+                </tbody>
+            </table>
+            <div class="footer">
+                <p>Convero - Belt Conveyor Roller Solutions</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        from weasyprint import HTML
+        pdf_bytes = HTML(string=html_content).write_pdf()
+        
+        filename = f"products_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        logging.error(f"Product PDF export error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

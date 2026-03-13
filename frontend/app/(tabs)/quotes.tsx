@@ -1538,9 +1538,12 @@ export default function QuotesScreen() {
         <View style={styles.headerActions}>
           <ExportButtons
             endpoint="/quotes/export/excel"
+            pdfEndpoint="/quotes/export/pdf"
             queryParams={{ status: activeTab === 'all' ? '' : activeTab }}
             filenamePrefix="Quotes"
             compact={true}
+            showPdf={true}
+            showExcel={true}
           />
           <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
             <Ionicons name="refresh" size={24} color="#960018" />

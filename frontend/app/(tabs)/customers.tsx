@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import { ExportButtons } from '../../components/shared/ExportButtons';
 
 interface Customer {
   id: string;
@@ -420,13 +421,15 @@ export default function CustomersScreen() {
         <Text style={styles.headerTitle}>Customers</Text>
         <View style={styles.headerRight}>
           <Text style={styles.headerSubtitle}>{customers.length} customers</Text>
-          <TouchableOpacity 
-            style={styles.exportBtn}
-            onPress={exportCustomers}
-          >
-            <Ionicons name="download-outline" size={18} color="#960018" />
-            <Text style={styles.exportBtnText}>Export</Text>
-          </TouchableOpacity>
+          <ExportButtons
+            endpoint="/customers/export/excel"
+            pdfEndpoint="/customers/export/pdf"
+            queryParams={searchQuery ? { search: searchQuery } : {}}
+            filenamePrefix="Customers"
+            compact={true}
+            showPdf={true}
+            showExcel={true}
+          />
         </View>
       </View>
 

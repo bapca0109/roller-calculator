@@ -877,10 +877,13 @@ export default function SearchScreen() {
           <Text style={styles.headerSubtitle}>Search available roller configurations</Text>
         </View>
         <ExportButtons
-          endpoint="/api/products/export/excel"
+          endpoint="/products/export/excel"
+          pdfEndpoint="/products/export/pdf"
           queryParams={searchQuery ? { search: searchQuery } : {}}
           filenamePrefix="Products"
           compact={true}
+          showPdf={true}
+          showExcel={true}
         />
       </View>
 
