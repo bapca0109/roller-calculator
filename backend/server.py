@@ -7584,14 +7584,32 @@ async def migrate_customer_codes(current_user: dict = Depends(get_current_user))
 async def export_quotes_excel(
     status: str = None,
     search: str = None,
-    current_user: dict = Depends(get_current_user)
+    token: Optional[str] = None
 ):
-    """Export quotes to Excel file"""
+    """Export quotes to Excel file. Accepts token as query param for browser downloads."""
+    # Validate token from query param
+    current_user = None
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            if email:
+                user = await db.users.find_one({"email": email})
+                if user:
+                    user["id"] = str(user["_id"])
+                    current_user = user
+        except Exception as e:
+            logging.error(f"Token validation error: {e}")
+            raise HTTPException(status_code=401, detail="Invalid token")
+    
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
     try:
         # Build query
         query = {}
         if current_user.get("role") != "admin":
-            query["customer_id"] = current_user.get("user_id")
+            query["customer_email"] = current_user.get("email")
         if status and status != "all":
             query["status"] = status
         if search:
@@ -7659,9 +7677,27 @@ async def export_quotes_excel(
 @api_router.get("/quotes/export/pdf")
 async def export_quotes_pdf(
     status: str = None,
-    current_user: dict = Depends(get_current_user)
+    token: Optional[str] = None
 ):
-    """Export quotes to PDF file"""
+    """Export quotes to PDF file. Accepts token as query param for browser downloads."""
+    # Validate token from query param
+    current_user = None
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            if email:
+                user = await db.users.find_one({"email": email})
+                if user:
+                    user["id"] = str(user["_id"])
+                    current_user = user
+        except Exception as e:
+            logging.error(f"Token validation error: {e}")
+            raise HTTPException(status_code=401, detail="Invalid token")
+    
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
     try:
         query = {}
         if current_user.get("role") != "admin":
