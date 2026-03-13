@@ -1653,12 +1653,6 @@ export default function QuotesScreen() {
               <Text style={{ color: '#999', fontStyle: 'italic' }}>Loading...</Text>
             )}
           </View>
-                </View>
-              </>
-            ) : (
-              <Text style={{ color: '#999', fontStyle: 'italic' }}>Loading commercial terms...</Text>
-            )}
-          </View>
 
           {/* Summary Section - Real-time Calculation */}
           <View style={[styles.detailSection, { backgroundColor: '#fff' }]}>
