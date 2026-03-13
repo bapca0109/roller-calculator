@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from dotenv import load_dotenv
@@ -7584,14 +7584,22 @@ async def migrate_customer_codes(current_user: dict = Depends(get_current_user))
 async def export_quotes_excel(
     status: str = None,
     search: str = None,
-    token: Optional[str] = None
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
 ):
-    """Export quotes to Excel file. Accepts token as query param for browser downloads."""
-    # Validate token from query param
+    """Export quotes to Excel file. Accepts token as query param or Authorization header."""
+    # Validate token from query param OR Authorization header
     current_user = None
-    if token:
+    auth_token = token
+    
+    # Try to get token from Authorization header if not in query
+    if not auth_token and authorization:
+        if authorization.startswith("Bearer "):
+            auth_token = authorization[7:]
+    
+    if auth_token:
         try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
             email = payload.get("sub")
             if email:
                 user = await db.users.find_one({"email": email})
@@ -7677,14 +7685,22 @@ async def export_quotes_excel(
 @api_router.get("/quotes/export/pdf")
 async def export_quotes_pdf(
     status: str = None,
-    token: Optional[str] = None
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
 ):
-    """Export quotes to PDF file. Accepts token as query param for browser downloads."""
-    # Validate token from query param
+    """Export quotes to PDF file. Accepts token as query param or Authorization header."""
+    # Validate token from query param OR Authorization header
     current_user = None
-    if token:
+    auth_token = token
+    
+    # Try to get token from Authorization header if not in query
+    if not auth_token and authorization:
+        if authorization.startswith("Bearer "):
+            auth_token = authorization[7:]
+    
+    if auth_token:
         try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
             email = payload.get("sub")
             if email:
                 user = await db.users.find_one({"email": email})
