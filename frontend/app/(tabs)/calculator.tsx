@@ -1135,12 +1135,13 @@ export default function CalculatorScreen() {
 
         {/* Tab Switcher: Calculator / Search */}
         <View style={styles.tabSwitcher}>
-          <Pressable
+          <TouchableOpacity
             style={[styles.tabButton, activeTab === 'search' && styles.tabButtonActive]}
             onPress={() => {
               console.log('Search tab pressed');
               setActiveTab('search');
             }}
+            activeOpacity={0.7}
             data-testid="search-tab-button"
           >
             <Ionicons 
@@ -1151,13 +1152,14 @@ export default function CalculatorScreen() {
             <Text style={[styles.tabButtonText, activeTab === 'search' && styles.tabButtonTextActive]}>
               Search
             </Text>
-          </Pressable>
-          <Pressable
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.tabButton, activeTab === 'calculator' && styles.tabButtonActive]}
             onPress={() => {
               console.log('Calculator tab pressed');
               setActiveTab('calculator');
             }}
+            activeOpacity={0.7}
             data-testid="calculator-tab-button"
           >
             <Ionicons 
@@ -1168,7 +1170,7 @@ export default function CalculatorScreen() {
             <Text style={[styles.tabButtonText, activeTab === 'calculator' && styles.tabButtonTextActive]}>
               Calculator
             </Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
 
         {/* Search Tab Content */}
