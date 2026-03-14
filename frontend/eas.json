@@ -6,7 +6,7 @@
         "withoutCredentials": true
       },
       "env": {
-        "EXPO_PUBLIC_BACKEND_URL": "https://belt-calc-admin.preview.emergentagent.com",
+        "EXPO_PUBLIC_BACKEND_URL": "https://belt-price-engine.preview.emergentagent.com",
         "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
       }
     }

@@ -603,10 +603,10 @@ export default function CustomersScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setGstModalVisible(false)}>
-              <Text style={styles.cancelBtn}>Cancel</Text>
+              <Ionicons name="close-circle" size={28} color="#666" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Fetch from GSTIN</Text>
-            <View style={{ width: 50 }} />
+            <View style={{ width: 28 }} />
           </View>
 
           <ScrollView style={styles.modalContent}>
@@ -713,7 +713,7 @@ export default function CustomersScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={styles.cancelBtn}>Cancel</Text>
+              <Ionicons name="close-circle" size={28} color="#666" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
               {editingCustomer ? 'Edit Customer' : 'New Customer'}
@@ -853,10 +853,10 @@ export default function CustomersScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setQuotesModalVisible(false)}>
-              <Text style={styles.cancelBtn}>Close</Text>
+              <Ionicons name="close-circle" size={28} color="#666" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Customer Quotes</Text>
-            <View style={{ width: 50 }} />
+            <View style={{ width: 28 }} />
           </View>
 
           <ScrollView style={styles.modalContent}>

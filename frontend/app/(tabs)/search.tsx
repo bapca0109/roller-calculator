@@ -1039,6 +1039,7 @@ export default function SearchScreen() {
       )}
 
       {/* Quantity Modal */}
+      {/* Quantity Modal */}
       <Modal
         visible={showQuantityModal}
         transparent
@@ -1047,12 +1048,17 @@ export default function SearchScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.quantityModal}>
-            <Text style={styles.modalTitle}>Add to Quote</Text>
+            <View style={styles.quantityModalHeader}>
+              <Text style={styles.quantityModalTitle}>Add to Quote</Text>
+              <TouchableOpacity onPress={() => setShowQuantityModal(false)}>
+                <Ionicons name="close-circle" size={28} color="#666" />
+              </TouchableOpacity>
+            </View>
             {selectedLength && (
               <ScrollView 
                 showsVerticalScrollIndicator={true}
                 style={{ maxHeight: 400 }}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 20, paddingTop: 16 }}
               >
                 <Text style={styles.modalProductCode}>{selectedLength.length.product_code}</Text>
                 <View style={styles.modalDetails}>
@@ -1903,6 +1909,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 16,
     elevation: 20,
+  },
+  quantityModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  quantityModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
   },
   modalTitle: {
     fontSize: 18,

@@ -12,7 +12,7 @@ import requests
 import os
 from typing import Optional, Dict, Any
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://belt-calc-admin.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://belt-price-engine.preview.emergentagent.com').rstrip('/')
 
 
 class TestPerItemDiscounts:

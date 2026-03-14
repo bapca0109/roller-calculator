@@ -1910,7 +1910,12 @@ export default function CalculatorScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.quantityModal}>
-              <Text style={styles.quantityModalTitle}>Enter Quantity</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={styles.quantityModalTitle}>Enter Quantity</Text>
+                <TouchableOpacity onPress={() => setShowQuantityModal(false)}>
+                  <Ionicons name="close-circle" size={28} color="#666" />
+                </TouchableOpacity>
+              </View>
               {selectedLength && (
                 <Text style={styles.quantityModalCode}>{selectedLength.length.product_code}</Text>
               )}

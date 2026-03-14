@@ -87,7 +87,15 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - Added warning message when selected shaft works without housing
 
 
-### March 13, 2026 (Current Session) - Designation Field & iOS Logout Fix
+### March 14, 2026 (Current Session) - Modal Close Buttons
+- [x] **Added "X" Close Buttons to All Modals (P0)**:
+  - `customers.tsx`: Add/Edit Customer Modal - Changed "Cancel" text to X icon
+  - `customers.tsx`: Customer Quotes Modal - Changed "Close" text to X icon  
+  - `search.tsx`: Quantity Modal - Added header with title and X close button
+  - Added new styles `quantityModalHeader` and `quantityModalTitle` for consistent UI
+  - All other modals already had X buttons (verified: quotes, cart, admin, shared components)
+
+### March 13, 2026 (Previous Session) - Designation Field & iOS Logout Fix
 - [x] **Designation Field for Customer Signup (P0)**: 
   - Added optional "Designation" field to customer registration form
   - Backend: Updated `OTPRequest` and `OTPVerify` models to include designation
@@ -207,6 +215,10 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 - [ ] Code cleanup - delete unused files
 
 ## Files Modified This Session
+- `/app/frontend/app/(tabs)/customers.tsx` - Added X close buttons to Add/Edit Customer Modal and Customer Quotes Modal
+- `/app/frontend/app/(tabs)/search.tsx` - Added header with X close button to Quantity Modal
+
+## Previous Files Modified
 - `/app/frontend/app/(tabs)/search.tsx` - Added attachment UI and styles
 - `/app/backend/server.py` - Auto-freight calculation in approve_rfq, NoneType fix
 - `/app/backend/tests/test_approve_rfq_auto_freight.py` - New test file
