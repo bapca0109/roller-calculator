@@ -32,6 +32,7 @@ import {
   ApprovalSuccessModal,
   RejectReasonModal,
   QuoteDetailModal,
+  EditQuoteModal,
   // Utilities
   getStatusColor,
   getStatusIcon,
@@ -1964,432 +1965,42 @@ export default function QuotesScreen() {
         }}
       />
 
-      {/* Edit Quote Modal */}
-      <Modal
+
+      {/* Edit Quote Modal - Using extracted component */}
+      <EditQuoteModal
         visible={!!editingQuote}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setEditingQuote(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit {docLabel}</Text>
-              <TouchableOpacity onPress={() => setEditingQuote(null)}>
-                <Ionicons name="close" size={28} color="#333" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalScroll}>
-              {editingQuote && (
-                <>
-                  {/* Discount Mode Toggle */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>Discount Mode</Text>
-                    <View style={styles.discountModeToggle}>
-                      <TouchableOpacity 
-                        style={[styles.modeButton, !useItemDiscounts && styles.modeButtonActive]}
-                        onPress={() => setUseItemDiscounts(false)}
-                      >
-                        <Ionicons name="calculator-outline" size={18} color={!useItemDiscounts ? "#fff" : "#666"} />
-                        <Text style={[styles.modeButtonText, !useItemDiscounts && styles.modeButtonTextActive]}>
-                          Total Discount
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.modeButton, useItemDiscounts && styles.modeButtonActive]}
-                        onPress={() => setUseItemDiscounts(true)}
-                      >
-                        <Ionicons name="list-outline" size={18} color={useItemDiscounts ? "#fff" : "#666"} />
-                        <Text style={[styles.modeButtonText, useItemDiscounts && styles.modeButtonTextActive]}>
-                          Per-Item Discount
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  {/* Bulk Apply Discount - Only visible in Per-Item mode */}
-                  {useItemDiscounts && (
-                    <View style={styles.bulkDiscountSection}>
-                      <Text style={styles.bulkDiscountLabel}>Apply to All Items:</Text>
-                      <View style={styles.bulkDiscountRow}>
-                        <TextInput
-                          style={styles.bulkDiscountInput}
-                          value={bulkDiscountPercent}
-                          onChangeText={setBulkDiscountPercent}
-                          keyboardType="numeric"
-                          placeholder="0"
-                        />
-                        <Text style={styles.bulkDiscountPercent}>%</Text>
-                        <TouchableOpacity 
-                          style={styles.bulkApplyButton}
-                          onPress={applyDiscountToAllItems}
-                        >
-                          <Ionicons name="copy-outline" size={16} color="#fff" />
-                          <Text style={styles.bulkApplyButtonText}>Apply to All</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Products with editable quantity and item discount */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>Products</Text>
-                    {editedProducts.map((product, index) => {
-                      const itemDiscount = product.item_discount_percent || 0;
-                      const valueAfterDiscount = product.unit_price * (1 - itemDiscount / 100);
-                      const lineTotal = product.quantity * valueAfterDiscount;
-                      
-                      return (
-                        <View key={index} style={styles.editProductCard}>
-                          <View style={styles.editProductHeader}>
-                            <Text style={styles.editProductName}>{product.product_name || product.product_id}</Text>
-                            <Text style={styles.editProductPrice}>Rs. {product.unit_price?.toFixed(2)}/unit</Text>
-                          </View>
-                          
-                          <View style={styles.editProductInputs}>
-                            <View style={styles.inputGroup}>
-                              <Text style={styles.inputLabel}>Qty</Text>
-                              <TextInput
-                                style={styles.smallInput}
-                                value={product.quantity.toString()}
-                                onChangeText={(text) => updateEditedProductQuantity(index, text)}
-                                keyboardType="numeric"
-                              />
-                            </View>
-                            
-                            {useItemDiscounts && (
-                              <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Disc %</Text>
-                                <TextInput
-                                  style={styles.smallInput}
-                                  value={itemDiscount.toString()}
-                                  onChangeText={(text) => updateProductItemDiscount(index, text)}
-                                  keyboardType="numeric"
-                                  placeholder="0"
-                                />
-                              </View>
-                            )}
-                            
-                            {useItemDiscounts && (
-                              <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>After Disc</Text>
-                                <Text style={styles.calculatedValue}>Rs. {valueAfterDiscount.toFixed(2)}</Text>
-                              </View>
-                            )}
-                            
-                            <View style={styles.inputGroup}>
-                              <Text style={styles.inputLabel}>Total</Text>
-                              <Text style={styles.calculatedValueBold}>Rs. {lineTotal.toFixed(2)}</Text>
-                            </View>
-                          </View>
-                        </View>
-                      );
-                    })}
-                  </View>
-
-                  {/* Total Discount - Only show if not using item discounts */}
-                  {!useItemDiscounts && (
-                    <View style={styles.detailSection}>
-                      <Text style={styles.sectionTitle}>Total Discount</Text>
-                      <View style={styles.discountInputRow}>
-                        <TextInput
-                          style={styles.discountInput}
-                          value={editedDiscount}
-                          onChangeText={setEditedDiscount}
-                          keyboardType="numeric"
-                          placeholder="0"
-                        />
-                        <Text style={styles.discountPercent}>%</Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Freight Input */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>Freight</Text>
-                    <View style={styles.freightInputRow}>
-                      <Text style={styles.freightInputLabel}>Freight Amount:</Text>
-                      <View style={styles.freightInputWrapper}>
-                        <Text style={styles.freightInputPrefix}>Rs.</Text>
-                        <TextInput
-                          style={styles.freightInput}
-                          value={editedFreight}
-                          onChangeText={setEditedFreight}
-                          keyboardType="numeric"
-                          placeholder="0"
-                        />
-                      </View>
-                    </View>
-                    {editingQuote?.shipping_cost > 0 && parseFloat(editedFreight) !== editingQuote.shipping_cost && (
-                      <Text style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
-                        Original freight: Rs. {editingQuote.shipping_cost.toFixed(2)}
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* Packing Type Selection */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>Packing Type</Text>
-                    <View style={styles.packingOptions}>
-                      {[
-                        { value: 'standard', label: 'Standard (1%)' },
-                        { value: 'pallet', label: 'Pallet (4%)' },
-                        { value: 'wooden_box', label: 'Wooden Box (8%)' },
-                        { value: 'custom', label: 'Custom' }
-                      ].map((option) => (
-                        <TouchableOpacity
-                          key={option.value}
-                          style={[
-                            styles.packingOption,
-                            editedPackingType === option.value && styles.packingOptionActive
-                          ]}
-                          onPress={() => setEditedPackingType(option.value)}
-                        >
-                          <Ionicons 
-                            name={editedPackingType === option.value ? 'radio-button-on' : 'radio-button-off'} 
-                            size={20} 
-                            color={editedPackingType === option.value ? '#960018' : '#666'} 
-                          />
-                          <Text style={[
-                            styles.packingOptionText,
-                            editedPackingType === option.value && styles.packingOptionTextActive
-                          ]}>{option.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                    
-                    {/* Custom Packing Percentage Input */}
-                    {editedPackingType === 'custom' && (
-                      <View style={styles.customPackingRow}>
-                        <Text style={styles.customPackingLabel}>Custom Percentage:</Text>
-                        <View style={styles.freightInputWrapper}>
-                          <TextInput
-                            style={styles.freightInput}
-                            value={customPackingPercent}
-                            onChangeText={setCustomPackingPercent}
-                            keyboardType="numeric"
-                            placeholder="0"
-                          />
-                          <Text style={styles.freightInputSuffix}>%</Text>
-                        </View>
-                      </View>
-                    )}
-                    
-                    {/* Show original packing type if different */}
-                    {editingQuote?.packing_type && editedPackingType !== editingQuote.packing_type && (
-                      <Text style={{ color: '#666', fontSize: 12, marginTop: 8 }}>
-                        Original: {editingQuote.packing_type === 'standard' ? 'Standard (1%)' :
-                                   editingQuote.packing_type === 'pallet' ? 'Pallet (4%)' :
-                                   editingQuote.packing_type === 'wooden_box' ? 'Wooden Box (8%)' :
-                                   editingQuote.packing_type}
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* Commercial Terms Section for Edit Quote */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>Commercial Terms</Text>
-                    
-                    {commercialTermsOptions ? (
-                      <>
-                        {/* Payment Terms Dropdown */}
-                        <View style={styles.dropdownRow}>
-                          <Text style={styles.dropdownLabel}>Payment Terms:</Text>
-                          <View style={styles.dropdownContainer}>
-                            <select
-                              value={selectedPaymentTerms}
-                              onChange={(e: any) => setSelectedPaymentTerms(e.target.value)}
-                              style={{
-                                width: '100%',
-                                padding: 12,
-                                fontSize: 14,
-                                borderRadius: 8,
-                                border: '1px solid #ddd',
-                                backgroundColor: '#fff',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
-                                <option key={idx} value={term}>{term}</option>
-                              ))}
-                            </select>
-                          </View>
-                        </View>
-                        
-                        {/* Freight Terms Dropdown */}
-                        <View style={styles.dropdownRow}>
-                          <Text style={styles.dropdownLabel}>Freight Terms:</Text>
-                          <View style={styles.dropdownContainer}>
-                            <select
-                              value={selectedFreightTerms}
-                              onChange={(e: any) => setSelectedFreightTerms(e.target.value)}
-                              style={{
-                                width: '100%',
-                                padding: 12,
-                                fontSize: 14,
-                                borderRadius: 8,
-                                border: '1px solid #ddd',
-                                backgroundColor: '#fff',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
-                                <option key={idx} value={term}>{term}</option>
-                              ))}
-                            </select>
-                          </View>
-                        </View>
-                        
-                        {/* Color/Finish Dropdown */}
-                        <View style={styles.dropdownRow}>
-                          <Text style={styles.dropdownLabel}>Color/Finish:</Text>
-                          <View style={styles.dropdownContainer}>
-                            <select
-                              value={selectedColorFinish}
-                              onChange={(e: any) => setSelectedColorFinish(e.target.value)}
-                              style={{
-                                width: '100%',
-                                padding: 12,
-                                fontSize: 14,
-                                borderRadius: 8,
-                                border: '1px solid #ddd',
-                                backgroundColor: '#fff',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
-                                <option key={idx} value={term}>{term}</option>
-                              ))}
-                            </select>
-                          </View>
-                        </View>
-                        
-                        {/* Delivery Timeline Dropdown */}
-                        <View style={styles.dropdownRow}>
-                          <Text style={styles.dropdownLabel}>Delivery:</Text>
-                          <View style={styles.dropdownContainer}>
-                            <select
-                              value={selectedDeliveryTimeline}
-                              onChange={(e: any) => setSelectedDeliveryTimeline(e.target.value)}
-                              style={{
-                                width: '100%',
-                                padding: 12,
-                                fontSize: 14,
-                                borderRadius: 8,
-                                border: '1px solid #ddd',
-                                backgroundColor: '#fff',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
-                                <option key={idx} value={term}>{term}</option>
-                              ))}
-                            </select>
-                          </View>
-                        </View>
-                        
-                        {/* Fixed Terms */}
-                        <View style={[styles.dropdownRow, { marginTop: 16 }]}>
-                          <Text style={[styles.dropdownLabel, { fontWeight: '600' }]}>Warranty:</Text>
-                          <Text style={styles.fixedTermText}>{commercialTermsOptions.warranty}</Text>
-                        </View>
-                        <View style={styles.dropdownRow}>
-                          <Text style={[styles.dropdownLabel, { fontWeight: '600' }]}>Validity:</Text>
-                          <Text style={styles.fixedTermText}>{commercialTermsOptions.validity}</Text>
-                        </View>
-                      </>
-                    ) : (
-                      <Text style={{ color: '#999', fontStyle: 'italic' }}>Loading...</Text>
-                    )}
-                  </View>
-
-                  {/* Calculated Totals */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.sectionTitle}>Summary</Text>
-                    
-                    {/* Subtotal (after discount) */}
-                    <View style={styles.pricingRow}>
-                      <Text style={styles.pricingLabel}>Subtotal</Text>
-                      <Text style={styles.pricingValue}>Rs. {(calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount).toFixed(2)}</Text>
-                    </View>
-                    
-                    {/* Packing Charges with % */}
-                    {calculateEditedTotal().packingCharges > 0 && (
-                      <View style={styles.pricingRow}>
-                        <Text style={styles.pricingLabel}>
-                          Packing Charges ({((calculateEditedTotal().packingCharges / (calculateEditedTotal().subtotal - calculateEditedTotal().discountAmount || 1)) * 100).toFixed(1)}%)
-                        </Text>
-                        <Text style={styles.pricingValue}>Rs. {calculateEditedTotal().packingCharges.toFixed(2)}</Text>
-                      </View>
-                    )}
-                    
-                    {/* Freight Charges */}
-                    {(parseFloat(editedFreight) || 0) > 0 && (
-                      <View style={styles.pricingRow}>
-                        <Text style={styles.pricingLabel}>Freight Charges</Text>
-                        <Text style={styles.pricingValue}>Rs. {(parseFloat(editedFreight) || 0).toFixed(2)}</Text>
-                      </View>
-                    )}
-                    
-                    {/* Taxable Amount */}
-                    <View style={styles.pricingRow}>
-                      <Text style={styles.pricingLabel}>Taxable Amount</Text>
-                      <Text style={styles.pricingValue}>
-                        Rs. {calculateEditedTotal().taxableAmount.toFixed(2)}
-                      </Text>
-                    </View>
-                    
-                    {/* CGST @ 9% */}
-                    <View style={styles.pricingRow}>
-                      <Text style={styles.pricingLabel}>CGST @ 9%</Text>
-                      <Text style={styles.pricingValue}>
-                        Rs. {(calculateEditedTotal().taxableAmount * 0.09).toFixed(2)}
-                      </Text>
-                    </View>
-                    
-                    {/* SGST @ 9% */}
-                    <View style={styles.pricingRow}>
-                      <Text style={styles.pricingLabel}>SGST @ 9%</Text>
-                      <Text style={styles.pricingValue}>
-                        Rs. {(calculateEditedTotal().taxableAmount * 0.09).toFixed(2)}
-                      </Text>
-                    </View>
-                    
-                    {/* Grand Total */}
-                    <View style={[styles.pricingRow, styles.totalRow]}>
-                      <Text style={styles.totalLabel}>GRAND TOTAL</Text>
-                      <Text style={styles.totalValue}>Rs. {calculateEditedTotal().total.toFixed(2)}</Text>
-                    </View>
-                  </View>
-
-                  {/* Single Save & Mail Button */}
-                  <TouchableOpacity 
-                    style={styles.saveAndMailButton}
-                    onPress={saveAndMailQuote}
-                    disabled={savingEdit}
-                  >
-                    {savingEdit ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <>
-                        <Ionicons name="mail" size={24} color="#fff" />
-                        <Text style={styles.saveEditButtonText}>Save & Mail Revision</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  
-                  {/* Show current revision if exists */}
-                  {editingQuote.current_revision && (
-                    <Text style={styles.revisionLabel}>
-                      Current Revision: {editingQuote.current_revision}
-                    </Text>
-                  )}
-                </>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+        quote={editingQuote}
+        docLabel={docLabel}
+        onClose={() => setEditingQuote(null)}
+        editedProducts={editedProducts}
+        useItemDiscounts={useItemDiscounts}
+        setUseItemDiscounts={setUseItemDiscounts}
+        bulkDiscountPercent={bulkDiscountPercent}
+        setBulkDiscountPercent={setBulkDiscountPercent}
+        editedDiscount={editedDiscount}
+        setEditedDiscount={setEditedDiscount}
+        editedFreight={editedFreight}
+        setEditedFreight={setEditedFreight}
+        editedPackingType={editedPackingType}
+        setEditedPackingType={setEditedPackingType}
+        customPackingPercent={customPackingPercent}
+        setCustomPackingPercent={setCustomPackingPercent}
+        commercialTermsOptions={commercialTermsOptions}
+        selectedPaymentTerms={selectedPaymentTerms}
+        setSelectedPaymentTerms={setSelectedPaymentTerms}
+        selectedFreightTerms={selectedFreightTerms}
+        setSelectedFreightTerms={setSelectedFreightTerms}
+        selectedColorFinish={selectedColorFinish}
+        setSelectedColorFinish={setSelectedColorFinish}
+        selectedDeliveryTimeline={selectedDeliveryTimeline}
+        setSelectedDeliveryTimeline={setSelectedDeliveryTimeline}
+        onUpdateProductQuantity={updateEditedProductQuantity}
+        onUpdateProductItemDiscount={updateProductItemDiscount}
+        onApplyDiscountToAllItems={applyDiscountToAllItems}
+        onSaveAndMail={saveAndMailQuote}
+        calculateEditedTotal={calculateEditedTotal}
+        savingEdit={savingEdit}
+      />
 
       {/* Revision History Modal - Using extracted component */}
       <RevisionHistoryModal
