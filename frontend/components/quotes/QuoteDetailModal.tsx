@@ -8,9 +8,55 @@ import {
   TextInput,
   ActivityIndicator,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Quote, QuoteProduct, PACKING_TYPES } from './types';
+
+// Web-only Select component
+const WebSelect = ({ value, onChange, options, style }: { 
+  value: string; 
+  onChange: (value: string) => void; 
+  options: string[];
+  style?: any;
+}) => {
+  if (Platform.OS !== 'web') {
+    // For native, show a simple text display (can be enhanced with Picker later)
+    return (
+      <TouchableOpacity 
+        style={{ padding: 12, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1' }}
+        onPress={() => {
+          // Could show a modal picker here for native
+        }}
+      >
+        <Text>{value}</Text>
+      </TouchableOpacity>
+    );
+  }
+  
+  // For web, render native select
+  return (
+    <select
+      value={value}
+      onChange={(e: any) => onChange(e.target.value)}
+      style={{
+        width: '100%',
+        padding: 12,
+        fontSize: 14,
+        borderRadius: 8,
+        border: '1px solid #CBD5E1',
+        backgroundColor: '#fff',
+        cursor: 'pointer',
+        outline: 'none',
+        ...style
+      }}
+    >
+      {options.map((option, idx) => (
+        <option key={idx} value={option}>{option}</option>
+      ))}
+    </select>
+  );
+};
 
 interface QuoteDetailModalProps {
   visible: boolean;
@@ -538,101 +584,41 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                       {/* Payment Terms Dropdown */}
                       <View style={{ marginBottom: 16 }}>
                         <Text style={{ fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 8 }}>Payment Terms</Text>
-                        <View style={{ borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, backgroundColor: '#fff' }}>
-                          <select
-                            value={selectedPaymentTerms}
-                            onChange={(e: any) => setSelectedPaymentTerms(e.target.value)}
-                            style={{
-                              width: '100%',
-                              padding: 12,
-                              fontSize: 14,
-                              borderRadius: 8,
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              outline: 'none'
-                            }}
-                          >
-                            {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
-                              <option key={idx} value={term}>{term}</option>
-                            ))}
-                          </select>
-                        </View>
+                        <WebSelect
+                          value={selectedPaymentTerms}
+                          onChange={setSelectedPaymentTerms}
+                          options={commercialTermsOptions.payment_terms || []}
+                        />
                       </View>
 
                       {/* Freight Terms Dropdown */}
                       <View style={{ marginBottom: 16 }}>
                         <Text style={{ fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 8 }}>Freight Terms</Text>
-                        <View style={{ borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, backgroundColor: '#fff' }}>
-                          <select
-                            value={selectedFreightTerms}
-                            onChange={(e: any) => setSelectedFreightTerms(e.target.value)}
-                            style={{
-                              width: '100%',
-                              padding: 12,
-                              fontSize: 14,
-                              borderRadius: 8,
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              outline: 'none'
-                            }}
-                          >
-                            {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
-                              <option key={idx} value={term}>{term}</option>
-                            ))}
-                          </select>
-                        </View>
+                        <WebSelect
+                          value={selectedFreightTerms}
+                          onChange={setSelectedFreightTerms}
+                          options={commercialTermsOptions.freight_terms || []}
+                        />
                       </View>
 
                       {/* Color/Finish Dropdown */}
                       <View style={{ marginBottom: 16 }}>
                         <Text style={{ fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 8 }}>Color/Finish</Text>
-                        <View style={{ borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, backgroundColor: '#fff' }}>
-                          <select
-                            value={selectedColorFinish}
-                            onChange={(e: any) => setSelectedColorFinish(e.target.value)}
-                            style={{
-                              width: '100%',
-                              padding: 12,
-                              fontSize: 14,
-                              borderRadius: 8,
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              outline: 'none'
-                            }}
-                          >
-                            {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
-                              <option key={idx} value={term}>{term}</option>
-                            ))}
-                          </select>
-                        </View>
+                        <WebSelect
+                          value={selectedColorFinish}
+                          onChange={setSelectedColorFinish}
+                          options={commercialTermsOptions.color_finish || []}
+                        />
                       </View>
 
                       {/* Delivery Timeline Dropdown */}
                       <View style={{ marginBottom: 16 }}>
                         <Text style={{ fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 8 }}>Delivery Timeline</Text>
-                        <View style={{ borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, backgroundColor: '#fff' }}>
-                          <select
-                            value={selectedDeliveryTimeline}
-                            onChange={(e: any) => setSelectedDeliveryTimeline(e.target.value)}
-                            style={{
-                              width: '100%',
-                              padding: 12,
-                              fontSize: 14,
-                              borderRadius: 8,
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              outline: 'none'
-                            }}
-                          >
-                            {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
-                              <option key={idx} value={term}>{term}</option>
-                            ))}
-                          </select>
-                        </View>
+                        <WebSelect
+                          value={selectedDeliveryTimeline}
+                          onChange={setSelectedDeliveryTimeline}
+                          options={commercialTermsOptions.delivery_timeline || []}
+                        />
                       </View>
 
                       {/* Fixed Terms */}
