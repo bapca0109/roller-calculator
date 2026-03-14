@@ -31,6 +31,7 @@ import {
   RevisionHistoryModal,
   ApprovalSuccessModal,
   RejectReasonModal,
+  QuoteDetailModal,
   // Utilities
   getStatusColor,
   getStatusIcon,
