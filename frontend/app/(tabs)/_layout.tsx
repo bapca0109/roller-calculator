@@ -1,16 +1,43 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCart } from '../context/CartContext';
+import api from '../../utils/api';
 
 export default function TabsLayout() {
   const { user, isAuthenticated } = useAuth();
   const { cartCount } = useCart();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [pendingRfqCount, setPendingRfqCount] = useState(0);
+  
+  // Fetch pending RFQ count for admin
+  useEffect(() => {
+    const fetchPendingRfqCount = async () => {
+      if (user?.role === 'admin') {
+        try {
+          const response = await api.get('/quotes');
+          const quotes = response.data;
+          const pendingCount = quotes.filter(
+            (q: any) => q.status?.toLowerCase() === 'pending' && q.quote_number?.startsWith('RFQ')
+          ).length;
+          setPendingRfqCount(pendingCount);
+        } catch (error) {
+          console.error('Error fetching pending RFQ count:', error);
+        }
+      }
+    };
+    
+    if (isAuthenticated && user) {
+      fetchPendingRfqCount();
+      // Refresh every 30 seconds
+      const interval = setInterval(fetchPendingRfqCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user, isAuthenticated]);
   
   // If user is not authenticated, don't render tabs (prevent crash during logout)
   // Return null to prevent rendering while logout transition is happening
@@ -102,7 +129,14 @@ export default function TabsLayout() {
         options={{
           title: 'Quotes',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text-outline" size={size} color={color} />
+            <View>
+              <Ionicons name="document-text-outline" size={size} color={color} />
+              {isAdmin && pendingRfqCount > 0 && (
+                <View style={styles.pendingBadge}>
+                  <Text style={styles.pendingBadgeText}>{pendingRfqCount > 99 ? '99+' : pendingRfqCount}</Text>
+                </View>
+              )}
+            </View>
           ),
         }}
       />
@@ -159,6 +193,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   cartBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  pendingBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -10,
+    backgroundColor: '#F59E0B',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  pendingBadgeText: {
     color: '#fff',
     fontSize: 10,
     fontWeight: '700',
