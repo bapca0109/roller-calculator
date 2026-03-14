@@ -1926,7 +1926,7 @@ export default function QuotesScreen() {
         onPincodeChange={handlePincodeChange}
         onUpdateProductQuantity={updateProductQuantity}
         onDeleteProduct={deleteProduct}
-        onApprove={confirmApproveRfq}
+        onApprove={approveRfq}
         onReject={openRejectModal}
         onEdit={openEditQuote}
         onViewHistory={fetchRevisionHistory}
