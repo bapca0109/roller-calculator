@@ -4853,7 +4853,8 @@ async def save_quote_and_mail(
                 "delivery_location": updated_quote.get("delivery_location"),
                 "total_price": updated_quote.get("total_price", 0),
                 "notes": updated_quote.get("notes"),
-                "approved_at": updated_quote.get("approved_at")
+                "approved_at": updated_quote.get("approved_at"),
+                "commercial_terms": updated_quote.get("commercial_terms", {})
             }, customer_email, revision_label)
             email_sent = True
         except Exception as e:
