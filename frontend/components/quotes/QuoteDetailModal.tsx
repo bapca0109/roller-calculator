@@ -138,6 +138,18 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const isRejected = quote.status?.toLowerCase() === 'rejected';
   const canEdit = isAdmin && isRfq && !isApproved && !isRejected;
 
+  // Debug logging
+  console.log('QuoteDetailModal Debug:', {
+    canEdit,
+    isAdmin,
+    isRfq,
+    isPending,
+    isApproved,
+    isRejected,
+    hasCommercialTermsOptions: !!commercialTermsOptions,
+    commercialTermsOptionsKeys: commercialTermsOptions ? Object.keys(commercialTermsOptions) : []
+  });
+
   const renderProductPrice = (product: QuoteProduct, index: number) => {
     const originalPrice = product.unit_price * product.quantity;
     const discountPct = canEdit
@@ -518,8 +530,8 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 )}
 
                 {/* Commercial Terms Selection - For pending RFQs */}
-                <View style={[styles.detailSection, { backgroundColor: '#fff', marginTop: 16 }]}>
-                  <Text style={styles.sectionTitle}>Commercial Terms</Text>
+                <View style={{ backgroundColor: '#E0F7FA', marginTop: 20, padding: 16, borderRadius: 12, borderWidth: 2, borderColor: '#00BCD4' }}>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: '#006064', marginBottom: 12 }}>Commercial Terms</Text>
                   
                   {commercialTermsOptions ? (
                     <>
@@ -644,7 +656,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                       </View>
                     </>
                   ) : (
-                    <Text style={{ color: '#999', fontStyle: 'italic' }}>Loading terms...</Text>
+                    <Text style={{ color: '#666', fontStyle: 'italic' }}>Loading commercial terms...</Text>
                   )}
                 </View>
 
