@@ -103,6 +103,10 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - Fully integrated with all 25+ props connected
   - Tested and verified working (100% pass rate)
   - **Total Reduction: `quotes.tsx` went from 4762 lines to 3607 lines (1155 lines removed!)**
+- [x] **Started `calculator.tsx` Refactoring (P1)**:
+  - Created `/app/frontend/components/calculator/types.ts` - Extracted types and constants
+  - Updated imports in `calculator.tsx`
+  - **Reduction: `calculator.tsx` went from 3645 lines to 3543 lines (102 lines removed)**
 
 ### March 13, 2026 (Previous Session) - Designation Field & iOS Logout Fix
 - [x] **Designation Field for Customer Signup (P0)**: 
