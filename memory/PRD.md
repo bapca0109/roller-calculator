@@ -94,6 +94,13 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - Root cause: `downloadAsync` method deprecated in latest Expo SDK
   - Requires new iOS build to test on physical device
 
+- [x] **Enhanced Export with Retry Functionality**: 
+  - Added retry modal with user-friendly error messages for export failures
+  - Supports up to 3 retry attempts with attempt counter
+  - Contextual error messages (network, auth, server errors)
+  - Helpful tips for users when exports fail
+  - Works on both iOS and Android native apps
+
 - [x] **Added "X" Close Buttons to All Modals (P0)**:
   - `customers.tsx`: Add/Edit Customer Modal - Changed "Cancel" text to X icon
   - `customers.tsx`: Customer Quotes Modal - Changed "Close" text to X icon  
