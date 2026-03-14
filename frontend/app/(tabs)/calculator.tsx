@@ -19,7 +19,7 @@ import { CustomDropdown } from '../../components/CustomDropdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../context/CartContext';
 import api from '../../utils/api';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';

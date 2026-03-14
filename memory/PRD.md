@@ -88,6 +88,12 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 
 
 ### March 14, 2026 (Current Session) - Modal Close Buttons & Major Refactoring
+- [x] **Fixed iOS Export Bug (P0)**: 
+  - Updated `expo-file-system` import to use legacy module (`expo-file-system/legacy`)
+  - Fixed in 4 files: `quotes.tsx`, `search.tsx`, `calculator.tsx`, `admin.tsx`
+  - Root cause: `downloadAsync` method deprecated in latest Expo SDK
+  - Requires new iOS build to test on physical device
+
 - [x] **Added "X" Close Buttons to All Modals (P0)**:
   - `customers.tsx`: Add/Edit Customer Modal - Changed "Cancel" text to X icon
   - `customers.tsx`: Customer Quotes Modal - Changed "Close" text to X icon  

@@ -140,7 +140,7 @@ export default function AdminScreen() {
         Alert.alert('Success', `${format.toUpperCase()} file download started`);
       } else {
         // Native: Use FileSystem and Sharing
-        const FileSystem = require('expo-file-system');
+        const FileSystem = require('expo-file-system/legacy');
         const Sharing = require('expo-sharing');
         
         const url = `${api.defaults.baseURL}${endpoint}?token=${token}`;

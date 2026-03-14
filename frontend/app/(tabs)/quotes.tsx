@@ -19,7 +19,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import extracted components and types
