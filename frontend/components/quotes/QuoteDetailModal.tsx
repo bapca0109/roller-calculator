@@ -37,6 +37,16 @@ interface QuoteDetailModalProps {
   pincodeValid: boolean;
   pincodeError: string;
   freightLoading: boolean;
+  // Commercial Terms (for admin approving RFQs)
+  commercialTermsOptions: any;
+  selectedPaymentTerms: string;
+  setSelectedPaymentTerms: (terms: string) => void;
+  selectedFreightTerms: string;
+  setSelectedFreightTerms: (terms: string) => void;
+  selectedColorFinish: string;
+  setSelectedColorFinish: (finish: string) => void;
+  selectedDeliveryTimeline: string;
+  setSelectedDeliveryTimeline: (timeline: string) => void;
   // Actions
   onPincodeChange: (pincode: string) => void;
   onUpdateProductQuantity: (index: number, qty: number) => void;
@@ -92,6 +102,15 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   pincodeValid,
   pincodeError,
   freightLoading,
+  commercialTermsOptions,
+  selectedPaymentTerms,
+  setSelectedPaymentTerms,
+  selectedFreightTerms,
+  setSelectedFreightTerms,
+  selectedColorFinish,
+  setSelectedColorFinish,
+  selectedDeliveryTimeline,
+  setSelectedDeliveryTimeline,
   onPincodeChange,
   onUpdateProductQuantity,
   onDeleteProduct,
@@ -498,6 +517,91 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   </View>
                 )}
 
+                {/* Commercial Terms Selection - For pending RFQs */}
+                <View style={[styles.detailSection, { backgroundColor: '#fff', marginTop: 16 }]}>
+                  <Text style={styles.sectionTitle}>Commercial Terms</Text>
+                  
+                  {commercialTermsOptions ? (
+                    <>
+                      {/* Payment Terms Dropdown */}
+                      <View style={styles.dropdownRow}>
+                        <Text style={styles.dropdownLabel}>Payment Terms:</Text>
+                        <View style={styles.dropdownContainer}>
+                          <select
+                            value={selectedPaymentTerms}
+                            onChange={(e: any) => setSelectedPaymentTerms(e.target.value)}
+                            style={selectStyle}
+                          >
+                            {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
+                              <option key={idx} value={term}>{term}</option>
+                            ))}
+                          </select>
+                        </View>
+                      </View>
+
+                      {/* Freight Terms Dropdown */}
+                      <View style={styles.dropdownRow}>
+                        <Text style={styles.dropdownLabel}>Freight Terms:</Text>
+                        <View style={styles.dropdownContainer}>
+                          <select
+                            value={selectedFreightTerms}
+                            onChange={(e: any) => setSelectedFreightTerms(e.target.value)}
+                            style={selectStyle}
+                          >
+                            {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
+                              <option key={idx} value={term}>{term}</option>
+                            ))}
+                          </select>
+                        </View>
+                      </View>
+
+                      {/* Color/Finish Dropdown */}
+                      <View style={styles.dropdownRow}>
+                        <Text style={styles.dropdownLabel}>Color/Finish:</Text>
+                        <View style={styles.dropdownContainer}>
+                          <select
+                            value={selectedColorFinish}
+                            onChange={(e: any) => setSelectedColorFinish(e.target.value)}
+                            style={selectStyle}
+                          >
+                            {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
+                              <option key={idx} value={term}>{term}</option>
+                            ))}
+                          </select>
+                        </View>
+                      </View>
+
+                      {/* Delivery Timeline Dropdown */}
+                      <View style={styles.dropdownRow}>
+                        <Text style={styles.dropdownLabel}>Delivery:</Text>
+                        <View style={styles.dropdownContainer}>
+                          <select
+                            value={selectedDeliveryTimeline}
+                            onChange={(e: any) => setSelectedDeliveryTimeline(e.target.value)}
+                            style={selectStyle}
+                          >
+                            {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
+                              <option key={idx} value={term}>{term}</option>
+                            ))}
+                          </select>
+                        </View>
+                      </View>
+
+                      {/* Fixed Terms */}
+                      <View style={[styles.dropdownRow, { marginTop: 16 }]}>
+                        <Text style={[styles.dropdownLabel, { fontWeight: '600' }]}>Warranty:</Text>
+                        <Text style={styles.fixedTermText}>{commercialTermsOptions.warranty}</Text>
+                      </View>
+                      <View style={styles.dropdownRow}>
+                        <Text style={[styles.dropdownLabel, { fontWeight: '600' }]}>Validity:</Text>
+                        <Text style={styles.fixedTermText}>{commercialTermsOptions.validity}</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={{ color: '#999', fontStyle: 'italic' }}>Loading terms...</Text>
+                  )}
+                </View>
+
                 {/* Live Calculation Preview */}
                 <View style={[styles.detailSection, { marginTop: 20, backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12 }]}>
                   <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Live Calculation Preview</Text>
@@ -711,6 +815,17 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       </View>
     </Modal>
   );
+};
+
+// Select dropdown style for web
+const selectStyle = {
+  width: '100%',
+  padding: 12,
+  fontSize: 14,
+  borderRadius: 8,
+  border: '1px solid #ddd',
+  backgroundColor: '#fff',
+  cursor: 'pointer',
 };
 
 const styles = StyleSheet.create({
@@ -1265,6 +1380,24 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  dropdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  dropdownLabel: {
+    fontSize: 14,
+    color: '#333',
+    width: 120,
+  },
+  dropdownContainer: {
+    flex: 1,
+  },
+  fixedTermText: {
+    fontSize: 14,
+    color: '#666',
+    flex: 1,
   },
 });
 

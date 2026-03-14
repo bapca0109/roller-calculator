@@ -1923,6 +1923,15 @@ export default function QuotesScreen() {
         pincodeValid={pincodeValid}
         pincodeError={pincodeError}
         freightLoading={freightLoading}
+        commercialTermsOptions={commercialTermsOptions}
+        selectedPaymentTerms={selectedPaymentTerms}
+        setSelectedPaymentTerms={setSelectedPaymentTerms}
+        selectedFreightTerms={selectedFreightTerms}
+        setSelectedFreightTerms={setSelectedFreightTerms}
+        selectedColorFinish={selectedColorFinish}
+        setSelectedColorFinish={setSelectedColorFinish}
+        selectedDeliveryTimeline={selectedDeliveryTimeline}
+        setSelectedDeliveryTimeline={setSelectedDeliveryTimeline}
         onPincodeChange={handlePincodeChange}
         onUpdateProductQuantity={updateProductQuantity}
         onDeleteProduct={deleteProduct}
