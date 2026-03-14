@@ -947,7 +947,20 @@ export default function QuotesScreen() {
   const confirmApproveRfq = async (quoteOverride?: Quote) => {
     // Use quoteOverride if passed directly, otherwise use state
     const quote = quoteOverride || approveModalQuote || selectedQuote;
-    if (!quote) return;
+    if (!quote) {
+      console.error('confirmApproveRfq: No quote available');
+      Alert.alert('Error', 'No quote selected for approval.');
+      return;
+    }
+    
+    // Check if quote has valid ID
+    if (!quote.id) {
+      console.error('confirmApproveRfq: Quote has no ID', quote);
+      Alert.alert('Error', 'Invalid quote - missing ID.');
+      return;
+    }
+    
+    console.log('Approving quote:', quote.id, quote.quote_number);
     
     // Validate pincode before approving
     if (editDeliveryPincode && !pincodeValid) {
@@ -1935,7 +1948,7 @@ export default function QuotesScreen() {
         onPincodeChange={handlePincodeChange}
         onUpdateProductQuantity={updateProductQuantity}
         onDeleteProduct={deleteProduct}
-        onApprove={approveRfq}
+        onApprove={(quote) => confirmApproveRfq(quote)}
         onReject={openRejectModal}
         onEdit={openEditQuote}
         onViewHistory={fetchRevisionHistory}
