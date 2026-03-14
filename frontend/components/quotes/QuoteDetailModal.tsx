@@ -530,133 +530,125 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 )}
 
                 {/* Commercial Terms Selection - For pending RFQs */}
-                <View style={{ backgroundColor: '#E0F7FA', marginTop: 20, padding: 16, borderRadius: 12, borderWidth: 2, borderColor: '#00BCD4' }}>
-                  <Text style={{ fontSize: 18, fontWeight: '700', color: '#006064', marginBottom: 12 }}>Commercial Terms</Text>
+                <View style={{ backgroundColor: '#F8FAFC', marginTop: 20, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 16 }}>Commercial Terms</Text>
                   
                   {commercialTermsOptions ? (
                     <>
-                      {/* Payment Terms */}
-                      <View style={styles.termRow}>
-                        <Text style={styles.termLabel}>Payment Terms:</Text>
-                        <View style={styles.termPickerContainer}>
-                          {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
-                            <TouchableOpacity
-                              key={idx}
-                              style={[
-                                styles.termOption,
-                                selectedPaymentTerms === term && styles.termOptionSelected
-                              ]}
-                              onPress={() => setSelectedPaymentTerms(term)}
-                            >
-                              <Ionicons
-                                name={selectedPaymentTerms === term ? 'radio-button-on' : 'radio-button-off'}
-                                size={18}
-                                color={selectedPaymentTerms === term ? '#960018' : '#666'}
-                              />
-                              <Text style={[
-                                styles.termOptionText,
-                                selectedPaymentTerms === term && styles.termOptionTextSelected
-                              ]}>{term}</Text>
-                            </TouchableOpacity>
-                          ))}
+                      {/* Payment Terms Dropdown */}
+                      <View style={{ marginBottom: 16 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 8 }}>Payment Terms</Text>
+                        <View style={{ borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, backgroundColor: '#fff' }}>
+                          <select
+                            value={selectedPaymentTerms}
+                            onChange={(e: any) => setSelectedPaymentTerms(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: 12,
+                              fontSize: 14,
+                              borderRadius: 8,
+                              border: 'none',
+                              backgroundColor: 'transparent',
+                              cursor: 'pointer',
+                              outline: 'none'
+                            }}
+                          >
+                            {commercialTermsOptions.payment_terms?.map((term: string, idx: number) => (
+                              <option key={idx} value={term}>{term}</option>
+                            ))}
+                          </select>
                         </View>
                       </View>
 
-                      {/* Freight Terms */}
-                      <View style={styles.termRow}>
-                        <Text style={styles.termLabel}>Freight Terms:</Text>
-                        <View style={styles.termPickerContainer}>
-                          {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
-                            <TouchableOpacity
-                              key={idx}
-                              style={[
-                                styles.termOption,
-                                selectedFreightTerms === term && styles.termOptionSelected
-                              ]}
-                              onPress={() => setSelectedFreightTerms(term)}
-                            >
-                              <Ionicons
-                                name={selectedFreightTerms === term ? 'radio-button-on' : 'radio-button-off'}
-                                size={18}
-                                color={selectedFreightTerms === term ? '#960018' : '#666'}
-                              />
-                              <Text style={[
-                                styles.termOptionText,
-                                selectedFreightTerms === term && styles.termOptionTextSelected
-                              ]}>{term}</Text>
-                            </TouchableOpacity>
-                          ))}
+                      {/* Freight Terms Dropdown */}
+                      <View style={{ marginBottom: 16 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 8 }}>Freight Terms</Text>
+                        <View style={{ borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, backgroundColor: '#fff' }}>
+                          <select
+                            value={selectedFreightTerms}
+                            onChange={(e: any) => setSelectedFreightTerms(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: 12,
+                              fontSize: 14,
+                              borderRadius: 8,
+                              border: 'none',
+                              backgroundColor: 'transparent',
+                              cursor: 'pointer',
+                              outline: 'none'
+                            }}
+                          >
+                            {commercialTermsOptions.freight_terms?.map((term: string, idx: number) => (
+                              <option key={idx} value={term}>{term}</option>
+                            ))}
+                          </select>
                         </View>
                       </View>
 
-                      {/* Color/Finish */}
-                      <View style={styles.termRow}>
-                        <Text style={styles.termLabel}>Color/Finish:</Text>
-                        <View style={styles.termPickerContainer}>
-                          {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
-                            <TouchableOpacity
-                              key={idx}
-                              style={[
-                                styles.termOption,
-                                selectedColorFinish === term && styles.termOptionSelected
-                              ]}
-                              onPress={() => setSelectedColorFinish(term)}
-                            >
-                              <Ionicons
-                                name={selectedColorFinish === term ? 'radio-button-on' : 'radio-button-off'}
-                                size={18}
-                                color={selectedColorFinish === term ? '#960018' : '#666'}
-                              />
-                              <Text style={[
-                                styles.termOptionText,
-                                selectedColorFinish === term && styles.termOptionTextSelected
-                              ]}>{term}</Text>
-                            </TouchableOpacity>
-                          ))}
+                      {/* Color/Finish Dropdown */}
+                      <View style={{ marginBottom: 16 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 8 }}>Color/Finish</Text>
+                        <View style={{ borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, backgroundColor: '#fff' }}>
+                          <select
+                            value={selectedColorFinish}
+                            onChange={(e: any) => setSelectedColorFinish(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: 12,
+                              fontSize: 14,
+                              borderRadius: 8,
+                              border: 'none',
+                              backgroundColor: 'transparent',
+                              cursor: 'pointer',
+                              outline: 'none'
+                            }}
+                          >
+                            {commercialTermsOptions.color_finish?.map((term: string, idx: number) => (
+                              <option key={idx} value={term}>{term}</option>
+                            ))}
+                          </select>
                         </View>
                       </View>
 
-                      {/* Delivery Timeline */}
-                      <View style={styles.termRow}>
-                        <Text style={styles.termLabel}>Delivery:</Text>
-                        <View style={styles.termPickerContainer}>
-                          {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
-                            <TouchableOpacity
-                              key={idx}
-                              style={[
-                                styles.termOption,
-                                selectedDeliveryTimeline === term && styles.termOptionSelected
-                              ]}
-                              onPress={() => setSelectedDeliveryTimeline(term)}
-                            >
-                              <Ionicons
-                                name={selectedDeliveryTimeline === term ? 'radio-button-on' : 'radio-button-off'}
-                                size={18}
-                                color={selectedDeliveryTimeline === term ? '#960018' : '#666'}
-                              />
-                              <Text style={[
-                                styles.termOptionText,
-                                selectedDeliveryTimeline === term && styles.termOptionTextSelected
-                              ]}>{term}</Text>
-                            </TouchableOpacity>
-                          ))}
+                      {/* Delivery Timeline Dropdown */}
+                      <View style={{ marginBottom: 16 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 8 }}>Delivery Timeline</Text>
+                        <View style={{ borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, backgroundColor: '#fff' }}>
+                          <select
+                            value={selectedDeliveryTimeline}
+                            onChange={(e: any) => setSelectedDeliveryTimeline(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: 12,
+                              fontSize: 14,
+                              borderRadius: 8,
+                              border: 'none',
+                              backgroundColor: 'transparent',
+                              cursor: 'pointer',
+                              outline: 'none'
+                            }}
+                          >
+                            {commercialTermsOptions.delivery_timeline?.map((term: string, idx: number) => (
+                              <option key={idx} value={term}>{term}</option>
+                            ))}
+                          </select>
                         </View>
                       </View>
 
                       {/* Fixed Terms */}
-                      <View style={[styles.termRow, { marginTop: 16, backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12 }]}>
+                      <View style={{ backgroundColor: '#fff', borderRadius: 8, padding: 12, marginTop: 8 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <Text style={{ fontWeight: '600', color: '#333' }}>Warranty:</Text>
-                          <Text style={{ color: '#666' }}>{commercialTermsOptions.warranty}</Text>
+                          <Text style={{ fontWeight: '600', color: '#334155' }}>Warranty:</Text>
+                          <Text style={{ color: '#64748B', flex: 1, textAlign: 'right' }}>{commercialTermsOptions.warranty}</Text>
                         </View>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                          <Text style={{ fontWeight: '600', color: '#333' }}>Validity:</Text>
-                          <Text style={{ color: '#666' }}>{commercialTermsOptions.validity}</Text>
+                          <Text style={{ fontWeight: '600', color: '#334155' }}>Validity:</Text>
+                          <Text style={{ color: '#64748B', flex: 1, textAlign: 'right' }}>{commercialTermsOptions.validity}</Text>
                         </View>
                       </View>
                     </>
                   ) : (
-                    <Text style={{ color: '#666', fontStyle: 'italic' }}>Loading commercial terms...</Text>
+                    <Text style={{ color: '#64748B', fontStyle: 'italic' }}>Loading commercial terms...</Text>
                   )}
                 </View>
 
