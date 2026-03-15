@@ -1134,24 +1134,32 @@ export default function AdminScreen() {
                 />
                 <TouchableOpacity
                   style={[styles.otpButton, styles.verifyButton, verifyingOtp && styles.otpButtonDisabled]}
-                  onPress={verifyAndSetDefault}
+                  onPress={() => {
+                    console.log('Verify button pressed');
+                    verifyAndSetDefault();
+                  }}
                   disabled={verifyingOtp}
+                  activeOpacity={0.7}
                 >
-                  {verifyingOtp ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
-                      <Text style={styles.otpButtonText}>Verify & Set as Default</Text>
-                    </>
-                  )}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
+                    {verifyingOtp ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                        <Text style={styles.otpButtonText}>Verify & Set as Default</Text>
+                      </>
+                    )}
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.resendButton}
                   onPress={() => {
+                    console.log('Resend clicked');
                     setOtpSent(false);
                     setOtpValue('');
                   }}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.resendButtonText}>Resend Code</Text>
                 </TouchableOpacity>

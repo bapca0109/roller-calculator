@@ -6306,8 +6306,13 @@ async def verify_and_set_default_prices(
     if otp_record.get("otp") != otp:
         raise HTTPException(status_code=400, detail="Invalid verification code")
     
-    if datetime.now(timezone.utc) > otp_record.get("expires_at"):
-        raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new one.")
+    expires_at = otp_record.get("expires_at")
+    if expires_at:
+        # Make sure both datetimes are timezone-aware
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > expires_at:
+            raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new one.")
     
     # Get current custom prices
     custom_prices = await db.custom_prices.find_one({"_id": "prices"})
