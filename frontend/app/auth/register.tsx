@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -29,6 +28,7 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetchingLocation, setFetchingLocation] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
 
   // Fetch city and state from pincode
@@ -36,6 +36,7 @@ export default function Register() {
     if (pin.length !== 6) return;
     
     setFetchingLocation(true);
+    setErrorMessage('');
     try {
       const PINCODE_API_URL = process.env.EXPO_PUBLIC_PINCODE_API_URL || 'https://api.postalpincode.in';
       const response = await fetch(`${PINCODE_API_URL}/pincode/${pin}`);
@@ -46,13 +47,13 @@ export default function Register() {
         setCity(postOffice.District || postOffice.Name);
         setState(postOffice.State);
       } else {
-        Alert.alert('Invalid Pincode', 'Could not find location for this pincode');
+        setErrorMessage('Invalid pincode. Could not find location for this pincode.');
         setCity('');
         setState('');
       }
     } catch (error) {
       console.error('Error fetching pincode:', error);
-      Alert.alert('Error', 'Failed to fetch location from pincode');
+      setErrorMessage('Failed to fetch location from pincode. Please try again.');
     } finally {
       setFetchingLocation(false);
     }
@@ -73,75 +74,78 @@ export default function Register() {
   };
 
   const handleRegister = async () => {
+    // Clear any previous error
+    setErrorMessage('');
+    
     // Validate all required fields
     if (!name.trim()) {
-      Alert.alert('Error', 'Please enter your name');
+      setErrorMessage('Please enter your name');
       return;
     }
     
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email');
+      setErrorMessage('Please enter your email');
       return;
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      setErrorMessage('Please enter a valid email address');
       return;
     }
 
     if (!mobile.trim()) {
-      Alert.alert('Error', 'Please enter your mobile number');
+      setErrorMessage('Please enter your mobile number');
       return;
     }
 
     // Validate mobile number (10 digits)
     const mobileRegex = /^[0-9]{10}$/;
     if (!mobileRegex.test(mobile)) {
-      Alert.alert('Error', 'Please enter a valid 10-digit mobile number');
+      setErrorMessage('Please enter a valid 10-digit mobile number');
       return;
     }
 
     if (!pincode.trim() || pincode.length !== 6) {
-      Alert.alert('Error', 'Please enter a valid 6-digit pincode');
+      setErrorMessage('Please enter a valid 6-digit pincode');
       return;
     }
 
     if (!city || !state) {
-      Alert.alert('Error', 'Please enter a valid pincode to auto-fill city and state');
+      setErrorMessage('Please enter a valid pincode to auto-fill city and state');
       return;
     }
 
     if (!company.trim()) {
-      Alert.alert('Error', 'Please enter your company name');
+      setErrorMessage('Please enter your company name');
       return;
     }
 
     if (!gstin.trim()) {
-      Alert.alert('Error', 'Please enter your GSTIN number');
+      setErrorMessage('Please enter your GSTIN number');
       return;
     }
 
     // Validate GSTIN format (15 characters alphanumeric)
     const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
     if (!gstinRegex.test(gstin.toUpperCase())) {
-      Alert.alert('Error', 'Please enter a valid 15-character GSTIN number');
+      setErrorMessage('Please enter a valid 15-character GSTIN number (e.g., 22AAAAA0000A1Z5)');
       return;
     }
 
     if (!password) {
-      Alert.alert('Error', 'Please enter a password');
+      setErrorMessage('Please enter a password');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      setErrorMessage('Passwords do not match');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      setErrorMessage('Password must be at least 6 characters');
       return;
     }
 
@@ -190,7 +194,8 @@ export default function Register() {
         },
       });
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.message);
+      const errorMsg = error.message || 'Failed to send verification code';
+      setErrorMessage(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -357,6 +362,14 @@ export default function Register() {
               We'll send a verification code to your email
             </Text>
           </View>
+
+          {/* Error Message Display */}
+          {errorMessage ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={20} color="#DC2626" />
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
@@ -530,6 +543,23 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: '#960018',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    gap: 10,
+  },
+  errorText: {
+    flex: 1,
+    color: '#DC2626',
     fontSize: 14,
     fontWeight: '500',
   },

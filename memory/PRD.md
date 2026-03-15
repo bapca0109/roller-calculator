@@ -88,6 +88,14 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 
 
 ### March 15, 2026 (Current Session)
+- [x] **Completed Signup Page Error Handling Refactor (P0)**:
+  - Replaced ALL `Alert.alert` calls with visual inline error messages using `setErrorMessage` state
+  - Error component uses consistent styling: light red background, red border, alert icon
+  - Covers all validation errors: name, email, mobile, pincode, company, GSTIN, password
+  - Covers API errors: registration failure, pincode lookup failure
+  - Removed unused `Alert` import from React Native
+  - Tested and verified working on web
+
 - [x] **Integrated Rubber Ring Weights (P2)**:
   - Added lookup table with 17 ring combinations from user-provided data
   - Ring ID ranges: 60mm to 152mm
