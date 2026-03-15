@@ -6200,6 +6200,9 @@ async def send_set_default_otp(current_user: dict = Depends(get_current_user)):
     if existing_otp:
         created_at = existing_otp.get("created_at")
         if created_at:
+            # Make sure both datetimes are timezone-aware
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
             elapsed = (datetime.now(timezone.utc) - created_at).total_seconds()
             if elapsed < OTP_COOLDOWN_SECONDS:
                 remaining = int(OTP_COOLDOWN_SECONDS - elapsed)

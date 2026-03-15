@@ -1099,17 +1099,23 @@ export default function AdminScreen() {
                 </Text>
                 <TouchableOpacity
                   style={[styles.otpButton, sendingOtp && styles.otpButtonDisabled]}
-                  onPress={sendSetDefaultOtp}
+                  onPress={() => {
+                    console.log('Send Verification Code clicked');
+                    sendSetDefaultOtp();
+                  }}
                   disabled={sendingOtp}
+                  activeOpacity={0.7}
                 >
-                  {sendingOtp ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="mail-outline" size={20} color="#fff" />
-                      <Text style={styles.otpButtonText}>Send Verification Code</Text>
-                    </>
-                  )}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
+                    {sendingOtp ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="mail-outline" size={20} color="#fff" />
+                        <Text style={styles.otpButtonText}>Send Verification Code</Text>
+                      </>
+                    )}
+                  </View>
                 </TouchableOpacity>
               </>
             ) : (
