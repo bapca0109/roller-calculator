@@ -1,10 +1,24 @@
 {
+  "cli": {
+    "version": ">= 3.0.0"
+  },
   "build": {
     "preview": {
+      "distribution": "internal",
       "android": {
         "buildType": "apk",
         "withoutCredentials": true
       },
+      "ios": {
+        "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_BACKEND_URL": "https://conveyor-roller-calc-1.preview.emergentagent.com",
+        "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
+      }
+    },
+    "production": {
+      "distribution": "store",
       "env": {
         "EXPO_PUBLIC_BACKEND_URL": "https://conveyor-roller-calc-1.preview.emergentagent.com",
         "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
