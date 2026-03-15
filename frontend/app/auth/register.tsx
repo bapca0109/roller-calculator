@@ -363,22 +363,28 @@ export default function Register() {
             onPress={handleRegister}
             disabled={loading}
             data-testid="register-btn"
+            activeOpacity={0.7}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Text style={styles.buttonText}>Send Verification Code</Text>
-                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-              </>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, pointerEvents: 'none' }}>
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Text style={styles.buttonText}>Send Verification Code</Text>
+                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                </>
+              )}
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.linkButton}
             onPress={() => router.back()}
+            activeOpacity={0.7}
           >
-            <Text style={styles.linkText}>Already have an account? Sign In</Text>
+            <View style={{ pointerEvents: 'none' }}>
+              <Text style={styles.linkText}>Already have an account? Sign In</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </ScrollView>
