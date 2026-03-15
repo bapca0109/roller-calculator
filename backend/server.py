@@ -4305,7 +4305,7 @@ async def reject_rfq(
             msg['Subject'] = f"RFQ {quote_number} - Status Update"
             msg['From'] = f"Convero Solutions <{GMAIL_USER}>"
             msg['To'] = customer_email
-            msg['Cc'] = "design@convero.in"
+            msg['Cc'] = "design@convero.in, info@convero.in"
             
             # HTML email content
             html_content = f"""
@@ -4376,7 +4376,7 @@ async def reject_rfq(
             # Send email
             with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
                 server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-                server.sendmail(GMAIL_USER, [customer_email, "design@convero.in"], msg.as_string())
+                server.sendmail(GMAIL_USER, [customer_email, "design@convero.in", "info@convero.in"], msg.as_string())
             
             logging.info(f"Rejection email sent for RFQ: {quote_number}")
         except Exception as e:
