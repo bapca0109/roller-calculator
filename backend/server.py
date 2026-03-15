@@ -579,6 +579,7 @@ class OTPRequest(BaseModel):
     state: str
     company: str  # Required field
     designation: Optional[str] = None  # Optional designation field
+    gst_number: str  # Required GSTIN field
     password: str
 
 class OTPVerify(BaseModel):
@@ -591,6 +592,7 @@ class OTPVerify(BaseModel):
     state: str
     company: str  # Required field
     designation: Optional[str] = None  # Optional designation field
+    gst_number: str  # Required GSTIN field
     password: str
 
 class ResendOTPRequest(BaseModel):
@@ -2722,6 +2724,7 @@ async def verify_otp(request: OTPVerify):
         "name": request.name,
         "company": request.company,
         "designation": request.designation,
+        "gst_number": request.gst_number,
         "mobile": request.mobile,
         "pincode": request.pincode,
         "city": request.city,
@@ -2747,7 +2750,7 @@ async def verify_otp(request: OTPVerify):
         "city": request.city,
         "state": request.state,
         "pincode": request.pincode,
-        "gstin": "",  # Can be updated later
+        "gstin": request.gst_number,
         "created_at": get_ist_now(),
         "user_id": str(result.inserted_id),  # Link to user account
         "customer_type": "registered",  # Mark as registered customer

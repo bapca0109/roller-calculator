@@ -24,6 +24,7 @@ export default function Register() {
   const [state, setState] = useState('');
   const [company, setCompany] = useState('');
   const [designation, setDesignation] = useState('');
+  const [gstin, setGstin] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -117,6 +118,18 @@ export default function Register() {
       return;
     }
 
+    if (!gstin.trim()) {
+      Alert.alert('Error', 'Please enter your GSTIN number');
+      return;
+    }
+
+    // Validate GSTIN format (15 characters alphanumeric)
+    const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (!gstinRegex.test(gstin.toUpperCase())) {
+      Alert.alert('Error', 'Please enter a valid 15-character GSTIN number');
+      return;
+    }
+
     if (!password) {
       Alert.alert('Error', 'Please enter a password');
       return;
@@ -149,6 +162,7 @@ export default function Register() {
           state,
           company,
           designation: designation.trim() || null,
+          gst_number: gstin.toUpperCase(),
           password,
         }),
       });
@@ -171,6 +185,7 @@ export default function Register() {
           state,
           company: company || '',
           designation: designation.trim() || '',
+          gst_number: gstin.toUpperCase(),
           password,
         },
       });
@@ -291,6 +306,20 @@ export default function Register() {
               value={designation}
               onChangeText={setDesignation}
               autoCapitalize="words"
+            />
+          </View>
+
+          {/* GSTIN (Required) */}
+          <View style={styles.inputContainer}>
+            <Ionicons name="document-text-outline" size={20} color="#64748B" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="GSTIN Number *"
+              placeholderTextColor="#94A3B8"
+              value={gstin}
+              onChangeText={(text) => setGstin(text.toUpperCase())}
+              autoCapitalize="characters"
+              maxLength={15}
             />
           </View>
 

@@ -37,6 +37,7 @@ export default function VerifyOTP() {
   const state = params.state as string;
   const company = params.company as string;
   const designation = params.designation as string;
+  const gst_number = params.gst_number as string;
   const password = params.password as string;
 
   useEffect(() => {
@@ -101,6 +102,7 @@ export default function VerifyOTP() {
           state,
           company,
           designation: designation || null,
+          gst_number,
           password,
         }),
       });
