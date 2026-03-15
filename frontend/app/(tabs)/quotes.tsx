@@ -1910,33 +1910,6 @@ export default function QuotesScreen() {
         }
       />
 
-      {/* Pending RFQs Summary - Admin Only */}
-      {isAdmin && quotes.filter(q => q.status?.toLowerCase() === 'pending' && q.quote_number?.startsWith('RFQ')).length > 0 && (
-        <View style={styles.pendingRfqSummary}>
-          <View style={styles.pendingRfqHeader}>
-            <Ionicons name="time-outline" size={18} color="#F59E0B" />
-            <Text style={styles.pendingRfqTitle}>Pending RFQs ({quotes.filter(q => q.status?.toLowerCase() === 'pending' && q.quote_number?.startsWith('RFQ')).length})</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pendingRfqScroll}>
-            {quotes
-              .filter(q => q.status?.toLowerCase() === 'pending' && q.quote_number?.startsWith('RFQ'))
-              .map((rfq, index) => (
-                <TouchableOpacity
-                  key={rfq.id}
-                  style={styles.pendingRfqChip}
-                  onPress={() => {
-                    setSelectedQuote(rfq);
-                    initializeEditableProducts(rfq);
-                  }}
-                >
-                  <Text style={styles.pendingRfqChipText}>{rfq.quote_number}</Text>
-                </TouchableOpacity>
-              ))
-            }
-          </ScrollView>
-        </View>
-      )}
-
 
       {/* Quote Detail Modal - Using extracted component */}
       <QuoteDetailModal
@@ -3652,40 +3625,5 @@ const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
     marginTop: 4,
-  },
-  pendingRfqSummary: {
-    backgroundColor: '#FFFBEB',
-    borderTopWidth: 1,
-    borderTopColor: '#FCD34D',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  pendingRfqHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
-  },
-  pendingRfqTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#92400E',
-  },
-  pendingRfqScroll: {
-    flexDirection: 'row',
-  },
-  pendingRfqChip: {
-    backgroundColor: '#FEF3C7',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-  },
-  pendingRfqChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#92400E',
   },
 });
