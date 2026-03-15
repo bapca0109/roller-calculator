@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Header
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Header, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from dotenv import load_dotenv
@@ -6184,6 +6184,208 @@ async def update_price(request: PriceUpdateRequest, current_user: dict = Depends
     price_loader.invalidate_cache()
     
     return {"message": "Price updated successfully", "category": request.category, "key": request.key}
+
+# Set as Default - Send OTP for verification
+@api_router.post("/admin/prices/set-default/send-otp")
+async def send_set_default_otp(current_user: dict = Depends(get_current_user)):
+    """Send OTP to admin email for setting prices as default"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    email = current_user.get("email")
+    name = current_user.get("name", "Admin")
+    
+    # Check cooldown
+    existing_otp = await db.price_otp_verifications.find_one({"email": email})
+    if existing_otp:
+        created_at = existing_otp.get("created_at")
+        if created_at:
+            elapsed = (datetime.now(timezone.utc) - created_at).total_seconds()
+            if elapsed < OTP_COOLDOWN_SECONDS:
+                remaining = int(OTP_COOLDOWN_SECONDS - elapsed)
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Please wait {remaining} seconds before requesting a new OTP"
+                )
+    
+    # Generate and store OTP
+    otp = generate_otp()
+    expiry = datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRY_MINUTES)
+    
+    await db.price_otp_verifications.update_one(
+        {"email": email},
+        {
+            "$set": {
+                "otp": otp,
+                "expires_at": expiry,
+                "created_at": datetime.now(timezone.utc),
+                "verified": False,
+                "purpose": "set_default_prices"
+            }
+        },
+        upsert=True
+    )
+    
+    # Send OTP email
+    try:
+        if GMAIL_USER and GMAIL_APP_PASSWORD:
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = f"Price Update Verification Code - {otp}"
+            msg['From'] = f"Convero Solutions <{GMAIL_USER}>"
+            msg['To'] = email
+            
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background-color: #960018; color: white; padding: 20px; text-align: center; }}
+                    .content {{ padding: 30px; background-color: #f9f9f9; }}
+                    .otp-box {{ background-color: #960018; color: white; font-size: 32px; font-weight: bold; letter-spacing: 8px; padding: 20px 40px; text-align: center; border-radius: 8px; margin: 20px 0; }}
+                    .warning {{ background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin: 20px 0; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>Price Update Verification</h1>
+                    </div>
+                    <div class="content">
+                        <p>Dear {name},</p>
+                        <p>You have requested to set current prices as default. Please use the following verification code:</p>
+                        <div class="otp-box">{otp}</div>
+                        <div class="warning">
+                            <strong>⚠️ Warning:</strong> This action will update the default prices in the system. All future calculations will use these new rates.
+                        </div>
+                        <p>This code will expire in {OTP_EXPIRY_MINUTES} minutes.</p>
+                        <p>If you did not request this, please ignore this email.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            msg.attach(MIMEText(html_content, 'html'))
+            
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+                server.sendmail(GMAIL_USER, email, msg.as_string())
+            
+            logging.info(f"Set default OTP sent to {email}")
+        else:
+            logging.warning("Email not configured, OTP not sent")
+            
+    except Exception as e:
+        logging.error(f"Failed to send OTP email: {e}")
+        # Continue anyway for development
+    
+    return {"message": f"Verification code sent to {email}", "email": email}
+
+# Set as Default - Verify OTP and update defaults
+@api_router.post("/admin/prices/set-default/verify")
+async def verify_and_set_default_prices(
+    otp: str = Body(..., embed=True),
+    current_user: dict = Depends(get_current_user)
+):
+    """Verify OTP and set current prices as new defaults"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    email = current_user.get("email")
+    
+    # Verify OTP
+    otp_record = await db.price_otp_verifications.find_one({"email": email})
+    if not otp_record:
+        raise HTTPException(status_code=400, detail="No OTP request found. Please request a new code.")
+    
+    if otp_record.get("otp") != otp:
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+    
+    if datetime.now(timezone.utc) > otp_record.get("expires_at"):
+        raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new one.")
+    
+    # Get current custom prices
+    custom_prices = await db.custom_prices.find_one({"_id": "prices"})
+    
+    if not custom_prices:
+        raise HTTPException(status_code=400, detail="No custom prices found. Current prices are already defaults.")
+    
+    # Update roller_standards.py with new default values
+    try:
+        import roller_standards as rs
+        
+        # Update basic rates
+        if "pipe_cost_per_kg" in custom_prices:
+            rs.PIPE_COST_PER_KG = custom_prices["pipe_cost_per_kg"]
+        if "shaft_cost_per_kg" in custom_prices:
+            rs.SHAFT_COST_PER_KG = custom_prices["shaft_cost_per_kg"]
+        
+        # Update bearing costs
+        if "bearing_costs" in custom_prices:
+            for bearing, makes in custom_prices["bearing_costs"].items():
+                if bearing in rs.BEARING_COSTS:
+                    rs.BEARING_COSTS[bearing].update(makes)
+                else:
+                    rs.BEARING_COSTS[bearing] = makes
+        
+        # Update housing costs
+        if "housing_costs" in custom_prices:
+            rs.HOUSING_COSTS.update(custom_prices["housing_costs"])
+        
+        # Update seal costs
+        if "seal_costs" in custom_prices:
+            rs.SEAL_COSTS.update(custom_prices["seal_costs"])
+        
+        # Update circlip costs
+        if "circlip_costs" in custom_prices:
+            for shaft, cost in custom_prices["circlip_costs"].items():
+                rs.CIRCLIP_COSTS[int(shaft)] = cost
+        
+        # Update rubber ring costs
+        if "rubber_ring_costs" in custom_prices:
+            rs.RUBBER_RING_COSTS.update(custom_prices["rubber_ring_costs"])
+        
+        # Update locking ring costs
+        if "locking_ring_costs" in custom_prices:
+            for pipe, cost in custom_prices["locking_ring_costs"].items():
+                rs.LOCKING_RING_COSTS[int(pipe)] = cost
+        
+        # Store the update in a permanent collection for persistence across restarts
+        await db.default_prices.update_one(
+            {"_id": "defaults"},
+            {
+                "$set": {
+                    "prices": custom_prices,
+                    "updated_at": datetime.now(timezone.utc),
+                    "updated_by": email
+                }
+            },
+            upsert=True
+        )
+        
+        # Clear custom prices since they are now defaults
+        await db.custom_prices.delete_one({"_id": "prices"})
+        
+        # Invalidate price cache
+        import price_loader
+        price_loader.invalidate_cache()
+        
+        # Delete OTP record
+        await db.price_otp_verifications.delete_one({"email": email})
+        
+        logging.info(f"Default prices updated by {email}")
+        
+        return {
+            "message": "Prices have been set as new defaults successfully!",
+            "updated_by": email,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logging.error(f"Failed to set default prices: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update defaults: {str(e)}")
 
 @api_router.post("/admin/prices/reset")
 async def reset_prices(current_user: dict = Depends(get_current_user)):

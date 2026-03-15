@@ -73,6 +73,15 @@ export default function AdminScreen() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render after reset
+  
+  // Set as Default OTP state
+  const [showSetDefaultModal, setShowSetDefaultModal] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+  
   // Standards state
   const [standardsSummary, setStandardsSummary] = useState<StandardsCollection[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
@@ -265,6 +274,62 @@ export default function AdminScreen() {
       return;
     }
     handleUpdatePrice(category, key, subKey, value);
+  };
+
+  // ============= SET AS DEFAULT FUNCTIONS =============
+  const handleSetAsDefault = () => {
+    Alert.alert(
+      'Set as Default',
+      'This will update the default prices in the system. All future calculations will use these new rates.\n\nAn OTP will be sent to your email for verification.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          onPress: () => setShowSetDefaultModal(true),
+        },
+      ]
+    );
+  };
+
+  const sendSetDefaultOtp = async () => {
+    try {
+      setSendingOtp(true);
+      const response = await api.post('/admin/prices/set-default/send-otp');
+      setOtpEmail(response.data.email);
+      setOtpSent(true);
+      Alert.alert('OTP Sent', `Verification code sent to ${response.data.email}`);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to send OTP');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const verifyAndSetDefault = async () => {
+    if (otpValue.length !== 4) {
+      Alert.alert('Invalid OTP', 'Please enter the 4-digit verification code');
+      return;
+    }
+
+    try {
+      setVerifyingOtp(true);
+      const response = await api.post('/admin/prices/set-default/verify', { otp: otpValue });
+      Alert.alert('Success', response.data.message);
+      setShowSetDefaultModal(false);
+      setOtpSent(false);
+      setOtpValue('');
+      fetchPrices(); // Refresh prices
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to verify OTP');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const closeSetDefaultModal = () => {
+    setShowSetDefaultModal(false);
+    setOtpSent(false);
+    setOtpValue('');
   };
 
   // ============= STANDARDS FUNCTIONS =============
@@ -960,6 +1025,16 @@ export default function AdminScreen() {
                 <Text style={[styles.resetButtonText, { color: '#fff' }]}>Reset All to Default</Text>
               </TouchableOpacity>
 
+              {/* Set as Default Button */}
+              <TouchableOpacity
+                style={[styles.resetButton, { backgroundColor: '#217346', marginTop: 12 }]}
+                onPress={handleSetAsDefault}
+                disabled={saving}
+              >
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                <Text style={[styles.resetButtonText, { color: '#fff' }]}>Set as Default (OTP)</Text>
+              </TouchableOpacity>
+
               <View style={styles.bottomSpacer} />
             </ScrollView>
           )}
@@ -994,6 +1069,91 @@ export default function AdminScreen() {
           <Text style={styles.savingText}>Saving...</Text>
         </View>
       )}
+
+      {/* Set as Default OTP Modal */}
+      <Modal
+        visible={showSetDefaultModal}
+        transparent
+        animationType="fade"
+        onRequestClose={closeSetDefaultModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.setDefaultModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Set as Default</Text>
+              <TouchableOpacity onPress={closeSetDefaultModal}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {!otpSent ? (
+              <>
+                <View style={styles.warningBox}>
+                  <Ionicons name="warning-outline" size={24} color="#F59E0B" />
+                  <Text style={styles.warningText}>
+                    This action will update the default prices in the system. All future calculations will use these new rates.
+                  </Text>
+                </View>
+                <Text style={styles.otpDescription}>
+                  Click the button below to receive a verification code on your email.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.otpButton, sendingOtp && styles.otpButtonDisabled]}
+                  onPress={sendSetDefaultOtp}
+                  disabled={sendingOtp}
+                >
+                  {sendingOtp ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="mail-outline" size={20} color="#fff" />
+                      <Text style={styles.otpButtonText}>Send Verification Code</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.otpSentText}>
+                  Verification code sent to {otpEmail}
+                </Text>
+                <TextInput
+                  style={styles.otpInput}
+                  placeholder="Enter 4-digit code"
+                  value={otpValue}
+                  onChangeText={setOtpValue}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  autoFocus
+                />
+                <TouchableOpacity
+                  style={[styles.otpButton, styles.verifyButton, verifyingOtp && styles.otpButtonDisabled]}
+                  onPress={verifyAndSetDefault}
+                  disabled={verifyingOtp}
+                >
+                  {verifyingOtp ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                      <Text style={styles.otpButtonText}>Verify & Set as Default</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.resendButton}
+                  onPress={() => {
+                    setOtpSent(false);
+                    setOtpValue('');
+                  }}
+                >
+                  <Text style={styles.resendButtonText}>Resend Code</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1510,5 +1670,82 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
+  },
+  // Set as Default Modal Styles
+  setDefaultModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+  },
+  warningBox: {
+    flexDirection: 'row',
+    backgroundColor: '#FEF3C7',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#92400E',
+    lineHeight: 20,
+  },
+  otpDescription: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  otpButton: {
+    flexDirection: 'row',
+    backgroundColor: '#960018',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  otpButtonDisabled: {
+    opacity: 0.6,
+  },
+  otpButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  verifyButton: {
+    backgroundColor: '#217346',
+  },
+  otpSentText: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  otpInput: {
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: 8,
+    marginBottom: 20,
+    color: '#0F172A',
+  },
+  resendButton: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  resendButtonText: {
+    color: '#960018',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
