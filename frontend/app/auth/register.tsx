@@ -378,16 +378,14 @@ export default function Register() {
             data-testid="register-btn"
             activeOpacity={0.7}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, pointerEvents: 'none' }}>
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <Text style={styles.buttonText}>Send Verification Code</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-                </>
-              )}
-            </View>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, pointerEvents: 'none' }}>
+                <Text style={[styles.buttonText, { pointerEvents: 'none' }]}>Send Verification Code</Text>
+                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" style={{ pointerEvents: 'none' }} />
+              </View>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
