@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,9 @@ import {
   ScrollView,
   Alert,
   Platform,
+  Modal,
+  Pressable,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +18,8 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [showFaqModal, setShowFaqModal] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -152,11 +157,14 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Help & Support</Text>
 
           <View style={styles.infoCard}>
-            <TouchableOpacity style={styles.supportRow} onPress={() => Alert.alert(
-              'Frequently Asked Questions',
-              '📱 How to create a quote?\nGo to Products → Select items → Add to Cart → Submit RFQ\n\n💰 How are prices calculated?\nPrices are calculated based on roller specifications including pipe diameter, shaft size, and length.\n\n📧 Need more help?\nContact us at support@convero.in',
-              [{ text: 'Got it', style: 'default' }]
-            )}>
+            <TouchableOpacity 
+              style={styles.supportRow} 
+              onPress={() => {
+                console.log('FAQs clicked');
+                setShowFaqModal(true);
+              }}
+              activeOpacity={0.7}
+            >
               <View style={styles.supportLabel}>
                 <Ionicons name="help-circle-outline" size={20} color="#64748B" />
                 <Text style={styles.supportLabelText}>FAQs</Text>
@@ -166,11 +174,14 @@ export default function ProfileScreen() {
 
             <View style={styles.divider} />
 
-            <TouchableOpacity style={styles.supportRow} onPress={() => Alert.alert(
-              'CONVERO SOLUTIONS',
-              'Plot no. -39, Swapnil Industrial Park,\nBeside shiv aaradhna estate,\nAhmedabad-Indore Highway,\nVillage-Kuha, Ahmedabad,\nGujarat 382433\n\n📧 E: Info@convero.in\n🌐 W: www.convero.in\n📞 M: +91-9824034311',
-              [{ text: 'OK', style: 'default' }]
-            )}>
+            <TouchableOpacity 
+              style={styles.supportRow} 
+              onPress={() => {
+                console.log('Contact Us clicked');
+                setShowContactModal(true);
+              }}
+              activeOpacity={0.7}
+            >
               <View style={styles.supportLabel}>
                 <Ionicons name="mail-outline" size={20} color="#64748B" />
                 <Text style={styles.supportLabelText}>Contact Us</Text>
@@ -189,6 +200,102 @@ export default function ProfileScreen() {
             </View>
           </View>
         </View>
+
+        {/* Contact Us Modal */}
+        <Modal
+          visible={showContactModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowContactModal(false)}
+        >
+          <Pressable 
+            style={styles.modalOverlay} 
+            onPress={() => setShowContactModal(false)}
+          >
+            <Pressable style={styles.contactModalContent} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.contactModalHeader}>
+                <Text style={styles.contactModalTitle}>CONVERO SOLUTIONS</Text>
+                <Pressable onPress={() => setShowContactModal(false)} data-testid="close-contact-modal">
+                  <Ionicons name="close" size={24} color="#64748B" />
+                </Pressable>
+              </View>
+              
+              <View style={styles.contactAddressSection}>
+                <Ionicons name="location-outline" size={20} color="#960018" />
+                <View style={styles.contactAddressText}>
+                  <Text style={styles.contactText}>Plot no. -39, Swapnil Industrial Park,</Text>
+                  <Text style={styles.contactText}>Beside shiv aaradhna estate,</Text>
+                  <Text style={styles.contactText}>Ahmedabad-Indore Highway,</Text>
+                  <Text style={styles.contactText}>Village-Kuha, Ahmedabad,</Text>
+                  <Text style={styles.contactText}>Gujarat 382433</Text>
+                </View>
+              </View>
+
+              <View style={styles.contactDivider} />
+
+              <Pressable 
+                style={styles.contactInfoRow}
+                onPress={() => Linking.openURL('mailto:Info@convero.in')}
+              >
+                <Ionicons name="mail-outline" size={20} color="#960018" />
+                <Text style={styles.contactInfoText}>Info@convero.in</Text>
+              </Pressable>
+
+              <Pressable 
+                style={styles.contactInfoRow}
+                onPress={() => Linking.openURL('https://www.convero.in')}
+              >
+                <Ionicons name="globe-outline" size={20} color="#960018" />
+                <Text style={styles.contactInfoText}>www.convero.in</Text>
+              </Pressable>
+
+              <Pressable 
+                style={styles.contactInfoRow}
+                onPress={() => Linking.openURL('tel:+919824034311')}
+              >
+                <Ionicons name="call-outline" size={20} color="#960018" />
+                <Text style={styles.contactInfoText}>+91-9824034311</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* FAQ Modal */}
+        <Modal
+          visible={showFaqModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowFaqModal(false)}
+        >
+          <Pressable 
+            style={styles.modalOverlay} 
+            onPress={() => setShowFaqModal(false)}
+          >
+            <Pressable style={styles.contactModalContent} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.contactModalHeader}>
+                <Text style={styles.contactModalTitle}>Frequently Asked Questions</Text>
+                <Pressable onPress={() => setShowFaqModal(false)} data-testid="close-faq-modal">
+                  <Ionicons name="close" size={24} color="#64748B" />
+                </Pressable>
+              </View>
+              
+              <View style={styles.faqItem}>
+                <Text style={styles.faqQuestion}>How to create a quote?</Text>
+                <Text style={styles.faqAnswer}>Go to Products → Select items → Add to Cart → Submit RFQ</Text>
+              </View>
+
+              <View style={styles.faqItem}>
+                <Text style={styles.faqQuestion}>How are prices calculated?</Text>
+                <Text style={styles.faqAnswer}>Prices are calculated based on roller specifications including pipe diameter, shaft size, and length.</Text>
+              </View>
+
+              <View style={styles.faqItem}>
+                <Text style={styles.faqQuestion}>Need more help?</Text>
+                <Text style={styles.faqAnswer}>Contact us at Info@convero.in</Text>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         {Platform.OS === 'web' ? (
           <button
@@ -380,5 +487,78 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  contactModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  contactModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  contactModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  contactAddressSection: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  contactAddressText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  contactText: {
+    fontSize: 14,
+    color: '#64748B',
+    lineHeight: 22,
+  },
+  contactDivider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 16,
+  },
+  contactInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    cursor: 'pointer',
+  },
+  contactInfoText: {
+    fontSize: 14,
+    color: '#0F172A',
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  faqItem: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  faqQuestion: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0F172A',
+    marginBottom: 6,
+  },
+  faqAnswer: {
+    fontSize: 14,
+    color: '#64748B',
+    lineHeight: 20,
   },
 });
