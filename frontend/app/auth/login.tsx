@@ -179,14 +179,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
     marginBottom: 16,
   },
   logo: {
-    width: 100,
-    height: 60,
+    width: 180,
+    height: 80,
   },
   tagline: {
     fontSize: 12,
