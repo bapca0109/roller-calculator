@@ -3556,6 +3556,229 @@ async def get_unread_rfq_count(current_user: dict = Depends(require_role([UserRo
     })
     return {"unread_count": count}
 
+# Export quotes to Excel - MUST be before /quotes/{quote_id} routes
+@api_router.get("/quotes/export/excel")
+async def export_quotes_excel_v2(
+    status: str = None,
+    search: str = None,
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """Export quotes to Excel file. Accepts token as query param or Authorization header."""
+    # Validate token from query param OR Authorization header
+    current_user = None
+    auth_token = token
+    
+    # Try to get token from Authorization header if not in query
+    if not auth_token and authorization:
+        if authorization.startswith("Bearer "):
+            auth_token = authorization[7:]
+    
+    if auth_token:
+        try:
+            payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            if email:
+                user = await db.users.find_one({"email": email})
+                if user:
+                    user["id"] = str(user["_id"])
+                    current_user = user
+        except Exception as e:
+            logging.error(f"Token validation error: {e}")
+            raise HTTPException(status_code=401, detail="Invalid token")
+    
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    try:
+        # Build query
+        query = {}
+        if current_user.get("role") != "admin":
+            query["customer_email"] = current_user.get("email")
+        if status and status != "all":
+            query["status"] = status
+        if search:
+            query["$or"] = [
+                {"quote_number": {"$regex": search, "$options": "i"}},
+                {"customer_name": {"$regex": search, "$options": "i"}},
+                {"customer_company": {"$regex": search, "$options": "i"}}
+            ]
+        
+        quotes = await db.quotes.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+        
+        # Create Excel workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Quotes"
+        
+        # Headers
+        headers = ["Quote Number", "Customer", "Company", "Status", "Products", "Subtotal", "Discount", "Packing", "Freight", "Total", "Created Date"]
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        header_fill = PatternFill(start_color="960018", end_color="960018", fill_type="solid")
+        
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center")
+        
+        # Data rows
+        for row, quote in enumerate(quotes, 2):
+            ws.cell(row=row, column=1, value=quote.get("quote_number", "N/A"))
+            ws.cell(row=row, column=2, value=quote.get("customer_name", "N/A"))
+            ws.cell(row=row, column=3, value=quote.get("customer_company", "N/A"))
+            ws.cell(row=row, column=4, value=quote.get("status", "N/A"))
+            ws.cell(row=row, column=5, value=len(quote.get("products", [])))
+            ws.cell(row=row, column=6, value=quote.get("subtotal", 0))
+            ws.cell(row=row, column=7, value=quote.get("total_discount", 0))
+            ws.cell(row=row, column=8, value=quote.get("packing_charges", 0))
+            ws.cell(row=row, column=9, value=quote.get("shipping_cost", 0))
+            ws.cell(row=row, column=10, value=quote.get("total_price", 0))
+            created = quote.get("created_at")
+            if created:
+                ws.cell(row=row, column=11, value=created.strftime("%Y-%m-%d %H:%M") if hasattr(created, 'strftime') else str(created)[:16])
+        
+        # Adjust column widths
+        for col in ws.columns:
+            max_length = max(len(str(cell.value or "")) for cell in col)
+            ws.column_dimensions[col[0].column_letter].width = min(max_length + 2, 30)
+        
+        # Save to bytes
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        filename = f"Quotes_Export_{get_ist_now().strftime('%Y%m%d_%H%M')}.xlsx"
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        logging.error(f"Quote Excel export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Export quotes to PDF - MUST be before /quotes/{quote_id} routes
+@api_router.get("/quotes/export/pdf")
+async def export_quotes_pdf_v2(
+    status: str = None,
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """Export quotes to PDF file. Accepts token as query param or Authorization header."""
+    # Validate token from query param OR Authorization header
+    current_user = None
+    auth_token = token
+    
+    # Try to get token from Authorization header if not in query
+    if not auth_token and authorization:
+        if authorization.startswith("Bearer "):
+            auth_token = authorization[7:]
+    
+    if auth_token:
+        try:
+            payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            if email:
+                user = await db.users.find_one({"email": email})
+                if user:
+                    user["id"] = str(user["_id"])
+                    current_user = user
+        except Exception as e:
+            logging.error(f"Token validation error: {e}")
+            raise HTTPException(status_code=401, detail="Invalid token")
+    
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    try:
+        query = {}
+        if current_user.get("role") != "admin":
+            query["customer_email"] = current_user.get("email")
+        if status:
+            query["status"] = status
+        
+        quotes = await db.quotes.find(query).sort("created_at", -1).to_list(1000)
+        
+        # Generate PDF HTML
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Quotes Export</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                h1 {{ color: #960018; border-bottom: 2px solid #960018; padding-bottom: 10px; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+                th {{ background-color: #960018; color: white; padding: 12px; text-align: left; }}
+                td {{ padding: 10px; border-bottom: 1px solid #ddd; }}
+                tr:nth-child(even) {{ background-color: #f9f9f9; }}
+                .status {{ padding: 4px 8px; border-radius: 4px; font-size: 12px; }}
+                .approved {{ background-color: #4CAF50; color: white; }}
+                .pending {{ background-color: #FF9800; color: white; }}
+                .rejected {{ background-color: #f44336; color: white; }}
+                .footer {{ margin-top: 30px; text-align: center; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <h1>Quotes Export</h1>
+            <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Quote #</th>
+                        <th>Customer</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        
+        for quote in quotes:
+            status_class = quote.get('status', 'pending').lower().replace('rfq_', '')
+            created = quote.get('created_at', datetime.now())
+            if isinstance(created, str):
+                created = datetime.fromisoformat(created.replace('Z', '+00:00'))
+            
+            html_content += f"""
+                    <tr>
+                        <td>{quote.get('quote_number', 'N/A')}</td>
+                        <td>{quote.get('customer_name', 'N/A')}</td>
+                        <td>{len(quote.get('products', []))}</td>
+                        <td>Rs. {quote.get('total_price', 0):,.2f}</td>
+                        <td><span class="status {status_class}">{quote.get('status', 'N/A').upper()}</span></td>
+                        <td>{created.strftime('%Y-%m-%d')}</td>
+                    </tr>
+            """
+        
+        html_content += """
+                </tbody>
+            </table>
+            <div class="footer">
+                <p>Convero - Belt Conveyor Roller Solutions</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Generate PDF using weasyprint
+        from weasyprint import HTML
+        pdf_bytes = HTML(string=html_content).write_pdf()
+        
+        filename = f"quotes_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        logging.error(f"Quote PDF export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Mark RFQ as read by admin
 @api_router.post("/quotes/{quote_id}/mark-read")
 async def mark_quote_as_read(
