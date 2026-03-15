@@ -167,8 +167,8 @@ export default function ProfileScreen() {
             <View style={styles.divider} />
 
             <TouchableOpacity style={styles.supportRow} onPress={() => Alert.alert(
-              'Contact Support',
-              '📧 Email: support@convero.in\n\n📞 Phone: +91 XXXXX XXXXX\n\n🕐 Hours: Mon-Sat, 9 AM - 6 PM IST\n\nWe typically respond within 24 hours.',
+              'CONVERO SOLUTIONS',
+              'Plot no. -39, Swapnil Industrial Park,\nBeside shiv aaradhna estate,\nAhmedabad-Indore Highway,\nVillage-Kuha, Ahmedabad,\nGujarat 382433\n\n📧 E: Info@convero.in\n🌐 W: www.convero.in\n📞 M: +91-9824034311',
               [{ text: 'OK', style: 'default' }]
             )}>
               <View style={styles.supportLabel}>
