@@ -1255,7 +1255,7 @@ export default function QuotesScreen() {
     }
   };
 
-  const pendingRfqCount = quotes.filter(q => q.quote_number?.startsWith('RFQ') && q.status?.toLowerCase() !== 'approved').length;
+  const pendingRfqCount = quotes.filter(q => q.quote_number?.startsWith('RFQ') && q.status?.toLowerCase() === 'pending').length;
 
   // Helper to generate PDF HTML using the extracted utility
   const generatePdfHtmlForQuote = (quote: Quote) => {
