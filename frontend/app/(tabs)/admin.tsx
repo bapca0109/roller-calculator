@@ -11,6 +11,7 @@ import {
   Modal,
   FlatList,
   Platform,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -278,17 +279,10 @@ export default function AdminScreen() {
 
   // ============= SET AS DEFAULT FUNCTIONS =============
   const handleSetAsDefault = () => {
-    Alert.alert(
-      'Set as Default',
-      'This will update the default prices in the system. All future calculations will use these new rates.\n\nAn OTP will be sent to your email for verification.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Continue',
-          onPress: () => setShowSetDefaultModal(true),
-        },
-      ]
-    );
+    // Directly open the modal without extra confirmation
+    console.log('Set as Default clicked, opening modal...');
+    setShowSetDefaultModal(true);
+    console.log('showSetDefaultModal set to true');
   };
 
   const sendSetDefaultOtp = async () => {
@@ -1028,11 +1022,17 @@ export default function AdminScreen() {
               {/* Set as Default Button */}
               <TouchableOpacity
                 style={[styles.resetButton, { backgroundColor: '#217346', marginTop: 12 }]}
-                onPress={handleSetAsDefault}
+                onPress={() => {
+                  console.log('Set as Default button pressed');
+                  setShowSetDefaultModal(true);
+                }}
                 disabled={saving}
+                activeOpacity={0.7}
               >
-                <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                <Text style={[styles.resetButtonText, { color: '#fff' }]}>Set as Default (OTP)</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
+                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                  <Text style={[styles.resetButtonText, { color: '#fff' }]}>Set as Default (OTP)</Text>
+                </View>
               </TouchableOpacity>
 
               <View style={styles.bottomSpacer} />
@@ -1077,7 +1077,7 @@ export default function AdminScreen() {
         animationType="fade"
         onRequestClose={closeSetDefaultModal}
       >
-        <View style={styles.modalOverlay}>
+        <View style={styles.centeredModalOverlay}>
           <View style={styles.setDefaultModal}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Set as Default</Text>
@@ -1493,6 +1493,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
+  },
+  centeredModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalContent: {
     backgroundColor: '#fff',
