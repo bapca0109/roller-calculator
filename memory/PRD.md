@@ -87,6 +87,24 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - Added warning message when selected shaft works without housing
 
 
+### March 15, 2026 (Current Session)
+- [x] **Integrated Rubber Ring Weights (P2)**:
+  - Added lookup table with 17 ring combinations from user-provided data
+  - Ring ID ranges: 60mm to 152mm
+  - Ring OD ranges: 90mm to 190mm
+  - All rings use standard 35mm width
+  - Falls back to formula calculation for unlisted combinations
+  - Verified with pipe diameter mapping (88.9 → 89, 114.3 → 114, etc.)
+
+- [x] **Contact Us Modal Fixed**:
+  - Added full company address modal in Profile tab
+  - Clickable email, website, and phone links
+  - Works on both web and native platforms
+
+- [x] **Convero Logo Fixed**:
+  - Updated login page with correct Convero Solutions logo
+  - Proper sizing (180x80px) with white background
+
 ### March 14, 2026 (Current Session) - Modal Close Buttons & Major Refactoring
 - [x] **Fixed iOS Export Bug (P0)**: 
   - Updated `expo-file-system` import to use legacy module (`expo-file-system/legacy`)

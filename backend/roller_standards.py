@@ -1,6 +1,69 @@
 # IS-9295:2024 - Standard Pipe Diameters (mm) - UPDATED
 PIPE_DIAMETERS = [60.8, 76.1, 88.9, 114.3, 127.0, 139.7, 152.4, 159.0, 165.0]
 
+# Rubber Ring Weights Lookup Table (from user-provided data)
+# Key: (Ring_ID_mm, Ring_OD_mm) -> Weight per ring in kg
+# Ring width is standard 35mm
+RUBBER_RING_WEIGHTS = {
+    (60, 90): 0.15,
+    (60, 114): 0.35,
+    (76, 114): 0.23,
+    (76, 127): 0.30,
+    (76, 140): 0.62,
+    (89, 127): 0.245,
+    (89, 140): 0.52,
+    (89, 152): 0.67,
+    (114, 139): 0.275,
+    (114, 152): 0.30,
+    (114, 165): 0.43,
+    (114, 190): 0.78,
+    (127, 165): 0.65,
+    (127, 190): 0.72,
+    (139, 165): 0.50,
+    (139, 190): 0.60,
+    (152, 190): 0.45,
+}
+
+# Pipe diameter to Ring ID mapping (actual pipe OD -> ring ID used)
+PIPE_TO_RING_ID = {
+    60.8: 60,
+    76.1: 76,
+    88.9: 89,
+    114.3: 114,
+    127.0: 127,
+    139.7: 139,
+    152.4: 152,
+    159.0: 159,
+    165.0: 165,
+}
+
+def get_rubber_ring_weight(pipe_dia_mm, rubber_dia_mm):
+    """
+    Get the actual weight of a rubber ring from the lookup table.
+    
+    Args:
+        pipe_dia_mm: Pipe outer diameter in mm (determines Ring ID)
+        rubber_dia_mm: Rubber outer diameter in mm (Ring OD)
+    
+    Returns:
+        Weight in kg, or None if combination not found
+    """
+    # Convert pipe diameter to ring ID
+    ring_id = PIPE_TO_RING_ID.get(pipe_dia_mm, int(round(pipe_dia_mm)))
+    ring_od = int(round(rubber_dia_mm))
+    
+    # Look up exact match first
+    weight = RUBBER_RING_WEIGHTS.get((ring_id, ring_od))
+    
+    if weight is not None:
+        return weight
+    
+    # Try with rounded pipe diameter as ring ID
+    ring_id_rounded = int(round(pipe_dia_mm))
+    weight = RUBBER_RING_WEIGHTS.get((ring_id_rounded, ring_od))
+    
+    return weight
+
 # Pipe-Shaft Compatibility Mapping
 # Defines which shaft diameters are compatible with each pipe diameter
 # Note: Some combinations work without housing (marked in PIPES_WITHOUT_HOUSING)
@@ -779,6 +842,7 @@ def get_all_lengths_with_belt_widths(roller_type="carrying"):
 def calculate_rubber_ring_weight(ring_id_mm, ring_od_mm, ring_width_mm=35, rubber_density=1.15):
     """
     Calculate weight of a single rubber ring based on ID, OD, and width.
+    First checks the lookup table for actual weights, then falls back to formula.
     
     Args:
         ring_id_mm: Inner diameter in mm (typically = pipe OD)
@@ -788,13 +852,15 @@ def calculate_rubber_ring_weight(ring_id_mm, ring_od_mm, ring_width_mm=35, rubbe
     
     Returns:
         Weight of single ring in kg
-    
-    Formula:
-        Volume = π × ((OD² - ID²) / 4) × width
-        Weight = Volume × density
     """
     import math
     
+    # First, try to get actual weight from lookup table
+    actual_weight = get_rubber_ring_weight(ring_id_mm, ring_od_mm)
+    if actual_weight is not None:
+        return actual_weight
+    
+    # Fallback: Calculate using formula
     # Convert mm to cm for volume calculation
     ring_id_cm = ring_id_mm / 10
     ring_od_cm = ring_od_mm / 10
