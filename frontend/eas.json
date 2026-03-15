@@ -6,7 +6,7 @@
         "withoutCredentials": true
       },
       "env": {
-        "EXPO_PUBLIC_BACKEND_URL": "https://conveyor-roller-calc.preview.emergentagent.com",
+        "EXPO_PUBLIC_BACKEND_URL": "https://conveyor-roller-calc-1.preview.emergentagent.com",
         "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
       }
     }
