@@ -212,6 +212,42 @@ async def root():
     """Root endpoint - confirms API is running"""
     return {"status": "ok", "app": "Roller Price Calculator API", "version": "1.0.0"}
 
+# Privacy Policy endpoint
+@app.get("/privacy-policy")
+async def get_privacy_policy():
+    """Serve the privacy policy page"""
+    privacy_path = ROOT_DIR / 'static' / 'privacy-policy.html'
+    if privacy_path.exists():
+        return FileResponse(privacy_path, media_type='text/html')
+    raise HTTPException(status_code=404, detail="Privacy policy not found")
+
+# Also serve at /api/privacy-policy for API access
+@api_router.get("/privacy-policy")
+async def get_api_privacy_policy():
+    """Serve the privacy policy page via API"""
+    privacy_path = ROOT_DIR / 'static' / 'privacy-policy.html'
+    if privacy_path.exists():
+        return FileResponse(privacy_path, media_type='text/html')
+    raise HTTPException(status_code=404, detail="Privacy policy not found")
+
+# Terms of Service endpoint
+@app.get("/terms")
+async def get_terms_of_service():
+    """Serve the terms of service page"""
+    terms_path = ROOT_DIR / 'static' / 'terms-of-service.html'
+    if terms_path.exists():
+        return FileResponse(terms_path, media_type='text/html')
+    raise HTTPException(status_code=404, detail="Terms of service not found")
+
+# Also serve at /api/terms for API access
+@api_router.get("/terms")
+async def get_api_terms_of_service():
+    """Serve the terms of service page via API"""
+    terms_path = ROOT_DIR / 'static' / 'terms-of-service.html'
+    if terms_path.exists():
+        return FileResponse(terms_path, media_type='text/html')
+    raise HTTPException(status_code=404, detail="Terms of service not found")
+
 # Health check endpoint for deployment (also at root level for K8s probes)
 @app.get("/health")
 async def root_health_check():
