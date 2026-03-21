@@ -5,20 +5,37 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
+    "scheme": "rollercalculator",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.convero.rollercalculator"
+      "bundleIdentifier": "com.convero.rollercalculator",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "This app does not use the camera.",
+        "NSPhotoLibraryUsageDescription": "This app may need access to your photo library to save exported documents.",
+        "NSPhotoLibraryAddUsageDescription": "This app may need access to save exported PDF and Excel files to your photo library.",
+        "CFBundleDevelopmentRegion": "en",
+        "UIBackgroundModes": []
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000"
+        "backgroundColor": "#960018"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.convero.rollercalculator"
+      "package": "com.convero.rollercalculator",
+      "versionCode": 1,
+      "permissions": [
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -43,6 +60,9 @@
         "projectId": "3cdfa175-e739-4273-bb2c-daf6dbca4225"
       }
     },
-    "owner": "bapcs0109"
+    "owner": "bapcs0109",
+    "description": "Professional belt conveyor roller calculator for industrial pricing. Calculate prices for Carrying, Impact, and Return rollers with real-time quotes.",
+    "githubUrl": "https://github.com/bapca0109/roller-calculator",
+    "privacy": "unlisted"
   }
 }
