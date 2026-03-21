@@ -10,16 +10,23 @@ import {
   Modal,
   Pressable,
   Linking,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import api from '../../utils/api';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [showContactModal, setShowContactModal] = useState(false);
   const [showFaqModal, setShowFaqModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const handleLogout = async () => {
     try {
@@ -41,6 +48,43 @@ export default function ProfileScreen() {
       }
       Alert.alert('Error', 'Failed to logout completely. Please restart the app.');
     }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      setDeleteError('Please type DELETE to confirm');
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError('');
+
+    try {
+      await api.delete('/account/delete');
+      
+      // Close modal and logout
+      setShowDeleteModal(false);
+      await logout();
+      router.replace('/auth/login');
+      
+      if (Platform.OS === 'web') {
+        alert('Your account has been deleted successfully.');
+      } else {
+        Alert.alert('Success', 'Your account has been deleted successfully.');
+      }
+    } catch (error: any) {
+      console.error('Delete account error:', error);
+      const errorMessage = error.response?.data?.detail || 'Failed to delete account. Please try again.';
+      setDeleteError(errorMessage);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const openDeleteModal = () => {
+    setDeleteConfirmText('');
+    setDeleteError('');
+    setShowDeleteModal(true);
   };
 
   const getRoleLabel = (role: string) => {
@@ -201,6 +245,26 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Account Actions Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account Actions</Text>
+
+          <View style={styles.infoCard}>
+            <TouchableOpacity 
+              style={styles.deleteAccountRow} 
+              onPress={openDeleteModal}
+              activeOpacity={0.7}
+              data-testid="delete-account-btn"
+            >
+              <View style={styles.supportLabel}>
+                <Ionicons name="trash-outline" size={20} color="#DC2626" />
+                <Text style={styles.deleteAccountText}>Delete Account</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#DC2626" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Contact Us Modal */}
         <Modal
           visible={showContactModal}
@@ -292,6 +356,71 @@ export default function ProfileScreen() {
               <View style={styles.faqItem}>
                 <Text style={styles.faqQuestion}>Need more help?</Text>
                 <Text style={styles.faqAnswer}>Contact us at Info@convero.in</Text>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* Delete Account Modal */}
+        <Modal
+          visible={showDeleteModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDeleteModal(false)}
+        >
+          <Pressable 
+            style={styles.modalOverlay} 
+            onPress={() => setShowDeleteModal(false)}
+          >
+            <Pressable style={styles.deleteModalContent} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.deleteModalHeader}>
+                <Ionicons name="warning-outline" size={40} color="#DC2626" />
+                <Text style={styles.deleteModalTitle}>Delete Account</Text>
+              </View>
+              
+              <Text style={styles.deleteWarningText}>
+                This action is permanent and cannot be undone. All your data including quotes and customer information will be deleted.
+              </Text>
+
+              <Text style={styles.deleteConfirmLabel}>
+                Type <Text style={styles.deleteKeyword}>DELETE</Text> to confirm:
+              </Text>
+
+              <TextInput
+                style={styles.deleteInput}
+                value={deleteConfirmText}
+                onChangeText={setDeleteConfirmText}
+                placeholder="Type DELETE"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="characters"
+                data-testid="delete-confirm-input"
+              />
+
+              {deleteError ? (
+                <Text style={styles.deleteErrorText}>{deleteError}</Text>
+              ) : null}
+
+              <View style={styles.deleteButtonRow}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => setShowDeleteModal(false)}
+                  data-testid="cancel-delete-btn"
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.confirmDeleteButton, isDeleting && styles.disabledButton]}
+                  onPress={handleDeleteAccount}
+                  disabled={isDeleting}
+                  data-testid="confirm-delete-btn"
+                >
+                  {isDeleting ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.confirmDeleteButtonText}>Delete Account</Text>
+                  )}
+                </TouchableOpacity>
               </View>
             </Pressable>
           </Pressable>
@@ -560,5 +689,102 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     lineHeight: 20,
+  },
+  // Delete Account Styles
+  deleteAccountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  deleteAccountText: {
+    fontSize: 16,
+    color: '#DC2626',
+    fontWeight: '500',
+  },
+  deleteModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  deleteModalHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  deleteModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#DC2626',
+    marginTop: 12,
+  },
+  deleteWarningText: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  deleteConfirmLabel: {
+    fontSize: 14,
+    color: '#374151',
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  deleteKeyword: {
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  deleteInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: 2,
+  },
+  deleteErrorText: {
+    color: '#DC2626',
+    fontSize: 13,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  deleteButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    marginTop: 8,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  confirmDeleteButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 8,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+  },
+  confirmDeleteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });

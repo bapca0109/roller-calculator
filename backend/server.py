@@ -3116,6 +3116,48 @@ async def remove_push_token(current_user: dict = Depends(get_current_user)):
         logging.error(f"Error removing push token: {e}")
         raise HTTPException(status_code=500, detail="Failed to remove push token")
 
+@api_router.delete("/account/delete")
+async def delete_account(current_user: dict = Depends(get_current_user)):
+    """Delete the current user's account and all associated data"""
+    try:
+        user_email = current_user["email"]
+        user_role = current_user.get("role")
+        
+        # Prevent admin from deleting their own account if they're the only admin
+        if user_role == "admin":
+            admin_count = await db.users.count_documents({"role": "admin"})
+            if admin_count <= 1:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Cannot delete the only admin account. Please create another admin first."
+                )
+        
+        # Delete user's quotes if they're a customer
+        if user_role == "customer":
+            # Get customer record
+            customer = await db.customers.find_one({"email": user_email})
+            if customer:
+                customer_id = str(customer["_id"])
+                # Delete associated quotes
+                await db.quotes.delete_many({"customer_id": customer_id})
+                # Delete customer record
+                await db.customers.delete_one({"email": user_email})
+        
+        # Delete the user account
+        result = await db.users.delete_one({"email": user_email})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        logging.info(f"Account deleted successfully: {user_email}")
+        return {"message": "Account deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error deleting account: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete account")
+
 async def send_push_notification_to_admins(title: str, body: str, data: dict = None):
     """Send push notification to all admin users with registered tokens"""
     try:
