@@ -7490,6 +7490,43 @@ async def delete_customer(customer_id: str, current_user: dict = Depends(get_cur
     
     return {"message": "Customer deleted successfully"}
 
+@api_router.delete("/admin/clear-all-data")
+async def clear_all_data(current_user: dict = Depends(get_current_user)):
+    """Clear all quotes, customers, and admin requests - Admin only"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        # Clear quotes
+        quotes_result = await db.quotes.delete_many({})
+        
+        # Clear customers
+        customers_result = await db.customers.delete_many({})
+        
+        # Clear admin requests
+        admin_requests_result = await db.admin_requests.delete_many({})
+        
+        # Reset customer code counter
+        await db.counters.update_one(
+            {"_id": "customer_code"},
+            {"$set": {"seq": 0}},
+            upsert=True
+        )
+        
+        logging.info(f"Data cleared by {current_user.get('email')}: {quotes_result.deleted_count} quotes, {customers_result.deleted_count} customers, {admin_requests_result.deleted_count} admin requests")
+        
+        return {
+            "message": "All data cleared successfully",
+            "deleted": {
+                "quotes": quotes_result.deleted_count,
+                "customers": customers_result.deleted_count,
+                "admin_requests": admin_requests_result.deleted_count
+            }
+        }
+    except Exception as e:
+        logging.error(f"Error clearing data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear data: {str(e)}")
+
 @api_router.get("/customers/search/gstin/{gstin}")
 async def search_customer_by_gstin(gstin: str, current_user: dict = Depends(get_current_user)):
     """Search for existing customer by GSTIN - Quick lookup before GST portal fetch"""
