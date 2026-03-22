@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -27,6 +28,54 @@ export default function ProfileScreen() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [isClearingCache, setIsClearingCache] = useState(false);
+
+  const handleClearCache = async () => {
+    if (Platform.OS === 'web') {
+      if (!confirm('This will clear all cached data and log you out. Continue?')) {
+        return;
+      }
+    } else {
+      Alert.alert(
+        'Clear Cache',
+        'This will clear all cached data and log you out. Continue?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Clear', style: 'destructive', onPress: performClearCache },
+        ]
+      );
+      return;
+    }
+    await performClearCache();
+  };
+
+  const performClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      // Clear all AsyncStorage data
+      await AsyncStorage.clear();
+      
+      // Show success message
+      if (Platform.OS === 'web') {
+        alert('Cache cleared successfully! Please login again.');
+      } else {
+        Alert.alert('Success', 'Cache cleared successfully! Please login again.');
+      }
+      
+      // Logout and redirect to login
+      await logout();
+      router.replace('/auth/login');
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+      if (Platform.OS === 'web') {
+        alert('Failed to clear cache. Please try again.');
+      } else {
+        Alert.alert('Error', 'Failed to clear cache. Please try again.');
+      }
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -250,6 +299,28 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Account Actions</Text>
 
           <View style={styles.infoCard}>
+            {/* Clear Cache Button */}
+            <TouchableOpacity 
+              style={styles.clearCacheRow} 
+              onPress={handleClearCache}
+              activeOpacity={0.7}
+              disabled={isClearingCache}
+              data-testid="clear-cache-btn"
+            >
+              <View style={styles.supportLabel}>
+                <Ionicons name="refresh-outline" size={20} color="#0066CC" />
+                <Text style={styles.clearCacheText}>Clear Cache & Refresh Data</Text>
+              </View>
+              {isClearingCache ? (
+                <ActivityIndicator size="small" color="#0066CC" />
+              ) : (
+                <Ionicons name="chevron-forward" size={20} color="#0066CC" />
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            {/* Delete Account Button */}
             <TouchableOpacity 
               style={styles.deleteAccountRow} 
               onPress={openDeleteModal}
@@ -786,5 +857,22 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.6,
+  },
+  // Clear Cache Styles
+  clearCacheRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  clearCacheText: {
+    fontSize: 16,
+    color: '#0066CC',
+    fontWeight: '500',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 4,
   },
 });

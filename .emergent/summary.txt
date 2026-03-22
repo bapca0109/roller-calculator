@@ -5,7 +5,7 @@
 - **Admin Panel**: Secure interface for CRUD operations on prices and customers, including bulk Excel import/export and a new Set as Default for prices with OTP verification.
 - **Customer Management**: System to manage customers with unique, auto-incrementing customer codes (now starting from ). A designation field is implemented, and GSTIN is now mandatory on signup.
 - **Professional UI**: A corporate, minimalist, and aesthetic look and feel with a consistent dark navy header and full-width modals.
-- **Authentication**: Secure OTP-based signup and login.
+- **Authentication**: Secure OTP-based signup and login. Admins can now request accounts, which require approval.
 - **Role-Based Access Control (RBAC)**: Prices are hidden from customers until a quote is formally approved.
 - **RFQ & Quote Workflow**: A full lifecycle from customer RFQ submission to admin review, edit, approval, or rejection. Includes dynamic selection of commercial terms (payment, freight, etc.). Rejection emails now CC  and .
 - **Data Export**: Ability to export quotes, customer lists, products, and prices to both PDF and Excel on Web, iOS, and Android.
@@ -15,25 +15,31 @@
 - **Live Freight Calculation**: Freight must be calculated dynamically based on total weight and distance. Admins can override this with a custom amount.
 - **Company Branding**: All generated documents (PDFs, emails) and the app's Contact Us section must contain the full, standardized company address and branding. The Convero logo must be on the login page.
 - **Ring Weight Calculation**: The system must use user-provided weights from an Excel sheet for impact roller calculations, not a formula.
+- **Account Deletion**: Users must be able to delete their own accounts from the Profile tab.
+- **App Store Compliance**: The app must meet all technical requirements for submission to the Apple App Store, including having a publicly accessible Privacy Policy and Terms of Service.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack Expo (React Native) and FastAPI application for a conveyor roller business. In this session, the agent completed the refactor of the customer signup page's error handling, replacing all pop-up alerts with inline visual error messages. It addressed a user request to remove a horizontal scrolling UI element from the Quotes page.
+A full-stack Expo (React Native) and FastAPI application. This session was heavily focused on user support, debugging, and implementing critical new features requested by the user.
 
-A significant portion of the session was dedicated to data management: the agent updated all raw material prices twice using user-provided Excel files, debugged an issue where updates weren't appearing (due to writing to the wrong database name), and then set the new prices as default. The agent also performed a full data wipe, deleting all quotes, RFQs, and customer records from the database as requested. Finally, a new admin user was created, and a login issue for this new user was debugged and resolved.
+A significant amount of time was spent guiding the user through setting up their local Mac environment to build the app, including installing Node.js/npm, the EAS CLI, and troubleshooting numerous permission, network, and authentication (Git PAT) issues. The agent also fixed several EAS build failures by updating  and .
+
+On the feature front, the agent implemented a full Delete Account flow, added a Clear Cache button to the profile screen to combat client-side caching issues, and fulfilled all technical requirements for App Store submission by creating Privacy Policy/Terms of Service pages and updating app configurations. A major new feature was added to the signup page: a role-selection dropdown that sends admin accounts into a new approval queue, which the agent also implemented on the backend.
+
+Finally, the agent updated raw material prices (Housing, Seal, Bearing) multiple times from user-provided Excel files, debugged API responses to ensure the correct data was being served, and implemented a secure Clear All Data endpoint to manage the production database.
 
 **Last working item**:
-- Last item agent was working: The user was unable to log in with the newly created admin account (). The agent investigated and found a 500 Internal Server Error caused by creating the user record with the field  instead of the required . The agent corrected the field name in the database and verified the login was successful via a  command.
-- Status: COMPLETED
-- Agent Testing Done: Y
-- Which testing method agent to use? NA
+- Last item agent was working: The user reported that the deployed native apps still showed old data even after the backend database was cleared. The agent diagnosed this as aggressive client-side caching within the mobile app itself. To solve this, the agent implemented a Clear Cache button on the Profile screen.
+- Status: USER VERIFICATION PENDING
+- Agent Testing Done: N
+- Which testing method agent to use? The user must generate a new native build (iOS/Android) via EAS build and install it on a physical device. Once installed, they must manually test if tapping the Clear Cache button in the Profile tab successfully clears the old data and fetches fresh data from the server.
 - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  Issue 1: iOS build is stuck. (P0 - BLOCKER)
-  Issue 2: Send verification code button may not work on native apps. (P0)
-  Issue 3: Frontend build instability / caching issues. (P1)
+  Issue 1: User unable to complete an EAS build for iOS/Android. (P0 - BLOCKER)
+  Issue 2: Old data persists on native apps due to client-side caching. (P0 - BLOCKER)
+  Issue 3: Send verification code button may not work on native apps. (P1)
   Issue 4: Duplicate approval modal appears when approving an RFQ. (P1)
   Issue 5: Commercial terms selection UI is not a dropdown. (P1)
   Issue 6: Not able to select customer name in iPhone app. (P1)
@@ -43,213 +49,211 @@ A significant portion of the session was dedicated to data management: the agent
   
   Issues Detail:
   - Issue 1: 
-     - Attempted fixes: Identified as an external EAS (Expo Application Services) infrastructure issue.
-     - Next debug checklist: The user must cancel the stuck build from their Expo dashboard and trigger a new one.
-     - Why fix this issue and what will be achieved with the fix? This is a hard blocker for delivering any native app updates (including all iOS fixes) to the user for testing.
+     - Attempted fixes: Agent provided extensive, step-by-step guidance to the user to set up their local Mac environment (installing Node/npm/EAS CLI, fixing permissions, handling Git auth) and fix build configuration files (, ). However, the user's unstable network connection and unfamiliarity with the command line have prevented a successful build.
+     - Next debug checklist: The user must establish a stable internet connection (e.g., mobile hotspot) and re-attempt the build process on their Mac using Input is required, but stdin is not readable. Failed to display prompt: Select platform or trigger a build from the Expo dashboard.
+     - Why fix this issue and what will be achieved with the fix? This is a hard blocker. No native app features or fixes (including the Clear Cache button) can be tested or deployed until a new build is successfully created.
      - Status:  BLOCKED
-     - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? NA
-     - Blocked on other issue: External build infrastructure.
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? Both (a new build is required to test all pending frontend fixes)
+     - Blocked on other issue: User's local environment and network stability.
   - Issue 2: 
-     - Attempted fixes: The agent confirmed the button works on web. For native apps, the agent added  to more child elements inside the button as a speculative fix for potential React Native click handling issues on iOS.
-     - Next debug checklist: Requires a new, successful native build to be tested by the user on a physical device.
-     - Why fix this issue and what will be achieved with the fix? This is a critical part of the customer signup flow.
+     - Attempted fixes: Agent implemented a Clear Cache button in  that calls .
+     - Next debug checklist: A new native build must be created and installed. The user then needs to test the Clear Cache button.
+     - Why fix this issue and what will be achieved with the fix? This will resolve the user's primary complaint of seeing stale data and provide a way to self-service this issue in the future.
+     - Status:  USER VERIFICATION PENDING
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? Frontend (iOS/Android device)
+     - Blocked on other issue: Issue 1: User unable to complete an EAS build for iOS/Android.
+  - Issue 3: 
+     - Attempted fixes: A speculative fix was applied in a previous session.
+     - Next debug checklist: Requires a new, successful native build to be tested by the user.
+     - Why fix this issue and what will be achieved with the fix? Fixes a critical part of the customer signup flow.
      - Status:  USER VERIFICATION PENDING
      - Is recurring issue? N
      - Should Test frontend/backend/both after fix? Frontend (iOS/Android device)
-     - Blocked on other issue: Issue 1: iOS build is stuck.
-  - Issue 3: 
-     - Attempted fixes: Agent had to repeatedly restart services as a workaround. This is a persistent environmental problem.
-     - Next debug checklist: Continue to use frontend: ERROR (no such process)
-frontend: ERROR (no such process) and [13:51:19] Starting project at /app/frontend as a workaround. Long-term solution involves refactoring large components.
-     - Why fix this issue and what will be achieved with the fix? Improves development velocity and stability.
-     - Status:  IN PROGRESS
-     - Is recurring issue? Y
-     - Should Test frontend/backend/both after fix? NA
-     - Blocked on other issue: None
+     - Blocked on other issue: Issue 1.
   - Issue 4: 
      - Attempted fixes: A fix was attempted in a previous session.
-     - Next debug checklist: Confirm with the user if the issue persists after a new native build is deployed.
-     - Why fix this issue and what will be achieved with the fix? Streamlines the RFQ approval workflow.
+     - Next debug checklist: Requires a new, successful native build to be tested by the user.
+     - Why fix this issue and what will be achieved with the fix? Improves the admin workflow.
      - Status:  USER VERIFICATION PENDING
      - Is recurring issue? Y
      - Should Test frontend/backend/both after fix? Frontend
-     - Blocked on other issue: Issue 1: iOS build is stuck.
+     - Blocked on other issue: Issue 1.
   - Issue 5: 
      - Attempted fixes: A fix was attempted in a previous session.
-     - Next debug checklist: Confirm with the user if the issue persists. It may be a browser cache issue on their end.
-     - Why fix this issue and what will be achieved with the fix? Fulfills the user's specific UI requirement.
+     - Next debug checklist: User needs to confirm if the issue persists after clearing browser cache or on a new native build.
+     - Why fix this issue and what will be achieved with the fix? Fulfills the user's UI requirement.
      - Status:  USER VERIFICATION PENDING
      - Is recurring issue? Y
      - Should Test frontend/backend/both after fix? Frontend
-     - Blocked on other issue: None
+     - Blocked on other issue: None for web, Issue 1 for native.
   - Issue 6: 
      - Attempted fixes: A fix was implemented in a previous session.
-     - Next debug checklist: Requires a new, successful iOS build to be tested by the user on a physical device.
-     - Why fix this issue and what will be achieved with the fix? Fixes a critical usability issue preventing admins from creating quotes on iOS.
+     - Next debug checklist: Requires a new, successful iOS build to be tested.
+     - Why fix this issue and what will be achieved with the fix? Fixes a critical admin workflow on iOS.
      - Status:  USER VERIFICATION PENDING
      - Is recurring issue? N
      - Should Test frontend/backend/both after fix? Frontend (iOS device)
-     - Blocked on other issue: Issue 1: iOS build is stuck.
+     - Blocked on other issue: Issue 1.
   - Issue 7: 
      - Attempted fixes:  was previously added.
-     - Next debug checklist: Requires a new, successful iOS build to be tested by the user on a physical device.
-     - Why fix this issue and what will be achieved with the fix? Improves user experience during data entry on iOS.
+     - Next debug checklist: Requires a new, successful iOS build to be tested.
+     - Why fix this issue and what will be achieved with the fix? Improves UX on iOS.
      - Status:  USER VERIFICATION PENDING
      - Is recurring issue? N
      - Should Test frontend/backend/both after fix? Frontend (iOS device)
-     - Blocked on other issue: Issue 1: iOS build is stuck.
+     - Blocked on other issue: Issue 1.
   - Issue 8: 
      - Attempted fixes: None.
-     - Next debug checklist: Reproduce on an Android device/simulator and investigate using  in .
-     - Why fix this issue and what will be achieved with the fix? Fixes a UI layout bug that hinders navigation on Android.
+     - Next debug checklist: Reproduce on an Android device/simulator and investigate using .
+     - Why fix this issue and what will be achieved with the fix? Fixes a UI layout bug on Android.
      - Status:  NOT STARTED
      - Is recurring issue? Y
      - Should Test frontend/backend/both after fix? Frontend (Android device)
-     - Blocked on other issue: None
+     - Blocked on other issue: Issue 1.
   - Issue 9: 
-     - Attempted fixes: Backend API was previously verified. Suspected client-side caching issue.
-     - Next debug checklist: Instruct the user to force close the app, clear the cart, and add items again to ensure fresh data is fetched.
-     - Why fix this issue and what will be achieved with the fix? Ensures customers see accurate pricing information.
+     - Attempted fixes: Backend API was verified. Suspected client-side caching.
+     - Next debug checklist: Should be resolved by the Clear Cache button (Issue 2).
+     - Why fix this issue and what will be achieved with the fix? Ensures accurate pricing for customers.
      - Status:  USER VERIFICATION PENDING
      - Is recurring issue? Y
      - Should Test frontend/backend/both after fix? Frontend
-     - Blocked on other issue: None
+     - Blocked on other issue: Issue 1, Issue 2.
 
 **In progress Task List**:
-  Task 1: Refactor . (P1)
-  Task 2: Refactor . (P1)
+  Task 1: Refactor . (P2)
+  Task 2: Refactor . (P2)
 
  Task Detail:
   - Task 1: 
-     - Where to resume: A small UI component was removed, but the main task is pending. The next step is to extract the  into its own component file and clean up hundreds of lines of unused styles.
-     - What will be achieved with this? Improve maintainability, performance, and stability of the most critical screen in the app.
+     - Where to resume: A small UI component was removed in a previous session, but the main task is pending. The next step is to extract large modals into their own component files and clean up unused styles.
+     - What will be achieved with this? Improve maintainability, performance, and stability.
      - Status:  IN PROGRESS
      - Should Test frontend/backend/both after fix? Frontend
      - Blocked on something: None
   - Task 2: 
-     - Where to resume: No progress was made. The next step is to break down the main  component into smaller, manageable pieces (e.g., , ) and extract its large style block.
-     - What will be achieved with this? Improve maintainability and performance of the calculator screen.
+     - Where to resume: No progress was made. The next step is to break down the main  component into smaller, manageable pieces.
+     - What will be achieved with this? Improve maintainability and performance.
      - Status:  NOT STARTED
      - Should Test frontend/backend/both after fix? Frontend
      - Blocked on something: None
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
-    - **User Acceptance Testing (UAT) (P0)**: Once the build issue is resolved, the user must test all native-dependent features: iOS file export, iOS customer selection, iOS keyboard behavior, and the signup verification button.
-    - **Clean up unused styles in  (P2)**: The agent identified hundreds of potentially unused style definitions after a previous refactor, which need to be safely removed.
+    - **Generate New Native Builds (P0)**: The user must successfully run Input is required, but stdin is not readable. Failed to display prompt: Select platform to create new iOS and Android builds containing all the recent fixes and features (Clear Cache, Role Selection, Delete Account, etc.).
+    - **User Acceptance Testing (UAT) (P0)**: Once a new build is installed, the user must test the Clear Cache button and verify that old data is gone. They should then test all other pending native features.
     
     Future Tasks:
-    - **Refactor  (P1)**: The monolithic server file needs to be split into a standard FastAPI project structure with routers.
-    - **Implement CRM Features (P2)**: Enhance the customer management section with features like lead/opportunity tracking and customer activity timelines.
+    - **Refactor  (P1)**: The monolithic server file is getting larger and needs to be split into a standard FastAPI project structure with routers.
+    - **Implement Full Admin Approval UI (P2)**: Create a new screen in the admin panel to view and approve/reject pending admin registration requests.
+    - **Implement CRM Features (P2)**: Enhance the customer management section with features like lead/opportunity tracking.
     - **Show Original RFQ Number on Quote Cards (P3)**.
 
 **Completed work in this session**
-- **Refactored Signup Error Handling**: Replaced all  calls in  with a declarative, inline visual error component for a better UX.
-- **Removed UI Component**: Deleted the horizontal scrolling Pending RFQs Summary from the Quotes screen as requested by the user.
-- **Updated Raw Material Prices**: Updated all prices from a user-provided Excel sheet and set them as the default rates in the database. This was performed twice.
-- **Wiped Database**: Deleted all existing quotes, RFQs, and customer records from the application to provide a clean slate.
-- **Updated Customer Code**: Confirmed the customer code format starts from  and reset the counter.
-- **Created New Admin User**: Added a new admin account  with password .
-- **Fixed Admin Login**: Debugged and resolved a 500 Internal Server Error that was preventing the new admin user from logging in.
+- **Implemented Clear Cache Button**: Added a button to the Profile screen to clear all data from  to resolve client-side caching issues.
+- **Implemented Role-Based Signup & Admin Approval**:
+    - Added a Customer / Admin role selection dropdown to the signup form ().
+    - Created a backend flow (,  collection) to queue admin signups for approval.
+    - Manually approved a new admin user () at the user's request.
+- **Implemented Delete Account Feature**:
+    - Added a  backend endpoint with a safeguard against deleting the last admin.
+    - Added a Delete Account button and confirmation modal to the Profile screen.
+- **Fulfilled iOS App Store Submission Requirements**:
+    - Updated  and  with required metadata (bundle ID, version, privacy descriptions).
+    - Created and served static HTML pages for the Privacy Policy () and Terms of Service ().
+- **Implemented Clear All Data Admin Endpoint**: Added a secure  endpoint to allow admins to wipe transactional data from the database.
+- **Updated All Raw Material Prices**: Updated Housing, Seal, and Bearing prices from an Excel file and debugged the API to ensure  and  collections were correctly updated.
+- **Troubleshot User's Local Build Environment**: Provided extensive step-by-step guidance to help the user install Node.js/npm, EAS CLI, and resolve permission and network errors on their Mac.
+- **Fixed EAS Build Failures**: Resolved multiple deployment errors by updating  and correcting  configuration.
+- **Diagnosed Data Discrepancies**: Correctly identified the root causes of data mismatches were due to (1) old native builds pointing to wrong URLs, (2) preview vs. production databases being separate, and (3) aggressive client-side caching.
 
 **Earlier issues found/mentioned but not fixed**
    - Issue 1:
-     - The Android system navigation bar overlaps with the app's bottom tab bar. This is a long-standing UI issue that has not been addressed.
+     - The Android system navigation bar overlaps with the app's bottom tab bar.
      - Debug checklist: Reproduce on an Android device/simulator and investigate using  in .
      - Why to solve this issue and what will be achieved with this? Fixes a UI layout bug that hinders navigation on Android.
      - Should Test frontend/backend/both after fix: Frontend (Android device)
      - Is recurring issue? Y
 
 **Known issue recurrence from previous fork**
-  - **Issue recurrence in this fork**: Frontend Instability / Caching Issues.
-  - **Recurrence count**: Frequent. While a backend issue was mistaken for caching at one point, the underlying issue of frontend changes not appearing without a restart persists.
-  - **Status**: RECURRING. The refactoring of large files (, ) is the primary mitigation strategy.
+  - **Issue recurrence in this fork**: User's local environment and network instability.
+  - **Recurrence count**: Constant throughout the session.
+  - **Status**: RECURRING. This is a major blocker for user testing and deployment. The user needs to establish a stable environment to make progress.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Database Debugging**: Traced an issue where price updates were not appearing by checking API responses, backend code (),  direct queries, and finally discovering the mismatch between the  in  () and the database being updated.
-- **Direct MongoDB Manipulation**: Extensive use of  to perform data management tasks: updating  and , creating a user in the  collection, and wiping the  and  collections.
-- **FastAPI Error Debugging**: Used backend logs to diagnose a  on login, identifying a  as the root cause, and fixing it by updating the user document in MongoDB.
-- **UI Refactoring**: Used  to systematically replace all  calls with  in  and to remove a UI component and its associated styles from .
-- **React Native Click Handlers**: Reinforced a potential fix for iOS click issues by adding  to  and  elements within a  component.
+- **Expo EAS Build System**: Deep troubleshooting of  build profiles (, ), validation rules, and CLI commands (Input is required, but stdin is not readable. Failed to display prompt: Select platform, Input is required, but stdin is not readable. Failed to display prompt: Select platform).
+- **Local Development Environment Setup (Mac)**: Extensive user support for npm <command>
+
+Usage:
+
+npm install        install all the dependencies in your project
+npm install <foo>  add the <foo> dependency to your project
+npm test           run this project's tests
+npm run <foo>      run the script named <foo>
+npm <command> -h   quick help on <command>
+npm -l             display usage info for all commands
+npm help <term>    search for help on <term>
+npm help npm       more involved overview
+
+All commands:
+
+    access, adduser, audit, bugs, cache, ci, completion,
+    config, dedupe, deprecate, diff, dist-tag, docs, doctor,
+    edit, exec, explain, explore, find-dupes, fund, get, help,
+    help-search, hook, init, install, install-ci-test,
+    install-test, link, ll, login, logout, ls, org, outdated,
+    owner, pack, ping, pkg, prefix, profile, prune, publish,
+    query, rebuild, repo, restart, root, run-script, sbom,
+    search, set, shrinkwrap, star, stars, start, stop, team,
+    test, token, uninstall, unpublish, unstar, update, version,
+    view, whoami
+
+Specify configs in the ini-formatted file:
+    /root/.npmrc
+or on the command line via: npm <command> --key=value
+
+More configuration info: npm help config
+Configuration fields: npm help 7 config
+
+npm@10.8.2 /usr/lib/node_modules/npm, ,  permissions, and Git authentication with Personal Access Tokens (PATs).
+- **Client-Side Caching**: Diagnosing and solving data persistence issues by identifying  as the cause and implementing a manual cache-clearing mechanism.
+- **React Native State Management & UI**: Using  to add new functionality (role selection), and implementing modals for user confirmation flows.
+- **FastAPI Backend Development**: Adding new API endpoints (DELETE, POST), serving static HTML files with , and implementing business logic like admin approval flows.
+- **Production vs. Preview Environments**: Clarifying the separation between the local preview environment (local DB, preview URL) and the deployed production environment (MongoDB Atlas, production URL).
 
 **key DB schema**
-  - **users**: Corrected a manual user creation to use the  field instead of . Created a new admin user. Wiped all non-admin users.
-  - **customers**: Entire collection was wiped.
-  - **quotes**: Entire collection was wiped.
-  - **counters**: The  counter was reset to 0.
-  - **custom_prices**: Updated with new rates from an Excel file.
-  - **default_prices**: Updated with new rates from an Excel file.
+  - **admin_requests** (NEW): Stores pending admin registration requests with user details and an approval token.
+  - **users**: An admin user () was created via the new approval flow. A test user was accidentally deleted and recreated.
+  - **custom_prices**: Updated multiple times with correct bearing, seal, and housing costs.
+  - **default_prices**: Updated multiple times.
+  - **quotes**, **customers**: Cleared via the new  endpoint in the preview environment.
 
 **All files of reference**
 - 
 - 
 - 
 - 
+- 
+- 
+- 
 
 **Areas that need refactoring**:
+- **CRITICAL**:  grew significantly and urgently needs to be split into a proper FastAPI router structure.
 - **CRITICAL**:  and  remain large and are sources of instability.
-- **CRITICAL**:  is a monolithic file that should be split into a standard FastAPI project structure with routers.
 
 **key api endpoints**
-- : Debugged due to a 500 error after manual user creation.
-- : Used for verification after price updates via direct database modification.
-- : (NEW) Used to wipe all quote/RFQ data.
-- : (NEW) Used to wipe all customer data.
+-  (NEW)
+-  (NEW)
+-  (NEW)
+-  (NEW)
+-  (NEW)
+-  (NEW)
+-  (Used for debugging)
 
 **Critical Info for New Agent**
-- **iOS Build is the Top Blocker**: No native iOS feature or fix (including the signup button) can be tested by the user until their external EAS build completes or is cancelled/restarted. Confirm the build status with the user first.
-- **Database Name is **: When performing direct database operations, ensure you are targeting  as defined in . The agent wasted time updating  which was not being used by the application.
-- **Direct User Creation Requires **: When creating users directly in MongoDB, the password field must be named . Using  will cause a 500 error on login.
-- **Aggressive Caching**: If UI changes are not appearing, force a frontend restart (frontend: ERROR (no such process)
-frontend: ERROR (no such process)) and a Metro cache clear ([13:51:21] Starting project at /app/frontend).
-
-**documents and test reports created in this job**
-None.
-
-**Last 10 User Messages and any pending HUMAN messages**
-- 10.  -> **COMPLETED**
-- 9.  -> **COMPLETED** (Verified existing logic and reset counter).
-- 8.  -> **COMPLETED**
-- 7.  -> **COMPLETED** (Agent deleted all quotes/RFQs).
-- 6.  -> **COMPLETED**
-- 5.  -> **COMPLETED**
-- 4.  -> **COMPLETED**
-- 3.  -> **IN PROGRESS** (Works on web, native verification pending).
-- 2.  (in response to where the scrolling tab was) -> **COMPLETED** (Agent removed the component).
-- 1.  -> **COMPLETED**
-
-**Project Health Check:**
-- **Broken**:
-    - The EAS build process for native apps is blocked by an external issue, preventing all iOS/Android testing and deployment.
-- **Refactoring Needed**:
-    - **CRITICAL**:  and  are large, complex files that contribute to instability.
-    -  remains monolithic and is becoming difficult to manage.
-
-**3rd Party Integrations**
-- **api.postalpincode.in**: Address and pincode validation.
-- **weasyprint**: Server-side HTML-to-PDF generation.
-- **Gmail SMTP**: Email notifications.
-- **Expo / EAS**: Mobile app build and deployment service. (Currently experiencing a major blocking issue).
-- **Expo Push Notifications**: Sending push alerts to native devices.
-- **expo-file-system**: For saving exported files on mobile.
-- **expo-sharing**: For opening the native share dialog on mobile.
-- **Geopy (Nominatim/OpenStreetMap)**: Distance calculation.
-- **openpyxl**: Reading/writing  files.
-
-**Testing status**
-  - Testing agent used after significant changes: NO
-  - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: None
-  - Known regressions: None.
-
-**Credentials to test flow:**
-- **Admin User 1**:  / 
-- **Admin User 2**:  / 
-- **Customer User**: None exist, database was cleaned. New ones must be created via the signup page.
-
-**What agent forgot to execute**
-All tasks initiated in this session were either completed or their pending state is correctly documented. The major refactoring tasks from the previous session (, , ) remain pending as higher priority items took precedence.</analysis>
+- **The User's Environment is the Main Blocker**: The user has significant difficulty with command-line tools, network stability, and authentication (Git, Apple). Be prepared to provide extremely simple, step-by-step instructions. Progress on any native app feature is blocked until the user can successfully complete an EAS build.
+- **Client-Side Caching is Aggressive**: The mobile app caches data heavily in . The Clear Cache button has been added, but until a new build is deployed, the only workaround is to have the user **uninstall and reinstall the app** to see data</analysis>

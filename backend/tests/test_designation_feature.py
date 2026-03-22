@@ -13,7 +13,7 @@ import time
 import random
 import string
 
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://conveyor-roller-calc-1.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://rfq-hub-4.preview.emergentagent.com')
 
 
 def generate_random_email():

@@ -2801,7 +2801,7 @@ async def send_admin_approval_request_email(request: AdminRequest, approval_toke
             return
         
         # Get the backend URL for approval link
-        backend_url = os.environ.get('BACKEND_URL', 'https://conveyor-roller-calc-1.preview.emergentagent.com')
+        backend_url = os.environ.get('BACKEND_URL', 'https://rfq-hub-4.preview.emergentagent.com')
         approval_link = f"{backend_url}/api/auth/approve-admin/{approval_token}"
         reject_link = f"{backend_url}/api/auth/reject-admin/{approval_token}"
         
