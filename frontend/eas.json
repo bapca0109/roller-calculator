@@ -38,18 +38,5 @@
         "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
       }
     }
-  },
-  "submit": {
-    "production": {
-      "ios": {
-        "appleId": "",
-        "ascAppId": "",
-        "appleTeamId": ""
-      },
-      "android": {
-        "serviceAccountKeyPath": "",
-        "track": "production"
-      }
-    }
   }
 }
