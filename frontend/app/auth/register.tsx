@@ -9,6 +9,8 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +31,9 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [selectedRole, setSelectedRole] = useState<'customer' | 'admin'>('customer');
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [showAdminRequestSent, setShowAdminRequestSent] = useState(false);
   const router = useRouter();
 
   // Fetch city and state from pincode
@@ -122,16 +127,19 @@ export default function Register() {
       return;
     }
 
-    if (!gstin.trim()) {
-      setErrorMessage('Please enter your GSTIN number');
-      return;
-    }
+    // GSTIN is required only for customers
+    if (selectedRole === 'customer') {
+      if (!gstin.trim()) {
+        setErrorMessage('Please enter your GSTIN number');
+        return;
+      }
 
-    // Validate GSTIN format (15 characters alphanumeric)
-    const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-    if (!gstinRegex.test(gstin.toUpperCase())) {
-      setErrorMessage('Please enter a valid 15-character GSTIN number (e.g., 22AAAAA0000A1Z5)');
-      return;
+      // Validate GSTIN format (15 characters alphanumeric)
+      const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+      if (!gstinRegex.test(gstin.toUpperCase())) {
+        setErrorMessage('Please enter a valid 15-character GSTIN number (e.g., 22AAAAA0000A1Z5)');
+        return;
+      }
     }
 
     if (!password) {
@@ -151,50 +159,80 @@ export default function Register() {
 
     setLoading(true);
     try {
-      // Send OTP request with all fields
-      const response = await fetch(`${API_URL}/api/auth/send-otp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          name,
-          mobile,
-          pincode,
-          city,
-          state,
-          company,
-          designation: designation.trim() || null,
-          gst_number: gstin.toUpperCase(),
-          password,
-        }),
-      });
+      if (selectedRole === 'admin') {
+        // Send admin approval request
+        const response = await fetch(`${API_URL}/api/auth/request-admin`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            name,
+            mobile,
+            pincode,
+            city,
+            state,
+            company,
+            designation: designation.trim() || null,
+            password,
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.detail || 'Failed to send verification code');
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to send admin request');
+        }
+
+        // Show success message for admin request
+        setShowAdminRequestSent(true);
+      } else {
+        // Regular customer registration flow
+        const response = await fetch(`${API_URL}/api/auth/send-otp`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            name,
+            mobile,
+            pincode,
+            city,
+            state,
+            company,
+            designation: designation.trim() || null,
+            gst_number: gstin.toUpperCase(),
+            password,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to send verification code');
+        }
+
+        // Navigate to OTP verification screen
+        router.push({
+          pathname: '/auth/verify-otp',
+          params: {
+            email,
+            name,
+            mobile,
+            pincode,
+            city,
+            state,
+            company: company || '',
+            designation: designation.trim() || '',
+            gst_number: gstin.toUpperCase(),
+            password,
+          },
+        });
       }
-
-      // Navigate to OTP verification screen
-      router.push({
-        pathname: '/auth/verify-otp',
-        params: {
-          email,
-          name,
-          mobile,
-          pincode,
-          city,
-          state,
-          company: company || '',
-          designation: designation.trim() || '',
-          gst_number: gstin.toUpperCase(),
-          password,
-        },
-      });
     } catch (error: any) {
-      const errorMsg = error.message || 'Failed to send verification code';
+      const errorMsg = error.message || 'Failed to process request';
       setErrorMessage(errorMsg);
     } finally {
       setLoading(false);
@@ -216,6 +254,31 @@ export default function Register() {
         </View>
 
         <View style={styles.form}>
+          {/* Role Selection Dropdown */}
+          <View style={styles.inputContainer}>
+            <Ionicons name="people-outline" size={20} color="#64748B" style={styles.inputIcon} />
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => setShowRoleDropdown(true)}
+              data-testid="role-dropdown-btn"
+            >
+              <Text style={[styles.dropdownText, selectedRole && styles.dropdownTextSelected]}>
+                {selectedRole === 'customer' ? 'Customer' : 'Admin'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Role Info Text */}
+          {selectedRole === 'admin' && (
+            <View style={styles.roleInfoBox}>
+              <Ionicons name="information-circle" size={16} color="#0066CC" />
+              <Text style={styles.roleInfoText}>
+                Admin registration requires approval from info@convero.in
+              </Text>
+            </View>
+          )}
+
           {/* Customer Name */}
           <View style={styles.inputContainer}>
             <Ionicons name="person-outline" size={20} color="#64748B" style={styles.inputIcon} />
@@ -314,19 +377,21 @@ export default function Register() {
             />
           </View>
 
-          {/* GSTIN (Required) */}
-          <View style={styles.inputContainer}>
-            <Ionicons name="document-text-outline" size={20} color="#64748B" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="GSTIN Number *"
-              placeholderTextColor="#94A3B8"
-              value={gstin}
-              onChangeText={(text) => setGstin(text.toUpperCase())}
-              autoCapitalize="characters"
-              maxLength={15}
-            />
-          </View>
+          {/* GSTIN (Required for Customers only) */}
+          {selectedRole === 'customer' && (
+            <View style={styles.inputContainer}>
+              <Ionicons name="document-text-outline" size={20} color="#64748B" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="GSTIN Number *"
+                placeholderTextColor="#94A3B8"
+                value={gstin}
+                onChangeText={(text) => setGstin(text.toUpperCase())}
+                autoCapitalize="characters"
+                maxLength={15}
+              />
+            </View>
+          )}
 
           {/* Password */}
           <View style={styles.inputContainer}>
@@ -382,7 +447,9 @@ export default function Register() {
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, pointerEvents: 'none' }}>
-                <Text style={[styles.buttonText, { pointerEvents: 'none' }]}>Send Verification Code</Text>
+                <Text style={[styles.buttonText, { pointerEvents: 'none' }]}>
+                  {selectedRole === 'admin' ? 'Submit Admin Request' : 'Send Verification Code'}
+                </Text>
                 <Ionicons name="arrow-forward" size={20} color="#FFFFFF" style={{ pointerEvents: 'none' }} />
               </View>
             )}
@@ -398,6 +465,115 @@ export default function Register() {
             </View>
           </TouchableOpacity>
         </View>
+
+        {/* Role Selection Modal */}
+        <Modal
+          visible={showRoleDropdown}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowRoleDropdown(false)}
+        >
+          <Pressable 
+            style={styles.modalOverlay} 
+            onPress={() => setShowRoleDropdown(false)}
+          >
+            <View style={styles.roleModalContent}>
+              <Text style={styles.roleModalTitle}>Select Account Type</Text>
+              
+              <TouchableOpacity
+                style={[
+                  styles.roleOption,
+                  selectedRole === 'customer' && styles.roleOptionSelected
+                ]}
+                onPress={() => {
+                  setSelectedRole('customer');
+                  setShowRoleDropdown(false);
+                }}
+              >
+                <Ionicons 
+                  name="person" 
+                  size={24} 
+                  color={selectedRole === 'customer' ? '#960018' : '#64748B'} 
+                />
+                <View style={styles.roleOptionText}>
+                  <Text style={[
+                    styles.roleOptionTitle,
+                    selectedRole === 'customer' && styles.roleOptionTitleSelected
+                  ]}>Customer</Text>
+                  <Text style={styles.roleOptionDesc}>Browse products and submit RFQs</Text>
+                </View>
+                {selectedRole === 'customer' && (
+                  <Ionicons name="checkmark-circle" size={24} color="#960018" />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.roleOption,
+                  selectedRole === 'admin' && styles.roleOptionSelected
+                ]}
+                onPress={() => {
+                  setSelectedRole('admin');
+                  setShowRoleDropdown(false);
+                }}
+              >
+                <Ionicons 
+                  name="shield-checkmark" 
+                  size={24} 
+                  color={selectedRole === 'admin' ? '#960018' : '#64748B'} 
+                />
+                <View style={styles.roleOptionText}>
+                  <Text style={[
+                    styles.roleOptionTitle,
+                    selectedRole === 'admin' && styles.roleOptionTitleSelected
+                  ]}>Admin</Text>
+                  <Text style={styles.roleOptionDesc}>Manage prices, quotes & customers</Text>
+                </View>
+                {selectedRole === 'admin' && (
+                  <Ionicons name="checkmark-circle" size={24} color="#960018" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* Admin Request Sent Modal */}
+        <Modal
+          visible={showAdminRequestSent}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            setShowAdminRequestSent(false);
+            router.replace('/auth/login');
+          }}
+        >
+          <Pressable 
+            style={styles.modalOverlay} 
+            onPress={() => {}}
+          >
+            <View style={styles.successModalContent}>
+              <View style={styles.successIconContainer}>
+                <Ionicons name="mail-outline" size={48} color="#960018" />
+              </View>
+              <Text style={styles.successTitle}>Request Sent!</Text>
+              <Text style={styles.successMessage}>
+                Your admin registration request has been sent to info@convero.in for approval.
+              </Text>
+              <Text style={styles.successSubMessage}>
+                You will receive an email once your request is approved.
+              </Text>
+              <TouchableOpacity
+                style={styles.successButton}
+                onPress={() => {
+                  setShowAdminRequestSent(false);
+                  router.replace('/auth/login');
+                }}
+              >
+                <Text style={styles.successButtonText}>Go to Login</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -560,5 +736,136 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: 14,
     fontWeight: '500',
+  },
+  // Role dropdown styles
+  dropdownButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 12,
+  },
+  dropdownText: {
+    fontSize: 15,
+    color: '#94A3B8',
+  },
+  dropdownTextSelected: {
+    color: '#0F172A',
+  },
+  roleInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  roleInfoText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0066CC',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  roleModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 360,
+  },
+  roleModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  roleOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    marginBottom: 12,
+    gap: 12,
+  },
+  roleOptionSelected: {
+    borderColor: '#960018',
+    backgroundColor: '#FEF2F2',
+  },
+  roleOptionText: {
+    flex: 1,
+  },
+  roleOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  roleOptionTitleSelected: {
+    color: '#960018',
+  },
+  roleOptionDesc: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  // Success modal styles
+  successModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 32,
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+  },
+  successIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 12,
+  },
+  successMessage: {
+    fontSize: 15,
+    color: '#374151',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+  successSubMessage: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  successButton: {
+    backgroundColor: '#960018',
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 10,
+    width: '100%',
+  },
+  successButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

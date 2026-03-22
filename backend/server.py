@@ -2727,6 +2727,379 @@ async def send_otp(request: OTPRequest):
         "expires_in_minutes": OTP_EXPIRY_MINUTES
     }
 
+class AdminRequest(BaseModel):
+    email: EmailStr
+    name: str
+    mobile: str
+    pincode: str
+    city: str
+    state: str
+    company: str
+    designation: Optional[str] = None
+    password: str
+
+@api_router.post("/auth/request-admin")
+async def request_admin_account(request: AdminRequest):
+    """Request admin account - sends approval email to info@convero.in"""
+    
+    # Check if email already registered
+    existing_user = await db.users.find_one({"email": request.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check if there's a pending request
+    existing_request = await db.admin_requests.find_one({
+        "email": request.email,
+        "status": "pending"
+    })
+    if existing_request:
+        raise HTTPException(status_code=400, detail="You already have a pending admin request")
+    
+    # Hash password
+    hashed_password = get_password_hash(request.password)
+    
+    # Generate approval token
+    import secrets
+    approval_token = secrets.token_urlsafe(32)
+    
+    # Store the request in database
+    request_doc = {
+        "email": request.email,
+        "name": request.name,
+        "mobile": request.mobile,
+        "pincode": request.pincode,
+        "city": request.city,
+        "state": request.state,
+        "company": request.company,
+        "designation": request.designation,
+        "hashed_password": hashed_password,
+        "status": "pending",
+        "approval_token": approval_token,
+        "created_at": datetime.utcnow()
+    }
+    
+    await db.admin_requests.insert_one(request_doc)
+    
+    # Send approval email to admin
+    await send_admin_approval_request_email(request, approval_token)
+    
+    return {
+        "message": "Admin registration request submitted successfully. You will be notified once approved.",
+        "email": request.email
+    }
+
+async def send_admin_approval_request_email(request: AdminRequest, approval_token: str):
+    """Send email to info@convero.in for admin approval"""
+    try:
+        smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
+        smtp_port = int(os.environ.get('SMTP_PORT', 587))
+        smtp_username = os.environ.get('SMTP_USERNAME')
+        smtp_password = os.environ.get('SMTP_PASSWORD')
+        
+        if not smtp_username or not smtp_password:
+            logging.warning("SMTP credentials not configured, skipping admin approval email")
+            return
+        
+        # Get the backend URL for approval link
+        backend_url = os.environ.get('BACKEND_URL', 'https://conveyor-roller-calc-1.preview.emergentagent.com')
+        approval_link = f"{backend_url}/api/auth/approve-admin/{approval_token}"
+        reject_link = f"{backend_url}/api/auth/reject-admin/{approval_token}"
+        
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f'Admin Registration Request - {request.name}'
+        msg['From'] = smtp_username
+        msg['To'] = 'info@convero.in'
+        
+        html_content = f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #960018 0%, #6b0012 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background: #fff; padding: 20px; border: 1px solid #e0e0e0; }}
+                .info-row {{ padding: 10px 0; border-bottom: 1px solid #f0f0f0; }}
+                .label {{ font-weight: bold; color: #666; }}
+                .value {{ color: #333; }}
+                .btn {{ display: inline-block; padding: 12px 24px; margin: 10px 5px; border-radius: 6px; text-decoration: none; font-weight: bold; }}
+                .btn-approve {{ background: #059669; color: white; }}
+                .btn-reject {{ background: #DC2626; color: white; }}
+                .footer {{ text-align: center; padding: 20px; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>New Admin Registration Request</h2>
+                </div>
+                <div class="content">
+                    <p>A new admin account registration request has been submitted:</p>
+                    
+                    <div class="info-row">
+                        <span class="label">Name:</span>
+                        <span class="value">{request.name}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Email:</span>
+                        <span class="value">{request.email}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Mobile:</span>
+                        <span class="value">{request.mobile}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Company:</span>
+                        <span class="value">{request.company}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Designation:</span>
+                        <span class="value">{request.designation or 'Not specified'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Location:</span>
+                        <span class="value">{request.city}, {request.state} - {request.pincode}</span>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="{approval_link}" class="btn btn-approve">Approve</a>
+                        <a href="{reject_link}" class="btn btn-reject">Reject</a>
+                    </div>
+                </div>
+                <div class="footer">
+                    <p>Convero Solutions - Roller Calculator App</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+        
+        msg.attach(MIMEText(html_content, 'html'))
+        
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.sendmail(smtp_username, 'info@convero.in', msg.as_string())
+        
+        logging.info(f"Admin approval request email sent for: {request.email}")
+        
+    except Exception as e:
+        logging.error(f"Error sending admin approval email: {e}")
+
+@api_router.get("/auth/approve-admin/{token}")
+async def approve_admin_request(token: str):
+    """Approve admin registration request"""
+    
+    # Find the request
+    request = await db.admin_requests.find_one({
+        "approval_token": token,
+        "status": "pending"
+    })
+    
+    if not request:
+        return Response(
+            content="<html><body style='font-family:Arial;text-align:center;padding:50px;'><h2>Invalid or expired approval link</h2><p>This request may have already been processed.</p></body></html>",
+            media_type="text/html"
+        )
+    
+    # Create the admin user
+    user_dict = {
+        "email": request["email"],
+        "name": request["name"],
+        "company": request["company"],
+        "designation": request.get("designation"),
+        "mobile": request["mobile"],
+        "pincode": request["pincode"],
+        "city": request["city"],
+        "state": request["state"],
+        "role": UserRole.ADMIN,
+        "hashed_password": request["hashed_password"],
+        "created_at": datetime.utcnow(),
+        "email_verified": True
+    }
+    
+    await db.users.insert_one(user_dict)
+    
+    # Update request status
+    await db.admin_requests.update_one(
+        {"_id": request["_id"]},
+        {"$set": {"status": "approved", "approved_at": datetime.utcnow()}}
+    )
+    
+    # Send approval notification to user
+    await send_admin_approved_email(request["email"], request["name"])
+    
+    logging.info(f"Admin account approved: {request['email']}")
+    
+    return Response(
+        content=f'''
+        <html>
+        <body style="font-family:Arial;text-align:center;padding:50px;background:#f8f9fa;">
+            <div style="max-width:400px;margin:0 auto;background:white;padding:40px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+                <div style="width:60px;height:60px;background:#059669;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;">
+                    <span style="color:white;font-size:30px;">✓</span>
+                </div>
+                <h2 style="color:#059669;">Admin Approved!</h2>
+                <p style="color:#666;">{request["name"]}'s admin account has been approved.</p>
+                <p style="color:#888;font-size:14px;">They will receive an email notification.</p>
+            </div>
+        </body>
+        </html>
+        ''',
+        media_type="text/html"
+    )
+
+@api_router.get("/auth/reject-admin/{token}")
+async def reject_admin_request(token: str):
+    """Reject admin registration request"""
+    
+    # Find the request
+    request = await db.admin_requests.find_one({
+        "approval_token": token,
+        "status": "pending"
+    })
+    
+    if not request:
+        return Response(
+            content="<html><body style='font-family:Arial;text-align:center;padding:50px;'><h2>Invalid or expired link</h2><p>This request may have already been processed.</p></body></html>",
+            media_type="text/html"
+        )
+    
+    # Update request status
+    await db.admin_requests.update_one(
+        {"_id": request["_id"]},
+        {"$set": {"status": "rejected", "rejected_at": datetime.utcnow()}}
+    )
+    
+    # Send rejection notification to user
+    await send_admin_rejected_email(request["email"], request["name"])
+    
+    logging.info(f"Admin request rejected: {request['email']}")
+    
+    return Response(
+        content=f'''
+        <html>
+        <body style="font-family:Arial;text-align:center;padding:50px;background:#f8f9fa;">
+            <div style="max-width:400px;margin:0 auto;background:white;padding:40px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+                <div style="width:60px;height:60px;background:#DC2626;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;">
+                    <span style="color:white;font-size:30px;">✕</span>
+                </div>
+                <h2 style="color:#DC2626;">Request Rejected</h2>
+                <p style="color:#666;">{request["name"]}'s admin request has been rejected.</p>
+                <p style="color:#888;font-size:14px;">They will receive an email notification.</p>
+            </div>
+        </body>
+        </html>
+        ''',
+        media_type="text/html"
+    )
+
+async def send_admin_approved_email(email: str, name: str):
+    """Send email to user that their admin account has been approved"""
+    try:
+        smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
+        smtp_port = int(os.environ.get('SMTP_PORT', 587))
+        smtp_username = os.environ.get('SMTP_USERNAME')
+        smtp_password = os.environ.get('SMTP_PASSWORD')
+        
+        if not smtp_username or not smtp_password:
+            return
+        
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'Your Admin Account Has Been Approved - Roller Calculator'
+        msg['From'] = smtp_username
+        msg['To'] = email
+        
+        html_content = f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 500px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: #059669; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background: #fff; padding: 30px; border: 1px solid #e0e0e0; text-align: center; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>Account Approved!</h2>
+                </div>
+                <div class="content">
+                    <p>Hello {name},</p>
+                    <p>Your admin account request for Roller Calculator has been approved.</p>
+                    <p>You can now log in with your email and password to access admin features.</p>
+                    <p style="margin-top: 30px;"><strong>Welcome to Convero!</strong></p>
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+        
+        msg.attach(MIMEText(html_content, 'html'))
+        
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.sendmail(smtp_username, email, msg.as_string())
+        
+    except Exception as e:
+        logging.error(f"Error sending admin approved email: {e}")
+
+async def send_admin_rejected_email(email: str, name: str):
+    """Send email to user that their admin request has been rejected"""
+    try:
+        smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
+        smtp_port = int(os.environ.get('SMTP_PORT', 587))
+        smtp_username = os.environ.get('SMTP_USERNAME')
+        smtp_password = os.environ.get('SMTP_PASSWORD')
+        
+        if not smtp_username or not smtp_password:
+            return
+        
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'Admin Account Request Update - Roller Calculator'
+        msg['From'] = smtp_username
+        msg['To'] = email
+        
+        html_content = f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 500px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: #6b7280; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background: #fff; padding: 30px; border: 1px solid #e0e0e0; text-align: center; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>Request Update</h2>
+                </div>
+                <div class="content">
+                    <p>Hello {name},</p>
+                    <p>Your admin account request for Roller Calculator could not be approved at this time.</p>
+                    <p>If you believe this is an error, please contact us at info@convero.in.</p>
+                    <p>You can still register as a customer to browse products and submit quotes.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+        
+        msg.attach(MIMEText(html_content, 'html'))
+        
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.sendmail(smtp_username, email, msg.as_string())
+        
+    except Exception as e:
+        logging.error(f"Error sending admin rejected email: {e}")
+
 @api_router.post("/auth/verify-otp", response_model=Token)
 async def verify_otp(request: OTPVerify):
     """Verify OTP and complete registration"""
