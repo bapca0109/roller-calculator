@@ -7252,7 +7252,8 @@ async def import_prices_from_excel(
                     except (ValueError, TypeError):
                         pass
         
-        # Sheet 5 (index 4): Seal data - Bearing No, Seal, Cost
+        # Sheet 5 (index 4): Seal data - Bearing No, Seal Cost (Rs/set)
+        # Headers: ['Bearing No', 'Seal Cost (Rs/set)'] - only 2 columns
         if len(sheets) > 4:
             ws = sheets[4]
             headers = [cell.value for cell in ws[1]] if ws[1] else []
@@ -7262,16 +7263,16 @@ async def import_prices_from_excel(
                 custom_prices["seal_costs"] = {}
             
             for row in ws.iter_rows(min_row=2, values_only=True):
-                if row[0] is not None:
+                if row[0] is not None and len(row) > 1 and row[1] is not None:
                     bearing_no = str(row[0])
-                    # Cost is in column 3 (index 2) based on user's file
-                    if len(row) > 2 and row[2] is not None:
-                        try:
-                            cost = float(row[2])
-                            custom_prices["seal_costs"][bearing_no] = cost
-                            updates["seal"] += 1
-                        except (ValueError, TypeError):
-                            pass
+                    # Cost is in column 2 (index 1) - Seal Cost (Rs/set)
+                    try:
+                        cost = float(row[1])
+                        custom_prices["seal_costs"][bearing_no] = cost
+                        updates["seal"] += 1
+                        logger.info(f"[Import] Seal cost: {bearing_no} = {cost}")
+                    except (ValueError, TypeError):
+                        pass
         
         # Sheet 6 (index 5): Circlip data - Shaft Dia, Price, Qty
         if len(sheets) > 5:
