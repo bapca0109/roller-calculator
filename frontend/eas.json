@@ -9,8 +9,7 @@
       "distribution": "internal",
       "ios": {
         "simulator": true
-      },
-      "node": "18.18.0"
+      }
     },
     "preview": {
       "distribution": "internal",
@@ -24,9 +23,7 @@
       "env": {
         "EXPO_PUBLIC_BACKEND_URL": "https://rfq-hub-4.preview.emergentagent.com",
         "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
-      },
-      "node": "18.18.0",
-      "yarn": "1.22.22"
+      }
     },
     "production": {
       "distribution": "store",
@@ -39,9 +36,7 @@
       "env": {
         "EXPO_PUBLIC_BACKEND_URL": "https://rfq-hub-4.preview.emergentagent.com",
         "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
-      },
-      "node": "18.18.0",
-      "yarn": "1.22.22"
+      }
     }
   }
 }
