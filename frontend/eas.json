@@ -23,9 +23,7 @@
       "env": {
         "EXPO_PUBLIC_BACKEND_URL": "https://rfq-hub-4.preview.emergentagent.com",
         "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
-      },
-      "resourceClass": "medium",
-      "config": "eas.json"
+      }
     },
     "production": {
       "distribution": "store",
