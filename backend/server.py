@@ -7104,7 +7104,7 @@ async def import_prices_from_excel(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Import prices from Excel file"""
+    """Import prices from Excel file - supports user's actual Excel format"""
     if current_user.get("role") != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
     
@@ -7117,127 +7117,269 @@ async def import_prices_from_excel(
     try:
         contents = await file.read()
         wb = load_workbook(BytesIO(contents))
+        sheets = wb.worksheets
         
         # Log available sheet names for debugging
-        logger.info(f"[Import] Excel sheets found: {wb.sheetnames}")
+        logger.info(f"[Import] Excel has {len(sheets)} sheets: {wb.sheetnames}")
         
         # Get existing custom prices or create new
         custom_prices = await db.custom_prices.find_one({"_id": "prices"}) or {"_id": "prices"}
         
-        updates = {"basic": 0, "bearing": 0, "housing": 0, "seal": 0, "circlip": 0, "rubber": 0, "locking": 0}
+        updates = {"basic": 0, "pipe": 0, "shaft": 0, "bearing": 0, "housing": 0, "seal": 0, "circlip": 0, "rubber": 0, "locking": 0}
         
-        # Process Basic Rates sheet
-        if "Basic Rates" in wb.sheetnames:
-            ws = wb["Basic Rates"]
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                if row[0] and row[1] is not None:
-                    item_name = str(row[0]).lower()
-                    try:
-                        cost = float(row[1])
-                        logger.info(f"[Import] Basic Rate: {item_name} = {cost}")
-                        if "pipe" in item_name:
-                            custom_prices["pipe_cost_per_kg"] = cost
-                            updates["basic"] += 1
-                        elif "shaft" in item_name:
-                            custom_prices["shaft_cost_per_kg"] = cost
-                            updates["basic"] += 1
-                    except (ValueError, TypeError):
-                        continue
+        # Process sheets by index (since sheets are unnamed)
+        # Sheet 1 (index 0): Pipe data - Pipe OD, Type A/B/C weights, Cost
+        if len(sheets) > 0:
+            ws = sheets[0]
+            headers = [cell.value for cell in ws[1]] if ws[1] else []
+            logger.info(f"[Import] Sheet 1 headers: {headers}")
+            
+            if "pipe_weights" not in custom_prices:
+                custom_prices["pipe_weights"] = {}
+            
+            # Check if this is pipe data (has Pipe OD and Cost columns)
+            if any("pipe" in str(h).lower() for h in headers if h) and any("cost" in str(h).lower() for h in headers if h):
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    if row[0] is not None:
+                        pipe_od = str(row[0])
+                        # Get pipe cost (usually last column)
+                        cost_col = len(row) - 1
+                        if row[cost_col] is not None:
+                            try:
+                                cost = float(row[cost_col])
+                                custom_prices["pipe_cost_per_kg"] = cost  # Set global pipe cost
+                                updates["pipe"] += 1
+                            except (ValueError, TypeError):
+                                pass
+                        
+                        # Store pipe weights by type
+                        weights = {}
+                        if len(row) > 1 and row[1] is not None:
+                            try:
+                                weights["type_a"] = float(row[1])
+                            except:
+                                pass
+                        if len(row) > 2 and row[2] is not None:
+                            try:
+                                weights["type_b"] = float(row[2])
+                            except:
+                                pass
+                        if len(row) > 3 and row[3] is not None:
+                            try:
+                                weights["type_c"] = float(row[3])
+                            except:
+                                pass
+                        if weights:
+                            custom_prices["pipe_weights"][pipe_od] = weights
         
-        # Process Bearing Costs sheet
-        if "Bearing Costs" in wb.sheetnames:
-            ws = wb["Bearing Costs"]
-            if "bearing_costs" not in custom_prices:
-                custom_prices["bearing_costs"] = {}
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                if row[0] and row[1] and row[2] is not None:
-                    bearing_type = str(row[0])
-                    shaft_dia = str(row[1])
-                    try:
-                        cost = float(row[2])
-                        if bearing_type not in custom_prices["bearing_costs"]:
-                            custom_prices["bearing_costs"][bearing_type] = {}
-                        custom_prices["bearing_costs"][bearing_type][shaft_dia] = cost
-                        updates["bearing"] += 1
-                    except (ValueError, TypeError):
-                        continue
+        # Sheet 2 (index 1): Shaft data - Shaft Dia, Weight, Cost
+        if len(sheets) > 1:
+            ws = sheets[1]
+            headers = [cell.value for cell in ws[1]] if ws[1] else []
+            logger.info(f"[Import] Sheet 2 headers: {headers}")
+            
+            if any("shaft" in str(h).lower() for h in headers if h):
+                if "shaft_weights" not in custom_prices:
+                    custom_prices["shaft_weights"] = {}
+                
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    if row[0] is not None:
+                        shaft_dia = str(int(row[0])) if isinstance(row[0], (int, float)) else str(row[0])
+                        
+                        # Weight in column 2
+                        if len(row) > 1 and row[1] is not None:
+                            try:
+                                weight = float(row[1])
+                                custom_prices["shaft_weights"][shaft_dia] = weight
+                            except:
+                                pass
+                        
+                        # Cost in column 3
+                        if len(row) > 2 and row[2] is not None:
+                            try:
+                                cost = float(row[2])
+                                custom_prices["shaft_cost_per_kg"] = cost
+                                updates["shaft"] += 1
+                            except:
+                                pass
         
-        # Process Housing Costs sheet
-        if "Housing Costs" in wb.sheetnames:
-            ws = wb["Housing Costs"]
+        # Sheet 3 (index 2): Bearing data - Bearing No, Shaft, China/SKF/FAG/Timken prices
+        if len(sheets) > 2:
+            ws = sheets[2]
+            headers = [cell.value for cell in ws[1]] if ws[1] else []
+            logger.info(f"[Import] Sheet 3 headers: {headers}")
+            
+            if any("bearing" in str(h).lower() for h in headers if h):
+                if "bearing_costs" not in custom_prices:
+                    custom_prices["bearing_costs"] = {}
+                
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    if row[0] is not None and len(row) > 2:
+                        bearing_no = str(row[0])
+                        
+                        # Parse bearing prices by brand (columns: Bearing No, Shaft, China, SKF, FAG, Timken)
+                        brands = ["China", "SKF", "FAG", "Timken"]
+                        for i, brand in enumerate(brands):
+                            col_idx = i + 2  # Start from column 3 (index 2)
+                            if len(row) > col_idx and row[col_idx] is not None:
+                                try:
+                                    val = row[col_idx]
+                                    if val and str(val) != '-':
+                                        cost = float(val)
+                                        if brand not in custom_prices["bearing_costs"]:
+                                            custom_prices["bearing_costs"][brand] = {}
+                                        custom_prices["bearing_costs"][brand][bearing_no] = cost
+                                        updates["bearing"] += 1
+                                except (ValueError, TypeError):
+                                    pass
+        
+        # Sheet 4 (index 3): Housing data - Housing/Bore, Price
+        if len(sheets) > 3:
+            ws = sheets[3]
+            headers = [cell.value for cell in ws[1]] if ws[1] else []
+            logger.info(f"[Import] Sheet 4 headers: {headers}")
+            
             if "housing_costs" not in custom_prices:
                 custom_prices["housing_costs"] = {}
+            
             for row in ws.iter_rows(min_row=2, values_only=True):
-                if row[0] and row[1] is not None:
-                    config = str(row[0])
+                if row[0] is not None and len(row) > 1 and row[1] is not None:
+                    config = str(row[0])  # e.g., "56/47"
                     try:
                         cost = float(row[1])
                         custom_prices["housing_costs"][config] = cost
                         updates["housing"] += 1
                     except (ValueError, TypeError):
-                        continue
+                        pass
         
-        # Process Seal Costs sheet
-        if "Seal Costs" in wb.sheetnames:
-            ws = wb["Seal Costs"]
+        # Sheet 5 (index 4): Seal data - Bearing No, Seal, Cost
+        if len(sheets) > 4:
+            ws = sheets[4]
+            headers = [cell.value for cell in ws[1]] if ws[1] else []
+            logger.info(f"[Import] Sheet 5 headers: {headers}")
+            
             if "seal_costs" not in custom_prices:
                 custom_prices["seal_costs"] = {}
+            
             for row in ws.iter_rows(min_row=2, values_only=True):
-                if row[0] and row[1] is not None:
-                    seal_type = str(row[0])
-                    try:
-                        cost = float(row[1])
-                        custom_prices["seal_costs"][seal_type] = cost
-                        updates["seal"] += 1
-                    except (ValueError, TypeError):
-                        continue
+                if row[0] is not None:
+                    bearing_no = str(row[0])
+                    # Cost is in column 3 (index 2) based on user's file
+                    if len(row) > 2 and row[2] is not None:
+                        try:
+                            cost = float(row[2])
+                            custom_prices["seal_costs"][bearing_no] = cost
+                            updates["seal"] += 1
+                        except (ValueError, TypeError):
+                            pass
         
-        # Process Circlip Costs sheet
-        if "Circlip Costs" in wb.sheetnames:
-            ws = wb["Circlip Costs"]
+        # Sheet 6 (index 5): Circlip data - Shaft Dia, Price, Qty
+        if len(sheets) > 5:
+            ws = sheets[5]
+            headers = [cell.value for cell in ws[1]] if ws[1] else []
+            logger.info(f"[Import] Sheet 6 headers: {headers}")
+            
             if "circlip_costs" not in custom_prices:
                 custom_prices["circlip_costs"] = {}
+            
             for row in ws.iter_rows(min_row=2, values_only=True):
-                if row[0] and row[1] is not None:
-                    shaft = str(row[0])
+                if row[0] is not None and len(row) > 1 and row[1] is not None:
+                    shaft = str(int(row[0])) if isinstance(row[0], (int, float)) else str(row[0])
                     try:
                         cost = float(row[1])
                         custom_prices["circlip_costs"][shaft] = cost
                         updates["circlip"] += 1
                     except (ValueError, TypeError):
-                        continue
+                        pass
         
-        # Process Rubber Ring Costs sheet
-        if "Rubber Ring Costs" in wb.sheetnames:
-            ws = wb["Rubber Ring Costs"]
+        # Sheet 7 (index 6): Rubber Ring data - Pipe/Rubber, Weight, Price
+        if len(sheets) > 6:
+            ws = sheets[6]
+            headers = [cell.value for cell in ws[1]] if ws[1] else []
+            logger.info(f"[Import] Sheet 7 headers: {headers}")
+            
             if "rubber_ring_costs" not in custom_prices:
                 custom_prices["rubber_ring_costs"] = {}
+            if "rubber_ring_weights" not in custom_prices:
+                custom_prices["rubber_ring_weights"] = {}
+            
             for row in ws.iter_rows(min_row=2, values_only=True):
-                if row[0] and row[1] is not None:
-                    config = str(row[0])
-                    try:
-                        cost = float(row[1])
-                        custom_prices["rubber_ring_costs"][config] = cost
-                        updates["rubber"] += 1
-                    except (ValueError, TypeError):
-                        continue
+                if row[0] is not None:
+                    config = str(row[0])  # e.g., "60/90"
+                    
+                    # Weight in column 2
+                    if len(row) > 1 and row[1] is not None:
+                        try:
+                            weight = float(row[1])
+                            custom_prices["rubber_ring_weights"][config] = weight
+                        except:
+                            pass
+                    
+                    # Price in column 3
+                    if len(row) > 2 and row[2] is not None:
+                        try:
+                            cost = float(row[2])
+                            custom_prices["rubber_ring_costs"][config] = cost
+                            updates["rubber"] += 1
+                        except (ValueError, TypeError):
+                            pass
         
-        # Process Locking Ring Costs sheet
-        if "Locking Ring Costs" in wb.sheetnames:
-            ws = wb["Locking Ring Costs"]
+        # Sheet 8 (index 7): Locking Ring data - Pipe OD, Price
+        if len(sheets) > 7:
+            ws = sheets[7]
+            headers = [cell.value for cell in ws[1]] if ws[1] else []
+            logger.info(f"[Import] Sheet 8 headers: {headers}")
+            
             if "locking_ring_costs" not in custom_prices:
                 custom_prices["locking_ring_costs"] = {}
+            
             for row in ws.iter_rows(min_row=2, values_only=True):
-                if row[0] and row[1] is not None:
-                    pipe = str(row[0])
+                if row[0] is not None and len(row) > 1 and row[1] is not None:
+                    pipe = str(int(row[0])) if isinstance(row[0], (int, float)) else str(row[0])
                     try:
                         cost = float(row[1])
                         custom_prices["locking_ring_costs"][pipe] = cost
                         updates["locking"] += 1
                     except (ValueError, TypeError):
-                        continue
+                        pass
+        
+        # Sheet 9 (index 8): Basic Rates - Description, Value (Pipe cost, Shaft cost, etc.)
+        if len(sheets) > 8:
+            ws = sheets[8]
+            headers = [cell.value for cell in ws[1]] if ws[1] else []
+            logger.info(f"[Import] Sheet 9 headers: {headers}")
+            
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0] is not None and len(row) > 1 and row[1] is not None:
+                    desc = str(row[0]).lower()
+                    value_str = str(row[1])
+                    
+                    try:
+                        # Extract numeric value from strings like "Rs.67"
+                        import re
+                        numbers = re.findall(r'[\d.]+', value_str)
+                        if numbers:
+                            value = float(numbers[0])
+                            
+                            if "pipe" in desc and "cost" in desc:
+                                custom_prices["pipe_cost_per_kg"] = value
+                                updates["basic"] += 1
+                                logger.info(f"[Import] Set pipe cost: {value}")
+                            elif "shaft" in desc and "cost" in desc:
+                                custom_prices["shaft_cost_per_kg"] = value
+                                updates["basic"] += 1
+                                logger.info(f"[Import] Set shaft cost: {value}")
+                            elif "manufacturing" in desc and "margin" in desc:
+                                custom_prices["manufacturing_margin"] = value
+                                updates["basic"] += 1
+                            elif "overhead" in desc:
+                                custom_prices["overhead_factor"] = value
+                                updates["basic"] += 1
+                    except (ValueError, TypeError):
+                        pass
         
         # Save to database
+        logger.info(f"[Import] Saving custom_prices with keys: {list(custom_prices.keys())}")
         await db.custom_prices.replace_one({"_id": "prices"}, custom_prices, upsert=True)
         
         # Invalidate price cache
