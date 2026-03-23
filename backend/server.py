@@ -7118,6 +7118,9 @@ async def import_prices_from_excel(
         contents = await file.read()
         wb = load_workbook(BytesIO(contents))
         
+        # Log available sheet names for debugging
+        logger.info(f"[Import] Excel sheets found: {wb.sheetnames}")
+        
         # Get existing custom prices or create new
         custom_prices = await db.custom_prices.find_one({"_id": "prices"}) or {"_id": "prices"}
         
@@ -7131,6 +7134,7 @@ async def import_prices_from_excel(
                     item_name = str(row[0]).lower()
                     try:
                         cost = float(row[1])
+                        logger.info(f"[Import] Basic Rate: {item_name} = {cost}")
                         if "pipe" in item_name:
                             custom_prices["pipe_cost_per_kg"] = cost
                             updates["basic"] += 1
