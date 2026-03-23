@@ -26,9 +26,7 @@
         "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
       },
       "node": "18.18.0",
-      "yarn": {
-        "version": "1.22.22"
-      }
+      "yarn": "1.22.22"
     },
     "production": {
       "distribution": "store",
@@ -43,9 +41,7 @@
         "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
       },
       "node": "18.18.0",
-      "yarn": {
-        "version": "1.22.22"
-      }
+      "yarn": "1.22.22"
     }
   }
 }
