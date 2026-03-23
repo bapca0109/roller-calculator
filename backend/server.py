@@ -7355,26 +7355,37 @@ async def import_prices_from_excel(
                     value_str = str(row[1])
                     
                     try:
-                        # Extract numeric value from strings like "Rs.67"
-                        import re
-                        numbers = re.findall(r'[\d.]+', value_str)
-                        if numbers:
-                            value = float(numbers[0])
-                            
-                            if "pipe" in desc and "cost" in desc:
-                                custom_prices["pipe_cost_per_kg"] = value
-                                updates["basic"] += 1
-                                logger.info(f"[Import] Set pipe cost: {value}")
-                            elif "shaft" in desc and "cost" in desc:
-                                custom_prices["shaft_cost_per_kg"] = value
-                                updates["basic"] += 1
-                                logger.info(f"[Import] Set shaft cost: {value}")
-                            elif "manufacturing" in desc and "margin" in desc:
-                                custom_prices["manufacturing_margin"] = value
-                                updates["basic"] += 1
-                            elif "overhead" in desc:
-                                custom_prices["overhead_factor"] = value
-                                updates["basic"] += 1
+                        # First try to parse the value directly as a number
+                        try:
+                            value = float(row[1])
+                        except (ValueError, TypeError):
+                            # Extract numeric value from strings like "Rs.67" or "Rs 67" or "67"
+                            import re
+                            # Remove all non-numeric characters except dots
+                            clean_str = re.sub(r'[^\d.]', '', value_str)
+                            # Remove leading dots (e.g., ".67" -> "67")
+                            clean_str = clean_str.lstrip('.')
+                            if clean_str:
+                                value = float(clean_str)
+                            else:
+                                continue
+                        
+                        logger.info(f"[Import] Parsed '{value_str}' -> {value}")
+                        
+                        if "pipe" in desc and "cost" in desc:
+                            custom_prices["pipe_cost_per_kg"] = value
+                            updates["basic"] += 1
+                            logger.info(f"[Import] Set pipe cost: {value}")
+                        elif "shaft" in desc and "cost" in desc:
+                            custom_prices["shaft_cost_per_kg"] = value
+                            updates["basic"] += 1
+                            logger.info(f"[Import] Set shaft cost: {value}")
+                        elif "manufacturing" in desc and "margin" in desc:
+                            custom_prices["manufacturing_margin"] = value
+                            updates["basic"] += 1
+                        elif "overhead" in desc:
+                            custom_prices["overhead_factor"] = value
+                            updates["basic"] += 1
                     except (ValueError, TypeError):
                         pass
         
