@@ -11,6 +11,7 @@ import {
   Modal,
   Image,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -101,6 +102,19 @@ export default function CustomersScreen() {
   const [captchaInput, setCaptchaInput] = useState('');
   const [gstLoading, setGstLoading] = useState(false);
   const [gstVerifying, setGstVerifying] = useState(false);
+
+  // Pull-to-refresh state
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Pull-to-refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchCustomers();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     fetchCustomers();
@@ -504,7 +518,18 @@ export default function CustomersScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#960018"
+            colors={['#960018']}
+          />
+        }
+      >
         {filteredCustomers.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="people-outline" size={64} color="#ccc" />

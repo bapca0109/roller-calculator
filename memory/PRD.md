@@ -108,6 +108,12 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - Updated `admin.tsx` to listen for refresh events
   - All screens now refetch data when global refresh is triggered
 
+- [x] **Pull-to-Refresh on All Main Screens**:
+  - Added `RefreshControl` to `calculator.tsx` - users can swipe down to refresh standards/customers
+  - Added `RefreshControl` to `customers.tsx` - users can swipe down to refresh customer list
+  - Added `RefreshControl` to `admin.tsx` (both Prices and Standards tabs)
+  - `quotes.tsx` already had Pull-to-Refresh (just verified it works with global refresh)
+
 ### March 15, 2026 (Previous Session)
 - [x] **Completed Signup Page Error Handling Refactor (P0)**:
   - Replaced ALL `Alert.alert` calls with visual inline error messages using `setErrorMessage` state

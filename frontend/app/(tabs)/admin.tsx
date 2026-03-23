@@ -12,6 +12,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -94,6 +95,23 @@ export default function AdminScreen() {
   const [editingItem, setEditingItem] = useState<StandardItem | null>(null);
   const [editFormData, setEditFormData] = useState<Record<string, string>>({});
   const [savingStandard, setSavingStandard] = useState(false);
+
+  // Pull-to-refresh state
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Pull-to-refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (mainTab === 'prices') {
+        await fetchPrices();
+      } else {
+        await fetchStandardsSummary();
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (mainTab === 'prices') {
@@ -968,7 +986,18 @@ export default function AdminScreen() {
               <Text style={styles.loadingText}>Loading prices...</Text>
             </View>
           ) : (
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              style={styles.content} 
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor="#960018"
+                  colors={['#960018']}
+                />
+              }
+            >
               {activeCategory === 'basic' && renderBasicRates()}
               {activeCategory === 'bearing' && renderBearingCosts()}
               {activeCategory === 'housing' && renderHousingCosts()}
@@ -1065,7 +1094,18 @@ export default function AdminScreen() {
           ) : selectedCollection ? (
             renderCollectionData()
           ) : (
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              style={styles.content} 
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor="#960018"
+                  colors={['#960018']}
+                />
+              }
+            >
               <Text style={styles.standardsTitle}>Product Standards Data</Text>
               <Text style={styles.standardsSubtitle}>
                 View-only reference data. To change prices, use the Prices tab.

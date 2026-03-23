@@ -13,6 +13,7 @@ import {
   Platform,
   Image,
   Modal,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CustomDropdown } from '../../components/CustomDropdown';
@@ -118,12 +119,25 @@ export default function CalculatorScreen() {
   // Drawing generation state
   const [generatingDrawing, setGeneratingDrawing] = useState(false);
 
+  // Pull-to-refresh state
+  const [refreshing, setRefreshing] = useState(false);
+
   // Error state
   const [errors, setErrors] = useState<{
     pipeLength?: string;
     quantity?: string;
     freightPincode?: string;
   }>({});
+
+  // Pull-to-refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([fetchStandards(), fetchCustomers()]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     fetchStandards();
@@ -1031,6 +1045,14 @@ export default function CalculatorScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#960018"
+            colors={['#960018']}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
