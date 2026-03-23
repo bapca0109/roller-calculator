@@ -16,7 +16,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../utils/api';
+import api, { forceRefreshAllData, triggerGlobalRefresh } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
@@ -29,6 +29,30 @@ export default function ProfileScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [isClearingCache, setIsClearingCache] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Refresh data without logging out
+  const handleRefreshData = async () => {
+    setIsRefreshing(true);
+    try {
+      await forceRefreshAllData();
+      
+      if (Platform.OS === 'web') {
+        alert('Data refreshed successfully! All screens will now show fresh data.');
+      } else {
+        Alert.alert('Success', 'Data refreshed successfully! All screens will now show fresh data.');
+      }
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      if (Platform.OS === 'web') {
+        alert('Failed to refresh data. Please try again.');
+      } else {
+        Alert.alert('Error', 'Failed to refresh data. Please try again.');
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleClearCache = async () => {
     if (Platform.OS === 'web') {
@@ -52,7 +76,7 @@ export default function ProfileScreen() {
   const performClearCache = async () => {
     setIsClearingCache(true);
     try {
-      // Clear all AsyncStorage data
+      // Clear ALL AsyncStorage data completely
       await AsyncStorage.clear();
       
       // Show success message
@@ -299,6 +323,27 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Account Actions</Text>
 
           <View style={styles.infoCard}>
+            {/* Refresh Data Button - Doesn't require logout */}
+            <TouchableOpacity 
+              style={styles.refreshDataRow} 
+              onPress={handleRefreshData}
+              activeOpacity={0.7}
+              disabled={isRefreshing}
+              data-testid="refresh-data-btn"
+            >
+              <View style={styles.supportLabel}>
+                <Ionicons name="sync-outline" size={20} color="#059669" />
+                <Text style={styles.refreshDataText}>Refresh All Data</Text>
+              </View>
+              {isRefreshing ? (
+                <ActivityIndicator size="small" color="#059669" />
+              ) : (
+                <Ionicons name="chevron-forward" size={20} color="#059669" />
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
             {/* Clear Cache Button */}
             <TouchableOpacity 
               style={styles.clearCacheRow} 
@@ -309,7 +354,7 @@ export default function ProfileScreen() {
             >
               <View style={styles.supportLabel}>
                 <Ionicons name="refresh-outline" size={20} color="#0066CC" />
-                <Text style={styles.clearCacheText}>Clear Cache & Refresh Data</Text>
+                <Text style={styles.clearCacheText}>Clear Cache & Logout</Text>
               </View>
               {isClearingCache ? (
                 <ActivityIndicator size="small" color="#0066CC" />
@@ -858,6 +903,18 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.6,
   },
+  // Refresh Data Styles
+  refreshDataRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  refreshDataText: {
+    fontSize: 16,
+    color: '#059669',
+    fontWeight: '500',
+  },
   // Clear Cache Styles
   clearCacheRow: {
     flexDirection: 'row',
@@ -869,10 +926,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#0066CC',
     fontWeight: '500',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E2E8F0',
-    marginVertical: 4,
   },
 });

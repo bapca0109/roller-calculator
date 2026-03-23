@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../utils/api';
+import api, { cacheEvents } from '../../utils/api';
 import { ExportButtons } from '../../components/shared/ExportButtons';
 
 interface Customer {
@@ -104,6 +104,18 @@ export default function CustomersScreen() {
 
   useEffect(() => {
     fetchCustomers();
+    
+    // Listen for global refresh events
+    const handleRefresh = () => {
+      console.log('[Customers] Received refresh event, refetching data...');
+      fetchCustomers();
+    };
+    
+    cacheEvents.on('refresh', handleRefresh);
+    
+    return () => {
+      cacheEvents.off('refresh', handleRefresh);
+    };
   }, [filterType]);
 
   const fetchCustomers = async () => {

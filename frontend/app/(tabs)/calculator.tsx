@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CustomDropdown } from '../../components/CustomDropdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../context/CartContext';
-import api from '../../utils/api';
+import api, { cacheEvents } from '../../utils/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -128,6 +128,19 @@ export default function CalculatorScreen() {
   useEffect(() => {
     fetchStandards();
     fetchCustomers();
+    
+    // Listen for global refresh events
+    const handleRefresh = () => {
+      console.log('[Calculator] Received refresh event, refetching data...');
+      fetchStandards();
+      fetchCustomers();
+    };
+    
+    cacheEvents.on('refresh', handleRefresh);
+    
+    return () => {
+      cacheEvents.off('refresh', handleRefresh);
+    };
   }, []);
   
   const fetchCustomers = async () => {

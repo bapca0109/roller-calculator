@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../utils/api';
+import api, { cacheEvents } from '../../utils/api';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -251,6 +251,21 @@ export default function QuotesScreen() {
       fetchQuotes();
       fetchCommercialTermsOptions();
     }
+    
+    // Listen for global refresh events
+    const handleRefresh = () => {
+      console.log('[Quotes] Received refresh event, refetching data...');
+      if (user) {
+        fetchQuotes();
+        fetchCommercialTermsOptions();
+      }
+    };
+    
+    cacheEvents.on('refresh', handleRefresh);
+    
+    return () => {
+      cacheEvents.off('refresh', handleRefresh);
+    };
   }, [authLoading, user]);
 
   // Fetch commercial terms options

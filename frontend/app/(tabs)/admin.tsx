@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../utils/api';
+import api, { cacheEvents } from '../../utils/api';
 
 type MainTab = 'prices' | 'standards';
 type PriceCategory = 'basic' | 'bearing' | 'housing' | 'seal' | 'circlip' | 'rubber' | 'locking';
@@ -101,6 +101,22 @@ export default function AdminScreen() {
     } else {
       fetchStandardsSummary();
     }
+    
+    // Listen for global refresh events
+    const handleRefresh = () => {
+      console.log('[Admin] Received refresh event, refetching data...');
+      if (mainTab === 'prices') {
+        fetchPrices();
+      } else {
+        fetchStandardsSummary();
+      }
+    };
+    
+    cacheEvents.on('refresh', handleRefresh);
+    
+    return () => {
+      cacheEvents.off('refresh', handleRefresh);
+    };
   }, [mainTab]);
 
   // ============= PRICES FUNCTIONS =============

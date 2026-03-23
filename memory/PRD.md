@@ -87,7 +87,28 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
   - Added warning message when selected shaft works without housing
 
 
-### March 15, 2026 (Current Session)
+### March 23, 2026 (Current Session) - P0 Caching Fix
+
+- [x] **Enhanced Cache-Busting System (P0)**:
+  - Added cache-busting timestamps to ALL GET API requests (`_t` parameter)
+  - Implemented custom event emitter pattern compatible with React Native/Web
+  - Added `forceRefreshAllData()` function to clear cached data while preserving auth
+  - Added `triggerGlobalRefresh()` to notify all screens to refetch data
+  - Added `checkCacheVersion()` for automatic cache invalidation on app updates
+
+- [x] **New "Refresh All Data" Button in Profile (P0)**:
+  - Added green "Refresh All Data" button that refreshes all screens WITHOUT logout
+  - Renamed existing button to "Clear Cache & Logout" for clarity
+  - Both buttons now properly trigger data refresh across all screens
+
+- [x] **Global Refresh Event Listeners**:
+  - Updated `calculator.tsx` to listen for refresh events
+  - Updated `quotes.tsx` to listen for refresh events
+  - Updated `customers.tsx` to listen for refresh events
+  - Updated `admin.tsx` to listen for refresh events
+  - All screens now refetch data when global refresh is triggered
+
+### March 15, 2026 (Previous Session)
 - [x] **Completed Signup Page Error Handling Refactor (P0)**:
   - Replaced ALL `Alert.alert` calls with visual inline error messages using `setErrorMessage` state
   - Error component uses consistent styling: light red background, red border, alert icon
@@ -266,7 +287,15 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 - [ ] Show original RFQ number on quote cards
 - [ ] Code cleanup - delete unused files
 
-## Files Modified This Session
+## Files Modified This Session (March 23, 2026)
+- `/app/frontend/utils/api.ts` - ENHANCED: Added cache-busting timestamps, event emitter for global refresh, `forceRefreshAllData()`, `triggerGlobalRefresh()`
+- `/app/frontend/app/(tabs)/profile.tsx` - ENHANCED: Added "Refresh All Data" button, renamed "Clear Cache & Logout"
+- `/app/frontend/app/(tabs)/calculator.tsx` - Added global refresh event listener
+- `/app/frontend/app/(tabs)/quotes.tsx` - Added global refresh event listener
+- `/app/frontend/app/(tabs)/customers.tsx` - Added global refresh event listener
+- `/app/frontend/app/(tabs)/admin.tsx` - Added global refresh event listener
+
+## Previous Session Files Modified
 - `/app/frontend/app/(tabs)/customers.tsx` - Added X close buttons to Add/Edit Customer Modal and Customer Quotes Modal
 - `/app/frontend/app/(tabs)/search.tsx` - Added header with X close button to Quantity Modal
 - `/app/frontend/components/quotes/QuoteDetailModal.tsx` - NEW: Extracted Quote Detail Modal component (1271 lines)
