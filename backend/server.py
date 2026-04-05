@@ -2800,8 +2800,13 @@ async def send_admin_approval_request_email(request: AdminRequest, approval_toke
             logging.warning("SMTP credentials not configured, skipping admin approval email")
             return
         
-        # Get the backend URL for approval link
-        backend_url = os.environ.get('BACKEND_URL', 'https://rfq-hub-4.preview.emergentagent.com')
+        # Get the backend URL for approval link - MUST be set via environment variable
+        backend_url = os.environ.get('BACKEND_URL')
+        if not backend_url:
+            backend_url = os.environ.get('EXPO_PUBLIC_BACKEND_URL', '')
+        if not backend_url:
+            logging.error("BACKEND_URL environment variable not set")
+            return
         approval_link = f"{backend_url}/api/auth/approve-admin/{approval_token}"
         reject_link = f"{backend_url}/api/auth/reject-admin/{approval_token}"
         
@@ -4152,7 +4157,10 @@ async def export_quotes_pdf_v2(
         if status:
             query["status"] = status
         
-        quotes = await db.quotes.find(query).sort("created_at", -1).to_list(1000)
+        quotes = await db.quotes.find(query, {
+            "quote_number": 1, "customer_name": 1, "customer_company": 1,
+            "total_price": 1, "status": 1, "created_at": 1, "items": 1
+        }).sort("created_at", -1).limit(500).to_list(500)
         
         # Generate PDF HTML
         html_content = f"""
@@ -9029,7 +9037,10 @@ async def export_quotes_pdf(
         if status:
             query["status"] = status
         
-        quotes = await db.quotes.find(query).sort("created_at", -1).to_list(1000)
+        quotes = await db.quotes.find(query, {
+            "quote_number": 1, "customer_name": 1, "customer_company": 1,
+            "total_price": 1, "status": 1, "created_at": 1, "items": 1
+        }).sort("created_at", -1).limit(500).to_list(500)
         
         # Generate PDF HTML
         html_content = f"""
@@ -9130,7 +9141,9 @@ async def export_customers_excel(
                 {"customer_code": {"$regex": search, "$options": "i"}}
             ]
         
-        customers = await db.users.find(query, {"_id": 0, "password": 0}).to_list(1000)
+        customers = await db.users.find(query, {
+            "_id": 0, "password": 0, "push_token": 0
+        }).limit(500).to_list(500)
         
         wb = Workbook()
         ws = wb.active
@@ -9196,7 +9209,9 @@ async def export_customers_pdf(
                 {"company": {"$regex": search, "$options": "i"}}
             ]
         
-        customers = await db.users.find({**query, "role": "customer"}).sort("created_at", -1).to_list(1000)
+        customers = await db.users.find({**query, "role": "customer"}, {
+            "_id": 0, "password": 0, "push_token": 0
+        }).sort("created_at", -1).limit(500).to_list(500)
         
         html_content = f"""
         <!DOCTYPE html>
@@ -9351,7 +9366,10 @@ async def export_products_pdf(
         if roller_type:
             query["roller_type"] = roller_type
         
-        products = await db.products.find(query).to_list(500)
+        products = await db.products.find(query, {
+            "name": 1, "roller_type": 1, "pipe_od": 1, "shaft_dia": 1,
+            "bearing_type": 1, "price": 1, "created_at": 1
+        }).limit(200).to_list(200)
         
         html_content = f"""
         <!DOCTYPE html>
