@@ -6902,8 +6902,14 @@ async def export_prices_to_excel(token: Optional[str] = None):
     from io import BytesIO
     from fastapi.responses import StreamingResponse
     
-    # Get current prices
-    custom_prices = await db.custom_prices.find_one({"_id": "prices"}) or {}
+    # Get current prices - check custom_prices first, then default_prices
+    custom_prices = await db.custom_prices.find_one({"_id": "prices"})
+    if not custom_prices:
+        default_prices = await db.default_prices.find_one({"_id": "defaults"})
+        if default_prices and "prices" in default_prices:
+            custom_prices = default_prices["prices"]
+        else:
+            custom_prices = {}
     
     wb = Workbook()
     
@@ -7035,7 +7041,14 @@ async def export_prices_to_pdf(token: Optional[str] = None):
     if not current_user or current_user.get("role") != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    custom_prices = await db.custom_prices.find_one({"_id": "prices"}) or {}
+    # Get current prices - check custom_prices first, then default_prices
+    custom_prices = await db.custom_prices.find_one({"_id": "prices"})
+    if not custom_prices:
+        default_prices = await db.default_prices.find_one({"_id": "defaults"})
+        if default_prices and "prices" in default_prices:
+            custom_prices = default_prices["prices"]
+        else:
+            custom_prices = {}
     
     html_content = f"""
     <!DOCTYPE html>
