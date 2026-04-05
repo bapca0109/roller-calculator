@@ -39,11 +39,25 @@ def _refresh_cache():
     
     try:
         db = _get_db()
+        
+        # First try to get custom prices (override)
         custom_prices = db.custom_prices.find_one({"_id": "prices"})
+        
         if custom_prices:
+            # Custom prices exist - use them
             _cache = custom_prices
+            print("[price_loader] Loaded custom prices from database")
         else:
-            _cache = {}
+            # No custom prices - check for saved defaults
+            default_prices = db.default_prices.find_one({"_id": "defaults"})
+            if default_prices and "prices" in default_prices:
+                _cache = default_prices["prices"]
+                print("[price_loader] Loaded saved default prices from database")
+            else:
+                # No saved defaults either - use empty cache (will fall back to hardcoded values)
+                _cache = {}
+                print("[price_loader] Using hardcoded default prices")
+        
         _cache_timestamp = time.time()
     except Exception as e:
         print(f"[price_loader] Error refreshing cache: {e}")

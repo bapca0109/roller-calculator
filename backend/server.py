@@ -6560,6 +6560,12 @@ async def get_all_prices(current_user: dict = Depends(get_current_user)):
     # Check if there are custom prices in database
     custom_prices = await db.custom_prices.find_one({"_id": "prices"})
     
+    # If no custom prices, check for saved defaults
+    if not custom_prices:
+        default_prices = await db.default_prices.find_one({"_id": "defaults"})
+        if default_prices and "prices" in default_prices:
+            custom_prices = default_prices["prices"]
+    
     # Build the response with current prices (from DB or defaults)
     prices = {
         "basic_rates": {
