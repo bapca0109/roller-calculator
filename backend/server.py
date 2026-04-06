@@ -7841,6 +7841,20 @@ async def download_raw_materials():
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
+
+@api_router.get("/download/pulley-template")
+async def download_pulley_template():
+    """Download pulley pricing Excel template"""
+    file_path = ROOT_DIR / "static" / "pulley_pricing_template.xlsx"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Template file not found")
+    return FileResponse(
+        path=str(file_path),
+        filename="pulley_pricing_template.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
 # ============= DRAWING GENERATOR =============
 
 class DrawingRequest(BaseModel):
