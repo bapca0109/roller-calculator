@@ -275,6 +275,13 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 ### P0 - Critical (COMPLETED)
 - [x] Search tab attachments - DONE
 - [x] Automate freight calculation - DONE
+- [x] **Pulley Calculator** - DONE (April 6, 2026)
+  - Backend: `/api/pulley-standards`, `/api/calculate-pulley-cost`, `/api/pulley-thicknesses/{pipe_dia}`, `/api/pulley-kla-model/{shaft_dia_hub}`
+  - Frontend: New "Pulley" tab with full configuration form
+  - Cart integration: Pulley items add to shared cart alongside rollers
+  - Hub logic: No Hub / With Hub (min dia = shaft+40mm) / KLA (auto-selects model)
+  - Rubber: None / Plain / Diamond / Ceramic lagging
+  - **Mock pricing** in use — awaiting user's filled Excel template for real rates
 
 ### P0 - Critical (PENDING)
 - [ ] Complete refactoring of quotes.tsx (4700+ lines)
@@ -286,6 +293,7 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 - [ ] Test Push Notifications (requires APK build)
 - [ ] Fix Android navigation bar overlap
 - [ ] Test iOS logout fix on native build (requires successful EAS build)
+- [ ] Implement Pulley real pricing import (when user provides filled Excel)
 
 ### P2 - Nice to Have
 - [ ] CRM features (leads, activity timeline, follow-ups)
@@ -293,7 +301,15 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 - [ ] Show original RFQ number on quote cards
 - [ ] Code cleanup - delete unused files
 
-## Files Modified This Session (March 23, 2026)
+## Files Modified This Session (April 6, 2026)
+- `/app/backend/pulley_standards.py` - NEW: Pulley constants, calculation logic, mock pricing
+- `/app/backend/server.py` - Added pulley import + 4 new API endpoints (pulley-standards, calculate-pulley-cost, pulley-thicknesses, pulley-kla-model)
+- `/app/frontend/app/(tabs)/pulley.tsx` - NEW: Complete Pulley Calculator UI tab
+- `/app/frontend/app/(tabs)/_layout.tsx` - Added Pulley tab to bottom navigation
+- `/app/frontend/app/context/CartContext.tsx` - Added 'pulley' as source type
+- `/app/backend/tests/test_pulley_calculator.py` - NEW: 23 backend tests (all passing)
+
+## Previous Session Files Modified (March 23, 2026)
 - `/app/frontend/utils/api.ts` - ENHANCED: Added cache-busting timestamps, event emitter for global refresh, `forceRefreshAllData()`, `triggerGlobalRefresh()`
 - `/app/frontend/app/(tabs)/profile.tsx` - ENHANCED: Added "Refresh All Data" button, renamed "Clear Cache & Logout"
 - `/app/frontend/app/(tabs)/calculator.tsx` - Added global refresh event listener
@@ -316,6 +332,7 @@ Create a mobile application to calculate the price of belt conveyor rollers, ser
 
 ## Test Reports
 - `/app/test_reports/iteration_22.json` - P0 features tested, 12/12 backend tests passed
+- `/app/test_reports/iteration_27.json` - Pulley Calculator: 23/23 backend + 100% frontend tests passed
 
 ## Test Credentials
 - **Admin**: test@test.com / test123
