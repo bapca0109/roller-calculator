@@ -32,7 +32,7 @@ export interface CartItem {
   remark?: string;
   attachments?: Attachment[];
   // Source tab for reference
-  source: 'calculator' | 'search';
+  source: 'calculator' | 'search' | 'pulley';
   // Original result data for calculator items (used for grand_total etc.)
   calculatorData?: any;
 }

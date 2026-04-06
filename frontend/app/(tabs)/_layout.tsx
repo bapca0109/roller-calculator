@@ -99,6 +99,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="pulley"
+        options={{
+          title: 'Pulley',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cog-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="cart"
         options={{
           title: 'Cart',
