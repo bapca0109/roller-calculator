@@ -140,8 +140,14 @@ SHAFT_RATES = {
     300: {"MS": 69.8, "EN-8": 71.8, "EN-9": 72.8, "EN-19": 92.8},
 }
 
-# End Plate MS rate per kg
-END_PLATE_RATE = 68.0
+# End Plate MS rate per kg — from user's pricing (varies by thickness)
+END_PLATE_RATES = {
+    6: 65.0, 8: 65.0, 10: 65.0,
+    12: 67.0, 14: 67.0, 16: 67.0,
+    18: 70.0, 20: 70.0, 22: 70.0,
+    24: 72.0, 26: 72.0, 28: 72.0, 30: 72.0,
+    32: 76.0, 34: 76.0, 36: 76.0, 38: 76.0, 40: 76.0, 42: 76.0, 44: 76.0, 46: 76.0, 48: 76.0, 50: 76.0,
+}
 
 # Hub MS rate per kg (for "With Hub")
 HUB_RATE = 68.0
@@ -306,12 +312,13 @@ def calculate_pulley_cost(
     cost_breakdown["shaft_cost"] = round(shaft_cost, 2)
 
     # 3. End Plate Cost (2 plates)
+    ep_rate = END_PLATE_RATES.get(end_plate_thickness, 72.0)
     ep_weight_single = calculate_end_plate_weight(pipe_dia, shaft_dia_centre, end_plate_thickness)
     ep_weight_total = ep_weight_single * 2
-    ep_cost = ep_weight_total * END_PLATE_RATE
+    ep_cost = ep_weight_total * ep_rate
     cost_breakdown["end_plate_weight_single_kg"] = ep_weight_single
     cost_breakdown["end_plate_weight_total_kg"] = ep_weight_total
-    cost_breakdown["end_plate_rate"] = END_PLATE_RATE
+    cost_breakdown["end_plate_rate"] = ep_rate
     cost_breakdown["end_plate_cost"] = round(ep_cost, 2)
 
     # 4. Hub Cost
