@@ -48,8 +48,8 @@ END_PLATE_THICKNESSES = list(range(6, 52, 2))
 # Hub Types
 HUB_TYPES = ["no_hub", "with_hub", "kla"]
 
-# Hub Dia options (mm) - for "With Hub" type
-HUB_DIAMETERS = list(range(100, 460, 10))  # 100-450 in steps of 10
+# Hub Dia options (mm) - for "With Hub" type — from user's pricing
+HUB_DIAMETERS = [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320, 330, 340, 350, 360, 370, 380, 390, 400, 410, 420, 430, 440, 450]
 
 # KLA Shaft @ Hub options (mm) - 25 to 290 in steps of 5
 KLA_SHAFT_HUB_OPTIONS = list(range(25, 295, 5))
@@ -149,8 +149,17 @@ END_PLATE_RATES = {
     32: 76.0, 34: 76.0, 36: 76.0, 38: 76.0, 40: 76.0, 42: 76.0, 44: 76.0, 46: 76.0, 48: 76.0, 50: 76.0,
 }
 
-# Hub MS rate per kg (for "With Hub")
-HUB_RATE = 68.0
+# Hub MS rate per kg (for "With Hub") — from user's pricing, varies by hub dia
+HUB_RATES = {
+    100: 62.0, 110: 62.2, 120: 62.4, 130: 62.6, 140: 62.8,
+    150: 63.0, 160: 63.2, 170: 63.4, 180: 63.6, 190: 63.8,
+    200: 64.0, 210: 64.2, 220: 64.4, 230: 64.6, 240: 64.8,
+    250: 65.0, 260: 65.2, 270: 65.4, 280: 65.6, 290: 65.8,
+    300: 66.0, 310: 66.2, 320: 66.4, 330: 66.6, 340: 66.8,
+    350: 67.0, 360: 67.2, 370: 67.4, 380: 67.6, 390: 67.8,
+    400: 68.0, 410: 68.2, 420: 68.4, 430: 68.6, 440: 68.8,
+    450: 69.0,
+}
 
 # KLA Pricing: { model: { min_shaft, max_shaft, price } }
 # Mock KLA models
@@ -325,12 +334,13 @@ def calculate_pulley_cost(
     hub_cost = 0
     kla_info = None
     if hub_type == "with_hub" and hub_dia and hub_length:
+        hub_rate = HUB_RATES.get(hub_dia, 65.0)
         hub_weight_single = calculate_hub_weight(hub_dia, shaft_dia_centre, hub_length)
         hub_weight_total = hub_weight_single * 2
-        hub_cost = hub_weight_total * HUB_RATE
+        hub_cost = hub_weight_total * hub_rate
         cost_breakdown["hub_weight_single_kg"] = hub_weight_single
         cost_breakdown["hub_weight_total_kg"] = hub_weight_total
-        cost_breakdown["hub_rate"] = HUB_RATE
+        cost_breakdown["hub_rate"] = hub_rate
         cost_breakdown["hub_cost"] = round(hub_cost, 2)
     elif hub_type == "kla" and shaft_dia_hub:
         kla_info = get_kla_model(shaft_dia_hub)
