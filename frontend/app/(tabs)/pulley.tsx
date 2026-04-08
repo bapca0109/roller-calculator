@@ -465,13 +465,8 @@ export default function PulleyScreen() {
       {/* Header */}
       <View style={styles.header} data-testid="pulley-header">
         <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerTitle}>Pulley Calculator</Text>
-            <Text style={styles.headerSubtitle}>Belt Conveyor Pulley Pricing</Text>
-          </View>
-          <View style={styles.headerBadge}>
-            <Ionicons name="cog-outline" size={20} color="#FFFFFF" />
-          </View>
+          <Text style={styles.headerTitle}>Products</Text>
+          <Text style={styles.headerSubtitle}>Configure your conveyor components</Text>
         </View>
       </View>
 
@@ -483,6 +478,25 @@ export default function PulleyScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#960018']} />
         }
       >
+        {/* Product Type Toggle: Roller / Pulley */}
+        <View style={styles.productModeToggle} data-testid="product-mode-toggle">
+          <TouchableOpacity
+            style={[styles.productModeBtn]}
+            onPress={() => router.replace('/calculator')}
+            data-testid="mode-roller-btn"
+          >
+            <Ionicons name="disc-outline" size={16} color="#64748B" />
+            <Text style={styles.productModeBtnText}>Roller</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.productModeBtn, styles.productModeBtnActive]}
+            activeOpacity={0.7}
+            data-testid="mode-pulley-btn"
+          >
+            <Ionicons name="cog-outline" size={16} color="#960018" />
+            <Text style={[styles.productModeBtnText, styles.productModeBtnTextActive]}>Pulley</Text>
+          </TouchableOpacity>
+        </View>
         {/* Pulley Type */}
         <View style={styles.card} data-testid="pulley-type-section">
           <Text style={styles.sectionTitle}>Pulley Type</Text>
@@ -1066,9 +1080,6 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 20,
   },
   headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 24,
@@ -1081,13 +1092,38 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 4,
   },
-  headerBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(150, 0, 24, 0.8)',
-    justifyContent: 'center',
+  productModeToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    padding: 3,
+    marginBottom: 12,
+  },
+  productModeBtn: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  productModeBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  productModeBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  productModeBtnTextActive: {
+    color: '#960018',
+    fontWeight: '700',
   },
   scrollView: {
     flex: 1,

@@ -1063,8 +1063,29 @@ export default function CalculatorScreen() {
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.headerTitle}>Roller Calculator</Text>
-          <Text style={styles.headerSubtitle}>Configure or search for your conveyor roller</Text>
+          <Text style={styles.headerTitle}>Products</Text>
+          <Text style={styles.headerSubtitle}>Configure your conveyor components</Text>
+        </View>
+
+        {/* Product Type Toggle: Roller / Pulley */}
+        <View style={styles.productModeToggle} data-testid="product-mode-toggle">
+          <TouchableOpacity
+            style={[styles.productModeBtn, styles.productModeBtnActive]}
+            activeOpacity={0.7}
+            data-testid="mode-roller-btn"
+          >
+            <Ionicons name="disc-outline" size={16} color="#960018" />
+            <Text style={[styles.productModeBtnText, styles.productModeBtnTextActive]}>Roller</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.productModeBtn]}
+            onPress={() => router.push('/pulley')}
+            activeOpacity={0.7}
+            data-testid="mode-pulley-btn"
+          >
+            <Ionicons name="cog-outline" size={16} color="#64748B" />
+            <Text style={styles.productModeBtnText}>Pulley</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Tab Switcher: Calculator / Search */}
@@ -2201,6 +2222,40 @@ const styles = StyleSheet.create({
     zIndex: 100,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  productModeToggle: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    padding: 3,
+  },
+  productModeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  productModeBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  productModeBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  productModeBtnTextActive: {
+    color: '#960018',
+    fontWeight: '700',
   },
   tabButton: {
     flex: 1,

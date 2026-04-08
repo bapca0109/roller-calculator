@@ -102,6 +102,7 @@ export default function TabsLayout() {
         name="pulley"
         options={{
           title: 'Pulley',
+          href: null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cog-outline" size={size} color={color} />
           ),
