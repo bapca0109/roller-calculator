@@ -7872,6 +7872,7 @@ class PulleyCostRequest(BaseModel):
     shaft_material: str = "MS"
     shaft_length: float  # mm
     end_plate_thickness: int
+    end_plate_qty: int = 2  # 2, 3, or 4
     hub_type: str = "no_hub"
     hub_diameter: Optional[int] = None
     hub_length: Optional[float] = None
@@ -7952,6 +7953,7 @@ async def calculate_pulley_cost(
         rubber_thickness=request.rubber_thickness,
         quantity=request.quantity,
         packing_type=request.packing_type,
+        end_plate_qty=request.end_plate_qty,
     )
 
     return PulleyCostResponse(**result)

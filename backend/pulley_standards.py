@@ -299,6 +299,7 @@ def calculate_pulley_cost(
     rubber_thickness=None,
     quantity=1,
     packing_type="none",
+    end_plate_qty=2,
 ):
     """
     Calculate complete pulley cost breakdown
@@ -322,11 +323,12 @@ def calculate_pulley_cost(
     cost_breakdown["shaft_rate"] = shaft_rate
     cost_breakdown["shaft_cost"] = round(shaft_cost, 2)
 
-    # 3. End Plate Cost (2 plates)
+    # 3. End Plate Cost (2/3/4 plates based on end_plate_qty)
     ep_rate = END_PLATE_RATES.get(end_plate_thickness, 72.0)
     ep_weight_single = calculate_end_plate_weight(pipe_dia, shaft_dia_centre, end_plate_thickness)
-    ep_weight_total = ep_weight_single * 2
+    ep_weight_total = ep_weight_single * end_plate_qty
     ep_cost = ep_weight_total * ep_rate
+    cost_breakdown["end_plate_qty"] = end_plate_qty
     cost_breakdown["end_plate_weight_single_kg"] = ep_weight_single
     cost_breakdown["end_plate_weight_total_kg"] = ep_weight_total
     cost_breakdown["end_plate_rate"] = ep_rate
@@ -463,6 +465,7 @@ def calculate_pulley_cost(
         "shaft_material": shaft_material,
         "shaft_length_mm": shaft_length,
         "end_plate_thickness_mm": end_plate_thickness,
+        "end_plate_qty": end_plate_qty,
         "hub_type": hub_type,
         "hub_diameter_mm": hub_dia,
         "hub_length_mm": hub_length,

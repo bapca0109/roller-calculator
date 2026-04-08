@@ -140,6 +140,7 @@ export default function PulleyScreen() {
   const [shaftMaterial, setShaftMaterial] = useState('MS');
   const [shaftLength, setShaftLength] = useState('700');
   const [endPlateThickness, setEndPlateThickness] = useState(12);
+  const [endPlateQty, setEndPlateQty] = useState(2);
   const [hubType, setHubType] = useState('no_hub');
   const [hubDiameter, setHubDiameter] = useState<number>(120);
   const [hubLength, setHubLength] = useState('80');
@@ -268,6 +269,7 @@ export default function PulleyScreen() {
         shaft_material: shaftMaterial,
         shaft_length: parseFloat(shaftLength),
         end_plate_thickness: endPlateThickness,
+        end_plate_qty: endPlateQty,
         hub_type: hubType,
         quantity: parseInt(quantity),
         packing_type: packingType,
@@ -490,6 +492,24 @@ export default function PulleyScreen() {
             }))}
             onValueChange={(v) => setEndPlateThickness(v)}
           />
+
+          <View style={styles.spacer} />
+
+          <Text style={styles.inputLabel}>End Plate Qty (default: 2)</Text>
+          <View style={styles.typeRow}>
+            {[2, 3, 4].map((qty) => (
+              <TouchableOpacity
+                key={qty}
+                style={[styles.typeBtn, endPlateQty === qty && styles.typeBtnActive]}
+                onPress={() => setEndPlateQty(qty)}
+                data-testid={`ep-qty-${qty}`}
+              >
+                <Text style={[styles.typeBtnText, endPlateQty === qty && styles.typeBtnTextActive]}>
+                  {qty} Nos
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Hub Configuration */}
@@ -705,7 +725,7 @@ export default function PulleyScreen() {
                 <Text style={styles.costValue}>Rs. {result.cost_breakdown.shaft_cost.toFixed(2)}</Text>
               </View>
               <View style={styles.costLine}>
-                <Text style={styles.costLabel}>End Plates x2 ({result.cost_breakdown.end_plate_weight_total_kg} kg)</Text>
+                <Text style={styles.costLabel}>End Plates x{result.cost_breakdown.end_plate_qty || 2} ({result.cost_breakdown.end_plate_weight_total_kg} kg)</Text>
                 <Text style={styles.costValue}>Rs. {result.cost_breakdown.end_plate_cost.toFixed(2)}</Text>
               </View>
               {result.cost_breakdown.hub_cost > 0 && (
