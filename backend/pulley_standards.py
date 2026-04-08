@@ -219,9 +219,11 @@ def calculate_pipe_weight(pipe_dia, wall_thickness, face_length):
     Calculate pipe weight in kg
     Weight = π/4 × (OD² - ID²) × length × density
     All dimensions in mm, convert to meters for density calc
+    Note: Always use thickness + 2mm for weight calculation
     """
     od = pipe_dia  # mm
-    id_val = pipe_dia - 2 * wall_thickness  # mm
+    effective_thickness = wall_thickness + 2  # Always add 2mm for weight calc
+    id_val = pipe_dia - 2 * effective_thickness  # mm
     length = face_length  # mm
 
     # Volume in mm³
