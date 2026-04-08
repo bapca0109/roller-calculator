@@ -739,6 +739,18 @@ export default function PulleyScreen() {
               <View style={styles.costDivider} />
 
               <View style={styles.costLine}>
+                <Text style={styles.costLabel}>Raw Material Total</Text>
+                <Text style={styles.costValue}>Rs. {result.pricing.raw_material_cost.toFixed(2)}</Text>
+              </View>
+              <View style={styles.costLine}>
+                <Text style={styles.costLabel}>Labour (x1.3)</Text>
+                <Text style={styles.costValue}>Rs. {result.pricing.labour_cost?.toFixed(2) || '0.00'}</Text>
+              </View>
+              <View style={styles.costLine}>
+                <Text style={styles.costLabel}>Profit (x1.6)</Text>
+                <Text style={styles.costValue}>Rs. {result.pricing.profit?.toFixed(2) || '0.00'}</Text>
+              </View>
+              <View style={styles.costLine}>
                 <Text style={styles.costLabelBold}>Unit Price</Text>
                 <Text style={styles.costValueBold}>Rs. {result.pricing.unit_price.toFixed(2)}</Text>
               </View>

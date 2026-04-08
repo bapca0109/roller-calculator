@@ -383,8 +383,11 @@ def calculate_pulley_cost(
     cost_breakdown["single_pulley_weight_kg"] = round(total_weight_single, 3)
     cost_breakdown["total_weight_kg"] = round(total_weight_single * quantity, 3)
 
-    # Pricing calculation: Total Raw Material × 1.3 × 1.6
-    unit_price = total_raw_material * 1.3 * 1.6
+    # Pricing calculation: Total Raw Material × 1.3 (Labour) × 1.6 (Profit)
+    labour_cost = total_raw_material * 0.3
+    after_labour = total_raw_material * 1.3
+    profit = after_labour * 0.6
+    unit_price = after_labour * 1.6
     order_value = unit_price * quantity
 
     # Packing
@@ -406,6 +409,11 @@ def calculate_pulley_cost(
 
     pricing = {
         "raw_material_cost": round(total_raw_material, 2),
+        "labour_factor": 1.3,
+        "labour_cost": round(labour_cost, 2),
+        "after_labour": round(after_labour, 2),
+        "profit_factor": 1.6,
+        "profit": round(profit, 2),
         "unit_price": round(unit_price, 2),
         "quantity": quantity,
         "order_value": round(order_value, 2),
