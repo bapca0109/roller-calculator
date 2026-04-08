@@ -42,10 +42,211 @@ import {
 } from '../../components/quotes';
 import { ExportButtons } from '../../components/shared/ExportButtons';
 
+const ORDER_STAGE_COLORS: Record<string, string> = {
+  confirmed: '#3B82F6', in_production: '#C5964A', ready: '#8B5CF6', dispatched: '#F59E0B', delivered: '#10B981'
+};
+const ORDER_STAGE_LABELS: Record<string, string> = {
+  confirmed: 'Confirmed', in_production: 'Production', ready: 'Ready', dispatched: 'Dispatched', delivered: 'Delivered'
+};
+const PAYMENT_COLORS: Record<string, string> = { unpaid: '#EF4444', partial: '#F59E0B', paid: '#10B981' };
+
+function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; loading: boolean; onRefresh: () => void; isAdmin: boolean }) {
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [showPayment, setShowPayment] = useState(false);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMode, setPayMode] = useState('bank_transfer');
+  const [payRef, setPayRef] = useState('');
+  const [processing, setProcessing] = useState(false);
+
+  const addPayment = async () => {
+    if (!selectedOrder || !payAmount) return;
+    setProcessing(true);
+    try {
+      await api.post(`/orders/${selectedOrder.id}/payments`, { amount: parseFloat(payAmount), mode: payMode, reference: payRef });
+      Alert.alert('Success', `Payment of Rs.${payAmount} recorded`);
+      setShowPayment(false); setPayAmount(''); setPayRef('');
+      onRefresh();
+    } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
+    finally { setProcessing(false); }
+  };
+
+  const updateStage = async (orderId: string, stage: string) => {
+    try {
+      await api.put(`/orders/${orderId}/stage`, { stage });
+      onRefresh();
+    } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
+  };
+
+  const generateInvoice = async (orderId: string, type: 'proforma' | 'tax-invoice') => {
+    try {
+      const res = await api.post(`/orders/${orderId}/${type}`);
+      Alert.alert('Success', res.data.message);
+      onRefresh();
+    } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
+  };
+
+  if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#C5964A" /></View>;
+
+  return (
+    <View style={{ flex: 1 }}>
+      <FlatList
+        data={orders}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ padding: 14 }}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} colors={['#C5964A']} />}
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+            <Ionicons name="cube-outline" size={48} color="#CBD5E1" />
+            <Text style={{ color: '#94A3B8', fontSize: 15, marginTop: 12 }}>No orders yet</Text>
+            <Text style={{ color: '#CBD5E1', fontSize: 13, marginTop: 4 }}>Convert approved quotes to orders</Text>
+          </View>
+        }
+        renderItem={({ item: order }) => (
+          <View style={os.card}>
+            <View style={os.cardHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={os.soNumber}>{order.so_number}</Text>
+                <Text style={os.customer}>{order.customer_name}{order.customer_company ? ` - ${order.customer_company}` : ''}</Text>
+              </View>
+              <View style={[os.stageBadge, { backgroundColor: (ORDER_STAGE_COLORS[order.stage] || '#94A3B8') + '18' }]}>
+                <Text style={[os.stageText, { color: ORDER_STAGE_COLORS[order.stage] || '#94A3B8' }]}>{ORDER_STAGE_LABELS[order.stage] || order.stage}</Text>
+              </View>
+            </View>
+
+            <View style={os.metaRow}>
+              <View style={os.metaItem}>
+                <Text style={os.metaLabel}>Total</Text>
+                <Text style={os.metaValue}>Rs.{order.total_price?.toLocaleString()}</Text>
+              </View>
+              <View style={os.metaItem}>
+                <Text style={os.metaLabel}>Paid</Text>
+                <Text style={[os.metaValue, { color: PAYMENT_COLORS[order.payment_status] }]}>Rs.{order.total_paid?.toLocaleString()}</Text>
+              </View>
+              <View style={os.metaItem}>
+                <Text style={os.metaLabel}>Due</Text>
+                <Text style={[os.metaValue, { color: order.balance_due > 0 ? '#EF4444' : '#10B981' }]}>Rs.{order.balance_due?.toLocaleString()}</Text>
+              </View>
+            </View>
+
+            {/* Payment status bar */}
+            <View style={os.payBar}>
+              <View style={[os.payBarFill, { width: `${Math.min((order.total_paid / order.total_price) * 100, 100)}%`, backgroundColor: PAYMENT_COLORS[order.payment_status] }]} />
+            </View>
+
+            {/* Invoices */}
+            <View style={os.invoiceRow}>
+              {order.proforma_invoice && <View style={os.invoiceTag}><Ionicons name="document-outline" size={12} color="#8B5CF6" /><Text style={os.invoiceTagText}>PI: {order.proforma_invoice}</Text></View>}
+              {order.tax_invoice && <View style={os.invoiceTag}><Ionicons name="receipt-outline" size={12} color="#10B981" /><Text style={os.invoiceTagText}>{order.tax_invoice}</Text></View>}
+              {order.quote_number && <View style={os.invoiceTag}><Ionicons name="document-text-outline" size={12} color="#94A3B8" /><Text style={os.invoiceTagText}>{order.quote_number}</Text></View>}
+            </View>
+
+            {/* Actions */}
+            {isAdmin && (
+              <View style={os.actions}>
+                <TouchableOpacity style={os.actionBtn} onPress={() => { setSelectedOrder(order); setShowPayment(true); }}>
+                  <Ionicons name="cash-outline" size={15} color="#C5964A" />
+                  <Text style={os.actionText}>Payment</Text>
+                </TouchableOpacity>
+                {!order.proforma_invoice && (
+                  <TouchableOpacity style={os.actionBtn} onPress={() => generateInvoice(order.id, 'proforma')}>
+                    <Ionicons name="document-outline" size={15} color="#8B5CF6" />
+                    <Text style={os.actionText}>PI</Text>
+                  </TouchableOpacity>
+                )}
+                {!order.tax_invoice && (
+                  <TouchableOpacity style={os.actionBtn} onPress={() => generateInvoice(order.id, 'tax-invoice')}>
+                    <Ionicons name="receipt-outline" size={15} color="#10B981" />
+                    <Text style={os.actionText}>Invoice</Text>
+                  </TouchableOpacity>
+                )}
+                {/* Next stage button */}
+                {order.stage !== 'delivered' && (() => {
+                  const stages = ['confirmed', 'in_production', 'ready', 'dispatched', 'delivered'];
+                  const nextIdx = stages.indexOf(order.stage) + 1;
+                  const next = stages[nextIdx];
+                  return next ? (
+                    <TouchableOpacity style={[os.actionBtn, { backgroundColor: ORDER_STAGE_COLORS[next] + '15', borderColor: ORDER_STAGE_COLORS[next] }]} onPress={() => updateStage(order.id, next)}>
+                      <Ionicons name="arrow-forward" size={15} color={ORDER_STAGE_COLORS[next]} />
+                      <Text style={[os.actionText, { color: ORDER_STAGE_COLORS[next] }]}>{ORDER_STAGE_LABELS[next]}</Text>
+                    </TouchableOpacity>
+                  ) : null;
+                })()}
+              </View>
+            )}
+          </View>
+        )}
+      />
+
+      {/* Payment Modal */}
+      <Modal visible={showPayment} animationType="slide" transparent>
+        <View style={os.modalOverlay}>
+          <View style={os.modal}>
+            <View style={os.modalHead}><Text style={os.modalTitle}>Record Payment</Text><TouchableOpacity onPress={() => setShowPayment(false)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity></View>
+            {selectedOrder && <Text style={os.modalSub}>{selectedOrder.so_number} — Balance: Rs.{selectedOrder.balance_due?.toLocaleString()}</Text>}
+            <Text style={os.label}>Amount (Rs.)</Text>
+            <TextInput style={os.input} value={payAmount} onChangeText={setPayAmount} keyboardType="numeric" placeholder="Enter amount" />
+            <Text style={os.label}>Mode</Text>
+            <View style={os.chipRow}>
+              {['bank_transfer', 'cheque', 'upi', 'cash'].map(m => (
+                <TouchableOpacity key={m} style={[os.chip, payMode === m && os.chipActive]} onPress={() => setPayMode(m)}>
+                  <Text style={[os.chipText, payMode === m && os.chipTextActive]}>{m.replace('_', ' ')}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={os.label}>Reference (UTR/Cheque No.)</Text>
+            <TextInput style={os.input} value={payRef} onChangeText={setPayRef} placeholder="Optional" />
+            <TouchableOpacity style={os.saveBtn} onPress={addPayment} disabled={processing}>
+              {processing ? <ActivityIndicator color="#fff" /> : <><Ionicons name="checkmark" size={20} color="#fff" /><Text style={os.saveBtnText}>Record Payment</Text></>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const os = StyleSheet.create({
+  card: { backgroundColor: 'rgba(255,255,255,0.82)', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  soNumber: { fontSize: 16, fontWeight: '700', color: '#0F172A', letterSpacing: -0.2 },
+  customer: { fontSize: 13, color: '#64748B', marginTop: 2 },
+  stageBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  stageText: { fontSize: 11, fontWeight: '700' },
+  metaRow: { flexDirection: 'row', gap: 16, marginBottom: 10 },
+  metaItem: {},
+  metaLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
+  metaValue: { fontSize: 15, fontWeight: '700', color: '#0F172A', marginTop: 2 },
+  payBar: { height: 4, backgroundColor: '#F1F5F9', borderRadius: 2, marginBottom: 10, overflow: 'hidden' },
+  payBarFill: { height: '100%', borderRadius: 2 },
+  invoiceRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 10 },
+  invoiceTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(241,245,249,0.7)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  invoiceTagText: { fontSize: 11, color: '#64748B', fontWeight: '500' },
+  actions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: 'rgba(241,245,249,0.5)' },
+  actionText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modal: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22 },
+  modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  modalSub: { fontSize: 14, color: '#C5964A', fontWeight: '600', marginBottom: 16 },
+  label: { fontSize: 12, fontWeight: '600', color: '#C5964A', letterSpacing: 0.5, marginBottom: 6, marginTop: 14 },
+  input: { backgroundColor: 'rgba(241,245,249,0.8)', borderWidth: 1, borderColor: 'rgba(226,232,240,0.5)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#0F172A' },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' },
+  chipActive: { backgroundColor: '#960018', borderColor: '#960018' },
+  chipText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  chipTextActive: { color: '#fff' },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#960018', borderRadius: 14, paddingVertical: 15, marginTop: 18 },
+  saveBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+});
+
 export default function QuotesScreen() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<'quotes' | 'orders'>('quotes');
+  const [orders, setOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
@@ -298,6 +499,18 @@ export default function QuotesScreen() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
+    try {
+      const response = await api.get('/orders');
+      setOrders(response.data.orders || []);
+    } catch (error: any) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setOrdersLoading(false);
     }
   };
 
@@ -1786,23 +1999,57 @@ export default function QuotesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>My {docLabel}s</Text>
+        <Text style={styles.title}>Sales</Text>
         <View style={styles.headerActions}>
-          <ExportButtons
-            endpoint="/quotes/export/excel"
-            pdfEndpoint="/quotes/export/pdf"
-            queryParams={{ status: activeTab === 'all' ? '' : activeTab }}
-            filenamePrefix="Quotes"
-            compact={true}
-            showPdf={true}
-            showExcel={true}
-          />
-          <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-            <Ionicons name="refresh" size={24} color="#960018" />
+          {viewMode === 'quotes' && (
+            <ExportButtons
+              endpoint="/quotes/export/excel"
+              pdfEndpoint="/quotes/export/pdf"
+              queryParams={{ status: activeTab === 'all' ? '' : activeTab }}
+              filenamePrefix="Quotes"
+              compact={true}
+              showPdf={true}
+              showExcel={true}
+            />
+          )}
+          <TouchableOpacity onPress={() => { onRefresh(); if (viewMode === 'orders') fetchOrders(); }} style={styles.refreshButton}>
+            <Ionicons name="refresh" size={24} color="#C5964A" />
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* Quotes / Orders Toggle */}
+      <View style={styles.modeToggleContainer}>
+        <View style={styles.modeToggle}>
+          <TouchableOpacity
+            style={[styles.modeBtn, viewMode === 'quotes' && styles.modeBtnActive]}
+            onPress={() => setViewMode('quotes')}
+          >
+            <Ionicons name="document-text-outline" size={16} color={viewMode === 'quotes' ? '#C5964A' : '#94A3B8'} />
+            <Text style={[styles.modeBtnText, viewMode === 'quotes' && styles.modeBtnTextActive]}>
+              {docLabel}s
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeBtn, viewMode === 'orders' && styles.modeBtnActive]}
+            onPress={() => { setViewMode('orders'); if (orders.length === 0) fetchOrders(); }}
+          >
+            <Ionicons name="cube-outline" size={16} color={viewMode === 'orders' ? '#C5964A' : '#94A3B8'} />
+            <Text style={[styles.modeBtnText, viewMode === 'orders' && styles.modeBtnTextActive]}>Orders</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ORDERS VIEW */}
+      {viewMode === 'orders' ? (
+        <OrdersView
+          orders={orders}
+          loading={ordersLoading}
+          onRefresh={() => fetchOrders()}
+          isAdmin={isAdmin}
+        />
+      ) : (
+      <>
       {/* Search Bar - Admin Only */}
       {isAdmin && (
         <View style={styles.searchContainer}>
@@ -1925,6 +2172,9 @@ export default function QuotesScreen() {
         }
       />
 
+      {/* End of Quotes View */}
+      </>
+      )}
 
       {/* Quote Detail Modal - Using extracted component */}
       <QuoteDetailModal
@@ -2083,10 +2333,46 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.3,
+  },
+  modeToggleContainer: {
+    paddingHorizontal: 14,
+    paddingTop: 14,
+  },
+  modeToggle: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    borderRadius: 10,
+    padding: 3,
+  },
+  modeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  modeBtnActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  modeBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#94A3B8',
+  },
+  modeBtnTextActive: {
+    color: '#C5964A',
+    fontWeight: '700',
   },
   refreshButton: {
     padding: 8,

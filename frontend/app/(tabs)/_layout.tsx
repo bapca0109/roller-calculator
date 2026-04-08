@@ -137,7 +137,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="quotes"
         options={{
-          title: 'Quotes',
+          title: 'Sales',
           tabBarIcon: ({ color, size }) => (
             <View>
               <Ionicons name="document-text-outline" size={size} color={color} />
