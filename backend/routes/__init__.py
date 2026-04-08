@@ -143,3 +143,19 @@ async def generate_customer_code() -> str:
         except (ValueError, IndexError):
             pass
     return f"{prefix}0001"
+
+
+# ============= SHARED MODELS =============
+
+class Customer(BaseModel):
+    name: str
+    company: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    gst_number: Optional[str] = None
+    notes: Optional[str] = None
+    customer_code: Optional[str] = None

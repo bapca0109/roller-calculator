@@ -22,6 +22,9 @@ from bson import ObjectId
 import roller_standards as rs
 import pulley_standards as ps
 from routes.pulley import router as pulley_router
+from routes.customers import router as customers_router
+from routes.analytics import router as analytics_router
+from routes.exports import router as exports_router
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -7576,7 +7579,13 @@ async def get_standards_summary(current_user: dict = Depends(get_current_user)):
     
     return {"summary": summary, "total_collections": len(collections)}
 
-# ============= CUSTOMER API =============
+# ============= CUSTOMER ROUTES (moved to routes/customers.py) =============
+
+
+# ============= FILE DOWNLOADS (moved to routes/customers.py) =============
+
+
+# ============= PULLEY ROUTES (moved to routes/pulley.py) =============
 
 @api_router.post("/customers")
 async def create_customer(customer: Customer, current_user: dict = Depends(get_current_user)):
@@ -9542,6 +9551,9 @@ async def export_cart_excel(
 
 # Include the router in the main app
 api_router.include_router(pulley_router)
+api_router.include_router(customers_router)
+api_router.include_router(analytics_router)
+api_router.include_router(exports_router)
 app.include_router(api_router)
 
 app.add_middleware(
