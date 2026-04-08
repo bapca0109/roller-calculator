@@ -495,21 +495,16 @@ export default function PulleyScreen() {
 
           <View style={styles.spacer} />
 
-          <Text style={styles.inputLabel}>End Plate Qty (default: 2)</Text>
-          <View style={styles.typeRow}>
-            {[2, 3, 4].map((qty) => (
-              <TouchableOpacity
-                key={qty}
-                style={[styles.typeBtn, endPlateQty === qty && styles.typeBtnActive]}
-                onPress={() => setEndPlateQty(qty)}
-                data-testid={`ep-qty-${qty}`}
-              >
-                <Text style={[styles.typeBtnText, endPlateQty === qty && styles.typeBtnTextActive]}>
-                  {qty} Nos
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <CustomDropdown
+            label="End Plate Qty (Nos)"
+            value={endPlateQty}
+            options={[
+              { label: '2 Nos', value: 2 },
+              { label: '3 Nos', value: 3 },
+              { label: '4 Nos', value: 4 },
+            ]}
+            onValueChange={(v) => setEndPlateQty(v)}
+          />
         </View>
 
         {/* Hub Configuration */}
