@@ -1,339 +1,95 @@
-# Belt Conveyor Roller Price Calculator - PRD
+# Belt Conveyor Roller & Pulley Price Calculator - PRD
 
 ## Original Problem Statement
-Create a mobile application to calculate the price of belt conveyor rollers, serving as an engineering and quoting tool with product catalog search, admin panel for price management, customer database, and complete quote/RFQ workflow.
+Create a mobile application to calculate the price of belt conveyor rollers and pulleys, serving as an engineering and quoting tool with product catalog search, admin panel for price management, customer database, and complete quote/RFQ workflow.
 
 ## Architecture
 ```
 /app
 ├── backend
-│   ├── server.py           # FastAPI backend with MongoDB + Auto-freight calculation
-│   ├── roller_standards.py # Pricing data & freight calculation logic
-│   └── tests/              # Backend test files
-└── frontend
-    ├── app
-    │   ├── auth/login.tsx      # REDESIGNED: Modern industrial login
-    │   └── (tabs)
-    │       ├── _layout.tsx     # Tab navigation (Products tab)
-    │       ├── cart.tsx        # Shopping cart + Export button (REDESIGNED)
-    │       ├── calculator.tsx  # Product calculator (REDESIGNED header)
-    │       ├── quotes.tsx      # Quote management + Export (REDESIGNED header)
-    │       ├── customers.tsx   # Customer management (REDESIGNED)
-    │       ├── admin.tsx       # Admin panel (REDESIGNED)
-    │       ├── profile.tsx     # User profile (REDESIGNED)
-    │       ├── dashboard.tsx   # Admin dashboard (REDESIGNED)
-    │       └── search.tsx      # Product search + Attachments (UPDATED)
-    ├── components
-    │   ├── quotes/             # Extracted quote components
-    │   └── shared/
-    │       └── ExportButtons.tsx  # Reusable export component
-    └── theme/index.ts          # Design system theme (ENHANCED)
+│   ├── server.py               # FastAPI backend (9700+ lines - needs refactoring)
+│   ├── pulley_standards.py     # Pulley constants, pricing & calculation logic
+│   ├── roller_standards.py     # Roller pricing data & freight calculation
+│   ├── price_loader.py         # Sync MongoDB price fetcher
+│   └── static/
+│       └── pulley_pricing_template.xlsx
+├── frontend
+│   ├── utils/api.ts            # API config with cache-busting
+│   ├── app/(tabs)/
+│   │   ├── _layout.tsx         # Tab navigation (Pulley hidden, merged into Products)
+│   │   ├── calculator.tsx      # Products tab: Roller/Pulley toggle + Roller calculator
+│   │   ├── pulley.tsx          # Pulley calculator (navigated from Products toggle)
+│   │   ├── cart.tsx            # Shared cart (Roller + Pulley)
+│   │   ├── quotes.tsx          # Quote management
+│   │   ├── customers.tsx       # Customer management
+│   │   ├── admin.tsx           # Admin panel
+│   │   ├── dashboard.tsx       # Analytics dashboard
+│   │   └── profile.tsx         # User profile
+│   └── components/
+│       ├── calculator/         # Roller types & constants
+│       ├── quotes/             # Quote components
+│       └── shared/             # Reusable components
+└── memory/
+    └── PRD.md
 ```
 
 ## What's Been Implemented
 
-### Core Features (Previous Sessions)
-- [x] Full-stack application setup with Expo + FastAPI + MongoDB
-- [x] User authentication with OTP-based signup/login
-- [x] Role-based access control (Admin vs Customer)
-- [x] Product calculator for Carrying, Impact, and Return rollers
-- [x] Customer management system with auto-incrementing codes
-- [x] Quote/RFQ workflow with approval process
-- [x] PDF generation for quotes with company logo and weight details
-- [x] Email notifications for quote status changes
-- [x] Export to PDF/Excel functionality
-- [x] Tab renamed from "Calculator" to "Products"
-- [x] Component refactoring (QuoteCard, modals extracted)
-- [x] Push notifications for admins (requires APK build for testing)
+### April 8, 2026 — Pulley Calculator + Pricing + UI Refinement
+- [x] **Pulley Calculator**: Full backend + frontend with real pricing
+- [x] **Real Pricing Data**: Pipe (₹70-99/kg), Shaft (₹60-92.8/kg), End Plate (₹65-76/kg slab), Hub (₹62-69/kg), Rubber Plain (₹3,300-6,400/sqm), Rubber Ceramic (₹20,000-30,000/sqm)
+- [x] **Pricing Formula**: Raw Material × 1.3 (Labour) × 1.6 (Profit)
+- [x] **BOM**: Pipe 1pc, Shaft 1pc, End Plate 2/3/4 (selectable dropdown), Hub 2pc, KLA 2pc
+- [x] **Pipe Weight**: Always uses thickness + 2mm for weight calculation
+- [x] **Large Pipe Surcharge**: 630/800/1000mm pipes get +₹8/kg when face length > 1250mm
+- [x] **Rubber Lagging Area**: π × Pipe Dia × Face Length (no rubber thickness added)
+- [x] **Merged Roller + Pulley** into single "Products" tab with toggle
+- [x] **Customer Flow**: Matches Roller — "Add to Cart" button, no prices visible
+- [x] **Attachments + Remark + Save Single Quote** added to Pulley
+- [x] **KLA Hidden**: Temporarily hidden until user provides pricing data
+- [x] **Customer Account**: Created customer@test.com / test123
 
-### March 10, 2026 (Previous Session) - P0 Completions
-- [x] **Search Tab Attachments**: Added Camera, Gallery, Document buttons to the "Add to Quote" modal in search.tsx
-  - Attachment state management with reset on modal close
-  - Proper base64 encoding for cart integration
-  - Styles for attachment preview and removal
-- [x] **Auto-Freight Calculation**: Implemented automatic freight calculation during RFQ approval
-  - Calculates total weight from products
-  - Uses delivery_location (pincode) to calculate distance
-  - Auto-applies freight charges and updates total price
-  - Returns `freight_auto_calculated` flag in API response
-- [x] **Bug Fix**: Fixed NoneType error in approve_rfq when product.specifications is null
-
-### December 9, 2025 (This Session) - Deployment Fix & Refactoring
-- [x] **Fixed Deployment-Blocking Syntax Error**: Removed 14 instances of escaped template literal syntax (`\${...}` → `${...}`) in `frontend/app/(tabs)/quotes.tsx`
-  - Lines 1605-1608: Header doc-type section
-  - Lines 1644-1660: Customer info section (Bill To)
-  - Error was: `SyntaxError: Expecting Unicode escape sequence \uXXXX`
-  - Deployment agent verified: Application ready for production deployment
-
-- [x] **quotes.tsx Refactoring - Phase 1**: Extracted ~700 lines of code from quotes.tsx (4828 → 4119 lines)
-  - **New files created in `/app/frontend/components/quotes/`**:
-    - `utils.ts`: Extracted `getStatusColor`, `getStatusIcon`, `formatDate`, `getPackingPercent`, `calculateTotals`
-    - `generatePdfHtml.ts`: Extracted PDF HTML generation logic (~500 lines)
-    - `styles.ts`: Extracted shared modal and component styles
-    - Updated `index.ts` to export new utilities
-  - Removed duplicate `generatePdfHtml` function definition
-  - Updated quotes.tsx to import utilities from components/quotes
-
-- [x] **Rubber Ring Weight Calculation**: Implemented accurate ring weight calculation based on ID/OD
-  - Added `calculate_rubber_ring_weight()` function using volume formula: π × ((OD² - ID²) / 4) × width
-  - Added `calculate_total_rubber_weight()` to calculate total weight based on number of rings (35mm each)
-  - Created Excel template for user to provide actual ring weights: `/app/frontend/public/ring_weights_template.xlsx`
-
-- [x] **Pipe-Shaft Compatibility Filtering**: Implemented filtering to show only compatible shafts for selected pipe
-  - Added `PIPE_SHAFT_COMPATIBILITY` mapping in `roller_standards.py`
-  - Added `PIPES_WITHOUT_HOUSING` for warning about shafts that work without housing (60.8mm, 76.1mm pipes)
-  - Added API endpoint: `GET /api/compatible-shafts/{pipe_dia}`
-  - Updated frontend calculator to filter shaft dropdown based on selected pipe
-  - Added warning message when selected shaft works without housing
-
-
-### March 23, 2026 (Current Session) - P0 Caching Fix
-
-- [x] **Enhanced Cache-Busting System (P0)**:
-  - Added cache-busting timestamps to ALL GET API requests (`_t` parameter)
-  - Implemented custom event emitter pattern compatible with React Native/Web
-  - Added `forceRefreshAllData()` function to clear cached data while preserving auth
-  - Added `triggerGlobalRefresh()` to notify all screens to refetch data
-  - Added `checkCacheVersion()` for automatic cache invalidation on app updates
-
-- [x] **New "Refresh All Data" Button in Profile (P0)**:
-  - Added green "Refresh All Data" button that refreshes all screens WITHOUT logout
-  - Renamed existing button to "Clear Cache & Logout" for clarity
-  - Both buttons now properly trigger data refresh across all screens
-
-- [x] **Global Refresh Event Listeners**:
-  - Updated `calculator.tsx` to listen for refresh events
-  - Updated `quotes.tsx` to listen for refresh events
-  - Updated `customers.tsx` to listen for refresh events
-  - Updated `admin.tsx` to listen for refresh events
-  - All screens now refetch data when global refresh is triggered
-
-- [x] **Pull-to-Refresh on All Main Screens**:
-  - Added `RefreshControl` to `calculator.tsx` - users can swipe down to refresh standards/customers
-  - Added `RefreshControl` to `customers.tsx` - users can swipe down to refresh customer list
-  - Added `RefreshControl` to `admin.tsx` (both Prices and Standards tabs)
-  - `quotes.tsx` already had Pull-to-Refresh (just verified it works with global refresh)
-
-### March 15, 2026 (Previous Session)
-- [x] **Completed Signup Page Error Handling Refactor (P0)**:
-  - Replaced ALL `Alert.alert` calls with visual inline error messages using `setErrorMessage` state
-  - Error component uses consistent styling: light red background, red border, alert icon
-  - Covers all validation errors: name, email, mobile, pincode, company, GSTIN, password
-  - Covers API errors: registration failure, pincode lookup failure
-  - Removed unused `Alert` import from React Native
-  - Tested and verified working on web
-
-- [x] **Integrated Rubber Ring Weights (P2)**:
-  - Added lookup table with 17 ring combinations from user-provided data
-  - Ring ID ranges: 60mm to 152mm
-  - Ring OD ranges: 90mm to 190mm
-  - All rings use standard 35mm width
-  - Falls back to formula calculation for unlisted combinations
-  - Verified with pipe diameter mapping (88.9 → 89, 114.3 → 114, etc.)
-
-- [x] **Contact Us Modal Fixed**:
-  - Added full company address modal in Profile tab
-  - Clickable email, website, and phone links
-  - Works on both web and native platforms
-
-- [x] **Convero Logo Fixed**:
-  - Updated login page with correct Convero Solutions logo
-  - Proper sizing (180x80px) with white background
-
-### March 14, 2026 (Current Session) - Modal Close Buttons & Major Refactoring
-- [x] **Fixed iOS Export Bug (P0)**: 
-  - Updated `expo-file-system` import to use legacy module (`expo-file-system/legacy`)
-  - Fixed in 4 files: `quotes.tsx`, `search.tsx`, `calculator.tsx`, `admin.tsx`
-  - Root cause: `downloadAsync` method deprecated in latest Expo SDK
-  - Requires new iOS build to test on physical device
-
-- [x] **Enhanced Export with Retry Functionality**: 
-  - Added retry modal with user-friendly error messages for export failures
-  - Supports up to 3 retry attempts with attempt counter
-  - Contextual error messages (network, auth, server errors)
-  - Helpful tips for users when exports fail
-  - Works on both iOS and Android native apps
-
-- [x] **Added "X" Close Buttons to All Modals (P0)**:
-  - `customers.tsx`: Add/Edit Customer Modal - Changed "Cancel" text to X icon
-  - `customers.tsx`: Customer Quotes Modal - Changed "Close" text to X icon  
-  - `search.tsx`: Quantity Modal - Added header with title and X close button
-  - Added new styles `quantityModalHeader` and `quantityModalTitle` for consistent UI
-  - All other modals already had X buttons (verified: quotes, cart, admin, shared components)
-- [x] **Completed `quotes.tsx` Refactoring - QuoteDetailModal (P1-CRITICAL)**:
-  - Created `/app/frontend/components/quotes/QuoteDetailModal.tsx` (1271 lines)
-  - Fully integrated and wired up the component in `quotes.tsx`
-  - Tested and verified working (100% pass rate)
-- [x] **Completed `quotes.tsx` Refactoring - EditQuoteModal (P1-CRITICAL)**:
-  - Created `/app/frontend/components/quotes/EditQuoteModal.tsx` (844 lines)
-  - Fully integrated with all 25+ props connected
-  - Tested and verified working (100% pass rate)
-  - **Total Reduction: `quotes.tsx` went from 4762 lines to 3607 lines (1155 lines removed!)**
-- [x] **Started `calculator.tsx` Refactoring (P1)**:
-  - Created `/app/frontend/components/calculator/types.ts` - Extracted types and constants
-  - Updated imports in `calculator.tsx`
-  - **Reduction: `calculator.tsx` went from 3645 lines to 3543 lines (102 lines removed)**
-
-### March 13, 2026 (Previous Session) - Designation Field & iOS Logout Fix
-- [x] **Designation Field for Customer Signup (P0)**: 
-  - Added optional "Designation" field to customer registration form
-  - Backend: Updated `OTPRequest` and `OTPVerify` models to include designation
-  - Backend: User creation in `verify_otp` saves designation to both users and customers collections
-  - Backend: Added designation to `/api/auth/me`, `/api/auth/login`, and `/api/auth/verify-otp` responses
-  - Backend: Admin registration notification email includes designation
-  - Frontend: Added designation input field to `register.tsx` (between Company Name and Password)
-  - Frontend: Updated `verify-otp.tsx` to pass designation to backend
-  - **Tested**: 9/9 backend tests passed, frontend UI verified
-
-- [x] **Fixed iOS Logout Bug** (recurring issue, 6x reports): 
-  - **Root Cause**: Race condition where navigation happened before state was cleared, and setTimeout was unreliable on iOS
-  - **Fix in AuthContext.tsx**: 
-    - Clear state (`setUserState(null)`, `setIsAuthenticated(false)`) FIRST before any async operations
-    - Use `Promise.all()` for parallel AsyncStorage clearing
-    - Make `removePushToken()` fire-and-forget (non-blocking)
-  - **Fix in profile.tsx**: 
-    - Removed `setTimeout` hack - now properly await logout() before navigating
-    - Added error recovery to still navigate to login even if logout fails
-  - **Fix in _layout.tsx**: 
-    - Return `null` when user is not authenticated to prevent crash during transition
-  - **Status**: Code fix complete, requires native iOS build to fully test
-
-- [x] **Added Help & Support Section to Profile**:
-  - FAQs button with popup showing common questions (quote creation, price calculation)
-  - Contact Us button with support email and phone info
-  - App Version display (1.0.0)
-  - Clean card-based UI matching app design system
-
-- [x] **Extended Push Notifications**:
-  - Added `send_push_notification_to_user()` function for individual user notifications
-  - **Quote Approved**: Customer receives push notification with quote number and total price
-  - **RFQ Rejected**: Customer receives push notification with reason for rejection
-  - All notifications include actionable data (quote_id, type) for deep linking
-
-- [x] **Packing % Display Everywhere**:
-  - **Quote Cards**: Shows packing type (Standard/Pallet/Wooden Box/Custom with %) in blue text
-  - **Quote Detail Modal**: Always shows packing with type and percentage
-  - **PDF Generation**: Shows packing type in both summary section and info box
-  - Supports custom packing percentages (stored as `custom_X` format)
-  - Helper function `getPackingPercentLabel()` for consistent display across components
-
-- [x] **Housing Rates in Admin Panel**:
-  - Added `housing_costs` to backend GET/POST admin prices API
-  - Added Housing tab with home icon in admin panel
-  - Shows all 20+ housing OD/Bearing OD configurations with editable prices
-
-- [x] **Bulk Price Import/Export**:
-  - **Export to Excel**: `GET /api/admin/prices/export` generates Excel with 7 sheets (Basic, Bearing, Housing, Seal, Circlip, Rubber, Locking)
-  - **Import from Excel**: `POST /api/admin/prices/import` reads Excel and updates all prices
-  - Frontend buttons: Blue "Export to Excel" and Green "Import from Excel"
-  - Excel has professional styling with carmine headers
-
-### Previous Session - UI Redesign
-- [x] **Login Page**: Complete redesign with modern two-tone layout
-- [x] **Theme System**: Enhanced design tokens
-- [x] **Header Redesign (All Main Screens)**: Dark slate headers
-- [x] **Card Styling Updates**: White background with subtle borders
+### Previous Sessions (summarized)
+- [x] Full Roller calculator with IS standards
+- [x] Quote/RFQ workflow with approval
+- [x] PDF generation, email notifications
+- [x] Cache-busting, pull-to-refresh
+- [x] Customer management with GST lookup
+- [x] Admin price import/export (Excel)
+- [x] Push notifications (requires native build)
+- [x] iOS logout fix, designation field, contact us modal
 
 ## Design System
-
-### Colors
 | Token | Value | Usage |
 |-------|-------|-------|
-| Primary | #960018 | Buttons, accents, active states |
-| Primary Light | #C41E3A | Hover states |
-| Secondary/Dark | #0F172A | Headers, dark backgrounds |
+| Primary | #960018 | Buttons, accents |
+| Secondary/Dark | #0F172A | Headers |
 | Background | #F8FAFC | Page backgrounds |
-| Surface | #FFFFFF | Cards, modals |
+| Surface | #FFFFFF | Cards |
 | Text Primary | #0F172A | Headings |
 | Text Secondary | #64748B | Body text |
-| Text Muted | #94A3B8 | Captions, labels |
-| Border | #E2E8F0 | Input borders |
-| Border Light | #F1F5F9 | Card borders |
-
-### Typography
-- H1: 28px / 700 weight / -0.5 letter spacing
-- H2: 24px / 600 weight / -0.3 letter spacing
-- H3: 20px / 600 weight
-- Body: 16px / 400 weight / 24px line height
-- Caption: 12px / 400 weight / 16px line height
-- Label: 12px / 600 weight / uppercase / 0.5 letter spacing
 
 ## Known Issues
-
-### P1 - High Priority
-- [x] **iOS logout functionality**: FIXED - Resolved race condition by clearing state before async operations (was recurring issue, 6x)
-- [ ] **Android navigation bar overlap**: System nav bar overlaps bottom tab bar
-
-### P2 - Medium Priority
-- [ ] Login background image doesn't load on web view (may be obsolete with new design)
-
-### P3 - Low Priority
-- [ ] Expo Tunnel instability (ERR_NGROK_3200) - environment issue
+- [ ] Android navigation bar overlap
+- [ ] KLA pricing pending (hidden from UI)
 
 ## Prioritized Backlog
 
-### P0 - Critical (COMPLETED)
-- [x] Search tab attachments - DONE
-- [x] Automate freight calculation - DONE
-- [x] **Pulley Calculator** - DONE (April 6, 2026)
-  - Backend: `/api/pulley-standards`, `/api/calculate-pulley-cost`, `/api/pulley-thicknesses/{pipe_dia}`, `/api/pulley-kla-model/{shaft_dia_hub}`
-  - Frontend: New "Pulley" tab with full configuration form
-  - Cart integration: Pulley items add to shared cart alongside rollers
-  - Hub logic: No Hub / With Hub (min dia = shaft+40mm) / KLA (auto-selects model)
-  - Rubber: None / Plain / Diamond / Ceramic lagging
-  - **Mock pricing** in use — awaiting user's filled Excel template for real rates
-
-### P0 - Critical (PENDING)
-- [ ] Complete refactoring of quotes.tsx (4700+ lines)
-- [ ] Complete refactoring of calculator.tsx (3600+ lines)
+### P0 - Next
+- [ ] **Premium UI redesign** — Modern glass style across ALL screens
 
 ### P1 - Important
-- [ ] Test Export to PDF/Excel functionality end-to-end
-- [ ] Refactor backend/server.py into FastAPI routers
-- [ ] Test Push Notifications (requires APK build)
-- [ ] Fix Android navigation bar overlap
-- [ ] Test iOS logout fix on native build (requires successful EAS build)
-- [ ] Implement Pulley real pricing import (when user provides filled Excel)
+- [ ] Refactor server.py into modular FastAPI routers
+- [ ] KLA pricing (when user provides data)
+- [ ] Test Push Notifications on native build
 
 ### P2 - Nice to Have
-- [ ] CRM features (leads, activity timeline, follow-ups)
-- [ ] Excel upload for raw material costs
-- [ ] Show original RFQ number on quote cards
-- [ ] Code cleanup - delete unused files
-
-## Files Modified This Session (April 6, 2026)
-- `/app/backend/pulley_standards.py` - NEW: Pulley constants, calculation logic, mock pricing
-- `/app/backend/server.py` - Added pulley import + 4 new API endpoints (pulley-standards, calculate-pulley-cost, pulley-thicknesses, pulley-kla-model)
-- `/app/frontend/app/(tabs)/pulley.tsx` - NEW: Complete Pulley Calculator UI tab
-- `/app/frontend/app/(tabs)/_layout.tsx` - Added Pulley tab to bottom navigation
-- `/app/frontend/app/context/CartContext.tsx` - Added 'pulley' as source type
-- `/app/backend/tests/test_pulley_calculator.py` - NEW: 23 backend tests (all passing)
-
-## Previous Session Files Modified (March 23, 2026)
-- `/app/frontend/utils/api.ts` - ENHANCED: Added cache-busting timestamps, event emitter for global refresh, `forceRefreshAllData()`, `triggerGlobalRefresh()`
-- `/app/frontend/app/(tabs)/profile.tsx` - ENHANCED: Added "Refresh All Data" button, renamed "Clear Cache & Logout"
-- `/app/frontend/app/(tabs)/calculator.tsx` - Added global refresh event listener
-- `/app/frontend/app/(tabs)/quotes.tsx` - Added global refresh event listener
-- `/app/frontend/app/(tabs)/customers.tsx` - Added global refresh event listener
-- `/app/frontend/app/(tabs)/admin.tsx` - Added global refresh event listener
-
-## Previous Session Files Modified
-- `/app/frontend/app/(tabs)/customers.tsx` - Added X close buttons to Add/Edit Customer Modal and Customer Quotes Modal
-- `/app/frontend/app/(tabs)/search.tsx` - Added header with X close button to Quantity Modal
-- `/app/frontend/components/quotes/QuoteDetailModal.tsx` - NEW: Extracted Quote Detail Modal component (1271 lines)
-- `/app/frontend/components/quotes/EditQuoteModal.tsx` - NEW: Extracted Edit Quote Modal component (844 lines)
-- `/app/frontend/components/quotes/index.ts` - Updated barrel export to include QuoteDetailModal and EditQuoteModal
-- `/app/frontend/app/(tabs)/quotes.tsx` - MAJOR REFACTOR: Replaced inline modals with extracted components (reduced from 4762 to 3607 lines)
-
-## Previous Files Modified
-- `/app/frontend/app/(tabs)/search.tsx` - Added attachment UI and styles
-- `/app/backend/server.py` - Auto-freight calculation in approve_rfq, NoneType fix
-- `/app/backend/tests/test_approve_rfq_auto_freight.py` - New test file
-
-## Test Reports
-- `/app/test_reports/iteration_22.json` - P0 features tested, 12/12 backend tests passed
-- `/app/test_reports/iteration_27.json` - Pulley Calculator: 23/23 backend + 100% frontend tests passed
+- [ ] CRM features
+- [ ] Show original RFQ number on Quote cards
 
 ## Test Credentials
 - **Admin**: test@test.com / test123
 - **Customer**: customer@test.com / test123
+
+## Test Reports
+- `/app/test_reports/iteration_27.json` — Pulley Calculator: 23/23 backend + 100% frontend
