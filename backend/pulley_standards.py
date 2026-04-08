@@ -309,6 +309,9 @@ def calculate_pulley_cost(
 
     # 1. Pipe Cost
     pipe_rate = PIPE_RATES.get(pipe_dia, {}).get(pipe_thickness, 72.0)
+    # For pipe dia 630, 800, 1000 with face length > 1250mm, add Rs.8/kg
+    if pipe_dia in [630, 800, 1000] and face_length > 1250:
+        pipe_rate += 8.0
     pipe_weight = calculate_pipe_weight(pipe_dia, pipe_thickness, face_length)
     pipe_cost = pipe_weight * pipe_rate
     cost_breakdown["pipe_weight_kg"] = pipe_weight
