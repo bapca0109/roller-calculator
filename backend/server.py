@@ -21,6 +21,7 @@ from jose import jwt, JWTError
 from bson import ObjectId
 import roller_standards as rs
 import pulley_standards as ps
+from routes.pulley import router as pulley_router
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -7843,148 +7844,7 @@ async def download_raw_materials():
     )
 
 
-# ============= PULLEY CALCULATOR ROUTES =============
-
-@api_router.get("/pulley-standards")
-async def get_pulley_standards(current_user: dict = Depends(get_current_user)):
-    """Get all configuration options for pulley calculator"""
-    return {
-        "pulley_types": ps.PULLEY_TYPES,
-        "pipe_diameters": ps.PIPE_DIAMETERS,
-        "pipe_thickness_map": {str(k): v for k, v in ps.PIPE_THICKNESS_MAP.items()},
-        "shaft_diameters": ps.SHAFT_DIAMETERS,
-        "shaft_materials": ps.SHAFT_MATERIALS,
-        "end_plate_thicknesses": ps.END_PLATE_THICKNESSES,
-        "hub_types": ps.HUB_TYPES,
-        "hub_diameters": ps.HUB_DIAMETERS,
-        "kla_shaft_hub_options": ps.KLA_SHAFT_HUB_OPTIONS,
-        "rubber_lagging_types": ps.RUBBER_LAGGING_TYPES,
-        "rubber_plain_thicknesses": ps.RUBBER_PLAIN_THICKNESSES,
-        "rubber_ceramic_thicknesses": ps.RUBBER_CERAMIC_THICKNESSES,
-    }
-
-class PulleyCostRequest(BaseModel):
-    pulley_type: str = "Drive"
-    pipe_diameter: int
-    pipe_thickness: float
-    face_length: float  # mm
-    shaft_diameter_centre: int
-    shaft_material: str = "MS"
-    shaft_length: float  # mm
-    end_plate_thickness: int
-    end_plate_qty: int = 2  # 2, 3, or 4
-    hub_type: str = "no_hub"
-    hub_diameter: Optional[int] = None
-    hub_length: Optional[float] = None
-    shaft_dia_hub: Optional[int] = None
-    rubber_type: str = "none"
-    rubber_thickness: Optional[int] = None
-    quantity: int = 1
-    packing_type: str = "none"
-
-class PulleyCostResponse(BaseModel):
-    configuration: Dict[str, Any]
-    cost_breakdown: Dict[str, Any]
-    pricing: Dict[str, Any]
-    gst: Optional[Dict[str, Any]] = None
-    freight: Optional[Dict[str, Any]] = None
-    grand_total: float
-
-@api_router.post("/calculate-pulley-cost", response_model=PulleyCostResponse)
-async def calculate_pulley_cost(
-    request: PulleyCostRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """Calculate detailed pulley cost breakdown"""
-    # Validate pipe diameter
-    if request.pipe_diameter not in ps.PIPE_DIAMETERS:
-        raise HTTPException(status_code=400, detail=f"Invalid pipe diameter. Must be one of {ps.PIPE_DIAMETERS}")
-
-    # Validate pipe thickness for this diameter
-    available_thk = ps.get_available_thicknesses(request.pipe_diameter)
-    if request.pipe_thickness not in available_thk:
-        raise HTTPException(status_code=400, detail=f"Invalid thickness for {request.pipe_diameter}mm pipe. Available: {available_thk}")
-
-    # Validate shaft diameter
-    if request.shaft_diameter_centre not in ps.SHAFT_DIAMETERS:
-        raise HTTPException(status_code=400, detail=f"Invalid shaft diameter. Must be one of {ps.SHAFT_DIAMETERS}")
-
-    # Validate shaft material
-    if request.shaft_material not in ps.SHAFT_MATERIALS:
-        raise HTTPException(status_code=400, detail=f"Invalid shaft material. Must be one of {ps.SHAFT_MATERIALS}")
-
-    # Validate hub logic
-    if request.hub_type == "with_hub":
-        if not request.hub_diameter or not request.hub_length:
-            raise HTTPException(status_code=400, detail="Hub diameter and hub length required for 'With Hub' type")
-        min_hub_dia = request.shaft_diameter_centre + 40
-        if request.hub_diameter < min_hub_dia:
-            raise HTTPException(status_code=400, detail=f"Hub diameter must be >= {min_hub_dia}mm (Shaft Dia + 40mm)")
-    elif request.hub_type == "kla":
-        if not request.shaft_dia_hub:
-            raise HTTPException(status_code=400, detail="Shaft Dia @ Hub is required for KLA hub type")
-        kla_info = ps.get_kla_model(request.shaft_dia_hub)
-        if not kla_info:
-            raise HTTPException(status_code=400, detail=f"No KLA model found for shaft dia @ hub = {request.shaft_dia_hub}mm")
-
-    # Validate rubber lagging
-    if request.rubber_type in ["plain", "diamond"]:
-        if not request.rubber_thickness or request.rubber_thickness not in ps.RUBBER_PLAIN_THICKNESSES:
-            raise HTTPException(status_code=400, detail=f"Invalid rubber thickness for plain/diamond. Must be one of {ps.RUBBER_PLAIN_THICKNESSES}")
-    elif request.rubber_type == "ceramic":
-        if not request.rubber_thickness or request.rubber_thickness not in ps.RUBBER_CERAMIC_THICKNESSES:
-            raise HTTPException(status_code=400, detail=f"Invalid rubber thickness for ceramic. Must be one of {ps.RUBBER_CERAMIC_THICKNESSES}")
-
-    # Calculate
-    result = ps.calculate_pulley_cost(
-        pulley_type=request.pulley_type,
-        pipe_dia=request.pipe_diameter,
-        pipe_thickness=request.pipe_thickness,
-        face_length=request.face_length,
-        shaft_dia_centre=request.shaft_diameter_centre,
-        shaft_material=request.shaft_material,
-        shaft_length=request.shaft_length,
-        end_plate_thickness=request.end_plate_thickness,
-        hub_type=request.hub_type,
-        hub_dia=request.hub_diameter,
-        hub_length=request.hub_length,
-        shaft_dia_hub=request.shaft_dia_hub,
-        rubber_type=request.rubber_type,
-        rubber_thickness=request.rubber_thickness,
-        quantity=request.quantity,
-        packing_type=request.packing_type,
-        end_plate_qty=request.end_plate_qty,
-    )
-
-    return PulleyCostResponse(**result)
-
-@api_router.get("/pulley-thicknesses/{pipe_dia}")
-async def get_pulley_thicknesses(pipe_dia: int, current_user: dict = Depends(get_current_user)):
-    """Get available wall thicknesses for a pulley pipe diameter"""
-    thicknesses = ps.get_available_thicknesses(pipe_dia)
-    if not thicknesses:
-        raise HTTPException(status_code=404, detail=f"No thicknesses found for pipe diameter {pipe_dia}mm")
-    return {"pipe_diameter": pipe_dia, "thicknesses": thicknesses}
-
-@api_router.get("/pulley-kla-model/{shaft_dia_hub}")
-async def get_pulley_kla_model(shaft_dia_hub: int, current_user: dict = Depends(get_current_user)):
-    """Get KLA model info for a given shaft diameter at hub"""
-    kla_info = ps.get_kla_model(shaft_dia_hub)
-    if not kla_info:
-        raise HTTPException(status_code=404, detail=f"No KLA model for shaft dia @ hub = {shaft_dia_hub}mm")
-    return kla_info
-
-@api_router.get("/download/pulley-template")
-async def download_pulley_template():
-    """Download pulley pricing Excel template"""
-    file_path = ROOT_DIR / "static" / "pulley_pricing_template.xlsx"
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Template file not found")
-    return FileResponse(
-        path=str(file_path),
-        filename="pulley_pricing_template.xlsx",
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+# ============= PULLEY ROUTES (moved to routes/pulley.py) =============
 
 
 # ============= DRAWING GENERATOR =============
@@ -9681,6 +9541,7 @@ async def export_cart_excel(
 
 
 # Include the router in the main app
+api_router.include_router(pulley_router)
 app.include_router(api_router)
 
 app.add_middleware(
