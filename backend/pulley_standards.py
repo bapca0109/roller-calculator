@@ -269,12 +269,11 @@ def calculate_hub_weight(hub_dia, shaft_dia, hub_length):
 def calculate_rubber_lagging_area(pipe_dia, face_length, rubber_thickness):
     """
     Calculate rubber lagging surface area in sqm
-    Area = π × (pipe_dia + 2 × rubber_thickness) × face_length
-    (outer surface of the lagging)
+    Area = π × pipe_dia × face_length
+    (based on pipe OD only, rubber thickness NOT added)
     """
-    outer_dia = pipe_dia + 2 * rubber_thickness  # mm
-    # Circumference × length
-    area_mm2 = math.pi * outer_dia * face_length
+    # Circumference × length based on pipe OD
+    area_mm2 = math.pi * pipe_dia * face_length
     area_sqm = area_mm2 / 1e6
     return round(area_sqm, 4)
 
