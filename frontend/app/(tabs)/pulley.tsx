@@ -512,7 +512,7 @@ export default function PulleyScreen() {
           <Text style={styles.sectionTitle}>Hub Configuration</Text>
 
           <View style={styles.hubTypeRow}>
-            {['no_hub', 'with_hub', 'kla'].map((type) => (
+            {['no_hub', 'with_hub'].map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[styles.hubTypeBtn, hubType === type && styles.hubTypeBtnActive]}
