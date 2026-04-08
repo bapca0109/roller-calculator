@@ -58,7 +58,7 @@ KLA_SHAFT_HUB_OPTIONS = list(range(25, 295, 5))
 RUBBER_LAGGING_TYPES = ["none", "plain", "diamond", "ceramic"]
 
 # Rubber Lagging Thicknesses (mm)
-RUBBER_PLAIN_THICKNESSES = [8, 10, 12, 14, 16, 18, 20]
+RUBBER_PLAIN_THICKNESSES = [6, 8, 10, 12]
 RUBBER_CERAMIC_THICKNESSES = [12, 15, 22]
 
 # Steel density (kg/m³)
@@ -486,4 +486,6 @@ def calculate_pulley_cost(
         "gst": gst_data,
         "freight": None,
         "grand_total": round(grand_total, 2),
+    }
+al": round(grand_total, 2),
     }
