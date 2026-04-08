@@ -188,9 +188,9 @@ RUBBER_PLAIN_RATES = {
 }
 
 RUBBER_CERAMIC_RATES = {
-    12: 2800,
-    15: 3200,
-    22: 4500,
+    12: 20000,
+    16: 24000,
+    22: 30000,
 }
 
 # ============= CALCULATION FUNCTIONS =============
@@ -486,6 +486,4 @@ def calculate_pulley_cost(
         "gst": gst_data,
         "freight": None,
         "grand_total": round(grand_total, 2),
-    }
-al": round(grand_total, 2),
     }
