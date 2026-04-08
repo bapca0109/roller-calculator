@@ -75,6 +75,8 @@ export interface Quote {
   created_at: string;
   created_at_ist?: string;
   updated_at: string;
+  converted_to_so?: string;
+  _id?: string;
 }
 
 export interface RevisionHistoryEntry {

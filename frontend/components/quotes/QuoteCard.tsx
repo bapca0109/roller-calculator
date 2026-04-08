@@ -27,6 +27,7 @@ interface QuoteCardProps {
   isCustomer: boolean;
   docLabel: string;
   onPress: (quote: Quote) => void;
+  onConvertToSO?: (quote: Quote) => void;
   formatDate: (dateString: string) => string;
   getStatusColor: (status: string) => string;
   getStatusIcon: (status: string) => any;
@@ -38,6 +39,7 @@ export const QuoteCard: React.FC<QuoteCardProps> = ({
   isCustomer,
   docLabel,
   onPress,
+  onConvertToSO,
   formatDate,
   getStatusColor,
   getStatusIcon,
@@ -140,6 +142,24 @@ export const QuoteCard: React.FC<QuoteCardProps> = ({
         <View style={styles.approvedBadge}>
           <Ionicons name="checkmark-circle" size={18} color="#fff" />
           <Text style={styles.badgeText}>Approved</Text>
+        </View>
+      )}
+
+      {isApproved && isAdmin && !quote.converted_to_so && onConvertToSO && (
+        <TouchableOpacity
+          style={styles.convertSOBtn}
+          onPress={(e) => { e.stopPropagation(); onConvertToSO(quote); }}
+          data-testid="convert-to-so-btn"
+        >
+          <Ionicons name="cube-outline" size={16} color="#fff" />
+          <Text style={styles.convertSOText}>Convert to SO</Text>
+        </TouchableOpacity>
+      )}
+
+      {isApproved && quote.converted_to_so && (
+        <View style={styles.soTag}>
+          <Ionicons name="cube" size={14} color="#C5964A" />
+          <Text style={styles.soTagText}>{quote.converted_to_so}</Text>
         </View>
       )}
       
@@ -333,6 +353,43 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  convertSOBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#C5964A',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 10,
+    gap: 8,
+    shadowColor: '#C5964A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  convertSOText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  soTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(197, 150, 74, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(197, 150, 74, 0.3)',
+  },
+  soTagText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#C5964A',
   },
 });
 

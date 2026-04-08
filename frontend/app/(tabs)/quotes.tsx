@@ -1568,6 +1568,21 @@ export default function QuotesScreen() {
         isCustomer={isCustomer}
         docLabel={docLabel}
         onPress={openQuoteDetail}
+        onConvertToSO={async (quote) => {
+          Alert.alert('Convert to Sales Order', `Create SO from ${quote.quote_number}?`, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Convert', onPress: async () => {
+              try {
+                const quoteId = quote.id || quote._id;
+                const res = await api.post(`/orders/from-quote/${quoteId}`);
+                Alert.alert('Success', res.data.message);
+                fetchQuotes();
+              } catch (e: any) {
+                Alert.alert('Error', e.response?.data?.detail || 'Failed to convert');
+              }
+            }}
+          ]);
+        }}
         formatDate={formatDate}
         getStatusColor={getStatusColor}
         getStatusIcon={getStatusIcon}
