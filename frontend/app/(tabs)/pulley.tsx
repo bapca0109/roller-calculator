@@ -1023,12 +1023,12 @@ export default function PulleyScreen() {
           />
         </View>
 
-        {/* Mock pricing notice - Admin only */}
+        {/* KLA pricing notice - Admin only */}
         {!isCustomer && (
         <View style={styles.noticeCard} data-testid="mock-pricing-notice">
           <Ionicons name="information-circle-outline" size={18} color="#F59E0B" />
           <Text style={styles.noticeText}>
-            Using placeholder pricing. Upload the filled Pulley Pricing Excel template via Admin panel for actual rates.
+            KLA (Keyless Locking Assembly) pricing pending. All other rates are using your actual data.
           </Text>
         </View>
         )}
