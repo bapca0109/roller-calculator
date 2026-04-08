@@ -159,3 +159,207 @@ class Customer(BaseModel):
     gst_number: Optional[str] = None
     notes: Optional[str] = None
     customer_code: Optional[str] = None
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: Dict[str, Any]
+
+
+class QuoteStatus:
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    REVISED = "revised"
+    CANCELLED = "cancelled"
+
+
+class UserRole:
+    ADMIN = "admin"
+    SALES = "sales"
+    CUSTOMER = "customer"
+
+
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    company: Optional[str] = None
+    designation: Optional[str] = None
+    role: str = UserRole.CUSTOMER
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class RollerSpecs(BaseModel):
+    pipe_diameter: float
+    pipe_length: float
+    shaft_diameter: int
+    bearing_number: str
+    bearing_make: Optional[str] = "china"
+    pipe_type: Optional[str] = "B"
+    rubber_diameter: Optional[float] = None
+    belt_widths: Optional[List[int]] = None
+
+
+class PricingFactors(BaseModel):
+    quantity_discount: float = 0.0
+    custom_premium: float = 0.0
+    material_factor: float = 1.0
+
+
+class ProductAttachment(BaseModel):
+    name: str
+    type: str
+    base64: Optional[str] = None
+
+
+class Product(BaseModel):
+    name: str
+    sku: str
+    description: str
+    category: str
+    specifications: RollerSpecs
+    base_price: float
+    pricing_factors: Optional[PricingFactors] = None
+    image: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ProductInDB(Product):
+    id: str
+
+
+class ProductCreate(BaseModel):
+    name: str
+    sku: str
+    description: str
+    category: str
+    specifications: RollerSpecs
+    base_price: float
+    pricing_factors: Optional[PricingFactors] = None
+    image: Optional[str] = None
+
+
+class QuoteProduct(BaseModel):
+    product_id: str
+    product_name: str
+    quantity: int
+    unit_price: float
+    weight: Optional[float] = None
+    weight_kg: Optional[float] = None
+    specifications: Optional[Dict[str, Any]] = None
+    calculated_discount: float = 0.0
+    custom_premium: float = 0.0
+    item_discount_percent: float = 0.0
+    remark: Optional[str] = None
+    attachments: Optional[List[ProductAttachment]] = []
+
+
+class CommercialTerms(BaseModel):
+    payment_terms: Optional[str] = "100% Advance against pro-forma"
+    freight_terms: Optional[str] = "Ex-Works"
+    color_finish: Optional[str] = "1+1 : Red oxide + finish paint black color approx 50-60 micron"
+    delivery_timeline: Optional[str] = "25-30 working days"
+    warranty: Optional[str] = "Warranty stands for 12 months from date of invoice considering L10 life."
+    validity: Optional[str] = "This offer stands valid for 30 days."
+
+
+class Quote(BaseModel):
+    quote_number: Optional[str] = None
+    quote_type: Optional[str] = None
+    customer_id: str
+    customer_name: str
+    customer_email: str
+    customer_code: Optional[str] = None
+    customer_company: Optional[str] = None
+    customer_rfq_no: Optional[str] = None
+    customer_details: Optional[Dict[str, Any]] = None
+    products: List[QuoteProduct]
+    subtotal: float
+    total_discount: float = 0.0
+    use_item_discounts: bool = False
+    discount_percent: Optional[float] = 0.0
+    shipping_cost: float = 0.0
+    delivery_location: Optional[str] = None
+    packing_type: Optional[str] = None
+    total_price: float
+    status: str = QuoteStatus.PENDING
+    notes: Optional[str] = None
+    cost_breakdown: Optional[Dict[str, float]] = None
+    pricing_details: Optional[Dict[str, Any]] = None
+    freight_details: Optional[Dict[str, Any]] = None
+    packing_charges: Optional[float] = 0.0
+    commercial_terms: Optional[Dict[str, str]] = None
+    read_by_admin: bool = False
+    original_rfq_number: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approved_by: Optional[str] = None
+    rejected_at: Optional[datetime] = None
+    rejected_by: Optional[str] = None
+    rejection_reason: Optional[str] = None
+    revision_history: Optional[List[Dict[str, Any]]] = []
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class QuoteInDB(Quote):
+    id: str
+
+
+class QuoteCreate(BaseModel):
+    products: List[QuoteProduct]
+    customer_id: Optional[str] = None
+    delivery_location: Optional[str] = None
+    packing_type: Optional[str] = None
+    shipping_cost: Optional[float] = 0.0
+    freight_details: Optional[Dict[str, Any]] = None
+    notes: Optional[str] = None
+    customer_rfq_no: Optional[str] = None
+
+
+class QuoteUpdate(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    shipping_cost: Optional[float] = None
+    products: Optional[List[QuoteProduct]] = None
+    subtotal: Optional[float] = None
+    total_discount: Optional[float] = None
+    use_item_discounts: Optional[bool] = None
+    discount_percent: Optional[float] = None
+    packing_charges: Optional[float] = None
+    packing_type: Optional[str] = None
+    delivery_location: Optional[str] = None
+    total_price: Optional[float] = None
+    freight_details: Optional[Dict[str, Any]] = None
+    commercial_terms: Optional[Dict[str, str]] = None
+
+
+class QuoteReject(BaseModel):
+    reason: str
+    custom_message: Optional[str] = None
+
+
+class RollerQuoteCreate(BaseModel):
+    customer_name: str
+    customer_id: Optional[str] = None
+    customer_details: Optional[Dict[str, Any]] = None
+    configuration: Dict[str, Any]
+    cost_breakdown: Dict[str, float]
+    pricing: Dict[str, Any]
+    freight: Optional[Dict[str, Any]] = None
+    grand_total: float
+    notes: Optional[str] = None
+
+
+class RevisionHistoryEntry(BaseModel):
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    changed_by: str
+    changed_by_name: Optional[str] = None
+    action: str
+    changes: Dict[str, Any] = {}
+    summary: str = ""
