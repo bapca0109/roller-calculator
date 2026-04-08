@@ -50,8 +50,8 @@ export default function TabsLayout() {
 
   // Calculate bottom padding for Android navigation bar
   // On Android, we need extra padding to avoid overlap with system navigation
-  const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 10) + 10 : 10;
-  const tabBarHeight = Platform.OS === 'android' ? 64 + Math.max(insets.bottom, 0) : 64;
+  const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 20) + 16 : 10;
+  const tabBarHeight = Platform.OS === 'android' ? 72 + Math.max(insets.bottom, 20) : 64;
 
   return (
     <Tabs
