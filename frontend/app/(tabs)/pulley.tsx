@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CustomDropdown } from '../../components/CustomDropdown';
@@ -19,6 +20,9 @@ import { useCart } from '../context/CartContext';
 import api, { cacheEvents } from '../../utils/api';
 import FloatingCartButton from '../../components/FloatingCartButton';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // Types
 interface PulleyStandards {
@@ -124,12 +128,22 @@ export default function PulleyScreen() {
   const { user } = useAuth();
   const { addToCart, cartCount } = useCart();
   const router = useRouter();
+  const isCustomer = user?.role === 'customer';
 
   const [standards, setStandards] = useState<PulleyStandards | null>(null);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
   const [result, setResult] = useState<PulleyCostResult | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [savingQuote, setSavingQuote] = useState(false);
+
+  // Attachments
+  const [currentAttachments, setCurrentAttachments] = useState<any[]>([]);
+  const [productRemark, setProductRemark] = useState('');
+
+  // Customer selection (admin)
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
 
   // Form state
   const [pulleyType, setPulleyType] = useState('Drive');
@@ -161,8 +175,10 @@ export default function PulleyScreen() {
 
   useEffect(() => {
     fetchStandards();
+    fetchCustomers();
     const handleRefresh = () => {
       fetchStandards();
+      fetchCustomers();
     };
     cacheEvents.on('refresh', handleRefresh);
     return () => {
@@ -221,8 +237,96 @@ export default function PulleyScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchStandards();
+    await Promise.all([fetchStandards(), fetchCustomers()]);
     setRefreshing(false);
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await api.get('/customers');
+      setCustomers(response.data.customers || []);
+    } catch { /* ignore */ }
+  };
+
+  // Attachment functions
+  const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission Denied', 'Allow photo access.'); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, base64: true });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        let base64Data = asset.base64;
+        if (!base64Data && asset.uri && Platform.OS === 'web') {
+          const resp = await fetch(asset.uri); const blob = await resp.blob();
+          base64Data = await new Promise((resolve) => { const reader = new FileReader(); reader.onloadend = () => resolve((reader.result as string).split(',')[1]); reader.readAsDataURL(blob); });
+        }
+        setCurrentAttachments([...currentAttachments, { uri: asset.uri, name: asset.fileName || `image_${Date.now()}.jpg`, type: 'image', base64: base64Data }]);
+      }
+    } catch { Alert.alert('Error', 'Failed to pick image'); }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission Denied', 'Allow camera access.'); return; }
+      const result = await ImagePicker.launchCameraAsync({ quality: 0.7, base64: true });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setCurrentAttachments([...currentAttachments, { uri: asset.uri, name: `photo_${Date.now()}.jpg`, type: 'image', base64: asset.base64 }]);
+      }
+    } catch { Alert.alert('Error', 'Failed to take photo'); }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'], copyToCacheDirectory: true });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        let base64Data: string | undefined;
+        try {
+          if (Platform.OS === 'web') {
+            const resp = await fetch(asset.uri); const blob = await resp.blob();
+            base64Data = await new Promise((resolve) => { const reader = new FileReader(); reader.onloadend = () => resolve((reader.result as string).split(',')[1]); reader.readAsDataURL(blob); });
+          } else {
+            base64Data = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+          }
+        } catch { /* ignore */ }
+        setCurrentAttachments([...currentAttachments, { uri: asset.uri, name: asset.name || `file_${Date.now()}`, type: 'document', base64: base64Data }]);
+      }
+    } catch { Alert.alert('Error', 'Failed to pick document'); }
+  };
+
+  const removeAttachment = (index: number) => {
+    setCurrentAttachments(currentAttachments.filter((_, i) => i !== index));
+  };
+
+  const saveQuote = async () => {
+    if (!result) return;
+    setSavingQuote(true);
+    try {
+      const customerDetails = selectedCustomer ? {
+        name: selectedCustomer.name, company: selectedCustomer.company, email: selectedCustomer.email,
+        phone: selectedCustomer.phone, address: selectedCustomer.address, city: selectedCustomer.city,
+        state: selectedCustomer.state, pincode: selectedCustomer.pincode, gst_number: selectedCustomer.gst_number,
+      } : null;
+      const response = await api.post('/quotes/roller', {
+        customer_name: selectedCustomer?.name || user?.name || 'Customer',
+        customer_id: selectedCustomer?.id || null,
+        customer_details: customerDetails,
+        configuration: result.configuration,
+        cost_breakdown: result.cost_breakdown,
+        pricing: result.pricing,
+        freight: null,
+        grand_total: result.grand_total,
+        notes: `Pulley: ${result.configuration.product_code}`
+      });
+      Alert.alert('Quote Saved!', `Quote Number: ${response.data.quote_number}\nTotal: Rs. ${response.data.total_price.toFixed(2)}`);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to save quote');
+    } finally {
+      setSavingQuote(false);
+    }
   };
 
   const validate = () => {
@@ -313,11 +417,15 @@ export default function PulleyScreen() {
         pipe_type: `${result.configuration.pipe_thickness_mm}mm wall`,
         shaft_diameter: result.configuration.shaft_diameter_centre_mm,
       },
+      remark: productRemark.trim() || undefined,
+      attachments: currentAttachments.map(att => ({ uri: att.uri, name: att.name, type: att.type, base64: att.base64 })),
       source: 'pulley',
       calculatorData: result,
     });
 
     Alert.alert('Added to Cart', `${result.configuration.pulley_type} Pulley added to cart`);
+    setCurrentAttachments([]);
+    setProductRemark('');
     setResult(null);
   };
 
@@ -795,8 +903,77 @@ export default function PulleyScreen() {
               <Ionicons name="cart-outline" size={20} color="#FFFFFF" />
               <Text style={styles.addToCartText}>Add to Cart</Text>
             </TouchableOpacity>
+
+            {/* Save Single Quote */}
+            <TouchableOpacity
+              style={styles.saveSingleBtn}
+              onPress={saveQuote}
+              disabled={savingQuote}
+              data-testid="save-single-pulley-btn"
+            >
+              {savingQuote ? (
+                <ActivityIndicator color="#960018" />
+              ) : (
+                <>
+                  <Ionicons name="save-outline" size={20} color="#960018" />
+                  <Text style={styles.saveSingleText}>Save Single Quote</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         )}
+
+        {/* Attachments Section - before calculate or after result */}
+        <View style={styles.card} data-testid="attachments-section">
+          <Text style={styles.sectionTitle}>Attachments (Optional)</Text>
+          <Text style={styles.hintText}>Attach drawing, photo, or document</Text>
+          <View style={styles.attachBtnRow}>
+            <TouchableOpacity style={styles.attachBtn} onPress={takePhoto}>
+              <Ionicons name="camera" size={22} color="#960018" />
+              <Text style={styles.attachBtnText}>Camera</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.attachBtn} onPress={pickImage}>
+              <Ionicons name="image" size={22} color="#960018" />
+              <Text style={styles.attachBtnText}>Gallery</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.attachBtn} onPress={pickDocument}>
+              <Ionicons name="document" size={22} color="#960018" />
+              <Text style={styles.attachBtnText}>File</Text>
+            </TouchableOpacity>
+          </View>
+          {currentAttachments.length > 0 && (
+            <View style={styles.attachList}>
+              {currentAttachments.map((att, idx) => (
+                <View key={idx} style={styles.attachItem}>
+                  {att.type === 'image' ? (
+                    <Image source={{ uri: att.uri }} style={styles.attachThumb} />
+                  ) : (
+                    <View style={styles.attachDocIcon}>
+                      <Ionicons name="document-text" size={28} color="#960018" />
+                    </View>
+                  )}
+                  <Text style={styles.attachName} numberOfLines={1}>{att.name}</Text>
+                  <TouchableOpacity onPress={() => removeAttachment(idx)}>
+                    <Ionicons name="close-circle" size={22} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Product Remark */}
+        <View style={styles.card} data-testid="remark-section">
+          <Text style={styles.sectionTitle}>Remark (Optional)</Text>
+          <TextInput
+            style={[styles.input, { height: 60, textAlignVertical: 'top' }]}
+            value={productRemark}
+            onChangeText={setProductRemark}
+            placeholder="Add any notes for this pulley..."
+            multiline
+            data-testid="pulley-remark-input"
+          />
+        </View>
 
         {/* Mock pricing notice */}
         <View style={styles.noticeCard} data-testid="mock-pricing-notice">
@@ -1139,11 +1316,83 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
     borderRadius: 10,
     paddingVertical: 14,
+    marginBottom: 8,
   },
   addToCartText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  saveSingleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: '#960018',
+  },
+  saveSingleText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#960018',
+  },
+  hintText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 10,
+  },
+  attachBtnRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  attachBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFF5F5',
+  },
+  attachBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#960018',
+  },
+  attachList: {
+    marginTop: 12,
+    gap: 8,
+  },
+  attachItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 8,
+  },
+  attachThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+  },
+  attachDocIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    backgroundColor: '#FFF5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  attachName: {
+    flex: 1,
+    fontSize: 13,
+    color: '#475569',
   },
   noticeCard: {
     flexDirection: 'row',
