@@ -63,7 +63,7 @@ async def create_quote(
     quote_dict = {
         "quote_number": quote_number,
         "quote_type": quote_type,
-        "customer_id": current_user["id"],
+        "customer_id": current_user.get("email"),
         "customer_code": customer_code,
         "customer_name": current_user["name"],
         "customer_company": current_user.get("company", ""),
@@ -162,7 +162,7 @@ async def create_roller_quote(
     quote_dict = {
         "quote_number": quote_number,
         "quote_type": quote_type,
-        "customer_id": quote_data.customer_id or current_user["id"],
+        "customer_id": quote_data.customer_id or current_user.get("email"),
         "customer_code": customer_code,
         "customer_name": quote_data.customer_name or current_user["name"],
         "customer_company": quote_data.customer_details.get("company", "") if quote_data.customer_details else current_user.get("company", ""),
@@ -203,7 +203,7 @@ async def get_quotes(current_user: dict = Depends(get_current_user)):
     query = {}
     # Customers can only see their own quotes
     if current_user["role"] == UserRole.CUSTOMER:
-        query["customer_id"] = current_user["id"]
+        query["customer_id"] = current_user.get("email")
     
     quotes = await db.quotes.find(query).sort("created_at", -1).limit(100).to_list(100)
     result = []
@@ -526,7 +526,7 @@ async def get_quote(quote_id: str, current_user: dict = Depends(get_current_user
         raise HTTPException(status_code=404, detail="Quote not found")
     
     # Check permissions
-    if current_user["role"] == UserRole.CUSTOMER and quote["customer_id"] != current_user["id"]:
+    if current_user["role"] == UserRole.CUSTOMER and quote["customer_id"] != current_user.get("email"):
         raise HTTPException(status_code=403, detail="Not authorized to view this quote")
     
     # Calculate missing weights for products
@@ -569,7 +569,7 @@ async def get_quote_revision_history(
     
     # Check access: Admin/Sales can view any, Customers can only view their own
     is_admin_or_sales = current_user["role"] in [UserRole.ADMIN, UserRole.SALES]
-    is_quote_owner = quote.get("customer_id") == current_user["id"]
+    is_quote_owner = quote.get("customer_id") == current_user.get("email")
     
     if not is_admin_or_sales and not is_quote_owner:
         raise HTTPException(status_code=403, detail="Access denied")
