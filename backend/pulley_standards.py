@@ -59,7 +59,7 @@ RUBBER_LAGGING_TYPES = ["none", "plain", "diamond", "ceramic"]
 
 # Rubber Lagging Thicknesses (mm)
 RUBBER_PLAIN_THICKNESSES = [6, 8, 10, 12]
-RUBBER_CERAMIC_THICKNESSES = [12, 15, 22]
+RUBBER_CERAMIC_THICKNESSES = [12, 16, 22]
 
 # Steel density (kg/m³)
 STEEL_DENSITY = 7850
@@ -178,13 +178,10 @@ KLA_MODELS = {
 
 # Rubber Lagging rates (₹/sqm)
 RUBBER_PLAIN_RATES = {
-    8: 450,
-    10: 520,
-    12: 600,
-    14: 680,
-    16: 760,
-    18: 850,
-    20: 950,
+    6: 3300,
+    8: 4800,
+    10: 5800,
+    12: 6400,
 }
 
 RUBBER_CERAMIC_RATES = {
