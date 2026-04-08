@@ -756,7 +756,55 @@ export default function PulleyScreen() {
         {/* Calculate Button */}
         <TouchableOpacity
           style={[styles.calculateBtn, calculating && styles.calculateBtnDisabled]}
-          onPress={calculateCost}
+          onPress={async () => {
+            if (isCustomer) {
+              // Customer: calculate + add to cart in one step
+              if (!validate()) return;
+              setCalculating(true);
+              try {
+                const payload: any = {
+                  pulley_type: pulleyType, pipe_diameter: pipeDiameter, pipe_thickness: pipeThickness,
+                  face_length: parseFloat(faceLength), shaft_diameter_centre: shaftDiaCentre,
+                  shaft_material: shaftMaterial, shaft_length: parseFloat(shaftLength),
+                  end_plate_thickness: endPlateThickness, end_plate_qty: endPlateQty,
+                  hub_type: hubType, quantity: parseInt(quantity), packing_type: packingType,
+                };
+                if (hubType === 'with_hub') { payload.hub_diameter = hubDiameter; payload.hub_length = parseFloat(hubLength); }
+                if (rubberType !== 'none') { payload.rubber_type = rubberType; payload.rubber_thickness = rubberThickness; }
+                const response = await api.post('/calculate-pulley-cost', payload);
+                const calcResult = response.data;
+                addToCart({
+                  product_id: calcResult.configuration.product_code,
+                  product_name: `${calcResult.configuration.pulley_type} Pulley - ${calcResult.configuration.product_code}`,
+                  product_code: calcResult.configuration.product_code,
+                  roller_type: 'pulley',
+                  quantity: calcResult.configuration.quantity,
+                  unit_price: calcResult.pricing.unit_price,
+                  weight_kg: calcResult.cost_breakdown.single_pulley_weight_kg || 0,
+                  specifications: {
+                    pipe_diameter: calcResult.configuration.pipe_diameter_mm,
+                    pipe_length: calcResult.configuration.face_length_mm,
+                    pipe_type: `${calcResult.configuration.pipe_thickness_mm}mm wall`,
+                    shaft_diameter: calcResult.configuration.shaft_diameter_centre_mm,
+                  },
+                  remark: productRemark.trim() || undefined,
+                  attachments: currentAttachments.map(att => ({ uri: att.uri, name: att.name, type: att.type, base64: att.base64 })),
+                  source: 'pulley',
+                  calculatorData: calcResult,
+                });
+                setCurrentAttachments([]);
+                setProductRemark('');
+                Alert.alert('Added to Cart', `${calcResult.configuration.pulley_type} Pulley added to cart`);
+              } catch (error: any) {
+                Alert.alert('Error', error.response?.data?.detail || 'Failed to calculate');
+              } finally {
+                setCalculating(false);
+              }
+            } else {
+              // Admin: calculate and show results
+              await calculateCost();
+            }
+          }}
           disabled={calculating}
           data-testid="calculate-pulley-btn"
         >
@@ -764,14 +812,14 @@ export default function PulleyScreen() {
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <>
-              <Ionicons name="calculator-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.calculateBtnText}>Calculate Pulley Price</Text>
+              <Ionicons name={isCustomer ? "cart-outline" : "calculator-outline"} size={20} color="#FFFFFF" />
+              <Text style={styles.calculateBtnText}>{isCustomer ? 'Add to Cart' : 'Calculate Pulley Price'}</Text>
             </>
           )}
         </TouchableOpacity>
 
-        {/* Result Card */}
-        {result && (
+        {/* Result Card - Admin Only */}
+        {result && !isCustomer && (
           <View style={styles.resultCard} data-testid="pulley-result-card">
             <View style={styles.resultHeader}>
               <Text style={styles.resultTitle}>Cost Breakdown</Text>
@@ -975,13 +1023,15 @@ export default function PulleyScreen() {
           />
         </View>
 
-        {/* Mock pricing notice */}
+        {/* Mock pricing notice - Admin only */}
+        {!isCustomer && (
         <View style={styles.noticeCard} data-testid="mock-pricing-notice">
           <Ionicons name="information-circle-outline" size={18} color="#F59E0B" />
           <Text style={styles.noticeText}>
             Using placeholder pricing. Upload the filled Pulley Pricing Excel template via Admin panel for actual rates.
           </Text>
         </View>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
