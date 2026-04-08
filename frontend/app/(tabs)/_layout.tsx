@@ -82,10 +82,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Dashboard',
+          title: 'CRM',
           href: isAdmin ? '/dashboard' : null,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart-outline" size={size} color={color} />
+            <Ionicons name="people-circle-outline" size={size} color={color} />
           ),
         }}
       />
