@@ -172,6 +172,22 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
                     <Text style={os.actionText}>Invoice</Text>
                   </TouchableOpacity>
                 )}
+                {order.tax_invoice && (
+                  <TouchableOpacity style={[os.actionBtn, { backgroundColor: 'rgba(16,185,129,0.1)', borderColor: '#10B981' }]} onPress={() => {
+                    const invId = order.tax_invoice_id || order.id;
+                    api.get(`/invoices`).then(res => {
+                      const inv = res.data.invoices?.find((i: any) => i.so_number === order.so_number && i.invoice_type === 'tax');
+                      if (inv) {
+                        const url = api.defaults.baseURL + `/invoices/${inv.id}/pdf?token=` + (api.defaults.headers?.common?.Authorization?.toString().replace('Bearer ', '') || '');
+                        if (typeof window !== 'undefined') window.open(url, '_blank');
+                        else Alert.alert('Invoice', `Open in browser: ${inv.invoice_number}`);
+                      }
+                    }).catch(() => Alert.alert('Error', 'Could not load invoice'));
+                  }}>
+                    <Ionicons name="download-outline" size={15} color="#10B981" />
+                    <Text style={[os.actionText, { color: '#10B981' }]}>PDF</Text>
+                  </TouchableOpacity>
+                )}
                 {/* Next stage button */}
                 {order.stage !== 'delivered' && (() => {
                   const stages = ['confirmed', 'in_production', 'ready', 'dispatched', 'delivered'];
