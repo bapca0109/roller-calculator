@@ -631,3 +631,283 @@ async def export_cart_excel(
         logging.error(f"Cart Excel export error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+
+# ============= COMPANY DETAILS FOR PDF =============
+COMPANY_INFO = {
+    "name": "Convero Engineering",
+    "address": "Pune, Maharashtra, India",
+    "email": "info@convero.in",
+    "phone": "",
+    "gst": "",
+    "bank_name": "",
+    "bank_account": "",
+    "bank_ifsc": "",
+    "bank_branch": "",
+}
+
+# ============= ORDERS EXPORT =============
+
+@router.get("/orders/export/excel")
+async def export_orders_excel(
+    stage: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        query = {}
+        if stage:
+            query["stage"] = stage
+
+        orders = await db.sales_orders.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Sales Orders"
+
+        headers = ["SO Number", "Quote Ref", "Customer", "Company", "Stage", "Total Price", "Paid", "Balance Due", "Payment Status", "PI Number", "Invoice Number", "Created"]
+        header_fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+
+        for row_idx, order in enumerate(orders, 2):
+            ws.cell(row=row_idx, column=1, value=order.get("so_number"))
+            ws.cell(row=row_idx, column=2, value=order.get("quote_number"))
+            ws.cell(row=row_idx, column=3, value=order.get("customer_name"))
+            ws.cell(row=row_idx, column=4, value=order.get("customer_company"))
+            ws.cell(row=row_idx, column=5, value=order.get("stage"))
+            ws.cell(row=row_idx, column=6, value=round(order.get("total_price", 0), 2))
+            ws.cell(row=row_idx, column=7, value=round(order.get("total_paid", 0), 2))
+            ws.cell(row=row_idx, column=8, value=round(order.get("balance_due", 0), 2))
+            ws.cell(row=row_idx, column=9, value=order.get("payment_status"))
+            ws.cell(row=row_idx, column=10, value=order.get("proforma_invoice"))
+            ws.cell(row=row_idx, column=11, value=order.get("tax_invoice"))
+            ws.cell(row=row_idx, column=12, value=str(order.get("created_at", ""))[:10])
+
+        for col in range(1, len(headers) + 1):
+            ws.column_dimensions[get_column_letter(col)].width = 18
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=Sales_Orders.xlsx"}
+        )
+    except Exception as e:
+        logging.error(f"Orders export error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/orders/export/pdf")
+async def export_orders_pdf(
+    stage: Optional[str] = None,
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    auth_token = token
+    if not auth_token and authorization and authorization.startswith("Bearer "):
+        auth_token = authorization[7:]
+    if not auth_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    try:
+        payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    query = {}
+    if stage:
+        query["stage"] = stage
+
+    orders = await db.sales_orders.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+    html = f"""<html><head><style>
+    body {{ font-family: Arial; margin: 20px; }}
+    h1 {{ color: #0F172A; border-bottom: 3px solid #C5964A; padding-bottom: 8px; }}
+    .company {{ color: #64748B; font-size: 12px; }}
+    table {{ width: 100%; border-collapse: collapse; margin-top: 16px; }}
+    th {{ background: #0F172A; color: white; padding: 10px; text-align: left; font-size: 11px; }}
+    td {{ padding: 8px; border-bottom: 1px solid #E2E8F0; font-size: 11px; }}
+    .stage {{ padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 10px; }}
+    .confirmed {{ background: #DBEAFE; color: #1E40AF; }}
+    .in_production {{ background: #FEF3C7; color: #92400E; }}
+    .ready {{ background: #EDE9FE; color: #5B21B6; }}
+    .dispatched {{ background: #FEF3C7; color: #92400E; }}
+    .delivered {{ background: #D1FAE5; color: #065F46; }}
+    .paid {{ color: #10B981; font-weight: bold; }}
+    .partial {{ color: #F59E0B; font-weight: bold; }}
+    .unpaid {{ color: #EF4444; font-weight: bold; }}
+    </style></head><body>
+    <h1>Sales Orders</h1>
+    <p class="company">{COMPANY_INFO['name']} | {COMPANY_INFO['email']}</p>
+    <table><tr><th>SO #</th><th>Customer</th><th>Stage</th><th>Total</th><th>Paid</th><th>Due</th><th>Payment</th><th>Invoice</th><th>Date</th></tr>"""
+
+    for o in orders:
+        stage_cls = o.get("stage", "").replace(" ", "_")
+        pay_cls = o.get("payment_status", "unpaid")
+        html += f"""<tr>
+        <td><b>{o.get('so_number','')}</b></td>
+        <td>{o.get('customer_name','')}</td>
+        <td><span class="stage {stage_cls}">{o.get('stage','')}</span></td>
+        <td>Rs.{o.get('total_price',0):,.2f}</td>
+        <td>Rs.{o.get('total_paid',0):,.2f}</td>
+        <td>Rs.{o.get('balance_due',0):,.2f}</td>
+        <td><span class="{pay_cls}">{pay_cls}</span></td>
+        <td>{o.get('tax_invoice','') or o.get('proforma_invoice','') or '-'}</td>
+        <td>{str(o.get('created_at',''))[:10]}</td>
+        </tr>"""
+
+    html += "</table></body></html>"
+
+    output = io.BytesIO(html.encode())
+    output.seek(0)
+    return StreamingResponse(output, media_type="text/html",
+                           headers={"Content-Disposition": "attachment; filename=Sales_Orders.html"})
+
+
+# ============= CRM LEADS EXPORT =============
+
+@router.get("/crm/leads/export/excel")
+async def export_leads_excel(current_user: dict = Depends(get_current_user)):
+    try:
+        leads = await db.leads.find({}, {"_id": 0}).sort("updated_at", -1).to_list(500)
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "CRM Leads"
+
+        headers = ["Name", "Company", "Email", "Phone", "Stage", "Source", "Product Interest", "Est. Value", "Created", "Updated"]
+        header_fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+
+        for row_idx, lead in enumerate(leads, 2):
+            ws.cell(row=row_idx, column=1, value=lead.get("name"))
+            ws.cell(row=row_idx, column=2, value=lead.get("company"))
+            ws.cell(row=row_idx, column=3, value=lead.get("email"))
+            ws.cell(row=row_idx, column=4, value=lead.get("phone"))
+            ws.cell(row=row_idx, column=5, value=lead.get("stage"))
+            ws.cell(row=row_idx, column=6, value=lead.get("source"))
+            ws.cell(row=row_idx, column=7, value=lead.get("product_interest"))
+            ws.cell(row=row_idx, column=8, value=lead.get("estimated_value"))
+            ws.cell(row=row_idx, column=9, value=str(lead.get("created_at", ""))[:10])
+            ws.cell(row=row_idx, column=10, value=str(lead.get("updated_at", ""))[:10])
+
+        for col in range(1, len(headers) + 1):
+            ws.column_dimensions[get_column_letter(col)].width = 18
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        return StreamingResponse(output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=CRM_Leads.xlsx"})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/crm/followups/export/excel")
+async def export_followups_excel(current_user: dict = Depends(get_current_user)):
+    try:
+        followups = await db.followups.find({}, {"_id": 0}).sort("due_date", 1).to_list(500)
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Follow-ups"
+
+        headers = ["Lead ID", "Type", "Due Date", "Note", "Completed", "Created By"]
+        header_fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+
+        for row_idx, fu in enumerate(followups, 2):
+            lead = await db.leads.find_one({"id": fu.get("lead_id")}, {"_id": 0, "name": 1})
+            ws.cell(row=row_idx, column=1, value=lead.get("name") if lead else fu.get("lead_id"))
+            ws.cell(row=row_idx, column=2, value=fu.get("follow_up_type"))
+            ws.cell(row=row_idx, column=3, value=str(fu.get("due_date", ""))[:10])
+            ws.cell(row=row_idx, column=4, value=fu.get("note"))
+            ws.cell(row=row_idx, column=5, value="Yes" if fu.get("completed") else "No")
+            ws.cell(row=row_idx, column=6, value=fu.get("created_by"))
+
+        for col in range(1, len(headers) + 1):
+            ws.column_dimensions[get_column_letter(col)].width = 20
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        return StreamingResponse(output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=CRM_Followups.xlsx"})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============= INVOICES EXPORT =============
+
+@router.get("/invoices/export/excel")
+async def export_invoices_excel(
+    invoice_type: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        query = {}
+        if invoice_type:
+            query["invoice_type"] = invoice_type
+
+        invoices = await db.invoices.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Invoices"
+
+        headers = ["Invoice #", "Type", "SO #", "Customer", "Taxable Amount", "CGST", "SGST", "Total with GST", "Created"]
+        header_fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+
+        for row_idx, inv in enumerate(invoices, 2):
+            ws.cell(row=row_idx, column=1, value=inv.get("invoice_number"))
+            ws.cell(row=row_idx, column=2, value=inv.get("invoice_type", "").upper())
+            ws.cell(row=row_idx, column=3, value=inv.get("so_number"))
+            ws.cell(row=row_idx, column=4, value=inv.get("customer_name"))
+            ws.cell(row=row_idx, column=5, value=round(inv.get("taxable_amount", inv.get("total_price", 0)), 2))
+            ws.cell(row=row_idx, column=6, value=round(inv.get("cgst_amount", 0), 2))
+            ws.cell(row=row_idx, column=7, value=round(inv.get("sgst_amount", 0), 2))
+            ws.cell(row=row_idx, column=8, value=round(inv.get("total_with_gst", inv.get("total_price", 0)), 2))
+            ws.cell(row=row_idx, column=9, value=str(inv.get("created_at", ""))[:10])
+
+        for col in range(1, len(headers) + 1):
+            ws.column_dimensions[get_column_letter(col)].width = 18
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        return StreamingResponse(output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=Invoices.xlsx"})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

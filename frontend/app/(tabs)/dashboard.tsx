@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import { ExportButtons } from '../../components/shared/ExportButtons';
 
 const STAGES = ['new', 'contacted', 'quoted', 'negotiation', 'won', 'lost'];
 const STAGE_LABELS: Record<string, string> = { new: 'New', contacted: 'Contacted', quoted: 'Quoted', negotiation: 'Negotiation', won: 'Won', lost: 'Lost' };
@@ -101,9 +102,18 @@ export default function CRMScreen() {
           <Text style={s.headerTitle}>CRM</Text>
           <Text style={s.headerSub}>Lead Management & Pipeline</Text>
         </View>
-        <TouchableOpacity style={s.addBtn} onPress={() => setShowAddLead(true)} data-testid="add-lead-btn">
-          <Ionicons name="add" size={22} color="#0F172A" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <ExportButtons
+            endpoint="/crm/leads/export/excel"
+            filenamePrefix="CRM_Leads"
+            compact={true}
+            showPdf={false}
+            showExcel={true}
+          />
+          <TouchableOpacity style={s.addBtn} onPress={() => setShowAddLead(true)} data-testid="add-lead-btn">
+            <Ionicons name="add" size={22} color="#0F172A" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={s.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#C5964A']} />}>

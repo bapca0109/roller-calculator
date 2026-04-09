@@ -89,6 +89,19 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
 
   return (
     <View style={{ flex: 1 }}>
+      {/* Export Buttons for Orders */}
+      {isAdmin && (
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 14, paddingTop: 10 }}>
+          <ExportButtons
+            endpoint="/orders/export/excel"
+            pdfEndpoint="/orders/export/pdf"
+            filenamePrefix="Orders"
+            compact={true}
+            showPdf={true}
+            showExcel={true}
+          />
+        </View>
+      )}
       <FlatList
         data={orders}
         keyExtractor={(item) => item.id}
