@@ -53,10 +53,26 @@ const PAYMENT_COLORS: Record<string, string> = { unpaid: '#EF4444', partial: '#F
 function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; loading: boolean; onRefresh: () => void; isAdmin: boolean }) {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showPayment, setShowPayment] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+  const [detailOrder, setDetailOrder] = useState<any>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [payAmount, setPayAmount] = useState('');
   const [payMode, setPayMode] = useState('bank_transfer');
   const [payRef, setPayRef] = useState('');
   const [processing, setProcessing] = useState(false);
+
+  const openOrderDetail = async (order: any) => {
+    setDetailLoading(true);
+    setShowDetail(true);
+    try {
+      const res = await api.get(`/orders/${order.id}`);
+      setDetailOrder(res.data);
+    } catch {
+      setDetailOrder(order);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   const addPayment = async () => {
     if (!selectedOrder || !payAmount) return;
@@ -115,7 +131,7 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
           </View>
         }
         renderItem={({ item: order }) => (
-          <View style={os.card}>
+          <TouchableOpacity style={os.card} onPress={() => openOrderDetail(order)} activeOpacity={0.7}>
             <View style={os.cardHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={os.soNumber}>{order.so_number}</Text>
@@ -217,9 +233,168 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
                 })()}
               </View>
             )}
-          </View>
+          </TouchableOpacity>
         )}
       />
+
+      {/* Order Detail Modal */}
+      <Modal visible={showDetail} animationType="slide" transparent>
+        <View style={os.modalOverlay}>
+          <View style={[os.modal, { maxHeight: '90%' }]}>
+            <View style={os.modalHead}>
+              <Text style={os.modalTitle}>{detailOrder?.so_number || 'Order Detail'}</Text>
+              <TouchableOpacity onPress={() => { setShowDetail(false); setDetailOrder(null); }}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            {detailLoading ? (
+              <ActivityIndicator size="large" color="#C5964A" style={{ paddingVertical: 40 }} />
+            ) : detailOrder ? (
+              <ScrollView style={{ maxHeight: 600 }} showsVerticalScrollIndicator={false}>
+                {/* Order Header */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <View>
+                    <Text style={{ fontSize: 13, color: '#64748B' }}>{detailOrder.customer_name}{detailOrder.customer_company ? ` - ${detailOrder.customer_company}` : ''}</Text>
+                    {detailOrder.quote_number && <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>Quote: {detailOrder.quote_number}</Text>}
+                  </View>
+                  <View style={[os.stageBadge, { backgroundColor: (ORDER_STAGE_COLORS[detailOrder.stage] || '#94A3B8') + '18' }]}>
+                    <Text style={[os.stageText, { color: ORDER_STAGE_COLORS[detailOrder.stage] || '#94A3B8' }]}>{ORDER_STAGE_LABELS[detailOrder.stage] || detailOrder.stage}</Text>
+                  </View>
+                </View>
+
+                {/* Products / Items */}
+                <Text style={os.label}>Items</Text>
+                {(detailOrder.products || []).map((p: any, i: number) => (
+                  <View key={i} style={{ backgroundColor: 'rgba(241,245,249,0.7)', borderRadius: 10, padding: 12, marginBottom: 8 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A' }}>{p.product_name || p.product_id}</Text>
+                    <View style={{ flexDirection: 'row', gap: 16, marginTop: 6 }}>
+                      <View>
+                        <Text style={{ fontSize: 10, color: '#94A3B8' }}>Qty</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#0F172A' }}>{p.quantity}</Text>
+                      </View>
+                      <View>
+                        <Text style={{ fontSize: 10, color: '#94A3B8' }}>Unit Price</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#0F172A' }}>Rs.{p.unit_price?.toLocaleString()}</Text>
+                      </View>
+                      <View>
+                        <Text style={{ fontSize: 10, color: '#94A3B8' }}>Total</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#960018' }}>Rs.{(p.quantity * p.unit_price)?.toLocaleString()}</Text>
+                      </View>
+                    </View>
+                    {p.specifications && (
+                      <View style={{ flexDirection: 'row', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
+                        {p.specifications.pipe_diameter && <Text style={{ fontSize: 11, color: '#64748B' }}>Pipe: {p.specifications.pipe_diameter}mm</Text>}
+                        {p.specifications.shaft_diameter && <Text style={{ fontSize: 11, color: '#64748B' }}>Shaft: {p.specifications.shaft_diameter}mm</Text>}
+                        {p.specifications.pipe_type && <Text style={{ fontSize: 11, color: '#64748B' }}>{p.specifications.pipe_type}</Text>}
+                      </View>
+                    )}
+                    {p.weight_kg && <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>Weight: {p.weight_kg} kg</Text>}
+                    {p.remark && <Text style={{ fontSize: 11, color: '#C5964A', marginTop: 4 }}>Remark: {p.remark}</Text>}
+                  </View>
+                ))}
+
+                {/* Payment Summary */}
+                <Text style={[os.label, { marginTop: 16 }]}>Payment</Text>
+                <View style={{ backgroundColor: 'rgba(241,245,249,0.7)', borderRadius: 10, padding: 12, marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 13, color: '#64748B' }}>Total</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#0F172A' }}>Rs.{detailOrder.total_price?.toLocaleString()}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 13, color: '#64748B' }}>Paid</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#10B981' }}>Rs.{detailOrder.total_paid?.toLocaleString()}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }}>Balance Due</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: detailOrder.balance_due > 0 ? '#EF4444' : '#10B981' }}>Rs.{detailOrder.balance_due?.toLocaleString()}</Text>
+                  </View>
+                </View>
+
+                {/* Payment History */}
+                {detailOrder.payments && detailOrder.payments.length > 0 && (
+                  <>
+                    <Text style={[os.label, { marginTop: 12 }]}>Payment History</Text>
+                    {detailOrder.payments.map((pay: any, i: number) => (
+                      <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: 'rgba(226,232,240,0.4)' }}>
+                        <View>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }}>Rs.{pay.amount?.toLocaleString()}</Text>
+                          <Text style={{ fontSize: 11, color: '#94A3B8' }}>{pay.mode?.replace('_', ' ')} {pay.reference ? `| ${pay.reference}` : ''}</Text>
+                        </View>
+                        <Text style={{ fontSize: 11, color: '#94A3B8' }}>{pay.recorded_at?.split('T')[0]}</Text>
+                      </View>
+                    ))}
+                  </>
+                )}
+
+                {/* Invoices */}
+                {(detailOrder.proforma_invoice || detailOrder.tax_invoice) && (
+                  <>
+                    <Text style={[os.label, { marginTop: 16 }]}>Invoices</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                      {detailOrder.proforma_invoice && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(139,92,246,0.08)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                          <Ionicons name="document-outline" size={14} color="#8B5CF6" />
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#8B5CF6' }}>{detailOrder.proforma_invoice}</Text>
+                        </View>
+                      )}
+                      {detailOrder.tax_invoice && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16,185,129,0.08)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                          <Ionicons name="receipt-outline" size={14} color="#10B981" />
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#10B981' }}>{detailOrder.tax_invoice}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </>
+                )}
+
+                {/* Stage History */}
+                {detailOrder.stage_history && detailOrder.stage_history.length > 0 && (
+                  <>
+                    <Text style={[os.label, { marginTop: 16 }]}>Stage History</Text>
+                    {detailOrder.stage_history.map((sh: any, i: number) => (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 6 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: ORDER_STAGE_COLORS[sh.stage] || '#94A3B8', marginTop: 4 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }}>{ORDER_STAGE_LABELS[sh.stage] || sh.stage}</Text>
+                          <Text style={{ fontSize: 11, color: '#94A3B8' }}>{sh.timestamp?.split('T')[0]} {sh.by ? `by ${sh.by}` : ''}</Text>
+                          {sh.notes && <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{sh.notes}</Text>}
+                        </View>
+                      </View>
+                    ))}
+                  </>
+                )}
+
+                {/* Commercial Terms */}
+                {detailOrder.commercial_terms && (
+                  <>
+                    <Text style={[os.label, { marginTop: 16 }]}>Commercial Terms</Text>
+                    <View style={{ backgroundColor: 'rgba(241,245,249,0.7)', borderRadius: 10, padding: 12 }}>
+                      {Object.entries(detailOrder.commercial_terms).map(([key, value]: [string, any]) => (
+                        <View key={key} style={{ marginBottom: 4 }}>
+                          <Text style={{ fontSize: 10, color: '#94A3B8', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</Text>
+                          <Text style={{ fontSize: 12, color: '#0F172A' }}>{value}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </>
+                )}
+
+                {/* Actions */}
+                {isAdmin && (
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+                    <TouchableOpacity style={[os.actionBtn, { flex: 1 }]} onPress={() => { setSelectedOrder(detailOrder); setShowDetail(false); setShowPayment(true); }}>
+                      <Ionicons name="cash-outline" size={15} color="#C5964A" />
+                      <Text style={os.actionText}>Record Payment</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <View style={{ height: 20 }} />
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
 
       {/* Payment Modal */}
       <Modal visible={showPayment} animationType="slide" transparent>
