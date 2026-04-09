@@ -166,6 +166,21 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
                     <Text style={os.actionText}>PI</Text>
                   </TouchableOpacity>
                 )}
+                {order.proforma_invoice && (
+                  <TouchableOpacity style={[os.actionBtn, { backgroundColor: 'rgba(139,92,246,0.1)', borderColor: '#8B5CF6' }]} onPress={() => {
+                    api.get(`/invoices`).then(res => {
+                      const inv = res.data.invoices?.find((i: any) => i.so_number === order.so_number && i.invoice_type === 'proforma');
+                      if (inv) {
+                        const url = api.defaults.baseURL + `/invoices/${inv.id}/pdf?token=` + (api.defaults.headers?.common?.Authorization?.toString().replace('Bearer ', '') || '');
+                        if (typeof window !== 'undefined') window.open(url, '_blank');
+                        else Alert.alert('Proforma', `Open in browser: ${inv.invoice_number}`);
+                      }
+                    }).catch(() => Alert.alert('Error', 'Could not load proforma'));
+                  }}>
+                    <Ionicons name="download-outline" size={15} color="#8B5CF6" />
+                    <Text style={[os.actionText, { color: '#8B5CF6' }]}>PI PDF</Text>
+                  </TouchableOpacity>
+                )}
                 {!order.tax_invoice && (
                   <TouchableOpacity style={os.actionBtn} onPress={() => generateInvoice(order.id, 'tax-invoice')}>
                     <Ionicons name="receipt-outline" size={15} color="#10B981" />
