@@ -14,6 +14,9 @@ from routes.auth import send_push_notification_to_user, send_rfq_notification_em
 import base64
 import io
 import logging
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 router = APIRouter()
 
