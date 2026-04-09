@@ -50,11 +50,11 @@ export const QuoteCard: React.FC<QuoteCardProps> = ({
   const isUnread = isAdmin && quote.status === 'pending' && isRfq && quote.read_by_admin !== true;
 
   return (
-    <TouchableOpacity
+    <View
       style={[styles.card, isUnread && styles.unreadCard]}
-      onPress={() => onPress(quote)}
       data-testid={`quote-card-${quote.id}`}
     >
+      <TouchableOpacity onPress={() => onPress(quote)} activeOpacity={0.7}>
       <View style={styles.header}>
         <View style={styles.info}>
           <View style={styles.idRow}>
@@ -144,6 +144,7 @@ export const QuoteCard: React.FC<QuoteCardProps> = ({
           <Text style={styles.badgeText}>Approved</Text>
         </View>
       )}
+      </TouchableOpacity>
 
       {isApproved && isAdmin && !quote.converted_to_so && onConvertToSO && (
         <TouchableOpacity
@@ -169,7 +170,7 @@ export const QuoteCard: React.FC<QuoteCardProps> = ({
           <Text style={styles.badgeText}>Rejected</Text>
         </View>
       )}
-    </TouchableOpacity>
+    </View>
   );
 };
 
