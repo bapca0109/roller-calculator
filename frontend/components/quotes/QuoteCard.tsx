@@ -148,7 +148,7 @@ export const QuoteCard: React.FC<QuoteCardProps> = ({
       {isApproved && isAdmin && !quote.converted_to_so && onConvertToSO && (
         <TouchableOpacity
           style={styles.convertSOBtn}
-          onPress={(e) => { e.stopPropagation(); onConvertToSO(quote); }}
+          onPress={() => onConvertToSO(quote)}
           data-testid="convert-to-so-btn"
         >
           <Ionicons name="cube-outline" size={16} color="#fff" />
