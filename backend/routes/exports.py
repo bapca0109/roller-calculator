@@ -1,12 +1,13 @@
 """Export Routes (Excel/PDF for Quotes, Customers, Products, Cart)"""
 from fastapi import APIRouter, HTTPException, Depends, Header
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from typing import Optional
 from datetime import datetime, timezone
 from routes import db, get_current_user, get_ist_now, utc_to_ist, IST, SECRET_KEY, ALGORITHM
 from jose import jwt, JWTError
 from bson import ObjectId
 import io
+import logging
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter

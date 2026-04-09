@@ -1,6 +1,6 @@
 """Quote Routes — CRUD, RFQ Approval, Revision, Attachments, Stats"""
 from fastapi import APIRouter, HTTPException, Depends, status, UploadFile, File, Body, Header
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta, timezone

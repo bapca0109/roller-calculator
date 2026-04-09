@@ -6,6 +6,7 @@ from datetime import datetime
 from bson import ObjectId
 from routes import db, get_current_user, generate_customer_code, ROOT_DIR, Customer
 import re
+import logging
 
 router = APIRouter()
 
