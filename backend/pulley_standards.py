@@ -295,18 +295,22 @@ def calculate_pulley_cost(
     quantity=1,
     packing_type="none",
     end_plate_qty=2,
+    stress_relieving=False,
 ):
     """
     Calculate complete pulley cost breakdown
     Returns dict with all cost components
     """
     cost_breakdown = {}
+    cost_breakdown["stress_relieving"] = stress_relieving
+    sr_surcharge = 10.0 if stress_relieving else 0.0
 
     # 1. Pipe Cost
     pipe_rate = PIPE_RATES.get(pipe_dia, {}).get(pipe_thickness, 72.0)
     # For pipe dia 630, 800, 1000 with face length > 1250mm, add Rs.8/kg
     if pipe_dia in [630, 800, 1000] and face_length > 1250:
         pipe_rate += 8.0
+    pipe_rate += sr_surcharge  # Stress relieving surcharge
     pipe_weight = calculate_pipe_weight(pipe_dia, pipe_thickness, face_length)
     pipe_cost = pipe_weight * pipe_rate
     cost_breakdown["pipe_weight_kg"] = pipe_weight
@@ -322,7 +326,7 @@ def calculate_pulley_cost(
     cost_breakdown["shaft_cost"] = round(shaft_cost, 2)
 
     # 3. End Plate Cost (2/3/4 plates based on end_plate_qty)
-    ep_rate = END_PLATE_RATES.get(end_plate_thickness, 72.0)
+    ep_rate = END_PLATE_RATES.get(end_plate_thickness, 72.0) + sr_surcharge
     ep_weight_single = calculate_end_plate_weight(pipe_dia, shaft_dia_centre, end_plate_thickness)
     ep_weight_total = ep_weight_single * end_plate_qty
     ep_cost = ep_weight_total * ep_rate
@@ -336,7 +340,7 @@ def calculate_pulley_cost(
     hub_cost = 0
     kla_info = None
     if hub_type == "with_hub" and hub_dia and hub_length:
-        hub_rate = HUB_RATES.get(hub_dia, 65.0)
+        hub_rate = HUB_RATES.get(hub_dia, 65.0) + sr_surcharge
         hub_weight_single = calculate_hub_weight(hub_dia, shaft_dia_centre, hub_length)
         hub_weight_total = hub_weight_single * 2
         hub_cost = hub_weight_total * hub_rate
@@ -477,6 +481,7 @@ def calculate_pulley_cost(
         "hub_length_mm": hub_length,
         "shaft_dia_hub_mm": shaft_dia_hub,
         "kla_model": kla_info["model"] if kla_info else None,
+        "stress_relieving": stress_relieving,
         "rubber_type": rubber_type,
         "rubber_thickness_mm": rubber_thickness,
         "quantity": quantity,

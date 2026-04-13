@@ -163,6 +163,7 @@ export default function PulleyScreen() {
   const [rubberThickness, setRubberThickness] = useState<number>(10);
   const [quantity, setQuantity] = useState('1');
   const [packingType, setPackingType] = useState('none');
+  const [stressRelieving, setStressRelieving] = useState(false);
 
   // Available thicknesses for selected pipe
   const [availableThicknesses, setAvailableThicknesses] = useState<number[]>([]);
@@ -377,6 +378,7 @@ export default function PulleyScreen() {
         hub_type: hubType,
         quantity: parseInt(quantity),
         packing_type: packingType,
+        stress_relieving: stressRelieving,
       };
 
       if (hubType === 'with_hub') {
@@ -557,6 +559,26 @@ export default function PulleyScreen() {
             data-testid="face-length-input"
           />
           {errors.faceLength ? <Text style={styles.errorText}>{errors.faceLength}</Text> : null}
+
+          <View style={styles.spacer} />
+
+          <Text style={styles.inputLabel}>Stress Relieving</Text>
+          <View style={styles.typeRow}>
+            <TouchableOpacity
+              style={[styles.typeBtn, !stressRelieving && styles.typeBtnActive]}
+              onPress={() => setStressRelieving(false)}
+              data-testid="sr-no"
+            >
+              <Text style={[styles.typeBtnText, !stressRelieving && styles.typeBtnTextActive]}>Not Required</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.typeBtn, stressRelieving && { backgroundColor: '#C5964A', borderColor: '#C5964A' }]}
+              onPress={() => setStressRelieving(true)}
+              data-testid="sr-yes"
+            >
+              <Text style={[styles.typeBtnText, stressRelieving && styles.typeBtnTextActive]}>Required (+Rs.10/kg)</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Shaft Configuration */}
@@ -782,6 +804,7 @@ export default function PulleyScreen() {
                   shaft_material: shaftMaterial, shaft_length: parseFloat(shaftLength),
                   end_plate_thickness: endPlateThickness, end_plate_qty: endPlateQty,
                   hub_type: hubType, quantity: parseInt(quantity), packing_type: packingType,
+                  stress_relieving: stressRelieving,
                 };
                 if (hubType === 'with_hub') { payload.hub_diameter = hubDiameter; payload.hub_length = parseFloat(hubLength); }
                 if (rubberType !== 'none') { payload.rubber_type = rubberType; payload.rubber_thickness = rubberThickness; }

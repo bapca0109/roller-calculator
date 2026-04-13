@@ -45,6 +45,7 @@ class PulleyCostRequest(BaseModel):
     rubber_thickness: Optional[int] = None
     quantity: int = 1
     packing_type: str = "none"
+    stress_relieving: bool = False
 
 
 class PulleyCostResponse(BaseModel):
@@ -95,6 +96,7 @@ async def calculate_pulley_cost(request: PulleyCostRequest, current_user: dict =
         shaft_dia_hub=request.shaft_dia_hub, rubber_type=request.rubber_type,
         rubber_thickness=request.rubber_thickness, quantity=request.quantity,
         packing_type=request.packing_type, end_plate_qty=request.end_plate_qty,
+        stress_relieving=request.stress_relieving,
     )
     return PulleyCostResponse(**result)
 
