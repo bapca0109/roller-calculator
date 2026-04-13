@@ -576,7 +576,7 @@ export default function PulleyScreen() {
               onPress={() => setStressRelieving(true)}
               data-testid="sr-yes"
             >
-              <Text style={[styles.typeBtnText, stressRelieving && styles.typeBtnTextActive]}>Required (+Rs.10/kg)</Text>
+              <Text style={[styles.typeBtnText, stressRelieving && styles.typeBtnTextActive]}>Required</Text>
             </TouchableOpacity>
           </View>
         </View>
