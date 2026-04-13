@@ -179,7 +179,6 @@ KLA_MODELS = {
 # Rubber Lagging rates (₹/sqm)
 RUBBER_PLAIN_RATES = {
     6: 3300,
-    8: 4800,
     10: 5800,
     12: 6400,
 }

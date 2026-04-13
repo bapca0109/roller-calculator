@@ -42,8 +42,6 @@ import {
 } from '../../components/quotes';
 import { ExportButtons } from '../../components/shared/ExportButtons';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 const ORDER_STAGE_COLORS: Record<string, string> = {
   confirmed: '#3B82F6', in_production: '#C5964A', ready: '#8B5CF6', dispatched: '#F59E0B', delivered: '#10B981'
 };
