@@ -920,12 +920,14 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
         if is_impact and pipe_dia > 0 and pipe_length > 0:
             ring_width = 35
             ring_qty = max(1, int(pipe_length / ring_width))
-            # Get rubber dia from specs or calculate
+            # Ring ID = rounded pipe dia (60, 76, 89, 114 etc.)
+            ring_id = round(pipe_dia)
+            # Get rubber OD from specs or from RUBBER_LAGGING_OPTIONS
             rubber_dia = specs.get("rubber_diameter", 0)
-            pipe_id = pipe_dia - 2 * (wall_thk if wall_thk > 0 else 3.2)
-            ring_desc = f"{round(pipe_id)}mm ID x {round(pipe_dia)}mm OD x {ring_width}mm thk"
-            if rubber_dia:
-                ring_desc = f"{round(pipe_id)}mm ID x {rubber_dia}mm OD x {ring_width}mm thk"
+            if not rubber_dia:
+                options = rs.RUBBER_LAGGING_OPTIONS.get(ring_id, [])
+                rubber_dia = options[0] if options else 0
+            ring_desc = f"{ring_id}mm ID x {rubber_dia}mm OD x {ring_width}mm thk" if rubber_dia else f"{ring_id}mm ID x {ring_width}mm thk"
             bom.append({
                 "component": "Rubber Ring",
                 "description": f"{ring_desc} — {ring_qty} nos/roller",
