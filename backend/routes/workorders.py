@@ -406,9 +406,9 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             "total_weight_kg": 0,
         })
 
-        # 8. Rubber Rings — Impact roller only, qty based on pipe length
+        # 8. Rubber Rings — Impact roller only, qty based on pipe length / 35mm ring width
         if is_impact and pipe_dia > 0 and pipe_length > 0:
-            ring_width = 50  # mm per ring
+            ring_width = 35  # mm per ring
             ring_qty = max(1, int(pipe_length / ring_width))
             bom.append({
                 "component": "Rubber Ring",
