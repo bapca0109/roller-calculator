@@ -799,19 +799,22 @@ def _calc_weight(volume_mm3):
 
 
 def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int) -> list:
-    """Auto-generate Bill of Materials from product specs"""
+    """Auto-generate Bill of Materials from product specs with detailed sizes"""
+    import roller_standards as rs
+    
     bom = []
     product_name = (product.get("product_name") or "").lower()
     is_pulley = "pulley" in product_name
     is_roller = not is_pulley
 
     pipe_dia = specs.get("pipe_diameter", 0)
-    pipe_length = specs.get("pipe_length", 0)  # roller face length or pulley face length
+    pipe_length = specs.get("pipe_length", 0)
     shaft_dia = specs.get("shaft_diameter", 0)
     shaft_length = production_details.get("shaft_length", 0) or specs.get("shaft_length", 0) or 0
-    pipe_type = specs.get("pipe_type", "")  # wall thickness info
+    pipe_type = specs.get("pipe_type", "")
+    bearing_number = specs.get("bearing_number", specs.get("bearing", ""))
+    bearing_make = specs.get("bearing_make", "china")
 
-    # Try to get wall thickness from pipe_type string like "8mm wall"
     wall_thk = 0
     if pipe_type:
         import re
@@ -820,25 +823,27 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             wall_thk = float(thk_match.group(1))
 
     if is_roller:
-        # === ROLLER BOM ===
         product_code = (product.get("product_id") or "").upper()
         is_impact = "IR" in product_code or "IMPACT" in product_name.upper()
+        
+        # Get bearing OD for housing
+        bearing_od = rs.BEARING_OD.get(bearing_number, 0)
+        # Get housing size
+        housing_size = rs.get_housing_for_pipe_and_bearing(pipe_dia, bearing_number) if pipe_dia and bearing_number else None
 
         # 1. Pipe
         if pipe_dia > 0 and pipe_length > 0:
-            effective_thk = wall_thk if wall_thk > 0 else 3.2  # default
+            effective_thk = wall_thk if wall_thk > 0 else 3.2
             od = pipe_dia
             id_val = od - 2 * effective_thk
             pipe_vol = (math.pi / 4) * (od**2 - id_val**2) * pipe_length
             pipe_wt = _calc_weight(pipe_vol)
             bom.append({
                 "component": "Pipe",
-                "description": f"{pipe_dia}mm OD × {effective_thk}mm thk × {pipe_length}mm L",
+                "description": f"{pipe_dia}mm OD x {effective_thk}mm thk x {pipe_length}mm L",
                 "material": "MS ERW",
-                "qty_per_unit": 1,
-                "total_qty": qty,
-                "weight_per_unit_kg": pipe_wt,
-                "total_weight_kg": round(pipe_wt * qty, 3),
+                "qty_per_unit": 1, "total_qty": qty,
+                "weight_per_unit_kg": pipe_wt, "total_weight_kg": round(pipe_wt * qty, 3),
             })
 
         # 2. Shaft
@@ -847,58 +852,59 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             shaft_wt = _calc_weight(shaft_vol)
             bom.append({
                 "component": "Shaft",
-                "description": f"{shaft_dia}mm dia × {shaft_length}mm L",
+                "description": f"{shaft_dia}mm dia x {shaft_length}mm L",
                 "material": "MS Bright Bar",
-                "qty_per_unit": 1,
-                "total_qty": qty,
-                "weight_per_unit_kg": shaft_wt,
-                "total_weight_kg": round(shaft_wt * qty, 3),
+                "qty_per_unit": 1, "total_qty": qty,
+                "weight_per_unit_kg": shaft_wt, "total_weight_kg": round(shaft_wt * qty, 3),
             })
 
-        # 3. Bearings
-        bearing = specs.get("bearing_number", specs.get("bearing", ""))
-        if bearing:
+        # 3. Bearing — number + make
+        if bearing_number:
+            make_label = (bearing_make or "china").upper()
             bom.append({
                 "component": "Bearing",
-                "description": bearing,
-                "material": bearing,
-                "qty_per_unit": 2,
-                "total_qty": qty * 2,
-                "weight_per_unit_kg": 0,
-                "total_weight_kg": 0,
+                "description": f"{bearing_number} ZZ - {make_label} (OD: {bearing_od}mm)",
+                "material": f"{bearing_number} - {make_label}",
+                "qty_per_unit": 2, "total_qty": qty * 2,
+                "weight_per_unit_kg": 0, "total_weight_kg": 0,
             })
 
-        # 4. Housing (bearing end cap) — 2 per roller
-        bom.append({
-            "component": "Housing",
-            "description": f"Bearing housing for {pipe_dia}mm pipe",
-            "material": "MS Pressed/Cast",
-            "qty_per_unit": 2,
-            "total_qty": qty * 2,
-            "weight_per_unit_kg": 0,
-            "total_weight_kg": 0,
-        })
+        # 4. Housing — with size (housing_dia/bearing_OD)
+        if housing_size:
+            bom.append({
+                "component": "Housing",
+                "description": f"Housing {housing_size} for {pipe_dia}mm pipe",
+                "material": f"MS Housing {housing_size}",
+                "qty_per_unit": 2, "total_qty": qty * 2,
+                "weight_per_unit_kg": 0, "total_weight_kg": 0,
+            })
+        else:
+            bom.append({
+                "component": "Housing",
+                "description": f"For {pipe_dia}mm pipe / {bearing_number}",
+                "material": "MS Pressed",
+                "qty_per_unit": 2, "total_qty": qty * 2,
+                "weight_per_unit_kg": 0, "total_weight_kg": 0,
+            })
 
-        # 5. Seals
+        # 5. Seal — by bearing number
+        seal_desc = f"Seal for {bearing_number}" if bearing_number else f"Seal for {pipe_dia}mm"
         bom.append({
             "component": "Seal",
-            "description": f"For {pipe_dia}mm pipe",
-            "material": "Labyrinth Seal",
-            "qty_per_unit": 2,
-            "total_qty": qty * 2,
-            "weight_per_unit_kg": 0,
-            "total_weight_kg": 0,
+            "description": seal_desc,
+            "material": f"Labyrinth Seal - {bearing_number}",
+            "qty_per_unit": 2, "total_qty": qty * 2,
+            "weight_per_unit_kg": 0, "total_weight_kg": 0,
         })
 
-        # 6. Circlip — 4 per roller (2 each side)
+        # 6. Circlip — A{shaft_dia}
+        circlip_num = f"A{shaft_dia}" if shaft_dia else "Circlip"
         bom.append({
             "component": "Circlip",
-            "description": f"For {shaft_dia}mm shaft",
-            "material": "Spring Steel",
-            "qty_per_unit": 4,
-            "total_qty": qty * 4,
-            "weight_per_unit_kg": 0,
-            "total_weight_kg": 0,
+            "description": f"{circlip_num} for {shaft_dia}mm shaft",
+            "material": f"Spring Steel {circlip_num}",
+            "qty_per_unit": 4, "total_qty": qty * 4,
+            "weight_per_unit_kg": 0, "total_weight_kg": 0,
         })
 
         # 7. Grease
@@ -906,24 +912,26 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             "component": "Grease",
             "description": "Bearing grease",
             "material": "EP2 Grease",
-            "qty_per_unit": 1,
-            "total_qty": qty,
-            "weight_per_unit_kg": 0,
-            "total_weight_kg": 0,
+            "qty_per_unit": 1, "total_qty": qty,
+            "weight_per_unit_kg": 0, "total_weight_kg": 0,
         })
 
-        # 8. Rubber Rings — Impact roller only, qty based on pipe length / 35mm ring width
+        # 8. Rubber Rings — Impact roller only
         if is_impact and pipe_dia > 0 and pipe_length > 0:
-            ring_width = 35  # mm per ring
+            ring_width = 35
             ring_qty = max(1, int(pipe_length / ring_width))
+            # Get rubber dia from specs or calculate
+            rubber_dia = specs.get("rubber_diameter", 0)
+            pipe_id = pipe_dia - 2 * (wall_thk if wall_thk > 0 else 3.2)
+            ring_desc = f"{round(pipe_id)}mm ID x {round(pipe_dia)}mm OD x {ring_width}mm thk"
+            if rubber_dia:
+                ring_desc = f"{round(pipe_id)}mm ID x {rubber_dia}mm OD x {ring_width}mm thk"
             bom.append({
                 "component": "Rubber Ring",
-                "description": f"{pipe_dia}mm dia × {ring_width}mm wide — {ring_qty} nos/roller",
+                "description": f"{ring_desc} — {ring_qty} nos/roller",
                 "material": "Natural Rubber",
-                "qty_per_unit": ring_qty,
-                "total_qty": qty * ring_qty,
-                "weight_per_unit_kg": 0,
-                "total_weight_kg": 0,
+                "qty_per_unit": ring_qty, "total_qty": qty * ring_qty,
+                "weight_per_unit_kg": 0, "total_weight_kg": 0,
             })
 
     elif is_pulley:
