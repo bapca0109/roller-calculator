@@ -1,12 +1,17 @@
 """Work Order Routes — Create from SO, production tracking"""
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Header
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from bson import ObjectId
-from routes import db, get_current_user, require_role, get_ist_now, get_financial_year, UserRole
+from routes import (db, get_current_user, require_role, get_ist_now, get_financial_year, 
+                    UserRole, SECRET_KEY, ALGORITHM, get_convero_logo_base64)
+from jose import jwt
 import logging
 import base64
+import io
+import os
 
 router = APIRouter()
 
@@ -384,7 +389,175 @@ async def get_wo_stats(current_user: dict = Depends(require_role([UserRole.ADMIN
     }
 
 
-# ============= BOM AUTO-GENERATION =============
+# ============= WORK ORDER PDF =============
+
+COMPANY = {
+    "name": os.environ.get("COMPANY_NAME", "CONVERO SOLUTIONS"),
+    "address": os.environ.get("COMPANY_ADDRESS", ""),
+    "phone": os.environ.get("COMPANY_PHONE", ""),
+    "email": os.environ.get("COMPANY_EMAIL", ""),
+}
+
+@router.get("/work-orders/{wo_id}/pdf")
+async def get_work_order_pdf(
+    wo_id: str,
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    auth_token = token
+    if not auth_token and authorization and authorization.startswith("Bearer "):
+        auth_token = authorization[7:]
+    if not auth_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    try:
+        payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
+        if not payload.get("sub"):
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    wo = await db.work_orders.find_one({"$or": [{"id": wo_id}, {"wo_number": wo_id}]}, {"_id": 0})
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work Order not found")
+
+    logo_b64 = get_convero_logo_base64()
+    logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="height:40px" />' if logo_b64 else f'<b>{COMPANY["name"]}</b>'
+
+    # Build items HTML
+    items_html = ""
+    for item in wo.get("items", []):
+        slot = item.get("shaft_slot", "N/A")
+        specs = item.get("specifications", {})
+
+        # Drawing image
+        drawing_html = ""
+        if item.get("drawing_base64") and item.get("drawing_filename"):
+            ext = item["drawing_filename"].rsplit(".", 1)[-1].lower()
+            mime = "image/png" if ext == "png" else "image/jpeg"
+            drawing_html = f'<div style="margin:10px 0"><img src="data:{mime};base64,{item["drawing_base64"]}" style="max-width:100%;max-height:300px;border:1px solid #ddd;border-radius:4px" /></div>'
+
+        # BOM table
+        bom = item.get("bom", [])
+        bom_rows = ""
+        total_bom_weight = 0
+        for bi, b in enumerate(bom, 1):
+            tw = b.get("total_weight_kg", 0)
+            total_bom_weight += tw
+            bom_rows += f"""<tr>
+                <td style="text-align:center">{bi}</td>
+                <td><b>{b.get('component','')}</b></td>
+                <td>{b.get('description','')}</td>
+                <td>{b.get('material','')}</td>
+                <td style="text-align:center">{b.get('qty_per_unit','')}</td>
+                <td style="text-align:center">{b.get('total_qty','')}</td>
+                <td style="text-align:right">{b.get('weight_per_unit_kg','') if b.get('weight_per_unit_kg') else '-'}</td>
+                <td style="text-align:right">{tw if tw else '-'}</td>
+            </tr>"""
+
+        bom_total_row = f"""<tr style="font-weight:700;background:#F0F4F8">
+            <td colspan="7" style="text-align:right;padding:8px">Total BOM Weight</td>
+            <td style="text-align:right;padding:8px">{round(total_bom_weight,3)} kg</td>
+        </tr>""" if total_bom_weight > 0 else ""
+
+        items_html += f"""
+        <div style="page-break-inside:avoid;margin-bottom:24px;border:1px solid #E2E8F0;border-radius:8px;overflow:hidden">
+            <div style="background:#0F172A;color:#fff;padding:12px 16px;font-size:14px">
+                <b>{item.get('product_name','')}</b> &nbsp; | &nbsp; Code: {item.get('product_code','')} &nbsp; | &nbsp; Qty: <b>{item.get('quantity','')}</b>
+            </div>
+            <div style="padding:16px">
+                <table style="width:100%;margin-bottom:12px">
+                    <tr>
+                        <td style="width:50%;vertical-align:top">
+                            <div style="font-size:10px;color:#94A3B8;text-transform:uppercase;letter-spacing:1px">Drawing Number</div>
+                            <div style="font-size:14px;font-weight:600;color:#0F172A">{item.get('drawing_number','N/A')}</div>
+                        </td>
+                        <td style="width:50%;vertical-align:top">
+                            <div style="font-size:10px;color:#94A3B8;text-transform:uppercase;letter-spacing:1px">Paint Details</div>
+                            <div style="font-size:14px;color:#0F172A">{item.get('paint_details','N/A')}</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="vertical-align:top;padding-top:10px">
+                            <div style="font-size:10px;color:#94A3B8;text-transform:uppercase;letter-spacing:1px">Shaft Length</div>
+                            <div style="font-size:14px;font-weight:600;color:#0F172A">{item.get('shaft_length_mm','N/A')} mm</div>
+                        </td>
+                        <td style="vertical-align:top;padding-top:10px">
+                            <div style="font-size:10px;color:#94A3B8;text-transform:uppercase;letter-spacing:1px">Shaft End Slot (Both Ends)</div>
+                            <div style="font-size:14px;font-weight:700;color:#960018">{slot}</div>
+                        </td>
+                    </tr>
+                </table>
+                {f'<div style="font-size:10px;color:#94A3B8;text-transform:uppercase;letter-spacing:1px">Production Notes</div><div style="font-size:12px;color:#475569;margin-bottom:10px;padding:8px;background:#F8FAFC;border-radius:4px">{item.get("production_notes")}</div>' if item.get("production_notes") else ''}
+                {drawing_html}
+                {'<div style="font-size:11px;font-weight:700;color:#C5964A;text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px">Bill of Materials</div><table style="width:100%;border-collapse:collapse;font-size:11px"><tr style="background:#1E293B;color:#fff"><th style="padding:6px;text-align:center">Sr</th><th style="padding:6px">Component</th><th style="padding:6px">Description</th><th style="padding:6px">Material</th><th style="padding:6px;text-align:center">Qty/Unit</th><th style="padding:6px;text-align:center">Total Qty</th><th style="padding:6px;text-align:right">Wt/Unit (kg)</th><th style="padding:6px;text-align:right">Total Wt (kg)</th></tr>' + bom_rows + bom_total_row + '</table>' if bom else ''}
+            </div>
+        </div>"""
+
+    # Stage history
+    stage_html = ""
+    for sh in wo.get("stage_history", []):
+        stage_html += f'<div style="margin-bottom:4px"><span style="display:inline-block;width:8px;height:8px;border-radius:4px;background:#C5964A;margin-right:6px"></span><b>{WO_STAGE_LABELS.get(sh.get("stage"), sh.get("stage",""))}</b> — {str(sh.get("timestamp",""))[:10]} by {sh.get("by","")}{(" — " + sh.get("notes")) if sh.get("notes") else ""}</div>'
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+    @page {{ size: A4; margin: 12mm; }}
+    * {{ margin:0; padding:0; box-sizing:border-box; }}
+    body {{ font-family: 'Helvetica Neue', Arial, sans-serif; color:#1E293B; font-size:11px; line-height:1.5; }}
+    .wo {{ max-width:800px; margin:0 auto; }}
+    .header {{ display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #C5964A; padding-bottom:12px; margin-bottom:16px; }}
+    .wo-title {{ font-size:20px; font-weight:800; color:#960018; }}
+    .wo-num {{ font-size:14px; font-weight:600; color:#0F172A; }}
+    .info-grid {{ display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }}
+    .info-box {{ flex:1; min-width:140px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:10px; }}
+    .info-label {{ font-size:9px; font-weight:700; color:#C5964A; letter-spacing:1px; text-transform:uppercase; }}
+    .info-value {{ font-size:12px; font-weight:600; color:#0F172A; margin-top:2px; }}
+    table {{ border-collapse:collapse; }}
+    table td, table th {{ border-bottom:1px solid #E2E8F0; }}
+    .footer {{ text-align:center; margin-top:20px; padding-top:10px; border-top:1px solid #E2E8F0; font-size:9px; color:#94A3B8; }}
+    .stamp-area {{ display:flex; justify-content:space-between; margin-top:40px; }}
+    .stamp-line {{ width:180px; border-top:1px solid #CBD5E1; margin-top:50px; padding-top:4px; font-size:10px; color:#64748B; text-align:center; }}
+</style>
+</head><body>
+<div class="wo">
+    <div class="header">
+        <div>{logo_html}<br><span style="font-size:9px;color:#64748B">{COMPANY['address'][:60]}</span></div>
+        <div style="text-align:right">
+            <div class="wo-title">WORK ORDER</div>
+            <div class="wo-num">{wo.get('wo_number','')}</div>
+            <div style="font-size:11px;color:#64748B">Date: {str(wo.get('created_at',''))[:10]}</div>
+        </div>
+    </div>
+
+    <div class="info-grid">
+        <div class="info-box"><div class="info-label">Sales Order</div><div class="info-value">{wo.get('so_number','N/A')}</div></div>
+        <div class="info-box"><div class="info-label">Quote Ref</div><div class="info-value">{wo.get('quote_number','N/A')}</div></div>
+        <div class="info-box"><div class="info-label">Customer</div><div class="info-value">{wo.get('customer_name','')}</div></div>
+        <div class="info-box"><div class="info-label">Company</div><div class="info-value">{wo.get('customer_company','') or 'N/A'}</div></div>
+        <div class="info-box"><div class="info-label">Stage</div><div class="info-value">{WO_STAGE_LABELS.get(wo.get('stage',''), wo.get('stage',''))}</div></div>
+    </div>
+
+    {items_html}
+
+    <div style="font-size:11px;font-weight:700;color:#C5964A;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">Stage History</div>
+    {stage_html}
+
+    <div class="stamp-area">
+        <div><div class="stamp-line">Production Head</div></div>
+        <div><div class="stamp-line">QC Approved</div></div>
+        <div><div class="stamp-line">Authorized Signatory</div></div>
+    </div>
+
+    <div class="footer">{COMPANY['name']} | {COMPANY['email']} | {COMPANY['phone']}</div>
+</div>
+</body></html>"""
+
+    output = io.BytesIO(html.encode('utf-8'))
+    output.seek(0)
+    filename = f"{wo.get('wo_number', 'WO').replace('/', '-')}.html"
+
+    return StreamingResponse(output, media_type="text/html",
+                           headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 import math
 
