@@ -2002,25 +2002,13 @@ export default function QuotesScreen() {
         docLabel={docLabel}
         onPress={openQuoteDetail}
         onConvertToSO={async (quote) => {
-          const doConvert = async () => {
-            try {
-              const quoteId = quote.id || quote._id;
-              const res = await api.post(`/orders/from-quote/${quoteId}`);
-              Alert.alert('Success', res.data.message);
-              fetchQuotes();
-            } catch (e: any) {
-              Alert.alert('Error', e.response?.data?.detail || 'Failed to convert');
-            }
-          };
-          if (Platform.OS === 'web' && typeof window !== 'undefined') {
-            if (window.confirm(`Create Sales Order from ${quote.quote_number}?`)) {
-              await doConvert();
-            }
-          } else {
-            Alert.alert('Convert to Sales Order', `Create SO from ${quote.quote_number}?`, [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Convert', onPress: doConvert }
-            ]);
+          try {
+            const quoteId = quote.id || quote._id;
+            const res = await api.post(`/orders/from-quote/${quoteId}`);
+            Alert.alert('Success', res.data.message);
+            fetchQuotes();
+          } catch (e: any) {
+            Alert.alert('Error', e.response?.data?.detail || 'Failed to convert');
           }
         }}
         formatDate={formatDate}
