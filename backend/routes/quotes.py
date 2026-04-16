@@ -10,13 +10,15 @@ from routes import (db, get_current_user, require_role, get_ist_now, utc_to_ist,
                     ADMIN_RFQ_EMAILS, ROOT_DIR, QuoteInDB, QuoteCreate, QuoteUpdate, QuoteReject,
                     QuoteProduct, RollerQuoteCreate, Quote, QuoteStatus, CommercialTerms,
                     RevisionHistoryEntry, UserRole)
-from routes.auth import send_push_notification_to_user, send_rfq_notification_email, send_push_notification_to_admins
+from routes.auth import (send_push_notification_to_user, send_rfq_notification_email,
+                         send_push_notification_to_admins, generate_quote_pdf, generate_rfq_pdf)
 import base64
 import io
 import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 
 router = APIRouter()
 
