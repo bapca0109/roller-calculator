@@ -316,6 +316,7 @@ def generate_rfq_html(rfq_data: dict) -> str:
             <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: center;">{idx}</td>
             <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left;">
                 <div style="font-weight: 500; color: #1a1a1a;">{product.get('product_name', product.get('product_id', 'N/A'))}</div>
+                <div style="font-size: 10px; color: #960018; font-weight: 600;">Code: {product.get('product_id', '')}</div>
                 {specs_html}
                 {remark_html}
             </td>
@@ -783,6 +784,7 @@ def generate_quote_html(quote_data: dict, hide_prices: bool = False) -> str:
                   <td class="cell-center">{idx}</td>
                   <td class="cell-left">
                     <div class="product-name">{product.get('product_name', product.get('product_id', 'N/A'))}</div>
+                    <div style="font-size:9px;color:#960018;font-weight:600">Code: {product.get('product_id', '')}</div>
                     {specs_html}
                     {remark_html}
                   </td>
@@ -1588,8 +1590,8 @@ def generate_quote_pdf_fallback(quote_data: dict) -> bytes:
         subtotal += amount
         
         pdf.cell(8, 7, str(idx), border=1, align='C')
-        pdf.cell(32, 7, str(product.get('product_id', 'N/A'))[:17], border=1, align='C')
-        pdf.cell(55, 7, str(product.get('product_name', 'N/A'))[:30], border=1)
+        pdf.cell(37, 7, str(product.get('product_id', 'N/A'))[:22], border=1, align='C')
+        pdf.cell(50, 7, str(product.get('product_name', 'N/A'))[:28], border=1)
         pdf.cell(12, 7, str(qty), border=1, align='C')
         pdf.cell(30, 7, f'Rs. {price_after_discount:,.2f}', border=1, align='R')
         pdf.cell(32, 7, f'Rs. {amount:,.2f}', border=1, align='R')
