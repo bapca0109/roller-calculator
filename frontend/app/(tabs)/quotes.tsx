@@ -42,6 +42,203 @@ import {
 } from '../../components/quotes';
 import { ExportButtons } from '../../components/shared/ExportButtons';
 
+const WO_STAGE_COLORS: Record<string, string> = { created: '#3B82F6', material_issued: '#8B5CF6', in_progress: '#C5964A', qc: '#F59E0B', completed: '#10B981' };
+const WO_STAGE_LABELS: Record<string, string> = { created: 'Created', material_issued: 'Material Issued', in_progress: 'In Progress', qc: 'QC', completed: 'Completed' };
+
+function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin }: { workOrders: any[]; loading: boolean; onRefresh: () => void; isAdmin: boolean }) {
+  const [selectedWO, setSelectedWO] = useState<any>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const openWODetail = async (wo: any) => {
+    setDetailLoading(true);
+    try {
+      const res = await api.get(`/work-orders/${wo.id}`);
+      setSelectedWO(res.data);
+    } catch { setSelectedWO(wo); }
+    finally { setDetailLoading(false); }
+  };
+
+  const updateStage = async (woId: string, stage: string) => {
+    try { await api.put(`/work-orders/${woId}/stage?stage=${stage}`); onRefresh(); }
+    catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
+  };
+
+  const downloadPDF = async (woId: string) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const url = api.defaults.baseURL + `/work-orders/${woId}/pdf?token=${token}`;
+      if (typeof window !== 'undefined') window.open(url, '_blank');
+      else Alert.alert('PDF', 'Open in browser to download');
+    } catch { Alert.alert('Error', 'Failed to download PDF'); }
+  };
+
+  if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#C5964A" /></View>;
+
+  return (
+    <View style={{ flex: 1 }}>
+      <FlatList
+        data={workOrders}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ padding: 14 }}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} colors={['#C5964A']} />}
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+            <Ionicons name="construct-outline" size={48} color="#CBD5E1" />
+            <Text style={{ color: '#94A3B8', fontSize: 15, marginTop: 12 }}>No work orders yet</Text>
+            <Text style={{ color: '#CBD5E1', fontSize: 13, marginTop: 4 }}>Create from Sales Orders</Text>
+          </View>
+        }
+        renderItem={({ item: wo }) => (
+          <TouchableOpacity style={wos.card} onPress={() => openWODetail(wo)} activeOpacity={0.7}>
+            <View style={wos.cardHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={wos.woNumber}>{wo.wo_number}</Text>
+                <Text style={wos.customer}>{wo.customer_name} | SO: {wo.so_number}</Text>
+              </View>
+              <View style={[wos.stageBadge, { backgroundColor: (WO_STAGE_COLORS[wo.stage] || '#94A3B8') + '18' }]}>
+                <Text style={[wos.stageText, { color: WO_STAGE_COLORS[wo.stage] || '#94A3B8' }]}>{WO_STAGE_LABELS[wo.stage] || wo.stage}</Text>
+              </View>
+            </View>
+            <Text style={wos.itemCount}>{wo.items?.length || 0} item(s) | Created: {wo.created_at?.split('T')[0]}</Text>
+            {/* Items preview */}
+            {(wo.items || []).slice(0, 3).map((item: any, i: number) => (
+              <View key={i} style={wos.itemPreview}>
+                <Text style={wos.itemName} numberOfLines={1}>{item.product_name}</Text>
+                <Text style={wos.itemMeta}>Qty: {item.quantity} | Dwg: {item.drawing_number || 'N/A'} | BOM: {item.bom?.length || 0} parts</Text>
+              </View>
+            ))}
+            {isAdmin && (
+              <View style={wos.actions}>
+                <TouchableOpacity style={wos.actionBtn} onPress={() => downloadPDF(wo.id)}>
+                  <Ionicons name="download-outline" size={14} color="#C5964A" />
+                  <Text style={[wos.actionText, { color: '#C5964A' }]}>PDF</Text>
+                </TouchableOpacity>
+                {wo.stage !== 'completed' && (() => {
+                  const stages = ['created', 'material_issued', 'in_progress', 'qc', 'completed'];
+                  const next = stages[stages.indexOf(wo.stage) + 1];
+                  return next ? (
+                    <TouchableOpacity style={[wos.actionBtn, { borderColor: WO_STAGE_COLORS[next] }]} onPress={() => updateStage(wo.id, next)}>
+                      <Ionicons name="arrow-forward" size={14} color={WO_STAGE_COLORS[next]} />
+                      <Text style={[wos.actionText, { color: WO_STAGE_COLORS[next] }]}>{WO_STAGE_LABELS[next]}</Text>
+                    </TouchableOpacity>
+                  ) : null;
+                })()}
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+      />
+
+      {/* WO Detail Modal */}
+      <Modal visible={!!selectedWO} animationType="slide" transparent>
+        <View style={wos.modalOverlay}>
+          <View style={[wos.modal, { maxHeight: '92%' }]}>
+            <View style={wos.modalHead}>
+              <Text style={wos.modalTitle}>{selectedWO?.wo_number || 'Work Order'}</Text>
+              <TouchableOpacity onPress={() => setSelectedWO(null)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity>
+            </View>
+            {detailLoading ? <ActivityIndicator size="large" color="#C5964A" style={{ paddingVertical: 40 }} /> :
+            selectedWO ? (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <Text style={{ fontSize: 13, color: '#64748B' }}>SO: {selectedWO.so_number} | {selectedWO.customer_name}</Text>
+                  <View style={[wos.stageBadge, { backgroundColor: (WO_STAGE_COLORS[selectedWO.stage] || '#94A3B8') + '18' }]}>
+                    <Text style={[wos.stageText, { color: WO_STAGE_COLORS[selectedWO.stage] }]}>{WO_STAGE_LABELS[selectedWO.stage]}</Text>
+                  </View>
+                </View>
+
+                {/* Items with BOM */}
+                {(selectedWO.items || []).map((item: any, i: number) => (
+                  <View key={i} style={{ backgroundColor: 'rgba(241,245,249,0.7)', borderRadius: 12, marginBottom: 14, overflow: 'hidden' }}>
+                    <View style={{ backgroundColor: '#0F172A', padding: 10 }}>
+                      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{item.product_name} | Qty: {item.quantity}</Text>
+                    </View>
+                    <View style={{ padding: 12 }}>
+                      {/* Production details */}
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
+                        <View style={{ minWidth: 120 }}><Text style={{ fontSize: 9, color: '#C5964A', fontWeight: '700', textTransform: 'uppercase' }}>Drawing</Text><Text style={{ fontSize: 13, fontWeight: '600' }}>{item.drawing_number || 'N/A'}</Text></View>
+                        <View style={{ minWidth: 120 }}><Text style={{ fontSize: 9, color: '#C5964A', fontWeight: '700', textTransform: 'uppercase' }}>Paint</Text><Text style={{ fontSize: 13 }}>{item.paint_details || 'N/A'}</Text></View>
+                        <View style={{ minWidth: 100 }}><Text style={{ fontSize: 9, color: '#C5964A', fontWeight: '700', textTransform: 'uppercase' }}>Shaft Length</Text><Text style={{ fontSize: 13, fontWeight: '600' }}>{item.shaft_length_mm || 'N/A'} mm</Text></View>
+                        <View style={{ minWidth: 120 }}><Text style={{ fontSize: 9, color: '#C5964A', fontWeight: '700', textTransform: 'uppercase' }}>Shaft Slot</Text><Text style={{ fontSize: 13, fontWeight: '700', color: '#960018' }}>{item.shaft_slot || 'N/A'}</Text></View>
+                      </View>
+                      {item.production_notes && <Text style={{ fontSize: 12, color: '#475569', backgroundColor: '#F8FAFC', padding: 8, borderRadius: 6, marginBottom: 8 }}>{item.production_notes}</Text>}
+
+                      {/* BOM Table */}
+                      {item.bom && item.bom.length > 0 && (
+                        <View>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#C5964A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Bill of Materials</Text>
+                          <View style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, overflow: 'hidden' }}>
+                            <View style={{ flexDirection: 'row', backgroundColor: '#1E293B', padding: 6 }}>
+                              <Text style={{ flex: 2, color: '#fff', fontSize: 10, fontWeight: '600' }}>Component</Text>
+                              <Text style={{ flex: 3, color: '#fff', fontSize: 10, fontWeight: '600' }}>Description</Text>
+                              <Text style={{ flex: 1, color: '#fff', fontSize: 10, fontWeight: '600', textAlign: 'center' }}>Qty</Text>
+                              <Text style={{ flex: 1, color: '#fff', fontSize: 10, fontWeight: '600', textAlign: 'right' }}>Wt(kg)</Text>
+                            </View>
+                            {item.bom.map((b: any, bi: number) => (
+                              <View key={bi} style={{ flexDirection: 'row', padding: 6, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', backgroundColor: bi % 2 === 0 ? '#fff' : '#F8FAFC' }}>
+                                <Text style={{ flex: 2, fontSize: 11, fontWeight: '600', color: '#0F172A' }}>{b.component}</Text>
+                                <Text style={{ flex: 3, fontSize: 10, color: '#64748B' }}>{b.description}</Text>
+                                <Text style={{ flex: 1, fontSize: 11, textAlign: 'center', fontWeight: '600' }}>{b.total_qty}</Text>
+                                <Text style={{ flex: 1, fontSize: 11, textAlign: 'right' }}>{b.total_weight_kg || '-'}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ))}
+
+                {/* Stage History */}
+                {selectedWO.stage_history && selectedWO.stage_history.length > 0 && (
+                  <View style={{ marginTop: 8 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#C5964A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Stage History</Text>
+                    {selectedWO.stage_history.map((sh: any, i: number) => (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 4 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: WO_STAGE_COLORS[sh.stage] || '#94A3B8', marginTop: 4 }} />
+                        <View><Text style={{ fontSize: 12, fontWeight: '600' }}>{WO_STAGE_LABELS[sh.stage] || sh.stage}</Text><Text style={{ fontSize: 10, color: '#94A3B8' }}>{sh.timestamp?.split('T')[0]} {sh.notes ? `— ${sh.notes}` : ''}</Text></View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Actions */}
+                {isAdmin && (
+                  <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#C5964A', borderRadius: 12, paddingVertical: 14, marginTop: 16 }} onPress={() => { downloadPDF(selectedWO.id); }}>
+                    <Ionicons name="download" size={18} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Download Work Order PDF</Text>
+                  </TouchableOpacity>
+                )}
+                <View style={{ height: 20 }} />
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const wos = StyleSheet.create({
+  card: { backgroundColor: 'rgba(255,255,255,0.82)', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
+  woNumber: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  customer: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  stageBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  stageText: { fontSize: 11, fontWeight: '700' },
+  itemCount: { fontSize: 11, color: '#94A3B8', marginBottom: 8 },
+  itemPreview: { backgroundColor: 'rgba(241,245,249,0.6)', borderRadius: 8, padding: 8, marginBottom: 4 },
+  itemName: { fontSize: 12, fontWeight: '600', color: '#0F172A' },
+  itemMeta: { fontSize: 10, color: '#64748B', marginTop: 2 },
+  actions: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' },
+  actionText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modal: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22 },
+  modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+});
+
 const ORDER_STAGE_COLORS: Record<string, string> = {
   confirmed: '#3B82F6', in_production: '#C5964A', ready: '#8B5CF6', dispatched: '#F59E0B', delivered: '#10B981'
 };
@@ -466,9 +663,11 @@ export default function QuotesScreen() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [viewMode, setViewMode] = useState<'quotes' | 'orders'>('quotes');
+  const [viewMode, setViewMode] = useState<'quotes' | 'orders' | 'workorders'>('quotes');
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [workOrders, setWorkOrders] = useState<any[]>([]);
+  const [woLoading, setWoLoading] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
@@ -733,6 +932,18 @@ export default function QuotesScreen() {
       console.error('Error fetching orders:', error);
     } finally {
       setOrdersLoading(false);
+    }
+  };
+
+  const fetchWorkOrders = async () => {
+    setWoLoading(true);
+    try {
+      const response = await api.get('/work-orders');
+      setWorkOrders(response.data.work_orders || []);
+    } catch (error: any) {
+      console.error('Error fetching work orders:', error);
+    } finally {
+      setWoLoading(false);
     }
   };
 
@@ -2249,20 +2460,20 @@ export default function QuotesScreen() {
               showExcel={true}
             />
           )}
-          <TouchableOpacity onPress={() => { onRefresh(); if (viewMode === 'orders') fetchOrders(); }} style={styles.refreshButton}>
+          <TouchableOpacity onPress={() => { onRefresh(); if (viewMode === 'orders') fetchOrders(); if (viewMode === 'workorders') fetchWorkOrders(); }} style={styles.refreshButton}>
             <Ionicons name="refresh" size={24} color="#C5964A" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Quotes / Orders Toggle */}
+      {/* Quotes / Orders / Work Orders Toggle */}
       <View style={styles.modeToggleContainer}>
         <View style={styles.modeToggle}>
           <TouchableOpacity
             style={[styles.modeBtn, viewMode === 'quotes' && styles.modeBtnActive]}
             onPress={() => setViewMode('quotes')}
           >
-            <Ionicons name="document-text-outline" size={16} color={viewMode === 'quotes' ? '#C5964A' : '#94A3B8'} />
+            <Ionicons name="document-text-outline" size={14} color={viewMode === 'quotes' ? '#C5964A' : '#94A3B8'} />
             <Text style={[styles.modeBtnText, viewMode === 'quotes' && styles.modeBtnTextActive]}>
               {docLabel}s
             </Text>
@@ -2271,14 +2482,28 @@ export default function QuotesScreen() {
             style={[styles.modeBtn, viewMode === 'orders' && styles.modeBtnActive]}
             onPress={() => { setViewMode('orders'); if (orders.length === 0) fetchOrders(); }}
           >
-            <Ionicons name="cube-outline" size={16} color={viewMode === 'orders' ? '#C5964A' : '#94A3B8'} />
+            <Ionicons name="cube-outline" size={14} color={viewMode === 'orders' ? '#C5964A' : '#94A3B8'} />
             <Text style={[styles.modeBtnText, viewMode === 'orders' && styles.modeBtnTextActive]}>Orders</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeBtn, viewMode === 'workorders' && styles.modeBtnActive]}
+            onPress={() => { setViewMode('workorders'); if (workOrders.length === 0) fetchWorkOrders(); }}
+          >
+            <Ionicons name="construct-outline" size={14} color={viewMode === 'workorders' ? '#C5964A' : '#94A3B8'} />
+            <Text style={[styles.modeBtnText, viewMode === 'workorders' && styles.modeBtnTextActive]}>Work Orders</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* ORDERS VIEW */}
-      {viewMode === 'orders' ? (
+      {/* WORK ORDERS VIEW */}
+      {viewMode === 'workorders' ? (
+        <WorkOrdersView
+          workOrders={workOrders}
+          loading={woLoading}
+          onRefresh={fetchWorkOrders}
+          isAdmin={isAdmin}
+        />
+      ) : viewMode === 'orders' ? (
         <OrdersView
           orders={orders}
           loading={ordersLoading}
