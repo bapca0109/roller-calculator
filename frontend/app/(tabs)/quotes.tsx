@@ -292,10 +292,60 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
   const [showDetail, setShowDetail] = useState(false);
   const [detailOrder, setDetailOrder] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [showCreateWO, setShowCreateWO] = useState(false);
+  const [woOrder, setWoOrder] = useState<any>(null);
+  const [woItems, setWoItems] = useState<any[]>([]);
+  const [woCreating, setWoCreating] = useState(false);
   const [payAmount, setPayAmount] = useState('');
   const [payMode, setPayMode] = useState('bank_transfer');
   const [payRef, setPayRef] = useState('');
   const [processing, setProcessing] = useState(false);
+
+  const openCreateWO = (order: any) => {
+    setWoOrder(order);
+    const items = (order.products || []).map((_: any, i: number) => ({
+      item_index: i,
+      drawing_number: '',
+      paint_details: '',
+      shaft_length: '',
+      slot_width: '',
+      slot_dimension: '',
+      slot_type: 'A',
+      production_notes: '',
+    }));
+    setWoItems(items);
+    setShowCreateWO(true);
+  };
+
+  const createWorkOrder = async () => {
+    if (!woOrder) return;
+    // Validate
+    for (let i = 0; i < woItems.length; i++) {
+      const item = woItems[i];
+      if (!item.drawing_number) { Alert.alert('Error', `Item ${i+1}: Drawing number required`); return; }
+      if (!item.shaft_length) { Alert.alert('Error', `Item ${i+1}: Shaft length required`); return; }
+      if (!item.slot_width || !item.slot_dimension || !item.slot_type) { Alert.alert('Error', `Item ${i+1}: Shaft slot details required`); return; }
+    }
+    setWoCreating(true);
+    try {
+      const payload = {
+        items: woItems.map(item => ({
+          item_index: item.item_index,
+          drawing_number: item.drawing_number,
+          paint_details: item.paint_details,
+          shaft_length: parseFloat(item.shaft_length),
+          shaft_slot: { width: parseFloat(item.slot_width), dimension: parseFloat(item.slot_dimension), slot_type: item.slot_type },
+          production_notes: item.production_notes,
+        }))
+      };
+      const res = await api.post(`/orders/${woOrder.id}/create-work-order`, payload);
+      Alert.alert('Success', res.data.message);
+      setShowCreateWO(false);
+      onRefresh();
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'Failed to create work order');
+    } finally { setWoCreating(false); }
+  };
 
   const openOrderDetail = async (order: any) => {
     setDetailLoading(true);
@@ -428,6 +478,18 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
                     <Ionicons name="download-outline" size={15} color="#8B5CF6" />
                     <Text style={[os.actionText, { color: '#8B5CF6' }]}>PI PDF</Text>
                   </TouchableOpacity>
+                )}
+                {!order.work_order && (
+                  <Pressable style={[os.actionBtn, { backgroundColor: 'rgba(197,150,74,0.1)', borderColor: '#C5964A' }]} onPress={() => openCreateWO(order)}>
+                    <Ionicons name="construct-outline" size={15} color="#C5964A" />
+                    <Text style={[os.actionText, { color: '#C5964A' }]}>Create WO</Text>
+                  </Pressable>
+                )}
+                {order.work_order && (
+                  <View style={[os.actionBtn, { backgroundColor: 'rgba(16,185,129,0.08)', borderColor: '#10B981' }]}>
+                    <Ionicons name="construct" size={15} color="#10B981" />
+                    <Text style={[os.actionText, { color: '#10B981' }]}>{order.work_order}</Text>
+                  </View>
                 )}
               </View>
             )}
@@ -615,6 +677,54 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
             <TouchableOpacity style={os.saveBtn} onPress={addPayment} disabled={processing}>
               {processing ? <ActivityIndicator color="#fff" /> : <><Ionicons name="checkmark" size={20} color="#fff" /><Text style={os.saveBtnText}>Record Payment</Text></>}
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Create Work Order Modal */}
+      <Modal visible={showCreateWO} animationType="slide" transparent>
+        <View style={os.modalOverlay}>
+          <View style={[os.modal, { maxHeight: '90%' }]}>
+            <View style={os.modalHead}>
+              <Text style={os.modalTitle}>Create Work Order</Text>
+              <TouchableOpacity onPress={() => setShowCreateWO(false)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity>
+            </View>
+            {woOrder && <Text style={os.modalSub}>{woOrder.so_number} — {woOrder.customer_name}</Text>}
+            <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
+              {woItems.map((item: any, idx: number) => (
+                <View key={idx} style={{ backgroundColor: 'rgba(241,245,249,0.7)', borderRadius: 12, padding: 14, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 10 }}>
+                    Item {idx + 1}: {woOrder?.products?.[idx]?.product_name || 'Product'}
+                  </Text>
+                  <Text style={os.label}>Drawing Number *</Text>
+                  <TextInput style={os.input} value={item.drawing_number} onChangeText={v => { const arr = [...woItems]; arr[idx].drawing_number = v; setWoItems(arr); }} placeholder="DWG-001" />
+                  <Text style={os.label}>Paint Details</Text>
+                  <TextInput style={os.input} value={item.paint_details} onChangeText={v => { const arr = [...woItems]; arr[idx].paint_details = v; setWoItems(arr); }} placeholder="Red oxide + Black 50 micron" />
+                  <Text style={os.label}>Shaft Length (mm) *</Text>
+                  <TextInput style={os.input} value={item.shaft_length} onChangeText={v => { const arr = [...woItems]; arr[idx].shaft_length = v; setWoItems(arr); }} placeholder="600" keyboardType="numeric" />
+                  <Text style={os.label}>Shaft End Slot *</Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: '#94A3B8' }}>Width</Text>
+                      <TextInput style={os.input} value={item.slot_width} onChangeText={v => { const arr = [...woItems]; arr[idx].slot_width = v; setWoItems(arr); }} placeholder="14" keyboardType="numeric" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: '#94A3B8' }}>Dim</Text>
+                      <TextInput style={os.input} value={item.slot_dimension} onChangeText={v => { const arr = [...woItems]; arr[idx].slot_dimension = v; setWoItems(arr); }} placeholder="9" keyboardType="numeric" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: '#94A3B8' }}>Type</Text>
+                      <TextInput style={os.input} value={item.slot_type} onChangeText={v => { const arr = [...woItems]; arr[idx].slot_type = v; setWoItems(arr); }} placeholder="A / B5 / C35" />
+                    </View>
+                  </View>
+                  <Text style={os.label}>Production Notes</Text>
+                  <TextInput style={[os.input, { height: 50, textAlignVertical: 'top' }]} value={item.production_notes} onChangeText={v => { const arr = [...woItems]; arr[idx].production_notes = v; setWoItems(arr); }} placeholder="Notes..." multiline />
+                </View>
+              ))}
+            </ScrollView>
+            <Pressable style={[os.saveBtn, woCreating && { opacity: 0.6 }]} onPress={createWorkOrder} disabled={woCreating}>
+              {woCreating ? <ActivityIndicator color="#fff" /> : <><Ionicons name="construct" size={18} color="#fff" /><Text style={os.saveBtnText}>Create Work Order + BOM</Text></>}
+            </Pressable>
           </View>
         </View>
       </Modal>
