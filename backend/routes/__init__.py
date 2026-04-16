@@ -363,3 +363,16 @@ class RevisionHistoryEntry(BaseModel):
     action: str
     changes: Dict[str, Any] = {}
     summary: str = ""
+
+
+def get_convero_logo_base64():
+    """Get Convero logo as base64 string for PDF embedding"""
+    import base64 as b64
+    try:
+        logo_path = ROOT_DIR / 'static' / 'convero-logo.png'
+        if logo_path.exists():
+            with open(logo_path, 'rb') as f:
+                return b64.b64encode(f.read()).decode('utf-8')
+    except Exception as e:
+        logging.warning(f"Could not load logo: {e}")
+    return None

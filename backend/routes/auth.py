@@ -8,10 +8,14 @@ from routes import (db, get_current_user, require_role, verify_password, get_pas
                     create_access_token, get_ist_now, utc_to_ist, IST, pwd_context, 
                     SECRET_KEY, ALGORITHM, GMAIL_USER, GMAIL_APP_PASSWORD,
                     ADMIN_REGISTRATION_EMAILS, ADMIN_RFQ_EMAILS, ROOT_DIR,
-                    generate_customer_code, Token, UserRegister, UserLogin, UserRole)
+                    generate_customer_code, Token, UserRegister, UserLogin, UserRole,
+                    get_convero_logo_base64)
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+from email.mime.base import MIMEBase
+from email import encoders
 import base64
 import random
 import string
