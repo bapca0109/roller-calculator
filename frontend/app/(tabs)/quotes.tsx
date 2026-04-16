@@ -451,8 +451,8 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
             {/* Invoices */}
             <View style={os.invoiceRow}>
               {order.proforma_invoice && <View style={os.invoiceTag}><Ionicons name="document-outline" size={12} color="#8B5CF6" /><Text style={os.invoiceTagText}>PI: {order.proforma_invoice}</Text></View>}
-              {order.tax_invoice && <View style={os.invoiceTag}><Ionicons name="receipt-outline" size={12} color="#10B981" /><Text style={os.invoiceTagText}>{order.tax_invoice}</Text></View>}
               {order.quote_number && <View style={os.invoiceTag}><Ionicons name="document-text-outline" size={12} color="#94A3B8" /><Text style={os.invoiceTagText}>{order.quote_number}</Text></View>}
+              {order.work_order && <View style={os.invoiceTag}><Ionicons name="construct" size={12} color="#10B981" /><Text style={os.invoiceTagText}>{order.work_order}</Text></View>}
             </View>
 
             {/* Actions */}
