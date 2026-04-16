@@ -147,14 +147,14 @@ export const QuoteCard: React.FC<QuoteCardProps> = ({
       </TouchableOpacity>
 
       {isApproved && isAdmin && !quote.converted_to_so && onConvertToSO && (
-        <TouchableOpacity
+        <Pressable
           style={styles.convertSOBtn}
           onPress={() => onConvertToSO(quote)}
           data-testid="convert-to-so-btn"
         >
           <Ionicons name="cube-outline" size={16} color="#fff" />
           <Text style={styles.convertSOText}>Convert to SO</Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {isApproved && quote.converted_to_so && (
