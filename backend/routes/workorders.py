@@ -553,9 +553,105 @@ async def get_work_order_pdf(
     logo_b64 = get_convero_logo_base64()
     logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="height:40px" />' if logo_b64 else f'<b>{COMPANY["name"]}</b>'
 
-    # Build items HTML
+    # Build items summary table (roller-style) and consolidated BOM
+    all_items = wo.get("items", [])
+    
+    # TABLE 1: Items Summary
+    items_summary_rows = ""
+    for idx, item in enumerate(all_items, 1):
+        specs = item.get("specifications", {})
+        pd_slot = item.get("shaft_slot_details", {})
+        slot_str = item.get("shaft_slot", "N/A")
+        pipe_type_str = specs.get("pipe_type", "")
+        # Extract thickness from pipe_type like "8mm wall"
+        import re
+        thk_match = re.search(r'(\d+\.?\d*)', str(pipe_type_str))
+        pipe_thk = thk_match.group(1) if thk_match else "-"
+        
+        items_summary_rows += f"""<tr>
+            <td style="text-align:center">{idx}</td>
+            <td>{item.get('product_code','')}</td>
+            <td style="text-align:center">{specs.get('pipe_diameter','')}</td>
+            <td style="text-align:center">{specs.get('rubber_diameter','') or '-'}</td>
+            <td style="text-align:center">{specs.get('pipe_length','') or specs.get('face_length','')}</td>
+            <td style="text-align:center">{pipe_thk}</td>
+            <td style="text-align:center">2</td>
+            <td style="text-align:center">{specs.get('shaft_diameter','')}</td>
+            <td style="text-align:center">{item.get('shaft_length_mm','')}</td>
+            <td style="text-align:center">{slot_str}</td>
+            <td style="text-align:center">{specs.get('bearing_number','') or specs.get('bearing','') or '-'}</td>
+            <td style="text-align:center;font-weight:700">{item.get('quantity','')}</td>
+        </tr>"""
+
+    items_summary_html = f"""
+    <div style="font-size:12px;font-weight:700;color:#C5964A;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">Items Summary</div>
+    <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:16px">
+        <tr style="background:#0F172A;color:#fff">
+            <th style="padding:6px;text-align:center">Sr.</th>
+            <th style="padding:6px">Code</th>
+            <th style="padding:6px;text-align:center">Pipe Dia</th>
+            <th style="padding:6px;text-align:center">Rubber Dia</th>
+            <th style="padding:6px;text-align:center">Pipe L.</th>
+            <th style="padding:6px;text-align:center">Pipe Thk (mm)</th>
+            <th style="padding:6px;text-align:center">Housing</th>
+            <th style="padding:6px;text-align:center">Shaft Dia</th>
+            <th style="padding:6px;text-align:center">Shaft L.</th>
+            <th style="padding:6px;text-align:center">End Type</th>
+            <th style="padding:6px;text-align:center">Bearing</th>
+            <th style="padding:6px;text-align:center">Qty</th>
+        </tr>
+        {items_summary_rows}
+    </table>"""
+
+    # TABLE 2: Consolidated BOM (all items merged)
+    consolidated_bom = {}
+    for item in all_items:
+        for b in item.get("bom", []):
+            key = b.get("component", "")
+            if key in consolidated_bom:
+                consolidated_bom[key]["total_qty"] += b.get("total_qty", 0)
+                consolidated_bom[key]["total_weight_kg"] += b.get("total_weight_kg", 0)
+            else:
+                consolidated_bom[key] = {
+                    "component": key,
+                    "description": b.get("description", ""),
+                    "material": b.get("material", ""),
+                    "total_qty": b.get("total_qty", 0),
+                    "total_weight_kg": b.get("total_weight_kg", 0),
+                }
+
+    consolidated_rows = ""
+    grand_bom_weight = 0
+    for ci, (comp, cb) in enumerate(consolidated_bom.items(), 1):
+        grand_bom_weight += cb["total_weight_kg"]
+        consolidated_rows += f"""<tr>
+            <td style="text-align:center">{ci}</td>
+            <td><b>{cb['component']}</b></td>
+            <td>{cb['material']}</td>
+            <td style="text-align:center;font-weight:700">{cb['total_qty']}</td>
+            <td style="text-align:right">{round(cb['total_weight_kg'],3) if cb['total_weight_kg'] else '-'}</td>
+        </tr>"""
+
+    consolidated_bom_html = f"""
+    <div style="font-size:12px;font-weight:700;color:#C5964A;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">Total Bill of Materials (All Items)</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px">
+        <tr style="background:#1E293B;color:#fff">
+            <th style="padding:7px;text-align:center;width:40px">Sr.</th>
+            <th style="padding:7px">Component</th>
+            <th style="padding:7px">Material</th>
+            <th style="padding:7px;text-align:center">Total Qty</th>
+            <th style="padding:7px;text-align:right">Total Wt (kg)</th>
+        </tr>
+        {consolidated_rows}
+        <tr style="font-weight:700;background:#F0F4F8">
+            <td colspan="4" style="text-align:right;padding:8px">Grand Total Weight</td>
+            <td style="text-align:right;padding:8px">{round(grand_bom_weight,3)} kg</td>
+        </tr>
+    </table>""" if consolidated_bom else ""
+
+    # Build per-item detail HTML
     items_html = ""
-    for item in wo.get("items", []):
+    for item in all_items:
         slot = item.get("shaft_slot", "N/A")
         specs = item.get("specifications", {})
 
@@ -667,6 +763,11 @@ async def get_work_order_pdf(
         <div class="info-box"><div class="info-label">Stage</div><div class="info-value">{WO_STAGE_LABELS.get(wo.get('stage',''), wo.get('stage',''))}</div></div>
     </div>
 
+    {items_summary_html}
+
+    {consolidated_bom_html}
+
+    <div style="font-size:12px;font-weight:700;color:#C5964A;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">Item Details</div>
     {items_html}
 
     <div style="font-size:11px;font-weight:700;color:#C5964A;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">Stage History</div>
