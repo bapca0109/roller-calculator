@@ -148,9 +148,10 @@ export const QuoteCard: React.FC<QuoteCardProps> = ({
 
       {isApproved && isAdmin && !quote.converted_to_so && onConvertToSO && (
         <Pressable
-          style={styles.convertSOBtn}
-          onPress={() => onConvertToSO(quote)}
+          style={({pressed}) => [styles.convertSOBtn, pressed && {opacity: 0.7}]}
+          onPress={() => { console.log('Convert pressed for', quote.quote_number); onConvertToSO(quote); }}
           data-testid="convert-to-so-btn"
+          accessibilityRole="button"
         >
           <Ionicons name="cube-outline" size={16} color="#fff" />
           <Text style={styles.convertSOText}>Convert to SO</Text>
