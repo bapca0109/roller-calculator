@@ -83,7 +83,137 @@ async def update_item_production_details(
     return {"message": f"Production details updated for item {update.item_index + 1}"}
 
 
-# ============= CREATE WORK ORDER FROM SO =============
+# ============= BULK: SET PRODUCTION DETAILS + CREATE WO IN ONE CLICK =============
+
+class BulkProductionItem(BaseModel):
+    item_index: int
+    drawing_number: Optional[str] = None
+    drawing_base64: Optional[str] = None
+    drawing_filename: Optional[str] = None
+    paint_details: Optional[str] = None
+    shaft_length: Optional[float] = None
+    shaft_slot: Optional[ShaftSlot] = None
+    production_notes: Optional[str] = None
+
+
+class BulkCreateWorkOrder(BaseModel):
+    items: List[BulkProductionItem]
+
+
+@router.post("/orders/{order_id}/create-work-order")
+async def bulk_create_work_order(
+    order_id: str,
+    data: BulkCreateWorkOrder,
+    current_user: dict = Depends(require_role([UserRole.ADMIN]))
+):
+    """Single click: set production details for all items + auto-generate BOM + create Work Order"""
+    order = await db.sales_orders.find_one({"$or": [{"id": order_id}, {"so_number": order_id}]})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    existing = await db.work_orders.find_one({"order_id": order.get("id")})
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Work Order already exists: {existing['wo_number']}")
+
+    products = order.get("products", [])
+
+    # Step 1: Apply production details to all items
+    for item_data in data.items:
+        idx = item_data.item_index
+        if idx < 0 or idx >= len(products):
+            raise HTTPException(status_code=400, detail=f"Invalid item index: {idx}")
+        products[idx]["production_details"] = {
+            "drawing_number": item_data.drawing_number,
+            "drawing_base64": item_data.drawing_base64,
+            "drawing_filename": item_data.drawing_filename,
+            "paint_details": item_data.paint_details,
+            "shaft_length": item_data.shaft_length,
+            "shaft_slot": item_data.shaft_slot.dict() if item_data.shaft_slot else None,
+            "production_notes": item_data.production_notes,
+        }
+
+    # Step 2: Validate all items have required fields
+    missing = []
+    for i, p in enumerate(products):
+        pd = p.get("production_details")
+        if not pd:
+            missing.append(f"Item {i+1}: No production details")
+            continue
+        if not pd.get("drawing_number"):
+            missing.append(f"Item {i+1}: Drawing number missing")
+        if not pd.get("shaft_length"):
+            missing.append(f"Item {i+1}: Shaft length missing")
+        if not pd.get("shaft_slot") or not pd["shaft_slot"].get("slot_type"):
+            missing.append(f"Item {i+1}: Shaft slot details missing")
+
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Production details incomplete: {'; '.join(missing)}")
+
+    # Step 3: Save production details to SO
+    await db.sales_orders.update_one(
+        {"_id": order["_id"]},
+        {"$set": {"products": products, "updated_at": get_ist_now().isoformat()}}
+    )
+
+    # Step 4: Build WO items with BOM
+    now = get_ist_now()
+    wo_number = await generate_wo_number()
+
+    wo_items = []
+    for i, p in enumerate(products):
+        pd = p.get("production_details", {})
+        slot = pd.get("shaft_slot", {})
+        slot_str = ""
+        if slot:
+            st = slot.get("slot_type", "")
+            slot_str = f"{slot.get('width', '')} × {slot.get('dimension', '')} {st}"
+
+        specs = p.get("specifications", {})
+        qty = p.get("quantity", 1)
+        bom = _generate_bom(p, pd, specs, qty)
+
+        wo_items.append({
+            "index": i,
+            "product_name": p.get("product_name"),
+            "product_code": p.get("product_id"),
+            "quantity": qty,
+            "specifications": specs,
+            "drawing_number": pd.get("drawing_number"),
+            "drawing_filename": pd.get("drawing_filename"),
+            "drawing_base64": pd.get("drawing_base64"),
+            "paint_details": pd.get("paint_details"),
+            "shaft_length_mm": pd.get("shaft_length"),
+            "shaft_slot": slot_str,
+            "shaft_slot_details": slot,
+            "production_notes": pd.get("production_notes"),
+            "bom": bom,
+            "item_status": "pending",
+        })
+
+    work_order = {
+        "id": str(ObjectId()),
+        "wo_number": wo_number,
+        "order_id": order.get("id"),
+        "so_number": order.get("so_number"),
+        "quote_number": order.get("quote_number"),
+        "customer_name": order.get("customer_name"),
+        "customer_company": order.get("customer_company"),
+        "items": wo_items,
+        "stage": "created",
+        "stage_history": [{"stage": "created", "timestamp": now.isoformat(), "by": current_user.get("email"), "notes": f"Created from {order.get('so_number')} with {len(wo_items)} items"}],
+        "created_by": current_user.get("email"),
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    }
+
+    await db.work_orders.insert_one(work_order)
+    await db.sales_orders.update_one(
+        {"_id": order["_id"]},
+        {"$set": {"work_order": wo_number, "updated_at": now.isoformat()}}
+    )
+
+    del work_order["_id"]
+    return {"message": f"Work Order {wo_number} created with {len(wo_items)} items", "work_order": work_order}
 
 @router.post("/orders/{order_id}/work-order")
 async def create_work_order(
