@@ -315,6 +315,9 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
 
     if is_roller:
         # === ROLLER BOM ===
+        product_code = (product.get("product_id") or "").upper()
+        is_impact = "IR" in product_code or "IMPACT" in product_name.upper()
+
         # 1. Pipe
         if pipe_dia > 0 and pipe_length > 0:
             effective_thk = wall_thk if wall_thk > 0 else 3.2  # default
@@ -359,7 +362,18 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "total_weight_kg": 0,
             })
 
-        # 4. Seals
+        # 4. Housing (bearing end cap) — 2 per roller
+        bom.append({
+            "component": "Housing",
+            "description": f"Bearing housing for {pipe_dia}mm pipe",
+            "material": "MS Pressed/Cast",
+            "qty_per_unit": 2,
+            "total_qty": qty * 2,
+            "weight_per_unit_kg": 0,
+            "total_weight_kg": 0,
+        })
+
+        # 5. Seals
         bom.append({
             "component": "Seal",
             "description": f"For {pipe_dia}mm pipe",
@@ -370,7 +384,18 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             "total_weight_kg": 0,
         })
 
-        # 5. Grease
+        # 6. Circlip — 4 per roller (2 each side)
+        bom.append({
+            "component": "Circlip",
+            "description": f"For {shaft_dia}mm shaft",
+            "material": "Spring Steel",
+            "qty_per_unit": 4,
+            "total_qty": qty * 4,
+            "weight_per_unit_kg": 0,
+            "total_weight_kg": 0,
+        })
+
+        # 7. Grease
         bom.append({
             "component": "Grease",
             "description": "Bearing grease",
@@ -380,6 +405,20 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             "weight_per_unit_kg": 0,
             "total_weight_kg": 0,
         })
+
+        # 8. Rubber Rings — Impact roller only, qty based on pipe length
+        if is_impact and pipe_dia > 0 and pipe_length > 0:
+            ring_width = 50  # mm per ring
+            ring_qty = max(1, int(pipe_length / ring_width))
+            bom.append({
+                "component": "Rubber Ring",
+                "description": f"{pipe_dia}mm dia × {ring_width}mm wide — {ring_qty} nos/roller",
+                "material": "Natural Rubber",
+                "qty_per_unit": ring_qty,
+                "total_qty": qty * ring_qty,
+                "weight_per_unit_kg": 0,
+                "total_weight_kg": 0,
+            })
 
     elif is_pulley:
         # === PULLEY BOM ===
