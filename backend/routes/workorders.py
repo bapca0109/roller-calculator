@@ -268,6 +268,109 @@ async def update_wo_item_status(
 
 # ============= WORK ORDER SUMMARY =============
 
+# ============= EDIT BOM =============
+
+class BomItemUpdate(BaseModel):
+    component: str
+    description: Optional[str] = None
+    material: Optional[str] = None
+    qty_per_unit: Optional[int] = None
+    total_qty: Optional[int] = None
+    weight_per_unit_kg: Optional[float] = None
+    total_weight_kg: Optional[float] = None
+
+
+class BomUpdate(BaseModel):
+    item_index: int
+    bom: List[BomItemUpdate]
+
+
+@router.put("/work-orders/{wo_id}/bom")
+async def update_wo_bom(
+    wo_id: str,
+    update: BomUpdate,
+    current_user: dict = Depends(require_role([UserRole.ADMIN]))
+):
+    """Update BOM for a work order item — add, remove, or edit quantities"""
+    wo = await db.work_orders.find_one({"$or": [{"id": wo_id}, {"wo_number": wo_id}]})
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work Order not found")
+
+    items = wo.get("items", [])
+    if update.item_index < 0 or update.item_index >= len(items):
+        raise HTTPException(status_code=400, detail="Invalid item index")
+
+    # Replace BOM with updated list
+    new_bom = [b.dict() for b in update.bom]
+    items[update.item_index]["bom"] = new_bom
+
+    await db.work_orders.update_one(
+        {"_id": wo["_id"]},
+        {"$set": {"items": items, "updated_at": get_ist_now().isoformat()}}
+    )
+
+    return {"message": f"BOM updated for item {update.item_index + 1}", "bom": new_bom}
+
+
+@router.post("/work-orders/{wo_id}/bom/add-item")
+async def add_bom_item(
+    wo_id: str,
+    item_index: int,
+    bom_item: BomItemUpdate,
+    current_user: dict = Depends(require_role([UserRole.ADMIN]))
+):
+    """Add a single component to BOM"""
+    wo = await db.work_orders.find_one({"$or": [{"id": wo_id}, {"wo_number": wo_id}]})
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work Order not found")
+
+    items = wo.get("items", [])
+    if item_index < 0 or item_index >= len(items):
+        raise HTTPException(status_code=400, detail="Invalid item index")
+
+    bom = items[item_index].get("bom", [])
+    bom.append(bom_item.dict())
+    items[item_index]["bom"] = bom
+
+    await db.work_orders.update_one(
+        {"_id": wo["_id"]},
+        {"$set": {"items": items, "updated_at": get_ist_now().isoformat()}}
+    )
+
+    return {"message": f"{bom_item.component} added to BOM", "bom": bom}
+
+
+@router.delete("/work-orders/{wo_id}/bom/remove-item")
+async def remove_bom_item(
+    wo_id: str,
+    item_index: int,
+    bom_index: int,
+    current_user: dict = Depends(require_role([UserRole.ADMIN]))
+):
+    """Remove a component from BOM by index"""
+    wo = await db.work_orders.find_one({"$or": [{"id": wo_id}, {"wo_number": wo_id}]})
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work Order not found")
+
+    items = wo.get("items", [])
+    if item_index < 0 or item_index >= len(items):
+        raise HTTPException(status_code=400, detail="Invalid item index")
+
+    bom = items[item_index].get("bom", [])
+    if bom_index < 0 or bom_index >= len(bom):
+        raise HTTPException(status_code=400, detail="Invalid BOM index")
+
+    removed = bom.pop(bom_index)
+    items[item_index]["bom"] = bom
+
+    await db.work_orders.update_one(
+        {"_id": wo["_id"]},
+        {"$set": {"items": items, "updated_at": get_ist_now().isoformat()}}
+    )
+
+    return {"message": f"{removed.get('component', 'Item')} removed from BOM", "bom": bom}
+
+
 @router.get("/work-orders/summary/stats")
 async def get_wo_stats(current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))):
     pipeline = [{"$group": {"_id": "$stage", "count": {"$sum": 1}}}]
