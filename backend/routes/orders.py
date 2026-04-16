@@ -557,6 +557,7 @@ def _generate_invoice_html(invoice: dict, order: dict = None) -> str:
             <tr><td class="label">CGST @ {cgst_rate}%</td><td class="value">Rs.{cgst_amt:,.2f}</td></tr>
             <tr><td class="label">SGST @ {cgst_rate}%</td><td class="value">Rs.{sgst_amt:,.2f}</td></tr>
             <tr><td class="grand-label">Grand Total</td><td class="grand">Rs.{grand_total:,.2f}</td></tr>
+            {'<tr><td class="label">Less: Payment Received</td><td class="value" style="color:#10B981">- Rs.' + f'{total_paid:,.2f}' + '</td></tr><tr><td class="grand-label">Amount Due</td><td class="grand">Rs.' + f'{balance:,.2f}' + '</td></tr>' if total_paid > 0 else ''}
         </table>
     </div>
 
