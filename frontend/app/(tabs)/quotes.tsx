@@ -12,6 +12,7 @@ import {
   ScrollView,
   Platform,
   TextInput,
+  Pressable,
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +42,44 @@ import {
   generatePdfHtml,
 } from '../../components/quotes';
 import { ExportButtons } from '../../components/shared/ExportButtons';
+
+function OrdersAndWOView({ orders, ordersLoading, fetchOrders, workOrders, woLoading, fetchWorkOrders, isAdmin }: {
+  orders: any[]; ordersLoading: boolean; fetchOrders: () => void;
+  workOrders: any[]; woLoading: boolean; fetchWorkOrders: () => void;
+  isAdmin: boolean;
+}) {
+  const [subTab, setSubTab] = useState<'so' | 'wo'>('so');
+
+  return (
+    <View style={{ flex: 1 }}>
+      {/* Floating SO / WO toggle */}
+      <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 100, alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', backgroundColor: '#0F172A', borderRadius: 28, padding: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 10 }}>
+          <Pressable
+            style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24 }, subTab === 'so' && { backgroundColor: '#C5964A' }]}
+            onPress={() => { setSubTab('so'); if (orders.length === 0) fetchOrders(); }}
+          >
+            <Ionicons name="cube-outline" size={16} color={subTab === 'so' ? '#fff' : '#94A3B8'} />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: subTab === 'so' ? '#fff' : '#94A3B8' }}>Sales Orders</Text>
+          </Pressable>
+          <Pressable
+            style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24 }, subTab === 'wo' && { backgroundColor: '#C5964A' }]}
+            onPress={() => { setSubTab('wo'); if (workOrders.length === 0) fetchWorkOrders(); }}
+          >
+            <Ionicons name="construct-outline" size={16} color={subTab === 'wo' ? '#fff' : '#94A3B8'} />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: subTab === 'wo' ? '#fff' : '#94A3B8' }}>Work Orders</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {subTab === 'so' ? (
+        <OrdersView orders={orders} loading={ordersLoading} onRefresh={fetchOrders} isAdmin={isAdmin} />
+      ) : (
+        <WorkOrdersView workOrders={workOrders} loading={woLoading} onRefresh={fetchWorkOrders} isAdmin={isAdmin} />
+      )}
+    </View>
+  );
+}
 
 const WO_STAGE_COLORS: Record<string, string> = { created: '#3B82F6', material_issued: '#8B5CF6', in_progress: '#C5964A', qc: '#F59E0B', completed: '#10B981' };
 const WO_STAGE_LABELS: Record<string, string> = { created: 'Created', material_issued: 'Material Issued', in_progress: 'In Progress', qc: 'QC', completed: 'Completed' };
@@ -2461,7 +2500,7 @@ export default function QuotesScreen() {
         </View>
       </View>
 
-      {/* Quotes / Orders / Work Orders Toggle */}
+      {/* Quotes / Orders Toggle */}
       <View style={styles.modeToggleContainer}>
         <View style={styles.modeToggle}>
           <TouchableOpacity
@@ -2480,25 +2519,21 @@ export default function QuotesScreen() {
             <Ionicons name="cube-outline" size={14} color={viewMode === 'orders' ? '#C5964A' : '#94A3B8'} />
             <Text style={[styles.modeBtnText, viewMode === 'orders' && styles.modeBtnTextActive]}>Orders</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeBtn, viewMode === 'workorders' && styles.modeBtnActive]}
-            onPress={() => { setViewMode('workorders'); if (workOrders.length === 0) fetchWorkOrders(); }}
-          >
-            <Ionicons name="construct-outline" size={14} color={viewMode === 'workorders' ? '#C5964A' : '#94A3B8'} />
-            <Text style={[styles.modeBtnText, viewMode === 'workorders' && styles.modeBtnTextActive]}>Work Orders</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
-      {/* WORK ORDERS VIEW */}
-      {viewMode === 'workorders' ? (
-        <WorkOrdersView
+      {/* ORDERS VIEW with SO/WO sub-toggle */}
+      {viewMode === 'orders' ? (
+        <OrdersAndWOView
+          orders={orders}
+          ordersLoading={ordersLoading}
+          fetchOrders={fetchOrders}
           workOrders={workOrders}
-          loading={woLoading}
-          onRefresh={fetchWorkOrders}
+          woLoading={woLoading}
+          fetchWorkOrders={fetchWorkOrders}
           isAdmin={isAdmin}
         />
-      ) : viewMode === 'orders' ? (
+      ) : (
         <OrdersView
           orders={orders}
           loading={ordersLoading}
