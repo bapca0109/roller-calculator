@@ -15,10 +15,9 @@ import os
 
 router = APIRouter()
 
-WORK_ORDER_STAGES = ["created", "material_issued", "in_progress", "qc", "completed"]
+WORK_ORDER_STAGES = ["created", "completed"]
 WO_STAGE_LABELS = {
-    "created": "Created", "material_issued": "Material Issued",
-    "in_progress": "In Progress", "qc": "QC", "completed": "Completed"
+    "created": "Created", "completed": "Completed"
 }
 
 

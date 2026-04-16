@@ -153,7 +153,7 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin }: { workOrder
                   <Text style={[wos.actionText, { color: '#C5964A' }]}>PDF</Text>
                 </TouchableOpacity>
                 {wo.stage !== 'completed' && (() => {
-                  const stages = ['created', 'material_issued', 'in_progress', 'qc', 'completed'];
+                  const stages = ['created', 'completed'];
                   const next = stages[stages.indexOf(wo.stage) + 1];
                   return next ? (
                     <TouchableOpacity style={[wos.actionBtn, { borderColor: WO_STAGE_COLORS[next] }]} onPress={() => updateStage(wo.id, next)}>
