@@ -2534,13 +2534,6 @@ export default function QuotesScreen() {
           isAdmin={isAdmin}
         />
       ) : (
-        <OrdersView
-          orders={orders}
-          loading={ordersLoading}
-          onRefresh={() => fetchOrders()}
-          isAdmin={isAdmin}
-        />
-      ) : (
       <>
       {/* Search Bar - Admin Only */}
       {isAdmin && (
