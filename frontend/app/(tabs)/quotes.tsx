@@ -412,6 +412,40 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
                   <Ionicons name="cash-outline" size={15} color="#C5964A" />
                   <Text style={os.actionText}>Payment</Text>
                 </TouchableOpacity>
+                {order.proforma_invoice && (
+                  <TouchableOpacity style={[os.actionBtn, { backgroundColor: 'rgba(139,92,246,0.1)', borderColor: '#8B5CF6' }]} onPress={async () => {
+                    try {
+                      const token = await AsyncStorage.getItem('token');
+                      const res = await api.get('/invoices');
+                      const inv = res.data.invoices?.find((i: any) => i.so_number === order.so_number && i.invoice_type === 'proforma');
+                      if (inv && token) {
+                        const url = api.defaults.baseURL + `/invoices/${inv.id}/pdf?token=${token}`;
+                        if (typeof window !== 'undefined') window.open(url, '_blank');
+                        else Alert.alert('Proforma', inv.invoice_number);
+                      } else Alert.alert('Error', 'Invoice or token not found');
+                    } catch { Alert.alert('Error', 'Could not load proforma'); }
+                  }}>
+                    <Ionicons name="download-outline" size={15} color="#8B5CF6" />
+                    <Text style={[os.actionText, { color: '#8B5CF6' }]}>PI PDF</Text>
+                  </TouchableOpacity>
+                )}
+                {order.tax_invoice && (
+                  <TouchableOpacity style={[os.actionBtn, { backgroundColor: 'rgba(16,185,129,0.1)', borderColor: '#10B981' }]} onPress={async () => {
+                    try {
+                      const token = await AsyncStorage.getItem('token');
+                      const res = await api.get('/invoices');
+                      const inv = res.data.invoices?.find((i: any) => i.so_number === order.so_number && i.invoice_type === 'tax');
+                      if (inv && token) {
+                        const url = api.defaults.baseURL + `/invoices/${inv.id}/pdf?token=${token}`;
+                        if (typeof window !== 'undefined') window.open(url, '_blank');
+                        else Alert.alert('Invoice', inv.invoice_number);
+                      } else Alert.alert('Error', 'Invoice or token not found');
+                    } catch { Alert.alert('Error', 'Could not load invoice'); }
+                  }}>
+                    <Ionicons name="download-outline" size={15} color="#10B981" />
+                    <Text style={[os.actionText, { color: '#10B981' }]}>Invoice PDF</Text>
+                  </TouchableOpacity>
+                )}
                 {/* Next stage button */}
                 {order.stage !== 'delivered' && (() => {
                   const stages = ['confirmed', 'in_production', 'ready', 'dispatched', 'delivered'];
