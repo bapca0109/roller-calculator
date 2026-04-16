@@ -429,35 +429,6 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
                     <Text style={[os.actionText, { color: '#8B5CF6' }]}>PI PDF</Text>
                   </TouchableOpacity>
                 )}
-                {order.tax_invoice && (
-                  <TouchableOpacity style={[os.actionBtn, { backgroundColor: 'rgba(16,185,129,0.1)', borderColor: '#10B981' }]} onPress={async () => {
-                    try {
-                      const token = await AsyncStorage.getItem('token');
-                      const res = await api.get('/invoices');
-                      const inv = res.data.invoices?.find((i: any) => i.so_number === order.so_number && i.invoice_type === 'tax');
-                      if (inv && token) {
-                        const url = api.defaults.baseURL + `/invoices/${inv.id}/pdf?token=${token}`;
-                        if (typeof window !== 'undefined') window.open(url, '_blank');
-                        else Alert.alert('Invoice', inv.invoice_number);
-                      } else Alert.alert('Error', 'Invoice or token not found');
-                    } catch { Alert.alert('Error', 'Could not load invoice'); }
-                  }}>
-                    <Ionicons name="download-outline" size={15} color="#10B981" />
-                    <Text style={[os.actionText, { color: '#10B981' }]}>Invoice PDF</Text>
-                  </TouchableOpacity>
-                )}
-                {/* Next stage button */}
-                {order.stage !== 'delivered' && (() => {
-                  const stages = ['confirmed', 'in_production', 'ready', 'dispatched', 'delivered'];
-                  const nextIdx = stages.indexOf(order.stage) + 1;
-                  const next = stages[nextIdx];
-                  return next ? (
-                    <TouchableOpacity style={[os.actionBtn, { backgroundColor: ORDER_STAGE_COLORS[next] + '15', borderColor: ORDER_STAGE_COLORS[next] }]} onPress={() => updateStage(order.id, next)}>
-                      <Ionicons name="arrow-forward" size={15} color={ORDER_STAGE_COLORS[next]} />
-                      <Text style={[os.actionText, { color: ORDER_STAGE_COLORS[next] }]}>{ORDER_STAGE_LABELS[next]}</Text>
-                    </TouchableOpacity>
-                  ) : null;
-                })()}
               </View>
             )}
           </TouchableOpacity>
