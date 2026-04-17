@@ -1,89 +1,81 @@
-# Belt Conveyor Roller & Pulley Price Calculator - PRD
+# Belt Conveyor Roller & Pulley ERP - PRD
 
 ## Original Problem Statement
-Create a mobile application to calculate the price of belt conveyor rollers and pulleys, serving as an engineering and quoting tool with product catalog search, admin panel for price management, customer database, complete quote/RFQ workflow, CRM, and sales order management.
+Full ERP mobile application for belt conveyor engineering — roller/pulley pricing, quoting, CRM, sales orders, work orders, invoicing, and production tracking.
 
 ## Architecture
 ```
 /app
 ├── backend
-│   ├── server.py               # App setup, middleware (684 lines)
+│   ├── server.py               # App setup, middleware (690 lines)
 │   ├── routes/
-│   │   ├── __init__.py         # Shared deps, DB, auth, models (365 lines)
-│   │   ├── auth.py             # Login, register, OTP, forgot password (3,080 lines)
-│   │   ├── quotes.py           # Quote CRUD, RFQ approval, revision (1,972 lines)
-│   │   ├── orders.py           # Sales orders, payments, invoicing (290 lines)
-│   │   ├── admin.py            # Price management, standards (1,295 lines)
-│   │   ├── products.py         # Product CRUD, pricing calc, search (945 lines)
-│   │   ├── customers.py        # Customer CRUD, GSTIN (276 lines)
-│   │   ├── crm.py              # Leads, follow-ups, activity timeline (280 lines)
-│   │   ├── analytics.py        # Dashboard analytics (839 lines)
-│   │   ├── exports.py          # Excel/PDF exports (633 lines)
-│   │   └── pulley.py           # Pulley calculator (124 lines)
-│   ├── pulley_standards.py     # Pulley constants & calculation logic
+│   │   ├── __init__.py         # Shared deps, DB, auth, models
+│   │   ├── auth.py             # Login, register, OTP, forgot password
+│   │   ├── quotes.py           # Quote CRUD, RFQ approval, revision
+│   │   ├── orders.py           # Sales orders, payments, invoicing, SO PDF
+│   │   ├── workorders.py       # Work orders, BOM, WO PDF
+│   │   ├── admin.py            # Roller price management, standards
+│   │   ├── products.py         # Product CRUD, pricing calc, search
+│   │   ├── customers.py        # Customer CRUD, GSTIN
+│   │   ├── crm.py              # Leads, follow-ups, activity timeline
+│   │   ├── analytics.py        # Dashboard analytics
+│   │   ├── exports.py          # Excel/PDF exports
+│   │   └── pulley.py           # Pulley calculator + pricing display
+│   ├── pulley_standards.py     # Pulley constants & calculation (HARDCODED prices)
 │   ├── roller_standards.py     # Roller pricing data
 │   └── price_loader.py         # Sync MongoDB price fetcher
 ├── frontend
 │   ├── app/(tabs)/
-│   │   ├── _layout.tsx         # Tab nav (Pulley hidden, merged into Products)
-│   │   ├── calculator.tsx      # Products: Roller/Pulley toggle + calculator
+│   │   ├── _layout.tsx         # Tab nav
+│   │   ├── calculator.tsx      # Products: Roller/Pulley toggle
 │   │   ├── pulley.tsx          # Pulley calculator
-│   │   ├── quotes.tsx          # Sales: Quotes/Orders toggle
-│   │   ├── dashboard.tsx       # CRM: Leads, follow-ups, activity
-│   │   ├── cart.tsx            # Shared cart
-│   │   ├── customers.tsx       # Customer management
-│   │   ├── admin.tsx           # Admin panel
-│   │   └── profile.tsx         # User profile
+│   │   ├── quotes.tsx          # Sales: Quotes/Orders/Work Orders
+│   │   ├── dashboard.tsx       # CRM
+│   │   ├── cart.tsx, customers.tsx, admin.tsx, profile.tsx
 │   └── theme/index.ts          # Premium glass design system
-└── memory/
-    └── PRD.md
+└── memory/PRD.md
 ```
 
-## What's Been Implemented
-
-### April 8, 2026
-- [x] Pulley Calculator with real pricing (Pipe, Shaft, End Plate, Hub, Rubber)
-- [x] Pricing formula: Raw Material × 1.3 (Labour) × 1.6 (Profit)
-- [x] Merged Products + Pulley into single tab with toggle
-- [x] Premium glass UI redesign across ALL screens
-- [x] Server.py refactored from 9,729 → 684 lines (93% reduction)
+## What's Implemented (as of April 17, 2026)
+- [x] Roller Calculator with IS standards
+- [x] Pulley Calculator with real pricing (pipe, shaft, end plate, hub, rubber)
+- [x] Pulley: stress relieving toggle, pipe weight thk+2mm, large pipe surcharge
+- [x] Quote/RFQ workflow with approval + PDF attachments in emails
 - [x] CRM: Lead management, follow-ups, activity timeline
-- [x] Sales Orders: Convert quote → SO, payment tracking, invoicing
-- [x] Orders frontend: Merged into Quotes tab as "Sales" with Quotes/Orders toggle
-- [x] Android nav bar overlap fix
+- [x] Sales Orders: Convert from quote with delivery date (calendar picker)
+- [x] Work Orders: Create from SO with production details + auto BOM
+- [x] WO PDF: Items summary table, consolidated BOM by component, paint details (RAL code, paint type, paint spec from quote)
+- [x] SO PDF: Full commercial terms, pricing with GST, delivery date, total weight
+- [x] Invoice PDF: Proforma + Tax with company details, bank info, payment history
+- [x] All date formats: DD-MM-YYYY across entire app
+- [x] Premium glass UI with gold accents
+- [x] Server.py refactored: 9,729 → 690 lines (11 route modules)
+- [x] Admin panel: Roller/Pulley toggle (Pulley shows read-only prices)
+- [x] Export: Excel + PDF across all modules
+- [x] Pulley items skip technical details (shaft slot etc.) during WO creation
+- [x] BOM: Housing=CRC, Shaft=EN-8, Circlip=A{dia}, correct pipe thk by class A/B/C
+- [x] Roller BOM: Pipe, Shaft, Bearing+make, Housing+size, Seal, Circlip, Grease, Rubber Ring (impact)
 
-### Previous Sessions
-- [x] Full Roller calculator with IS standards
-- [x] Quote/RFQ workflow with approval
-- [x] Customer management with GST lookup
-- [x] Admin price import/export
+## P0 — Next Priority
+- [ ] **Pulley Admin Editable Prices** — Store pulley prices in MongoDB (like roller), add edit/save/import/export/reset/set-default functionality. Same UI as roller price management.
 
-## Design System
-- Primary: #960018 (Carmine)
-- Accent: #C5964A (Gold)
-- Background: #F0F4F8
-- Glass cards: rgba(255,255,255,0.78)
-- Dark header: #0F172A
-- Tab bar: Dark with gold active
+## P1 — Important
+- [ ] KLA pricing (when user provides data)
+- [ ] Inventory tracking (deduct from BOM)
+- [ ] Convert to SO button reliability on all browsers
 
-## Known Issues
-- [ ] KLA pricing pending (hidden from UI)
-
-## Prioritized Backlog
-### P0
-- [ ] Invoice PDF generation with company details & bank info
-- [ ] "Convert to SO" button on approved quote cards
-
-### P1
-- [ ] Inventory & Production tracking
-- [ ] Low stock alerts
-- [ ] Purchase Orders
-
-### P2
-- [ ] Finance: Accounts receivable, GST reports
+## P2 — Future
 - [ ] WhatsApp integration
+- [ ] E-way bill generation
+- [ ] Delivery challan
 - [ ] Tally/Zoho export
 
 ## Test Credentials
 - **Admin**: test@test.com / test123
 - **Customer**: customer@test.com / test123
+
+## Company Details (in .env)
+- CONVERO SOLUTIONS, Ahmedabad, Gujarat
+- GSTIN: 24BAUPP4310D2ZT
+- ICICI Bank, A/C: 777705908098, IFSC: ICIC0004942
+- HSN: 84313910
