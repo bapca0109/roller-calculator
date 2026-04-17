@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Dict, Any
 from routes import db, get_current_user, ROOT_DIR
 import pulley_standards as ps
 
@@ -129,14 +129,36 @@ async def download_pulley_template():
 
 @router.get("/pulley-pricing")
 async def get_pulley_pricing(current_user: dict = Depends(get_current_user)):
-    """Get all pulley pricing data for admin panel"""
-    return {
-        "pipe_rates": {str(k): v for k, v in ps.PIPE_RATES.items()},
-        "shaft_rates": {str(k): v for k, v in ps.SHAFT_RATES.items()},
-        "end_plate_rates": ps.END_PLATE_RATES,
-        "hub_rates": {str(k): v for k, v in ps.HUB_RATES.items()},
-        "rubber_plain_rates": ps.RUBBER_PLAIN_RATES,
-        "rubber_ceramic_rates": ps.RUBBER_CERAMIC_RATES,
-        "kla_models": ps.KLA_MODELS,
-        "pipe_thickness_map": {str(k): v for k, v in ps.PIPE_THICKNESS_MAP.items()},
-    }
+    """Get all pulley pricing data from MongoDB"""
+    prices = await db.pulley_custom_prices.find_one({"id": "pulley_prices"}, {"_id": 0})
+    if not prices:
+        prices = await db.pulley_default_prices.find_one({"id": "pulley_prices"}, {"_id": 0})
+    return prices or {}
+
+
+@router.put("/pulley-pricing")
+async def update_pulley_pricing(prices: Dict[str, Any], current_user: dict = Depends(get_current_user)):
+    """Update pulley prices in MongoDB"""
+    prices["id"] = "pulley_prices"
+    await db.pulley_custom_prices.replace_one({"id": "pulley_prices"}, prices, upsert=True)
+    return {"message": "Pulley prices updated"}
+
+
+@router.post("/pulley-pricing/set-default")
+async def set_pulley_default(current_user: dict = Depends(get_current_user)):
+    """Copy current custom prices to default"""
+    prices = await db.pulley_custom_prices.find_one({"id": "pulley_prices"}, {"_id": 0})
+    if not prices:
+        raise HTTPException(status_code=404, detail="No custom prices to set as default")
+    await db.pulley_default_prices.replace_one({"id": "pulley_prices"}, prices, upsert=True)
+    return {"message": "Pulley prices set as default"}
+
+
+@router.post("/pulley-pricing/reset")
+async def reset_pulley_prices(current_user: dict = Depends(get_current_user)):
+    """Reset custom prices to default"""
+    default = await db.pulley_default_prices.find_one({"id": "pulley_prices"}, {"_id": 0})
+    if not default:
+        raise HTTPException(status_code=404, detail="No default prices found")
+    await db.pulley_custom_prices.replace_one({"id": "pulley_prices"}, default, upsert=True)
+    return {"message": "Pulley prices reset to default"}

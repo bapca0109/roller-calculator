@@ -64,131 +64,26 @@ RUBBER_CERAMIC_THICKNESSES = [12, 16, 22]
 # Steel density (kg/m³)
 STEEL_DENSITY = 7850
 
-# ============= PRICING FROM USER'S EXCEL TEMPLATE =============
+# ============= PRICING FROM MONGODB (editable via admin) =============
+import pulley_price_loader as ppl
 
-# Pipe rates: { pipe_dia: { thickness: rate_per_kg } } — from pulley_pricing_template.xlsx
-PIPE_RATES = {
-    139: {4.8: 70.0, 5.4: 71.0},
-    152: {4.8: 70.0, 5.4: 71.0},
-    168: {4.8: 72.0, 5.4: 73.0},
-    193: {5.4: 74.0, 6.3: 75.0},
-    219: {6.3: 70.0, 8: 71.0, 10: 72.0, 12: 73.0},
-    245: {6.3: 70.0, 8: 71.0, 10: 72.0, 12: 73.0},
-    273: {6.3: 72.0, 8: 73.0, 10: 74.0, 12: 75.0},
-    323: {6.3: 72.0, 8: 73.0, 10: 74.0, 12: 75.0, 14: 76.0},
-    355: {8: 75.0, 10: 76.0, 12: 77.0, 14: 78.0},
-    406: {8: 75.0, 10: 76.0, 12: 77.0, 14: 78.0, 16: 79.0, 18: 80.0},
-    455: {8: 75.0, 10: 76.0, 12: 77.0, 14: 78.0, 16: 79.0, 18: 80.0},
-    508: {8: 75.0, 10: 76.0, 12: 77.0, 14: 78.0, 16: 79.0, 18: 80.0, 20: 81.0},
-    609: {8: 78.0, 10: 79.0, 12: 80.0, 14: 81.0, 16: 82.0, 18: 83.0, 20: 84.0},
-    630: {8: 85.0, 10: 86.0, 12: 87.0, 14: 88.0, 16: 89.0, 18: 90.0, 20: 91.0, 22: 92.0},
-    800: {8: 85.0, 10: 86.0, 12: 87.0, 14: 88.0, 16: 89.0, 18: 90.0, 20: 91.0, 22: 92.0, 24: 93.0},
-    1000: {8: 90.0, 10: 91.0, 12: 92.0, 14: 93.0, 16: 94.0, 18: 95.0, 20: 96.0, 22: 97.0, 24: 98.0, 26: 99.0},
-}
+def get_pipe_rate(pipe_dia, pipe_thickness):
+    return ppl.get_pipe_rate(pipe_dia, pipe_thickness)
 
-# Shaft rates: { shaft_dia: { material: rate_per_kg } } — from user's pricing sheet
-SHAFT_RATES = {
-    53: {"MS": 60.0, "EN-8": 62.0, "EN-9": 63.0, "EN-19": 83.0},
-    55: {"MS": 60.2, "EN-8": 62.2, "EN-9": 63.2, "EN-19": 83.2},
-    63: {"MS": 60.4, "EN-8": 62.4, "EN-9": 63.4, "EN-19": 83.4},
-    70: {"MS": 60.6, "EN-8": 62.6, "EN-9": 63.6, "EN-19": 83.6},
-    75: {"MS": 60.8, "EN-8": 62.8, "EN-9": 63.8, "EN-19": 83.8},
-    80: {"MS": 61.0, "EN-8": 63.0, "EN-9": 64.0, "EN-19": 84.0},
-    85: {"MS": 61.2, "EN-8": 63.2, "EN-9": 64.2, "EN-19": 84.2},
-    90: {"MS": 61.4, "EN-8": 63.4, "EN-9": 64.4, "EN-19": 84.4},
-    95: {"MS": 61.6, "EN-8": 63.6, "EN-9": 64.6, "EN-19": 84.6},
-    100: {"MS": 61.8, "EN-8": 63.8, "EN-9": 64.8, "EN-19": 84.8},
-    105: {"MS": 62.0, "EN-8": 64.0, "EN-9": 65.0, "EN-19": 85.0},
-    110: {"MS": 62.2, "EN-8": 64.2, "EN-9": 65.2, "EN-19": 85.2},
-    115: {"MS": 62.4, "EN-8": 64.4, "EN-9": 65.4, "EN-19": 85.4},
-    120: {"MS": 62.6, "EN-8": 64.6, "EN-9": 65.6, "EN-19": 85.6},
-    125: {"MS": 62.8, "EN-8": 64.8, "EN-9": 65.8, "EN-19": 85.8},
-    130: {"MS": 63.0, "EN-8": 65.0, "EN-9": 66.0, "EN-19": 86.0},
-    135: {"MS": 63.2, "EN-8": 65.2, "EN-9": 66.2, "EN-19": 86.2},
-    140: {"MS": 63.4, "EN-8": 65.4, "EN-9": 66.4, "EN-19": 86.4},
-    145: {"MS": 63.6, "EN-8": 65.6, "EN-9": 66.6, "EN-19": 86.6},
-    150: {"MS": 63.8, "EN-8": 65.8, "EN-9": 66.8, "EN-19": 86.8},
-    155: {"MS": 64.0, "EN-8": 66.0, "EN-9": 67.0, "EN-19": 87.0},
-    160: {"MS": 64.2, "EN-8": 66.2, "EN-9": 67.2, "EN-19": 87.2},
-    165: {"MS": 64.4, "EN-8": 66.4, "EN-9": 67.4, "EN-19": 87.4},
-    170: {"MS": 64.6, "EN-8": 66.6, "EN-9": 67.6, "EN-19": 87.6},
-    175: {"MS": 64.8, "EN-8": 66.8, "EN-9": 67.8, "EN-19": 87.8},
-    180: {"MS": 65.0, "EN-8": 67.0, "EN-9": 68.0, "EN-19": 88.0},
-    185: {"MS": 65.2, "EN-8": 67.2, "EN-9": 68.2, "EN-19": 88.2},
-    190: {"MS": 65.4, "EN-8": 67.4, "EN-9": 68.4, "EN-19": 88.4},
-    195: {"MS": 65.6, "EN-8": 67.6, "EN-9": 68.6, "EN-19": 88.6},
-    200: {"MS": 65.8, "EN-8": 67.8, "EN-9": 68.8, "EN-19": 88.8},
-    205: {"MS": 66.0, "EN-8": 68.0, "EN-9": 69.0, "EN-19": 89.0},
-    210: {"MS": 66.2, "EN-8": 68.2, "EN-9": 69.2, "EN-19": 89.2},
-    215: {"MS": 66.4, "EN-8": 68.4, "EN-9": 69.4, "EN-19": 89.4},
-    220: {"MS": 66.6, "EN-8": 68.6, "EN-9": 69.6, "EN-19": 89.6},
-    225: {"MS": 66.8, "EN-8": 68.8, "EN-9": 69.8, "EN-19": 89.8},
-    230: {"MS": 67.0, "EN-8": 69.0, "EN-9": 70.0, "EN-19": 90.0},
-    235: {"MS": 67.2, "EN-8": 69.2, "EN-9": 70.2, "EN-19": 90.2},
-    240: {"MS": 67.4, "EN-8": 69.4, "EN-9": 70.4, "EN-19": 90.4},
-    245: {"MS": 67.6, "EN-8": 69.6, "EN-9": 70.6, "EN-19": 90.6},
-    250: {"MS": 67.8, "EN-8": 69.8, "EN-9": 70.8, "EN-19": 90.8},
-    255: {"MS": 68.0, "EN-8": 70.0, "EN-9": 71.0, "EN-19": 91.0},
-    260: {"MS": 68.2, "EN-8": 70.2, "EN-9": 71.2, "EN-19": 91.2},
-    265: {"MS": 68.4, "EN-8": 70.4, "EN-9": 71.4, "EN-19": 91.4},
-    270: {"MS": 68.6, "EN-8": 70.6, "EN-9": 71.6, "EN-19": 91.6},
-    275: {"MS": 68.8, "EN-8": 70.8, "EN-9": 71.8, "EN-19": 91.8},
-    280: {"MS": 69.0, "EN-8": 71.0, "EN-9": 72.0, "EN-19": 92.0},
-    285: {"MS": 69.2, "EN-8": 71.2, "EN-9": 72.2, "EN-19": 92.2},
-    290: {"MS": 69.4, "EN-8": 71.4, "EN-9": 72.4, "EN-19": 92.4},
-    295: {"MS": 69.6, "EN-8": 71.6, "EN-9": 72.6, "EN-19": 92.6},
-    300: {"MS": 69.8, "EN-8": 71.8, "EN-9": 72.8, "EN-19": 92.8},
-}
+def get_shaft_rate(shaft_dia, material):
+    return ppl.get_shaft_rate(shaft_dia, material)
 
-# End Plate MS rate per kg — from user's pricing (varies by thickness)
-END_PLATE_RATES = {
-    6: 65.0, 8: 65.0, 10: 65.0,
-    12: 67.0, 14: 67.0, 16: 67.0,
-    18: 70.0, 20: 70.0, 22: 70.0,
-    24: 72.0, 26: 72.0, 28: 72.0, 30: 72.0,
-    32: 76.0, 34: 76.0, 36: 76.0, 38: 76.0, 40: 76.0, 42: 76.0, 44: 76.0, 46: 76.0, 48: 76.0, 50: 76.0,
-}
+def get_end_plate_rate(thickness):
+    return ppl.get_end_plate_rate(thickness)
 
-# Hub MS rate per kg (for "With Hub") — from user's pricing, varies by hub dia
-HUB_RATES = {
-    100: 62.0, 110: 62.2, 120: 62.4, 130: 62.6, 140: 62.8,
-    150: 63.0, 160: 63.2, 170: 63.4, 180: 63.6, 190: 63.8,
-    200: 64.0, 210: 64.2, 220: 64.4, 230: 64.6, 240: 64.8,
-    250: 65.0, 260: 65.2, 270: 65.4, 280: 65.6, 290: 65.8,
-    300: 66.0, 310: 66.2, 320: 66.4, 330: 66.6, 340: 66.8,
-    350: 67.0, 360: 67.2, 370: 67.4, 380: 67.6, 390: 67.8,
-    400: 68.0, 410: 68.2, 420: 68.4, 430: 68.6, 440: 68.8,
-    450: 69.0,
-}
+def get_hub_rate(hub_dia):
+    return ppl.get_hub_rate(hub_dia)
 
-# KLA Pricing: { model: { min_shaft, max_shaft, price } }
-# Mock KLA models
-KLA_MODELS = {
-    "KLA-25": {"min_shaft": 25, "max_shaft": 35, "price": 850},
-    "KLA-35": {"min_shaft": 36, "max_shaft": 50, "price": 1200},
-    "KLA-50": {"min_shaft": 51, "max_shaft": 70, "price": 1800},
-    "KLA-70": {"min_shaft": 71, "max_shaft": 90, "price": 2500},
-    "KLA-90": {"min_shaft": 91, "max_shaft": 120, "price": 3500},
-    "KLA-120": {"min_shaft": 121, "max_shaft": 150, "price": 4800},
-    "KLA-150": {"min_shaft": 151, "max_shaft": 180, "price": 6500},
-    "KLA-180": {"min_shaft": 181, "max_shaft": 220, "price": 8500},
-    "KLA-220": {"min_shaft": 221, "max_shaft": 260, "price": 11000},
-    "KLA-260": {"min_shaft": 261, "max_shaft": 290, "price": 14000},
-}
+def get_rubber_plain_rate(thickness):
+    return ppl.get_rubber_plain_rate(thickness)
 
-# Rubber Lagging rates (₹/sqm)
-RUBBER_PLAIN_RATES = {
-    6: 3300,
-    10: 5800,
-    12: 6400,
-}
-
-RUBBER_CERAMIC_RATES = {
-    12: 20000,
-    16: 24000,
-    22: 30000,
-}
-
+def get_rubber_ceramic_rate(thickness):
+    return ppl.get_rubber_ceramic_rate(thickness)
 # ============= CALCULATION FUNCTIONS =============
 
 
@@ -306,7 +201,7 @@ def calculate_pulley_cost(
     sr_surcharge = 10.0 if stress_relieving else 0.0
 
     # 1. Pipe Cost
-    pipe_rate = PIPE_RATES.get(pipe_dia, {}).get(pipe_thickness, 72.0)
+    pipe_rate = get_pipe_rate(pipe_dia, pipe_thickness)
     # For pipe dia 630, 800, 1000 with face length > 1250mm, add Rs.8/kg
     if pipe_dia in [630, 800, 1000] and face_length > 1250:
         pipe_rate += 8.0
@@ -318,7 +213,7 @@ def calculate_pulley_cost(
     cost_breakdown["pipe_cost"] = round(pipe_cost, 2)
 
     # 2. Shaft Cost
-    shaft_rate = SHAFT_RATES.get(shaft_dia_centre, {}).get(shaft_material, 65.0)
+    shaft_rate = get_shaft_rate(shaft_dia_centre, shaft_material)
     shaft_weight = calculate_shaft_weight(shaft_dia_centre, shaft_length)
     shaft_cost = shaft_weight * shaft_rate
     cost_breakdown["shaft_weight_kg"] = shaft_weight
@@ -326,7 +221,7 @@ def calculate_pulley_cost(
     cost_breakdown["shaft_cost"] = round(shaft_cost, 2)
 
     # 3. End Plate Cost (2/3/4 plates based on end_plate_qty)
-    ep_rate = END_PLATE_RATES.get(end_plate_thickness, 72.0) + sr_surcharge
+    ep_rate = get_end_plate_rate(end_plate_thickness) + sr_surcharge
     ep_weight_single = calculate_end_plate_weight(pipe_dia, shaft_dia_centre, end_plate_thickness)
     ep_weight_total = ep_weight_single * end_plate_qty
     ep_cost = ep_weight_total * ep_rate
@@ -340,7 +235,7 @@ def calculate_pulley_cost(
     hub_cost = 0
     kla_info = None
     if hub_type == "with_hub" and hub_dia and hub_length:
-        hub_rate = HUB_RATES.get(hub_dia, 65.0) + sr_surcharge
+        hub_rate = get_hub_rate(hub_dia) + sr_surcharge
         hub_weight_single = calculate_hub_weight(hub_dia, shaft_dia_centre, hub_length)
         hub_weight_total = hub_weight_single * 2
         hub_cost = hub_weight_total * hub_rate
@@ -365,9 +260,9 @@ def calculate_pulley_cost(
     if rubber_type != "none" and rubber_thickness:
         lagging_area = calculate_rubber_lagging_area(pipe_dia, face_length, rubber_thickness)
         if rubber_type == "ceramic":
-            rubber_rate = RUBBER_CERAMIC_RATES.get(rubber_thickness, 0)
+            rubber_rate = get_rubber_ceramic_rate(rubber_thickness)
         else:
-            rubber_rate = RUBBER_PLAIN_RATES.get(rubber_thickness, 0)
+            rubber_rate = get_rubber_plain_rate(rubber_thickness)
         rubber_cost = lagging_area * rubber_rate
         cost_breakdown["rubber_area_sqm"] = lagging_area
         cost_breakdown["rubber_rate_per_sqm"] = rubber_rate
