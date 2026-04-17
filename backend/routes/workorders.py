@@ -935,7 +935,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             bom.append({
                 "component": "Shaft",
                 "description": f"{shaft_dia}mm dia x {shaft_length}mm L",
-                "material": "MS Bright Bar",
+                "material": "EN-8 Bright Bar",
                 "qty_per_unit": 1, "total_qty": qty,
                 "weight_per_unit_kg": shaft_wt, "total_weight_kg": round(shaft_wt * qty, 3),
             })
