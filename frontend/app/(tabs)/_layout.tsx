@@ -47,6 +47,20 @@ export default function TabsLayout() {
   }
   
   const isAdmin = user?.role === 'admin';
+  const role = user?.role || 'customer';
+
+  // Tab access matrix (per role)
+  // crm, products, cart, quotes(Sales), customers, admin, store, profile
+  const canAccess = {
+    crm:       ['admin', 'sales_manager'].includes(role),
+    products:  ['admin', 'sales_manager', 'customer'].includes(role),
+    cart:      ['admin', 'sales_manager', 'customer'].includes(role),
+    quotes:    ['admin', 'sales_manager', 'production_head', 'accounts', 'dispatch', 'customer'].includes(role),
+    customers: ['admin', 'sales_manager'].includes(role),
+    admin:     ['admin'].includes(role),
+    store:     ['admin', 'production_head'].includes(role),
+    profile:   true,
+  } as const;
 
   // Calculate bottom padding for Android navigation bar
   // On Android, we need extra padding to avoid overlap with system navigation
@@ -83,7 +97,7 @@ export default function TabsLayout() {
         name="dashboard"
         options={{
           title: 'CRM',
-          href: isAdmin ? '/dashboard' : null,
+          href: canAccess.crm ? '/dashboard' : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-circle-outline" size={size} color={color} />
           ),
@@ -93,6 +107,7 @@ export default function TabsLayout() {
         name="calculator"
         options={{
           title: 'Products',
+          href: canAccess.products ? '/calculator' : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cube-outline" size={size} color={color} />
           ),
@@ -112,6 +127,7 @@ export default function TabsLayout() {
         name="cart"
         options={{
           title: 'Cart',
+          href: canAccess.cart ? '/cart' : null,
           tabBarIcon: ({ color, size }) => (
             <View>
               <Ionicons name="cart-outline" size={size} color={color} />
@@ -138,6 +154,7 @@ export default function TabsLayout() {
         name="quotes"
         options={{
           title: 'Sales',
+          href: canAccess.quotes ? '/quotes' : null,
           tabBarIcon: ({ color, size }) => (
             <View>
               <Ionicons name="document-text-outline" size={size} color={color} />
@@ -154,7 +171,7 @@ export default function TabsLayout() {
         name="customers"
         options={{
           title: 'Customers',
-          href: isAdmin ? '/customers' : null,
+          href: canAccess.customers ? '/customers' : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
           ),
@@ -164,7 +181,7 @@ export default function TabsLayout() {
         name="admin"
         options={{
           title: 'Admin',
-          href: isAdmin ? '/admin' : null,
+          href: canAccess.admin ? '/admin' : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" size={size} color={color} />
           ),
@@ -174,7 +191,7 @@ export default function TabsLayout() {
         name="store"
         options={{
           title: 'Store',
-          href: isAdmin ? '/store' : null,
+          href: canAccess.store ? '/store' : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cube-outline" size={size} color={color} />
           ),

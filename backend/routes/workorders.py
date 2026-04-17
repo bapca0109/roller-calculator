@@ -343,7 +343,7 @@ async def create_work_order(
 @router.get("/work-orders")
 async def get_work_orders(
     stage: Optional[str] = None,
-    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES, UserRole.SALES_MANAGER, UserRole.PRODUCTION_HEAD, UserRole.ACCOUNTS, UserRole.DISPATCH]))
 ):
     query = {}
     if stage:
@@ -353,7 +353,7 @@ async def get_work_orders(
 
 
 @router.get("/work-orders/{wo_id}")
-async def get_work_order(wo_id: str, current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))):
+async def get_work_order(wo_id: str, current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES, UserRole.SALES_MANAGER, UserRole.PRODUCTION_HEAD, UserRole.ACCOUNTS, UserRole.DISPATCH]))):
     wo = await db.work_orders.find_one(
         {"$or": [{"id": wo_id}, {"wo_number": wo_id}]}, {"_id": 0}
     )

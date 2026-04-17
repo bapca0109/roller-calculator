@@ -25,9 +25,10 @@
 - **Pulley Admin Frontend [2026-02-17]**: Editable TextInputs for Pipe/Shaft/End-Plate/Hub/Rubber rates in Admin Prices tab. Includes Reset-to-Default and Save-as-Default buttons. 347 editable rows, tested end-to-end.
 - **Bulk Edit Mode for Pulley Prices [2026-02-17]**: Toggle bulk edit to show all 347 prices as persistent TextInputs, edit many, Save All persists in one PUT.
 - **Price Change History [2026-02-17]**: New `price_history` collection logs every roller + pulley rate change (user, timestamp, old→new, delta). History tab in Admin with All/Roller/Pulley filter chips. Endpoint: `GET /api/price-history?product_type=&limit=&offset=`.
+- **User Roles & Tab-Level Access Control [2026-02-17]**: Extended `UserRole` enum with `sales_manager`, `production_head`, `accounts`, `dispatch`. New Admin → Users tab to list/manage user roles via colored pill dropdown. Tab visibility auto-adapts in `_layout.tsx` per role matrix. Sales tab applies within-tab filtering: production_head locked to WO, accounts/dispatch locked to SO view (Quotes/Orders toggle hidden). Endpoints: `GET /api/admin/users`, `PUT /api/admin/users/role`. Seeded 4 test accounts (one per role).
 
 ## P0 — Next
-- [ ] User Roles (Sales, Production, Accounts, Dispatch)
+- [x] User Roles (Sales, Production, Accounts, Dispatch) — done 2026-02-17
 
 ## P1
 - [ ] Inventory auto-deduct on WO processing/completion

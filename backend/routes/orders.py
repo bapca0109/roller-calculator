@@ -164,7 +164,7 @@ async def convert_quote_to_order(
 async def get_orders(
     stage: Optional[str] = None,
     payment_status: Optional[str] = None,
-    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES, UserRole.SALES_MANAGER, UserRole.PRODUCTION_HEAD, UserRole.ACCOUNTS, UserRole.DISPATCH]))
 ):
     query = {}
     if stage:
@@ -177,7 +177,7 @@ async def get_orders(
 
 
 @router.get("/orders/{order_id}")
-async def get_order(order_id: str, current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES]))):
+async def get_order(order_id: str, current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES, UserRole.SALES_MANAGER, UserRole.PRODUCTION_HEAD, UserRole.ACCOUNTS, UserRole.DISPATCH]))):
     order = await db.sales_orders.find_one(
         {"$or": [{"id": order_id}, {"so_number": order_id}]}, {"_id": 0}
     )

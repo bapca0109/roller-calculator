@@ -179,6 +179,19 @@ class UserRole:
     ADMIN = "admin"
     SALES = "sales"
     CUSTOMER = "customer"
+    SALES_MANAGER = "sales_manager"
+    PRODUCTION_HEAD = "production_head"
+    ACCOUNTS = "accounts"
+    DISPATCH = "dispatch"
+
+    @classmethod
+    def all_staff(cls):
+        return [cls.ADMIN, cls.SALES, cls.SALES_MANAGER, cls.PRODUCTION_HEAD, cls.ACCOUNTS, cls.DISPATCH]
+
+    @classmethod
+    def assignable(cls):
+        # Roles an admin can assign (customer stays managed by signup flow)
+        return [cls.ADMIN, cls.SALES_MANAGER, cls.PRODUCTION_HEAD, cls.ACCOUNTS, cls.DISPATCH, cls.CUSTOMER]
 
 
 class UserRegister(BaseModel):

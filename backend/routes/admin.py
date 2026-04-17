@@ -1337,3 +1337,42 @@ Convero Solutions
 
 
 
+
+
+
+# ============= USER MANAGEMENT (Admin only) =============
+
+class UserRoleUpdate(BaseModel):
+    email: str
+    role: str
+
+
+@router.get("/admin/users")
+async def list_users(current_user: dict = Depends(get_current_user)):
+    """List all users (admin only)"""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    users = await db.users.find(
+        {},
+        {"_id": 0, "password": 0, "push_token": 0}
+    ).sort("created_at", -1).to_list(length=500)
+    return {"users": users, "assignable_roles": UserRole.assignable()}
+
+
+@router.put("/admin/users/role")
+async def update_user_role(req: UserRoleUpdate, current_user: dict = Depends(get_current_user)):
+    """Admin-only: change a user's role."""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if req.role not in UserRole.assignable():
+        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of {UserRole.assignable()}")
+    # Don't let admin demote themselves (prevent lockout)
+    if req.email == current_user.get("email") and req.role != UserRole.ADMIN:
+        raise HTTPException(status_code=400, detail="You cannot change your own admin role")
+    result = await db.users.update_one(
+        {"email": req.email},
+        {"$set": {"role": req.role, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": f"Role updated to {req.role} for {req.email}"}

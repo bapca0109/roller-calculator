@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { cacheEvents } from '../../utils/api';
 
-type MainTab = 'prices' | 'standards' | 'history';
+type MainTab = 'prices' | 'standards' | 'history' | 'users';
 type PriceCategory = 'basic' | 'bearing' | 'housing' | 'seal' | 'circlip' | 'rubber' | 'locking';
 
 interface Prices {
@@ -91,6 +91,12 @@ export default function AdminScreen() {
   const [historyItems, setHistoryItems] = useState<any[]>([]);
   const [historyFilter, setHistoryFilter] = useState<'all' | 'roller' | 'pulley'>('all');
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Users management state
+  const [users, setUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [assignableRoles, setAssignableRoles] = useState<string[]>([]);
+  const [rolePickerEmail, setRolePickerEmail] = useState<string | null>(null);
   
   // Set as Default OTP state
   const [showSetDefaultModal, setShowSetDefaultModal] = useState(false);
@@ -305,6 +311,30 @@ export default function AdminScreen() {
     }
   };
 
+  // ============= USER MANAGEMENT =============
+  const fetchUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const response = await api.get('/admin/users');
+      setUsers(response.data.users || []);
+      setAssignableRoles(response.data.assignable_roles || []);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to fetch users');
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const updateUserRole = async (email: string, role: string) => {
+    try {
+      await api.put('/admin/users/role', { email, role });
+      setRolePickerEmail(null);
+      await fetchUsers();
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to update role');
+    }
+  };
+
   useEffect(() => {
     if (mainTab === 'prices') {
       fetchPrices();
@@ -312,6 +342,8 @@ export default function AdminScreen() {
       fetchStandardsSummary();
     } else if (mainTab === 'history') {
       fetchPriceHistory();
+    } else if (mainTab === 'users') {
+      fetchUsers();
     }
     
     // Listen for global refresh events
@@ -323,6 +355,8 @@ export default function AdminScreen() {
         fetchStandardsSummary();
       } else if (mainTab === 'history') {
         fetchPriceHistory();
+      } else if (mainTab === 'users') {
+        fetchUsers();
       }
     };
     
@@ -1233,6 +1267,20 @@ export default function AdminScreen() {
               History
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.mainTab, mainTab === 'users' && styles.mainTabActive]}
+            onPress={() => setMainTab('users')}
+            testID="users-tab"
+          >
+            <Ionicons
+              name="people-circle-outline"
+              size={18}
+              color={mainTab === 'users' ? '#960018' : '#fff'}
+            />
+            <Text style={[styles.mainTabText, mainTab === 'users' && styles.mainTabTextActive]}>
+              Users
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -1568,7 +1616,7 @@ export default function AdminScreen() {
             </ScrollView>
           )}
         </>
-      ) : (
+      ) : mainTab === 'history' ? (
         // History tab
         <View style={{ flex: 1 }}>
           {/* Filter chips */}
@@ -1646,6 +1694,86 @@ export default function AdminScreen() {
                         <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{h.user_email}</Text>
                       </View>
                     </View>
+                  </View>
+                );
+              })}
+              <View style={{ height: 100 }} />
+            </ScrollView>
+          )}
+        </View>
+      ) : (
+        // Users tab
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, alignItems: 'center' }}>
+            <Text style={{ flex: 1, fontSize: 13, color: '#64748B' }}>
+              Manage roles for all registered users. Click a role pill to change it.
+            </Text>
+            <TouchableOpacity
+              onPress={fetchUsers}
+              testID="users-refresh"
+              style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.6)', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <Ionicons name="refresh" size={14} color="#475569" />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#475569' }}>Refresh</Text>
+            </TouchableOpacity>
+          </View>
+          {usersLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#960018" />
+              <Text style={styles.loadingText}>Loading users...</Text>
+            </View>
+          ) : (
+            <ScrollView style={{ flex: 1, padding: 16 }}>
+              {users.map((u: any) => {
+                const roleColor: Record<string, string> = {
+                  admin: '#DC2626',
+                  sales_manager: '#C5964A',
+                  production_head: '#0891B2',
+                  accounts: '#7C3AED',
+                  dispatch: '#059669',
+                  customer: '#64748B',
+                };
+                const color = roleColor[u.role] || '#64748B';
+                const isPickerOpen = rolePickerEmail === u.email;
+                return (
+                  <View key={u.email} style={{ backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 8, borderLeftWidth: 4, borderLeftColor: color }} testID={`user-row-${u.email}`}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#1F2937' }}>{u.name || u.email}</Text>
+                        <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{u.email}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => setRolePickerEmail(isPickerOpen ? null : u.email)}
+                        testID={`role-pill-${u.email}`}
+                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: color, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff', textTransform: 'capitalize' }}>{(u.role || 'customer').replace('_',' ')}</Text>
+                        <Ionicons name={isPickerOpen ? 'chevron-up' : 'chevron-down'} size={12} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                    {isPickerOpen && (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
+                        {assignableRoles.map((r) => (
+                          <TouchableOpacity
+                            key={r}
+                            onPress={() => updateUserRole(u.email, r)}
+                            testID={`role-option-${u.email}-${r}`}
+                            disabled={r === u.role}
+                            style={{
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              borderRadius: 12,
+                              backgroundColor: r === u.role ? '#E5E7EB' : (roleColor[r] || '#64748B'),
+                              opacity: r === u.role ? 0.5 : 1,
+                            }}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: r === u.role ? '#64748B' : '#fff', textTransform: 'capitalize' }}>
+                              {r.replace('_', ' ')}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
                   </View>
                 );
               })}

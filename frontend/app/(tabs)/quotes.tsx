@@ -43,34 +43,47 @@ import {
 } from '../../components/quotes';
 import { ExportButtons } from '../../components/shared/ExportButtons';
 
-function OrdersAndWOView({ orders, ordersLoading, fetchOrders, workOrders, woLoading, fetchWorkOrders, isAdmin }: {
+function OrdersAndWOView({ orders, ordersLoading, fetchOrders, workOrders, woLoading, fetchWorkOrders, isAdmin, role }: {
   orders: any[]; ordersLoading: boolean; fetchOrders: () => void;
   workOrders: any[]; woLoading: boolean; fetchWorkOrders: () => void;
-  isAdmin: boolean;
+  isAdmin: boolean; role: string;
 }) {
-  const [subTab, setSubTab] = useState<'so' | 'wo'>('so');
+  // Role-based default & lock for sub-tab
+  const forceSO = role === 'dispatch' || role === 'accounts';
+  const forceWO = role === 'production_head';
+  const initial: 'so' | 'wo' = forceWO ? 'wo' : 'so';
+  const [subTab, setSubTab] = useState<'so' | 'wo'>(initial);
+  const locked = forceSO || forceWO;
+
+  // Fetch the right data on first mount for constrained roles
+  useEffect(() => {
+    if (forceWO && workOrders.length === 0) fetchWorkOrders();
+    else if (forceSO && orders.length === 0) fetchOrders();
+  }, []);
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Floating SO / WO toggle */}
-      <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 100, alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row', backgroundColor: '#0F172A', borderRadius: 28, padding: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 10 }}>
-          <Pressable
-            style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24 }, subTab === 'so' && { backgroundColor: '#C5964A' }]}
-            onPress={() => { setSubTab('so'); if (orders.length === 0) fetchOrders(); }}
-          >
-            <Ionicons name="cube-outline" size={16} color={subTab === 'so' ? '#fff' : '#94A3B8'} />
-            <Text style={{ fontSize: 13, fontWeight: '700', color: subTab === 'so' ? '#fff' : '#94A3B8' }}>Sales Orders</Text>
-          </Pressable>
-          <Pressable
-            style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24 }, subTab === 'wo' && { backgroundColor: '#C5964A' }]}
-            onPress={() => { setSubTab('wo'); if (workOrders.length === 0) fetchWorkOrders(); }}
-          >
-            <Ionicons name="construct-outline" size={16} color={subTab === 'wo' ? '#fff' : '#94A3B8'} />
-            <Text style={{ fontSize: 13, fontWeight: '700', color: subTab === 'wo' ? '#fff' : '#94A3B8' }}>Work Orders</Text>
-          </Pressable>
+      {/* Floating SO / WO toggle - hidden for locked roles */}
+      {!locked && (
+        <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 100, alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', backgroundColor: '#0F172A', borderRadius: 28, padding: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 10 }}>
+            <Pressable
+              style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24 }, subTab === 'so' && { backgroundColor: '#C5964A' }]}
+              onPress={() => { setSubTab('so'); if (orders.length === 0) fetchOrders(); }}
+            >
+              <Ionicons name="cube-outline" size={16} color={subTab === 'so' ? '#fff' : '#94A3B8'} />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: subTab === 'so' ? '#fff' : '#94A3B8' }}>Sales Orders</Text>
+            </Pressable>
+            <Pressable
+              style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24 }, subTab === 'wo' && { backgroundColor: '#C5964A' }]}
+              onPress={() => { setSubTab('wo'); if (workOrders.length === 0) fetchWorkOrders(); }}
+            >
+              <Ionicons name="construct-outline" size={16} color={subTab === 'wo' ? '#fff' : '#94A3B8'} />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: subTab === 'wo' ? '#fff' : '#94A3B8' }}>Work Orders</Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
+      )}
 
       {subTab === 'so' ? (
         <OrdersView orders={orders} loading={ordersLoading} onRefresh={fetchOrders} isAdmin={isAdmin} />
@@ -816,10 +829,15 @@ const os = StyleSheet.create({
 });
 
 export default function QuotesScreen() {
+  const { user, loading: authLoading } = useAuth();
+  const userRole = user?.role || 'customer';
+  const opsOnlyRoles = ['production_head', 'accounts', 'dispatch'];
+  const initialViewMode: 'quotes' | 'orders' | 'workorders' = opsOnlyRoles.includes(userRole) ? 'orders' : 'quotes';
+
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [viewMode, setViewMode] = useState<'quotes' | 'orders' | 'workorders'>('quotes');
+  const [viewMode, setViewMode] = useState<'quotes' | 'orders' | 'workorders'>(initialViewMode);
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [workOrders, setWorkOrders] = useState<any[]>([]);
@@ -938,15 +956,10 @@ export default function QuotesScreen() {
     };
   };
 
-  const { user, loading: authLoading } = useAuth();
-  
   // Check if user is customer - show RFQ terminology
   const isCustomer = user?.role === 'customer';
   const isAdmin = user?.role === 'admin';
   const docLabel = isCustomer ? 'RFQ' : 'Quote';
-  
-  // Debug log
-  console.log('QuotesScreen - user:', user, 'isCustomer:', isCustomer, 'isAdmin:', isAdmin, 'authLoading:', authLoading);
 
   // Authenticated file download function
   const downloadAttachment = async (quoteId: string, productIdx: number, attachmentIdx: number, filename: string) => {
@@ -2615,7 +2628,8 @@ export default function QuotesScreen() {
         </View>
       </View>
 
-      {/* Quotes / Orders Toggle */}
+      {/* Quotes / Orders Toggle - hidden for ops roles that only see orders */}
+      {!['production_head', 'accounts', 'dispatch'].includes(user?.role || '') && (
       <View style={styles.modeToggleContainer}>
         <View style={styles.modeToggle}>
           <TouchableOpacity
@@ -2636,6 +2650,7 @@ export default function QuotesScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      )}
 
       {/* ORDERS VIEW with SO/WO sub-toggle */}
       {viewMode === 'orders' ? (
@@ -2647,6 +2662,7 @@ export default function QuotesScreen() {
           woLoading={woLoading}
           fetchWorkOrders={fetchWorkOrders}
           isAdmin={isAdmin}
+          role={user?.role || 'customer'}
         />
       ) : (
       <>
