@@ -980,7 +980,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "component": "Bearing",
                 "description": f"{bearing_number} ZZ - {make_label} (OD: {bearing_od}mm)",
                 "material": f"{bearing_number} - {make_label}",
-                "bom_match_key": f"bearing:{bearing_number}",
+                "bom_match_key": f"bearing:{bearing_number}:{(bearing_make or 'china').lower()}",
                 "qty_per_unit": 2, "total_qty": qty * 2,
                 "weight_per_unit_kg": 0, "total_weight_kg": 0,
             })
