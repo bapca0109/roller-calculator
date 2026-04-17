@@ -646,22 +646,26 @@ async def get_work_order_pdf(
         {items_summary_rows}
     </table>"""
 
-    # TABLE 2: Consolidated BOM — group by component + description (separate sizes)
+    # TABLE 2: Consolidated BOM — group by component + size (merge same dia, ignore length)
     consolidated_bom = {}
+    import re as _re
     for item in all_items:
         for b in item.get("bom", []):
             comp = b.get("component", "")
             desc = b.get("description", "")
             mat = b.get("material", "")
-            # Key by component + description to keep different sizes separate
-            key = f"{comp}|{desc}"
+            # Strip length from description for grouping key (e.g., remove "x 1000mm L")
+            short_desc = _re.sub(r'\s*x?\s*\d+\.?\d*\s*mm\s*[LF]L?\b', '', desc).strip().rstrip('x').strip()
+            # Also strip "— X nos/roller" from rubber ring
+            short_desc = _re.sub(r'\s*—.*$', '', short_desc).strip()
+            key = f"{comp}|{short_desc}"
             if key in consolidated_bom:
                 consolidated_bom[key]["total_qty"] += b.get("total_qty", 0)
                 consolidated_bom[key]["total_weight_kg"] += b.get("total_weight_kg", 0)
             else:
                 consolidated_bom[key] = {
                     "component": comp,
-                    "description": desc,
+                    "description": short_desc,
                     "material": mat,
                     "total_qty": b.get("total_qty", 0),
                     "total_weight_kg": b.get("total_weight_kg", 0),
