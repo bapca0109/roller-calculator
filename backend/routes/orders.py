@@ -714,6 +714,7 @@ async def get_sales_order_pdf(
     # Products
     products = order.get("products") or []
     product_rows = ""
+    grand_weight = 0
     for i, p in enumerate(products, 1):
         qty = p.get("quantity", 1)
         unit = p.get("unit_price", 0)
@@ -725,6 +726,8 @@ async def get_sales_order_pdf(
         if specs.get("pipe_length"): spec_parts.append(f"L: {specs['pipe_length']}mm")
         spec_text = " | ".join(spec_parts)
         weight = p.get("weight_kg", p.get("weight", 0)) or 0
+        item_total_weight = weight * qty
+        grand_weight += item_total_weight
         product_rows += f"""<tr>
             <td style="text-align:center">{i}</td>
             <td><b>{p.get('product_name','')}</b><br><span style="color:#960018;font-size:9px;font-weight:600">Code: {p.get('product_id','')}</span><br><span style="color:#64748B;font-size:9px">{spec_text}</span></td>
@@ -734,6 +737,13 @@ async def get_sales_order_pdf(
             <td style="text-align:right">{unit:,.2f}</td>
             <td style="text-align:right"><b>{total:,.2f}</b></td>
         </tr>"""
+    # Total weight row
+    product_rows += f"""<tr style="font-weight:700;background:#F0F4F8">
+        <td colspan="4" style="text-align:right;padding:8px">Total Weight</td>
+        <td style="text-align:right;padding:8px">{grand_weight:.2f} kg</td>
+        <td></td>
+        <td></td>
+    </tr>"""
 
     # Pricing
     subtotal = order.get("subtotal", 0)
