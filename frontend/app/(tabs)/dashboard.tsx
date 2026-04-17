@@ -20,11 +20,15 @@ interface Summary { total_leads: number; active_leads: number; won: number; lost
 
 export default function CRMScreen() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<'pipeline' | 'followups' | 'activity'>('pipeline');
+  const [tab, setTab] = useState<'pipeline' | 'followups' | 'activity' | 'analytics'>('pipeline');
   const [summary, setSummary] = useState<Summary | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [followups, setFollowups] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [revenueTrend, setRevenueTrend] = useState<any[]>([]);
+  const [orderStats, setOrderStats] = useState<any>(null);
+  const [woStats, setWoStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddLead, setShowAddLead] = useState(false);
@@ -50,6 +54,17 @@ export default function CRMScreen() {
       setLeads(leadsRes.data.leads || []);
       setFollowups(fuRes.data.followups || []);
       setActivities(actRes.data.activities || []);
+      // Fetch analytics lazily
+      if (tab === 'analytics' || !analytics) {
+        const [anaRes, trendRes, ordRes, woRes] = await Promise.all([
+          api.get('/analytics/dashboard'), api.get('/analytics/revenue-trend?months=6'),
+          api.get('/orders/summary/stats'), api.get('/work-orders/summary/stats'),
+        ]);
+        setAnalytics(anaRes.data);
+        setRevenueTrend(trendRes.data.trends || []);
+        setOrderStats(ordRes.data);
+        setWoStats(woRes.data);
+      }
     } catch (e) { console.log('CRM fetch error', e); }
     finally { setLoading(false); }
   };
@@ -141,10 +156,10 @@ export default function CRMScreen() {
 
         {/* Tab Bar */}
         <View style={s.tabBar}>
-          {(['pipeline', 'followups', 'activity'] as const).map(t => (
-            <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => setTab(t)}>
-              <Ionicons name={t === 'pipeline' ? 'funnel-outline' : t === 'followups' ? 'alarm-outline' : 'time-outline'} size={16} color={tab === t ? '#C5964A' : '#94A3B8'} />
-              <Text style={[s.tabText, tab === t && s.tabTextActive]}>{t === 'pipeline' ? 'Pipeline' : t === 'followups' ? 'Follow-ups' : 'Activity'}</Text>
+          {(['pipeline', 'followups', 'activity', 'analytics'] as const).map(t => (
+            <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => { setTab(t); if (t === 'analytics' && !analytics) fetchAll(); }}>
+              <Ionicons name={t === 'pipeline' ? 'funnel-outline' : t === 'followups' ? 'alarm-outline' : t === 'activity' ? 'time-outline' : 'bar-chart-outline'} size={16} color={tab === t ? '#C5964A' : '#94A3B8'} />
+              <Text style={[s.tabText, tab === t && s.tabTextActive]}>{t === 'pipeline' ? 'Pipeline' : t === 'followups' ? 'Follow-ups' : t === 'activity' ? 'Activity' : 'Analytics'}</Text>
               {t === 'followups' && summary && summary.overdue_followups > 0 && (
                 <View style={s.badge}><Text style={s.badgeText}>{summary.overdue_followups}</Text></View>
               )}
@@ -244,6 +259,102 @@ export default function CRMScreen() {
                 </View>
               </View>
             ))}
+          </View>
+        )}
+
+        {/* Analytics Tab */}
+        {tab === 'analytics' && (
+          <View style={s.section}>
+            {!analytics ? <ActivityIndicator size="large" color="#C5964A" /> : (
+              <>
+                {/* Revenue Stats */}
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#C5964A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Revenue</Text>
+                <View style={s.summaryRow}>
+                  <View style={[s.summaryCard, { borderLeftColor: '#10B981' }]}>
+                    <Text style={s.summaryNum}>Rs.{(analytics.summary?.total_revenue / 100000).toFixed(1)}L</Text>
+                    <Text style={s.summaryLabel}>Total</Text>
+                  </View>
+                  <View style={[s.summaryCard, { borderLeftColor: '#C5964A' }]}>
+                    <Text style={s.summaryNum}>Rs.{(analytics.summary?.monthly_revenue / 100000).toFixed(1)}L</Text>
+                    <Text style={s.summaryLabel}>This Month</Text>
+                  </View>
+                  <View style={[s.summaryCard, { borderLeftColor: '#3B82F6' }]}>
+                    <Text style={s.summaryNum}>{analytics.summary?.conversion_rate}%</Text>
+                    <Text style={s.summaryLabel}>Conv. Rate</Text>
+                  </View>
+                </View>
+
+                {/* Revenue Trend */}
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#C5964A', textTransform: 'uppercase', letterSpacing: 1, marginTop: 14, marginBottom: 8 }}>Revenue Trend (6 Months)</Text>
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.78)', borderRadius: 14, padding: 14, marginBottom: 14 }}>
+                  {revenueTrend.map((m: any, i: number) => {
+                    const maxRev = Math.max(...revenueTrend.map((t: any) => t.revenue || 1));
+                    const barWidth = maxRev > 0 ? Math.max((m.revenue / maxRev) * 100, 2) : 2;
+                    return (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                        <Text style={{ width: 40, fontSize: 11, color: '#64748B' }}>{m.month}</Text>
+                        <View style={{ flex: 1, height: 18, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
+                          <View style={{ width: `${barWidth}%`, height: '100%', backgroundColor: m.revenue > 0 ? '#C5964A' : '#E2E8F0', borderRadius: 4 }} />
+                        </View>
+                        <Text style={{ width: 70, fontSize: 10, color: '#0F172A', fontWeight: '600', textAlign: 'right' }}>{m.revenue > 0 ? `Rs.${(m.revenue / 1000).toFixed(0)}K` : '-'}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* Order Pipeline */}
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#C5964A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Order Pipeline</Text>
+                {orderStats && (
+                  <View style={{ backgroundColor: 'rgba(255,255,255,0.78)', borderRadius: 14, padding: 14, marginBottom: 14 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <Text style={{ fontSize: 13, color: '#64748B' }}>Total Orders</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A' }}>{orderStats.total_orders}</Text>
+                    </View>
+                    {Object.entries(orderStats.by_stage || {}).map(([stage, data]: [string, any]) => (
+                      <View key={stage} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: 'rgba(226,232,240,0.4)' }}>
+                        <Text style={{ fontSize: 12, color: '#475569', textTransform: 'capitalize' }}>{stage.replace('_', ' ')}</Text>
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '600' }}>{data.count} orders</Text>
+                          <Text style={{ fontSize: 12, color: '#C5964A', fontWeight: '600' }}>Rs.{(data.value / 1000).toFixed(0)}K</Text>
+                        </View>
+                      </View>
+                    ))}
+                    {/* Payment Status */}
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#0F172A', marginTop: 10, marginBottom: 4 }}>Payment Status</Text>
+                    {Object.entries(orderStats.by_payment || {}).map(([status, data]: [string, any]) => (
+                      <View key={status} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
+                        <Text style={{ fontSize: 12, color: status === 'unpaid' ? '#EF4444' : status === 'partial' ? '#F59E0B' : '#10B981', fontWeight: '600', textTransform: 'capitalize' }}>{status}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '600' }}>{data.count} | Rs.{(data.outstanding / 1000).toFixed(0)}K due</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Production Stats */}
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#C5964A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Production (Work Orders)</Text>
+                {woStats && (
+                  <View style={{ backgroundColor: 'rgba(255,255,255,0.78)', borderRadius: 14, padding: 14, marginBottom: 14 }}>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 8 }}>{woStats.total} Total WOs</Text>
+                    {Object.entries(woStats.by_stage || {}).map(([stage, count]: [string, any]) => (
+                      <View key={stage} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
+                        <Text style={{ fontSize: 12, color: '#475569', textTransform: 'capitalize' }}>{stage.replace('_', ' ')}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A' }}>{count}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Quick Stats */}
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#C5964A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Overview</Text>
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.78)', borderRadius: 14, padding: 14 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}><Text style={{ fontSize: 12, color: '#64748B' }}>Total Quotes</Text><Text style={{ fontSize: 14, fontWeight: '700' }}>{analytics.summary?.total_quotes}</Text></View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}><Text style={{ fontSize: 12, color: '#64748B' }}>Approved</Text><Text style={{ fontSize: 14, fontWeight: '700', color: '#10B981' }}>{analytics.summary?.approved_quotes}</Text></View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}><Text style={{ fontSize: 12, color: '#64748B' }}>Pending RFQs</Text><Text style={{ fontSize: 14, fontWeight: '700', color: '#F59E0B' }}>{analytics.summary?.pending_rfqs}</Text></View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}><Text style={{ fontSize: 12, color: '#64748B' }}>Customers</Text><Text style={{ fontSize: 14, fontWeight: '700' }}>{analytics.summary?.total_customers}</Text></View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}><Text style={{ fontSize: 12, color: '#64748B' }}>Avg Quote Value</Text><Text style={{ fontSize: 14, fontWeight: '700', color: '#C5964A' }}>Rs.{analytics.summary?.avg_quote_value?.toLocaleString()}</Text></View>
+                </View>
+              </>
+            )}
           </View>
         )}
 
