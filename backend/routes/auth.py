@@ -1363,7 +1363,7 @@ def generate_quote_html(quote_data: dict, hide_prices: bool = False) -> str:
                 <div class="term-item-text">{quote_data.get('commercial_terms', {}).get('payment_terms', '100% Advance against pro-forma')}</div>
               </div>
               <div class="term-item">
-                <div class="term-item-title">Freight</div>
+                <div class="term-item-title">Delivery Terms</div>
                 <div class="term-item-text">{quote_data.get('commercial_terms', {}).get('freight_terms', 'Ex-Works')}</div>
               </div>
               <div class="term-item">
