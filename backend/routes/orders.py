@@ -756,7 +756,6 @@ async def get_sales_order_pdf(
             "color_finish": "Color & Finish",
             "delivery_timeline": "Delivery Timeline",
             "warranty": "Warranty",
-            "validity": "Validity",
         }
         for key, label in term_labels.items():
             val = terms.get(key)
