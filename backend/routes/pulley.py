@@ -124,3 +124,19 @@ async def download_pulley_template():
         raise HTTPException(status_code=404, detail="Template file not found")
     return FileResponse(path=str(file_path), filename="pulley_pricing_template.xlsx",
                        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+
+@router.get("/pulley-pricing")
+async def get_pulley_pricing(current_user: dict = Depends(get_current_user)):
+    """Get all pulley pricing data for admin panel"""
+    return {
+        "pipe_rates": {str(k): v for k, v in ps.PIPE_RATES.items()},
+        "shaft_rates": {str(k): v for k, v in ps.SHAFT_RATES.items()},
+        "end_plate_rates": ps.END_PLATE_RATES,
+        "hub_rates": {str(k): v for k, v in ps.HUB_RATES.items()},
+        "rubber_plain_rates": ps.RUBBER_PLAIN_RATES,
+        "rubber_ceramic_rates": ps.RUBBER_CERAMIC_RATES,
+        "kla_models": ps.KLA_MODELS,
+        "pipe_thickness_map": {str(k): v for k, v in ps.PIPE_THICKNESS_MAP.items()},
+    }

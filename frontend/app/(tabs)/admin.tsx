@@ -66,11 +66,13 @@ const COLLECTION_LABELS: Record<string, string> = {
 export default function AdminScreen() {
   const { user } = useAuth();
   const [mainTab, setMainTab] = useState<MainTab>('prices');
+  const [productType, setProductType] = useState<'roller' | 'pulley'>('roller');
   
   // Prices state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prices, setPrices] = useState<Prices | null>(null);
+  const [pulleyStandards, setPulleyStandards] = useState<any>(null);
   const [activeCategory, setActiveCategory] = useState<PriceCategory>('basic');
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -104,12 +106,22 @@ export default function AdminScreen() {
     setRefreshing(true);
     try {
       if (mainTab === 'prices') {
-        await fetchPrices();
+        if (productType === 'pulley') await fetchPulleyPricing();
+        else await fetchPrices();
       } else {
         await fetchStandardsSummary();
       }
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const fetchPulleyPricing = async () => {
+    try {
+      const response = await api.get('/pulley-pricing');
+      setPulleyStandards(response.data);
+    } catch (error) {
+      console.error('Error fetching pulley pricing:', error);
     }
   };
 
@@ -951,6 +963,97 @@ export default function AdminScreen() {
 
       {mainTab === 'prices' ? (
         <>
+          {/* Roller / Pulley Toggle */}
+          <View style={{ flexDirection: 'row', marginHorizontal: 16, marginTop: 12, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: 3 }}>
+            <TouchableOpacity style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 8, gap: 6 }, productType === 'roller' && { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }]} onPress={() => setProductType('roller')}>
+              <Ionicons name="disc-outline" size={14} color={productType === 'roller' ? '#C5964A' : '#94A3B8'} />
+              <Text style={{ fontSize: 14, fontWeight: productType === 'roller' ? '700' : '500', color: productType === 'roller' ? '#C5964A' : '#94A3B8' }}>Roller</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 8, gap: 6 }, productType === 'pulley' && { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }]} onPress={() => { setProductType('pulley'); if (!pulleyStandards) fetchPulleyPricing(); }}>
+              <Ionicons name="cog-outline" size={14} color={productType === 'pulley' ? '#C5964A' : '#94A3B8'} />
+              <Text style={{ fontSize: 14, fontWeight: productType === 'pulley' ? '700' : '500', color: productType === 'pulley' ? '#C5964A' : '#94A3B8' }}>Pulley</Text>
+            </TouchableOpacity>
+          </View>
+
+          {productType === 'pulley' ? (
+            <ScrollView style={{ flex: 1, padding: 16 }}>
+              {!pulleyStandards ? (
+                <ActivityIndicator size="large" color="#C5964A" style={{ paddingVertical: 40 }} />
+              ) : (
+                <>
+                  {/* Pipe Rates */}
+                  <View style={styles.priceCard}>
+                    <Text style={styles.priceSectionTitle}>Pipe Rates (Rs./kg)</Text>
+                    {Object.entries(pulleyStandards.pipe_rates || {}).map(([dia, rates]: [string, any]) => (
+                      <View key={dia} style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>{dia}mm</Text>
+                        <Text style={styles.priceValue}>{Object.entries(rates).map(([thk, rate]: [string, any]) => `${thk}mm: Rs.${rate}`).join(' | ')}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Shaft Rates */}
+                  <View style={styles.priceCard}>
+                    <Text style={styles.priceSectionTitle}>Shaft Rates (Rs./kg)</Text>
+                    {Object.entries(pulleyStandards.shaft_rates || {}).slice(0, 10).map(([dia, rates]: [string, any]) => (
+                      <View key={dia} style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>{dia}mm</Text>
+                        <Text style={styles.priceValue}>MS:{rates.MS} | EN-8:{rates['EN-8']} | EN-9:{rates['EN-9']} | EN-19:{rates['EN-19']}</Text>
+                      </View>
+                    ))}
+                    <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 4 }}>Showing 10 of {Object.keys(pulleyStandards.shaft_rates || {}).length} entries</Text>
+                  </View>
+
+                  {/* End Plate Rates */}
+                  <View style={styles.priceCard}>
+                    <Text style={styles.priceSectionTitle}>End Plate Rates (Rs./kg)</Text>
+                    {Object.entries(pulleyStandards.end_plate_rates || {}).map(([thk, rate]: [string, any]) => (
+                      <View key={thk} style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>{thk}mm</Text>
+                        <Text style={styles.priceValue}>Rs.{rate}/kg</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Hub Rates */}
+                  <View style={styles.priceCard}>
+                    <Text style={styles.priceSectionTitle}>Hub Rates (Rs./kg)</Text>
+                    {Object.entries(pulleyStandards.hub_rates || {}).slice(0, 10).map(([dia, rate]: [string, any]) => (
+                      <View key={dia} style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>{dia}mm</Text>
+                        <Text style={styles.priceValue}>Rs.{rate}/kg</Text>
+                      </View>
+                    ))}
+                    <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 4 }}>Showing 10 of {Object.keys(pulleyStandards.hub_rates || {}).length} entries</Text>
+                  </View>
+
+                  {/* Rubber Lagging */}
+                  <View style={styles.priceCard}>
+                    <Text style={styles.priceSectionTitle}>Rubber Lagging - Plain/Diamond (Rs./sqm)</Text>
+                    {Object.entries(pulleyStandards.rubber_plain_rates || {}).map(([thk, rate]: [string, any]) => (
+                      <View key={thk} style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>{thk}mm</Text>
+                        <Text style={styles.priceValue}>Rs.{rate}/sqm</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={styles.priceCard}>
+                    <Text style={styles.priceSectionTitle}>Rubber Lagging - Ceramic (Rs./sqm)</Text>
+                    {Object.entries(pulleyStandards.rubber_ceramic_rates || {}).map(([thk, rate]: [string, any]) => (
+                      <View key={thk} style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>{thk}mm</Text>
+                        <Text style={styles.priceValue}>Rs.{rate}/sqm</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={{ height: 100 }} />
+                </>
+              )}
+            </ScrollView>
+          ) : (
+          <>
           <View style={styles.categoryTabs}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {categories.map((cat) => (
@@ -1084,6 +1187,8 @@ export default function AdminScreen() {
             </ScrollView>
           )}
         </>
+        </>
+        )}
       ) : (
         <>
           {loadingStandards ? (
@@ -1357,6 +1462,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#960018',
     marginBottom: 8,
+  },
+  priceCard: {
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  priceSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#C5964A',
+    marginBottom: 10,
   },
   priceRow: {
     flexDirection: 'row',
