@@ -84,12 +84,14 @@ async def update_item_production_details(
 
 # ============= BULK: SET PRODUCTION DETAILS + CREATE WO IN ONE CLICK =============
 
+PAINT_TYPES = ["Synthetic Enamel", "Auto Paint", "Epoxy", "PU"]
+
+
 class BulkProductionItem(BaseModel):
     item_index: int
     drawing_number: Optional[str] = None
     drawing_base64: Optional[str] = None
     drawing_filename: Optional[str] = None
-    paint_details: Optional[str] = None
     shaft_length: Optional[float] = None
     shaft_slot: Optional[ShaftSlot] = None
     production_notes: Optional[str] = None
@@ -97,6 +99,9 @@ class BulkProductionItem(BaseModel):
 
 class BulkCreateWorkOrder(BaseModel):
     items: List[BulkProductionItem]
+    ral_code: Optional[str] = None  # e.g., "RAL 9005"
+    paint_type: Optional[str] = None  # Synthetic Enamel / Auto Paint / Epoxy / PU
+    paint_spec: Optional[str] = None  # Auto-carried from quote commercial_terms.color_finish
 
 
 @router.post("/orders/{order_id}/create-work-order")
@@ -189,6 +194,10 @@ async def bulk_create_work_order(
             "item_status": "pending",
         })
 
+    # Get paint spec from quote commercial terms if not provided
+    commercial_terms = order.get("commercial_terms") or {}
+    paint_spec = data.paint_spec or commercial_terms.get("color_finish", "")
+
     work_order = {
         "id": str(ObjectId()),
         "wo_number": wo_number,
@@ -198,6 +207,9 @@ async def bulk_create_work_order(
         "customer_name": order.get("customer_name"),
         "customer_company": order.get("customer_company"),
         "items": wo_items,
+        "ral_code": data.ral_code or "",
+        "paint_type": data.paint_type or "",
+        "paint_spec": paint_spec,
         "stage": "created",
         "stage_history": [{"stage": "created", "timestamp": now.isoformat(), "by": current_user.get("email"), "notes": f"Created from {order.get('so_number')} with {len(wo_items)} items"}],
         "created_by": current_user.get("email"),
@@ -832,6 +844,11 @@ async def get_work_order_pdf(
         <div class="info-box"><div class="info-label">Customer</div><div class="info-value">{wo.get('customer_name','')}</div></div>
         <div class="info-box"><div class="info-label">Company</div><div class="info-value">{wo.get('customer_company','') or 'N/A'}</div></div>
         <div class="info-box"><div class="info-label">Stage</div><div class="info-value">{WO_STAGE_LABELS.get(wo.get('stage',''), wo.get('stage',''))}</div></div>
+    </div>
+    <div class="info-grid">
+        <div class="info-box"><div class="info-label">RAL Code</div><div class="info-value" style="font-weight:700;color:#960018">{wo.get('ral_code','') or 'N/A'}</div></div>
+        <div class="info-box"><div class="info-label">Paint Type</div><div class="info-value">{wo.get('paint_type','') or 'N/A'}</div></div>
+        <div class="info-box" style="flex:3"><div class="info-label">Paint Specification</div><div class="info-value">{wo.get('paint_spec','') or 'N/A'}</div></div>
     </div>
 
     {items_summary_html}

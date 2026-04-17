@@ -296,6 +296,9 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
   const [woOrder, setWoOrder] = useState<any>(null);
   const [woItems, setWoItems] = useState<any[]>([]);
   const [woCreating, setWoCreating] = useState(false);
+  const [woRalCode, setWoRalCode] = useState('');
+  const [woPaintType, setWoPaintType] = useState('');
+  const [woPaintSpec, setWoPaintSpec] = useState('');
   const [payAmount, setPayAmount] = useState('');
   const [payMode, setPayMode] = useState('bank_transfer');
   const [payRef, setPayRef] = useState('');
@@ -306,7 +309,6 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
     const items = (order.products || []).map((_: any, i: number) => ({
       item_index: i,
       drawing_number: '',
-      paint_details: '',
       shaft_length: '',
       slot_width: '',
       slot_dimension: '',
@@ -314,6 +316,9 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
       production_notes: '',
     }));
     setWoItems(items);
+    setWoRalCode('');
+    setWoPaintType('');
+    setWoPaintSpec(order.commercial_terms?.color_finish || '');
     setShowCreateWO(true);
   };
 
@@ -332,11 +337,13 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
         items: woItems.map(item => ({
           item_index: item.item_index,
           drawing_number: item.drawing_number,
-          paint_details: item.paint_details,
           shaft_length: parseFloat(item.shaft_length),
           shaft_slot: { width: parseFloat(item.slot_width), dimension: parseFloat(item.slot_dimension), slot_type: item.slot_type },
           production_notes: item.production_notes,
-        }))
+        })),
+        ral_code: woRalCode,
+        paint_type: woPaintType,
+        paint_spec: woPaintSpec,
       };
       const res = await api.post(`/orders/${woOrder.id}/create-work-order`, payload);
       Alert.alert('Success', res.data.message);
@@ -704,6 +711,24 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
             </View>
             {woOrder && <Text style={os.modalSub}>{woOrder.so_number} — {woOrder.customer_name}</Text>}
             <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
+              {/* Paint Details — Common for all items */}
+              <View style={{ backgroundColor: 'rgba(197,150,74,0.08)', borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: 'rgba(197,150,74,0.2)' }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#C5964A', marginBottom: 10 }}>PAINT DETAILS (All Items)</Text>
+                <Text style={os.label}>RAL Code</Text>
+                <TextInput style={os.input} value={woRalCode} onChangeText={setWoRalCode} placeholder="RAL 9005" />
+                <Text style={os.label}>Paint Type</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {['Synthetic Enamel', 'Auto Paint', 'Epoxy', 'PU'].map(pt => (
+                    <Pressable key={pt} style={[os.chip, woPaintType === pt && os.chipActive]} onPress={() => setWoPaintType(pt)}>
+                      <Text style={[os.chipText, woPaintType === pt && os.chipTextActive]}>{pt}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Text style={os.label}>Paint Specification (from Quote)</Text>
+                <TextInput style={[os.input, { height: 50, textAlignVertical: 'top' }]} value={woPaintSpec} onChangeText={setWoPaintSpec} placeholder="1+1 Red oxide + finish" multiline />
+              </View>
+
+              {/* Per Item Details */}
               {woItems.map((item: any, idx: number) => (
                 <View key={idx} style={{ backgroundColor: 'rgba(241,245,249,0.7)', borderRadius: 12, padding: 14, marginBottom: 12 }}>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 10 }}>
@@ -711,8 +736,6 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
                   </Text>
                   <Text style={os.label}>Drawing Number *</Text>
                   <TextInput style={os.input} value={item.drawing_number} onChangeText={v => { const arr = [...woItems]; arr[idx].drawing_number = v; setWoItems(arr); }} placeholder="DWG-001" />
-                  <Text style={os.label}>Paint Details</Text>
-                  <TextInput style={os.input} value={item.paint_details} onChangeText={v => { const arr = [...woItems]; arr[idx].paint_details = v; setWoItems(arr); }} placeholder="Red oxide + Black 50 micron" />
                   <Text style={os.label}>Shaft Length (mm) *</Text>
                   <TextInput style={os.input} value={item.shaft_length} onChangeText={v => { const arr = [...woItems]; arr[idx].shaft_length = v; setWoItems(arr); }} placeholder="600" keyboardType="numeric" />
                   <Text style={os.label}>Shaft End Slot *</Text>
