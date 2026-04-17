@@ -32,6 +32,8 @@ from routes.admin import router as admin_router
 from routes.crm import router as crm_router
 from routes.orders import router as orders_router
 from routes.workorders import router as workorders_router
+from routes.suppliers import router as suppliers_router
+from routes.inventory import router as inventory_router
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -643,6 +645,8 @@ api_router.include_router(admin_router)
 api_router.include_router(crm_router)
 api_router.include_router(orders_router)
 api_router.include_router(workorders_router)
+api_router.include_router(suppliers_router)
+api_router.include_router(inventory_router)
 app.include_router(api_router)
 
 app.add_middleware(
