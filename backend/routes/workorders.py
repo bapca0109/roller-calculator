@@ -646,19 +646,23 @@ async def get_work_order_pdf(
         {items_summary_rows}
     </table>"""
 
-    # TABLE 2: Consolidated BOM (all items merged)
+    # TABLE 2: Consolidated BOM — group by component + description (separate sizes)
     consolidated_bom = {}
     for item in all_items:
         for b in item.get("bom", []):
-            key = b.get("component", "")
+            comp = b.get("component", "")
+            desc = b.get("description", "")
+            mat = b.get("material", "")
+            # Key by component + material to keep different sizes separate
+            key = f"{comp}|{mat}"
             if key in consolidated_bom:
                 consolidated_bom[key]["total_qty"] += b.get("total_qty", 0)
                 consolidated_bom[key]["total_weight_kg"] += b.get("total_weight_kg", 0)
             else:
                 consolidated_bom[key] = {
-                    "component": key,
-                    "description": b.get("description", ""),
-                    "material": b.get("material", ""),
+                    "component": comp,
+                    "description": desc,
+                    "material": mat,
                     "total_qty": b.get("total_qty", 0),
                     "total_weight_kg": b.get("total_weight_kg", 0),
                 }
