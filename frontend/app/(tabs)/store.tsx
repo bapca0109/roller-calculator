@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, 
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import { ExportButtons } from '../../components/shared/ExportButtons';
 
 type Tab = 'dashboard' | 'stock' | 'po' | 'suppliers' | 'alerts';
 
@@ -150,6 +151,7 @@ export default function StoreScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={s.sectionTitle}>Stock Items ({stockItems.length})</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
+                <ExportButtons endpoint="/store/export/stock" filenamePrefix="Stock" compact showExcel showPdf={false} />
                 <Pressable style={s.actionBtn} onPress={() => setShowAddItem(true)}><Ionicons name="add" size={16} color="#C5964A" /><Text style={s.actionText}>Add Item</Text></Pressable>
                 <Pressable style={s.actionBtn} onPress={async () => { try { const res = await api.get('/work-orders'); setWorkOrders(res.data.work_orders || []); setIssueItems(stockItems.map(i => ({ stock_item_id: i.id, name: i.name, qty: '' }))); setShowIssue(true); } catch {} }}><Ionicons name="arrow-up-circle-outline" size={16} color="#8B5CF6" /><Text style={[s.actionText, { color: '#8B5CF6' }]}>Issue</Text></Pressable>
               </View>
@@ -173,7 +175,10 @@ export default function StoreScreen() {
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={s.sectionTitle}>Purchase Orders ({pos.length})</Text>
-              <Pressable style={s.actionBtn} onPress={() => setShowAddPO(true)}><Ionicons name="add" size={16} color="#C5964A" /><Text style={s.actionText}>New PO</Text></Pressable>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <ExportButtons endpoint="/store/export/purchase-orders" filenamePrefix="POs" compact showExcel showPdf={false} />
+                <Pressable style={s.actionBtn} onPress={() => setShowAddPO(true)}><Ionicons name="add" size={16} color="#C5964A" /><Text style={s.actionText}>New PO</Text></Pressable>
+              </View>
             </View>
             {pos.map((po: any) => (
               <TouchableOpacity key={po.id} style={s.card} onPress={() => { setSelectedPO(po); setQcItemIndex(0); setShowQC(true); }}>
@@ -199,7 +204,10 @@ export default function StoreScreen() {
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={s.sectionTitle}>Suppliers ({suppliers.length})</Text>
-              <Pressable style={s.actionBtn} onPress={() => setShowAddSupplier(true)}><Ionicons name="add" size={16} color="#C5964A" /><Text style={s.actionText}>Add</Text></Pressable>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <ExportButtons endpoint="/store/export/suppliers" filenamePrefix="Suppliers" compact showExcel showPdf={false} />
+                <Pressable style={s.actionBtn} onPress={() => setShowAddSupplier(true)}><Ionicons name="add" size={16} color="#C5964A" /><Text style={s.actionText}>Add</Text></Pressable>
+              </View>
             </View>
             {suppliers.map((sup: any) => (
               <View key={sup.id} style={s.card}>

@@ -4,7 +4,12 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from bson import ObjectId
 from routes import db, get_current_user, require_role, get_ist_now, get_financial_year, UserRole, format_date_dmy
+from fastapi.responses import StreamingResponse
 import logging
+import io
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.utils import get_column_letter
 
 router = APIRouter(prefix="/store")
 
@@ -336,3 +341,98 @@ async def get_store_options(current_user: dict = Depends(require_role([UserRole.
         "qc_statuses": QC_STATUSES,
         "units": ["meters", "kg", "nos", "sqm", "litres", "sets"],
     }
+
+
+# ============= EXCEL EXPORTS =============
+
+def _make_header(ws, headers, row=1):
+    hf = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
+    hfont = Font(bold=True, color="FFFFFF", size=11)
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=row, column=col, value=h)
+        cell.fill = hf; cell.font = hfont; cell.alignment = Alignment(horizontal='center')
+    for col in range(1, len(headers)+1):
+        ws.column_dimensions[get_column_letter(col)].width = 18
+
+
+@router.get("/export/stock")
+async def export_stock_excel(current_user: dict = Depends(require_role([UserRole.ADMIN]))):
+    items = await db.stock_items.find({}, {"_id": 0}).sort("category", 1).to_list(1000)
+    wb = Workbook(); ws = wb.active; ws.title = "Stock"
+    _make_header(ws, ["Name", "Category", "Current Stock", "Unit (Purchase)", "Unit (BOM)", "Reorder Level", "Status"])
+    for r, item in enumerate(items, 2):
+        ws.cell(row=r, column=1, value=item.get("name"))
+        ws.cell(row=r, column=2, value=item.get("category"))
+        ws.cell(row=r, column=3, value=item.get("current_stock", 0))
+        ws.cell(row=r, column=4, value=item.get("unit_purchase"))
+        ws.cell(row=r, column=5, value=item.get("unit_bom"))
+        ws.cell(row=r, column=6, value=item.get("reorder_level", 0))
+        low = item.get("current_stock", 0) <= item.get("reorder_level", 0) and item.get("reorder_level", 0) > 0
+        ws.cell(row=r, column=7, value="LOW STOCK" if low else "OK")
+    output = io.BytesIO(); wb.save(output); output.seek(0)
+    return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                           headers={"Content-Disposition": "attachment; filename=Stock_Inventory.xlsx"})
+
+
+@router.get("/export/purchase-orders")
+async def export_po_excel(current_user: dict = Depends(require_role([UserRole.ADMIN]))):
+    pos = await db.purchase_orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    wb = Workbook(); ws = wb.active; ws.title = "Purchase Orders"
+    _make_header(ws, ["PO Number", "Supplier", "Item", "Qty Ordered", "Rate", "Amount", "Qty Accepted", "Qty Rejected", "QC Status", "PO Status", "Date"])
+    r = 2
+    for po in pos:
+        supplier = await db.suppliers_master.find_one({"id": po.get("supplier_id")}, {"_id": 0, "name": 1})
+        sup_name = supplier.get("name") if supplier else "Unknown"
+        for item in po.get("items", []):
+            ws.cell(row=r, column=1, value=po.get("po_number"))
+            ws.cell(row=r, column=2, value=sup_name)
+            ws.cell(row=r, column=3, value=item.get("stock_item_name"))
+            ws.cell(row=r, column=4, value=item.get("qty_ordered"))
+            ws.cell(row=r, column=5, value=item.get("rate"))
+            ws.cell(row=r, column=6, value=item.get("amount"))
+            ws.cell(row=r, column=7, value=item.get("qty_accepted", 0))
+            ws.cell(row=r, column=8, value=item.get("qty_rejected", 0))
+            ws.cell(row=r, column=9, value=item.get("qc_status"))
+            ws.cell(row=r, column=10, value=po.get("status"))
+            ws.cell(row=r, column=11, value=format_date_dmy(po.get("created_at")))
+            r += 1
+    output = io.BytesIO(); wb.save(output); output.seek(0)
+    return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                           headers={"Content-Disposition": "attachment; filename=Purchase_Orders.xlsx"})
+
+
+@router.get("/export/transactions")
+async def export_transactions_excel(current_user: dict = Depends(require_role([UserRole.ADMIN]))):
+    txns = await db.stock_transactions.find({}, {"_id": 0}).sort("at", -1).to_list(5000)
+    wb = Workbook(); ws = wb.active; ws.title = "Transactions"
+    _make_header(ws, ["Item", "Type", "Qty", "Reference", "Notes", "By", "Date"])
+    for r, t in enumerate(txns, 2):
+        ws.cell(row=r, column=1, value=t.get("stock_item_name"))
+        ws.cell(row=r, column=2, value=t.get("type", "").upper())
+        ws.cell(row=r, column=3, value=t.get("qty"))
+        ws.cell(row=r, column=4, value=t.get("reference"))
+        ws.cell(row=r, column=5, value=t.get("notes", ""))
+        ws.cell(row=r, column=6, value=t.get("by"))
+        ws.cell(row=r, column=7, value=format_date_dmy(t.get("at")))
+    output = io.BytesIO(); wb.save(output); output.seek(0)
+    return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                           headers={"Content-Disposition": "attachment; filename=Stock_Transactions.xlsx"})
+
+
+@router.get("/export/suppliers")
+async def export_suppliers_excel(current_user: dict = Depends(require_role([UserRole.ADMIN]))):
+    suppliers = await db.suppliers_master.find({}, {"_id": 0}).sort("name", 1).to_list(500)
+    wb = Workbook(); ws = wb.active; ws.title = "Suppliers"
+    _make_header(ws, ["Name", "Contact Person", "Phone", "Email", "GST", "City", "State", "Payment Terms"])
+    for r, s in enumerate(suppliers, 2):
+        ws.cell(row=r, column=1, value=s.get("name"))
+        ws.cell(row=r, column=2, value=s.get("contact_person"))
+        ws.cell(row=r, column=3, value=s.get("phone"))
+        ws.cell(row=r, column=4, value=s.get("email"))
+        ws.cell(row=r, column=5, value=s.get("gst_number"))
+        ws.cell(row=r, column=6, value=s.get("city"))
+        ws.cell(row=r, column=7, value=s.get("state"))
+        ws.cell(row=r, column=8, value=s.get("payment_terms"))
+    output = io.BytesIO(); wb.save(output); output.seek(0)
+    return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                           headers={"Content-Disposition": "attachment; filename=Suppliers.xlsx"})
