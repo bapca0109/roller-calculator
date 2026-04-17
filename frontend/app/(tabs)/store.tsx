@@ -59,10 +59,18 @@ export default function StoreScreen() {
 
   const createStockItem = async () => {
     if (!newItem.name) { Alert.alert('Error', 'Name required'); return; }
+    // Auto-generate bom_match_key from category + name
+    let matchKey = newItem.category + ':';
+    const name = newItem.name;
+    // Extract numbers from name for key (e.g., "Pipe 114.3mm x 4.5mm" → "pipe:114.3:4.5")
+    const nums = name.match(/[\d.]+/g);
+    if (nums) matchKey += nums.join(':');
+    else matchKey += name.toLowerCase().replace(/\s+/g, '_');
+    
     try {
-      await api.post('/store/items', { ...newItem, reorder_level: parseFloat(newItem.reorder_level) || 0, current_stock: 0 });
+      await api.post('/store/items', { ...newItem, reorder_level: parseFloat(newItem.reorder_level) || 0, current_stock: 0, bom_match_key: matchKey });
       setShowAddItem(false); setNewItem({ name: '', category: 'pipe', unit_purchase: 'meters', unit_bom: 'kg', reorder_level: '' });
-      fetchAll(); Alert.alert('Success', 'Stock item created');
+      fetchAll(); Alert.alert('Success', `Stock item created\nMatch Key: ${matchKey}`);
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
@@ -161,7 +169,7 @@ export default function StoreScreen() {
             {stockItems.map((item: any) => (
               <View key={item.id} style={s.card}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <View style={{ flex: 1 }}><Text style={s.cardTitle}>{item.name}</Text><Text style={s.cardMeta}>{item.category} | {item.unit_purchase}</Text></View>
+                  <View style={{ flex: 1 }}><Text style={s.cardTitle}>{item.name}</Text><Text style={s.cardMeta}>{item.category} | {item.unit_purchase}{item.bom_match_key ? ` | Key: ${item.bom_match_key}` : ''}</Text></View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={[s.stockQty, item.current_stock <= (item.reorder_level || 0) && item.reorder_level > 0 ? { color: '#EF4444' } : {}]}>{item.current_stock} {item.unit_purchase}</Text>
                     {item.reorder_level > 0 && <Text style={s.reorderText}>Reorder: {item.reorder_level}</Text>}

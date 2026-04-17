@@ -955,6 +955,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "component": "Pipe",
                 "description": f"{pipe_dia}mm OD x {effective_thk}mm thk x {pipe_length}mm L",
                 "material": "MS ERW",
+                "bom_match_key": f"pipe:{pipe_dia}:{effective_thk}",
                 "qty_per_unit": 1, "total_qty": qty,
                 "weight_per_unit_kg": pipe_wt, "total_weight_kg": round(pipe_wt * qty, 3),
             })
@@ -967,6 +968,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "component": "Shaft",
                 "description": f"{shaft_dia}mm dia x {shaft_length}mm L",
                 "material": "EN-8 Bright Bar",
+                "bom_match_key": f"shaft:{shaft_dia}:EN-8",
                 "qty_per_unit": 1, "total_qty": qty,
                 "weight_per_unit_kg": shaft_wt, "total_weight_kg": round(shaft_wt * qty, 3),
             })
@@ -978,6 +980,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "component": "Bearing",
                 "description": f"{bearing_number} ZZ - {make_label} (OD: {bearing_od}mm)",
                 "material": f"{bearing_number} - {make_label}",
+                "bom_match_key": f"bearing:{bearing_number}",
                 "qty_per_unit": 2, "total_qty": qty * 2,
                 "weight_per_unit_kg": 0, "total_weight_kg": 0,
             })
@@ -988,6 +991,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "component": "Housing",
                 "description": f"Housing {housing_size} for {pipe_dia}mm pipe",
                 "material": f"CRC Housing {housing_size}",
+                "bom_match_key": f"housing:{housing_size}",
                 "qty_per_unit": 2, "total_qty": qty * 2,
                 "weight_per_unit_kg": 0, "total_weight_kg": 0,
             })
@@ -1006,6 +1010,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             "component": "Seal",
             "description": seal_desc,
             "material": f"Labyrinth Seal - {bearing_number}",
+            "bom_match_key": f"seal:{bearing_number}",
             "qty_per_unit": 2, "total_qty": qty * 2,
             "weight_per_unit_kg": 0, "total_weight_kg": 0,
         })
@@ -1016,6 +1021,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             "component": "Circlip",
             "description": f"{circlip_num} for {shaft_dia}mm shaft",
             "material": f"Spring Steel {circlip_num}",
+            "bom_match_key": f"circlip:{shaft_dia}",
             "qty_per_unit": 4, "total_qty": qty * 4,
             "weight_per_unit_kg": 0, "total_weight_kg": 0,
         })
@@ -1025,6 +1031,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             "component": "Grease",
             "description": "Bearing grease",
             "material": "EP2 Grease",
+            "bom_match_key": "grease:EP2",
             "qty_per_unit": 1, "total_qty": qty,
             "weight_per_unit_kg": 0, "total_weight_kg": 0,
         })
@@ -1045,6 +1052,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "component": "Rubber Ring",
                 "description": f"{ring_desc} — {ring_qty} nos/roller",
                 "material": "Natural Rubber",
+                "bom_match_key": f"rubber_ring:{ring_id}:{rubber_dia}",
                 "qty_per_unit": ring_qty, "total_qty": qty * ring_qty,
                 "weight_per_unit_kg": 0, "total_weight_kg": 0,
             })
@@ -1066,6 +1074,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "component": "Pipe",
                 "description": f"{pipe_dia}mm OD × {effective_thk}mm thk × {face_length}mm FL",
                 "material": "MS Seamless",
+                "bom_match_key": f"pipe:{pipe_dia}:{effective_thk}",
                 "qty_per_unit": 1,
                 "total_qty": qty,
                 "weight_per_unit_kg": pipe_wt,
@@ -1081,6 +1090,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "component": "Shaft",
                 "description": f"{shaft_dia}mm dia × {shaft_length}mm L",
                 "material": shaft_mat,
+                "bom_match_key": f"shaft:{shaft_dia}:{shaft_mat}",
                 "qty_per_unit": 1,
                 "total_qty": qty,
                 "weight_per_unit_kg": shaft_wt,
@@ -1097,6 +1107,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "component": "End Plate",
                 "description": f"{pipe_dia}mm OD × {shaft_dia}mm bore × {ep_thk}mm thk",
                 "material": "MS Plate",
+                "bom_match_key": f"end_plate:{pipe_dia}:{ep_thk}",
                 "qty_per_unit": ep_qty,
                 "total_qty": qty * ep_qty,
                 "weight_per_unit_kg": ep_wt,
@@ -1125,6 +1136,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "component": "KLA",
                 "description": kla_model,
                 "material": "Keyless Locking Assembly",
+                "bom_match_key": f"kla:{kla_model}",
                 "qty_per_unit": 2,
                 "total_qty": qty * 2,
                 "weight_per_unit_kg": 0,
@@ -1156,14 +1168,19 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
 
 # ============= BOM-STOCK MATCHING & SHORTAGE CHECK =============
 
-async def _match_bom_to_stock(bom_component: str, bom_description: str, bom_material: str) -> dict:
-    """Try to find a matching stock item for a BOM component"""
-    # Strategy: search by component name in stock item name, or by description keywords
+async def _match_bom_to_stock(bom_component: str, bom_description: str, bom_material: str, bom_match_key: str = None) -> dict:
+    """Find matching stock item for a BOM component using bom_match_key first, then fuzzy"""
+    # Strategy 1: Exact match on bom_match_key
+    if bom_match_key:
+        stock_item = await db.stock_items.find_one({"bom_match_key": bom_match_key}, {"_id": 0})
+        if stock_item:
+            return stock_item
+    
+    # Strategy 2: Fuzzy search by description keywords
     query_options = [
         {"name": {"$regex": bom_description.split(" x ")[0] if " x " in bom_description else bom_description, "$options": "i"}},
         {"name": {"$regex": bom_component, "$options": "i"}},
     ]
-    
     for query in query_options:
         stock_item = await db.stock_items.find_one(query, {"_id": 0})
         if stock_item:
@@ -1185,7 +1202,7 @@ async def _check_bom_shortages(work_order: dict) -> list:
             if required_qty <= 0:
                 continue
             
-            stock_item = await _match_bom_to_stock(component, description, material)
+            stock_item = await _match_bom_to_stock(component, description, material, bom.get("bom_match_key"))
             
             if stock_item:
                 available = stock_item.get("current_stock", 0)

@@ -25,10 +25,13 @@ class StockItemCreate(BaseModel):
     category: str  # pipe, shaft, bearing, etc.
     unit_purchase: str = "meters"  # meters, kg, nos, sqm, litres
     unit_bom: str = "kg"  # kg, nos, sqm
-    conversion_factor: float = 1.0  # purchase_unit × factor = bom_unit (e.g., meters × density = kg)
+    conversion_factor: float = 1.0
     current_stock: float = 0
     reorder_level: float = 0
     specifications: Optional[Dict[str, Any]] = None  # dia, thickness, material, bearing_no etc.
+    # BOM match key — deterministic link to BOM components
+    # Format: "{category}:{spec1}:{spec2}" e.g. "pipe:114.3:4.5", "shaft:25:EN-8", "bearing:6205", "housing:108/52"
+    bom_match_key: Optional[str] = None
 
 
 class PurchaseOrderCreate(BaseModel):
