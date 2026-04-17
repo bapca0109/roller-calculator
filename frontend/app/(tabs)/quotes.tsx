@@ -2894,13 +2894,22 @@ export default function QuotesScreen() {
               <TouchableOpacity onPress={() => setShowConvertSO(false)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity>
             </View>
             {convertQuote && <Text style={{ fontSize: 14, color: '#C5964A', fontWeight: '600', marginBottom: 16 }}>{convertQuote.quote_number} — {convertQuote.customer_name}</Text>}
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#C5964A', letterSpacing: 0.5, marginBottom: 6 }}>Delivery Date (YYYY-MM-DD) *</Text>
-            <TextInput
-              style={{ backgroundColor: 'rgba(241,245,249,0.8)', borderWidth: 1, borderColor: 'rgba(226,232,240,0.5)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#0F172A' }}
-              value={deliveryDate}
-              onChangeText={setDeliveryDate}
-              placeholder="15-05-2026"
-            />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#C5964A', letterSpacing: 0.5, marginBottom: 6 }}>Delivery Date *</Text>
+            {Platform.OS === 'web' ? (
+              <input
+                type="date"
+                value={deliveryDate}
+                onChange={(e: any) => setDeliveryDate(e.target.value)}
+                style={{ backgroundColor: 'rgba(241,245,249,0.8)', border: '1px solid rgba(226,232,240,0.5)', borderRadius: 12, padding: '12px 14px', fontSize: 15, color: '#0F172A', width: '100%', fontFamily: 'inherit' } as any}
+              />
+            ) : (
+              <TextInput
+                style={{ backgroundColor: 'rgba(241,245,249,0.8)', borderWidth: 1, borderColor: 'rgba(226,232,240,0.5)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#0F172A' }}
+                value={deliveryDate}
+                onChangeText={setDeliveryDate}
+                placeholder="DD-MM-YYYY"
+              />
+            )}
             <Pressable
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#C5964A', borderRadius: 14, paddingVertical: 15, marginTop: 18 }}
               onPress={async () => {
