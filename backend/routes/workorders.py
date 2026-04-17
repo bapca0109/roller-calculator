@@ -561,6 +561,11 @@ async def get_work_order_pdf(
     for idx, item in enumerate(all_items, 1):
         specs = item.get("specifications", {})
         slot_str = item.get("shaft_slot", "N/A")
+        # Format slot: remove decimals, ensure uppercase (e.g., "14.0 × 10.0 A" → "14 x 10 A")
+        import re
+        if slot_str and slot_str != "N/A":
+            slot_str = re.sub(r'(\d+)\.0\b', r'\1', slot_str)  # Remove .0 decimals
+            slot_str = slot_str.replace('×', 'x').upper()
         pipe_type_str = specs.get("pipe_type", "")
         
         # Get housing size from roller standards
