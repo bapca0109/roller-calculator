@@ -50,7 +50,7 @@ function OrdersAndWOView({ orders, ordersLoading, fetchOrders, workOrders, woLoa
 }) {
   // Role-based default & lock for sub-tab
   const forceSO = role === 'dispatch' || role === 'accounts';
-  const forceWO = role === 'production_head';
+  const forceWO = role === 'production_head' || role === 'quality_inspector';
   const initial: 'so' | 'wo' = forceWO ? 'wo' : 'so';
   const [subTab, setSubTab] = useState<'so' | 'wo'>(initial);
   const locked = forceSO || forceWO;
@@ -88,7 +88,7 @@ function OrdersAndWOView({ orders, ordersLoading, fetchOrders, workOrders, woLoa
       {subTab === 'so' ? (
         <OrdersView orders={orders} loading={ordersLoading} onRefresh={fetchOrders} isAdmin={isAdmin} userRole={role} />
       ) : (
-        <WorkOrdersView workOrders={workOrders} loading={woLoading} onRefresh={fetchWorkOrders} isAdmin={isAdmin} />
+        <WorkOrdersView workOrders={workOrders} loading={woLoading} onRefresh={fetchWorkOrders} isAdmin={isAdmin} userRole={role} />
       )}
     </View>
   );
@@ -97,9 +97,10 @@ function OrdersAndWOView({ orders, ordersLoading, fetchOrders, workOrders, woLoa
 const WO_STAGE_COLORS: Record<string, string> = { created: '#3B82F6', material_issued: '#8B5CF6', in_progress: '#C5964A', qc: '#F59E0B', completed: '#10B981' };
 const WO_STAGE_LABELS: Record<string, string> = { created: 'Created', material_issued: 'Material Issued', in_progress: 'In Progress', qc: 'QC', completed: 'Completed' };
 
-function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin }: { workOrders: any[]; loading: boolean; onRefresh: () => void; isAdmin: boolean }) {
+function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: { workOrders: any[]; loading: boolean; onRefresh: () => void; isAdmin: boolean; userRole?: string }) {
   const [selectedWO, setSelectedWO] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const canStampQC = isAdmin || userRole === 'quality_inspector';
 
   const openWODetail = async (wo: any) => {
     setDetailLoading(true);
@@ -113,6 +114,34 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin }: { workOrder
   const updateStage = async (woId: string, stage: string) => {
     try { await api.put(`/work-orders/${woId}/stage?stage=${stage}`); onRefresh(); }
     catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
+  };
+
+  const stampQC = (wo: any, status: 'passed' | 'failed') => {
+    const doIt = async (remarks: string) => {
+      try {
+        await api.post(`/work-orders/${wo.id}/qc`, { status, remarks });
+        Alert.alert('QC Stamped', `${wo.wo_number}: ${status.toUpperCase()}`);
+        onRefresh();
+      } catch (e: any) {
+        Alert.alert('Error', e.response?.data?.detail || 'Failed to stamp QC');
+      }
+    };
+    if (Platform.OS === 'web') {
+      // web: use prompt for remarks (simple)
+      const r = (globalThis as any).prompt?.(`Remarks for QC ${status.toUpperCase()} on ${wo.wo_number} (optional):`) ?? '';
+      if (r === null) return; // cancelled
+      doIt(r);
+    } else {
+      Alert.prompt?.(
+        `QC ${status.toUpperCase()}`,
+        'Add remarks (optional):',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Stamp', onPress: (t: any) => doIt(t || '') },
+        ],
+        'plain-text'
+      ) ?? doIt('');
+    }
   };
 
   const downloadPDF = async (woId: string) => {
@@ -147,6 +176,14 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin }: { workOrder
                 <Text style={wos.woNumber}>{wo.wo_number}</Text>
                 <Text style={wos.customer}>{wo.customer_name} | SO: {wo.so_number}</Text>
               </View>
+              {/* QC badge on completed WOs */}
+              {wo.stage === 'completed' && (
+                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginRight: 6, backgroundColor: wo.qc_status === 'passed' ? '#05966918' : wo.qc_status === 'failed' ? '#DC262618' : '#F59E0B18' }}>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: wo.qc_status === 'passed' ? '#059669' : wo.qc_status === 'failed' ? '#DC2626' : '#D97706', letterSpacing: 0.5 }}>
+                    {wo.qc_status === 'passed' ? 'QC ✓' : wo.qc_status === 'failed' ? 'QC ✗' : 'QC PENDING'}
+                  </Text>
+                </View>
+              )}
               <View style={[wos.stageBadge, { backgroundColor: (WO_STAGE_COLORS[wo.stage] || '#94A3B8') + '18' }]}>
                 <Text style={[wos.stageText, { color: WO_STAGE_COLORS[wo.stage] || '#94A3B8' }]}>{WO_STAGE_LABELS[wo.stage] || wo.stage}</Text>
               </View>
@@ -159,13 +196,15 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin }: { workOrder
                 <Text style={wos.itemMeta}>Qty: {item.quantity} | Dwg: {item.drawing_number || 'N/A'} | BOM: {item.bom?.length || 0} parts</Text>
               </View>
             ))}
-            {isAdmin && (
+            {(isAdmin || canStampQC) && (
               <View style={wos.actions}>
-                <TouchableOpacity style={wos.actionBtn} onPress={() => downloadPDF(wo.id)}>
-                  <Ionicons name="download-outline" size={14} color="#C5964A" />
-                  <Text style={[wos.actionText, { color: '#C5964A' }]}>PDF</Text>
-                </TouchableOpacity>
-                {wo.stage !== 'completed' && (() => {
+                {isAdmin && (
+                  <TouchableOpacity style={wos.actionBtn} onPress={() => downloadPDF(wo.id)}>
+                    <Ionicons name="download-outline" size={14} color="#C5964A" />
+                    <Text style={[wos.actionText, { color: '#C5964A' }]}>PDF</Text>
+                  </TouchableOpacity>
+                )}
+                {isAdmin && wo.stage !== 'completed' && (() => {
                   const stages = ['created', 'completed'];
                   const next = stages[stages.indexOf(wo.stage) + 1];
                   return next ? (
@@ -175,6 +214,26 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin }: { workOrder
                     </TouchableOpacity>
                   ) : null;
                 })()}
+                {canStampQC && wo.stage === 'completed' && (wo.qc_status || 'pending') === 'pending' && (
+                  <>
+                    <TouchableOpacity
+                      style={[wos.actionBtn, { borderColor: '#059669' }]}
+                      onPress={() => stampQC(wo, 'passed')}
+                      testID={`qc-pass-${wo.wo_number}`}
+                    >
+                      <Ionicons name="checkmark-circle" size={14} color="#059669" />
+                      <Text style={[wos.actionText, { color: '#059669' }]}>QC Pass</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[wos.actionBtn, { borderColor: '#DC2626' }]}
+                      onPress={() => stampQC(wo, 'failed')}
+                      testID={`qc-fail-${wo.wo_number}`}
+                    >
+                      <Ionicons name="close-circle" size={14} color="#DC2626" />
+                      <Text style={[wos.actionText, { color: '#DC2626' }]}>QC Fail</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             )}
           </TouchableOpacity>
@@ -970,13 +1029,20 @@ const os = StyleSheet.create({
 export default function QuotesScreen() {
   const { user, loading: authLoading } = useAuth();
   const userRole = user?.role || 'customer';
-  const opsOnlyRoles = ['production_head', 'accounts', 'dispatch'];
+  const opsOnlyRoles = ['production_head', 'accounts', 'dispatch', 'quality_inspector'];
   const initialViewMode: 'quotes' | 'orders' | 'workorders' = opsOnlyRoles.includes(userRole) ? 'orders' : 'quotes';
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'quotes' | 'orders' | 'workorders'>(initialViewMode);
+
+  // Ensure ops-only roles (who may have loaded after initial render) land on Orders
+  useEffect(() => {
+    if (user?.role && opsOnlyRoles.includes(user.role) && viewMode === 'quotes') {
+      setViewMode('orders');
+    }
+  }, [user?.role]);
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [workOrders, setWorkOrders] = useState<any[]>([]);
@@ -2768,7 +2834,7 @@ export default function QuotesScreen() {
       </View>
 
       {/* Quotes / Orders Toggle - hidden for ops roles that only see orders */}
-      {!['production_head', 'accounts', 'dispatch'].includes(user?.role || '') && (
+      {!['production_head', 'accounts', 'dispatch', 'quality_inspector'].includes(user?.role || '') && (
       <View style={styles.modeToggleContainer}>
         <View style={styles.modeToggle}>
           <TouchableOpacity

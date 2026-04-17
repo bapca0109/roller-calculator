@@ -157,7 +157,7 @@ async def convert_quote_to_order(
 async def get_orders(
     stage: Optional[str] = None,
     payment_status: Optional[str] = None,
-    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES, UserRole.SALES_MANAGER, UserRole.PRODUCTION_HEAD, UserRole.ACCOUNTS, UserRole.DISPATCH]))
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES, UserRole.SALES_MANAGER, UserRole.PRODUCTION_HEAD, UserRole.ACCOUNTS, UserRole.DISPATCH, UserRole.QUALITY_INSPECTOR]))
 ):
     query = {}
     if stage:

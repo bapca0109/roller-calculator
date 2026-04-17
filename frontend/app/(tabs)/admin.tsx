@@ -1875,6 +1875,7 @@ export default function AdminScreen() {
                   production_head: '#0891B2',
                   accounts: '#7C3AED',
                   dispatch: '#059669',
+                  quality_inspector: '#0F766E',
                   customer: '#64748B',
                 };
                 const color = roleColor[u.role] || '#64748B';
@@ -2170,10 +2171,10 @@ export default function AdminScreen() {
               />
               <Text style={{ fontSize: 12, color: '#960018', fontWeight: '700', marginTop: 12, marginBottom: 6 }}>Role *</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                {['admin','sales_manager','production_head','accounts','dispatch','customer'].map((r) => {
+                {['admin','sales_manager','production_head','accounts','dispatch','quality_inspector','customer'].map((r) => {
                   const roleColor: Record<string,string> = {
                     admin:'#DC2626', sales_manager:'#C5964A', production_head:'#0891B2',
-                    accounts:'#7C3AED', dispatch:'#059669', customer:'#64748B',
+                    accounts:'#7C3AED', dispatch:'#059669', quality_inspector:'#0F766E', customer:'#64748B',
                   };
                   const active = newUserRole === r;
                   return (

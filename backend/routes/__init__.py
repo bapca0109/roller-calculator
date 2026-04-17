@@ -260,15 +260,15 @@ class UserRole:
     PRODUCTION_HEAD = "production_head"
     ACCOUNTS = "accounts"
     DISPATCH = "dispatch"
+    QUALITY_INSPECTOR = "quality_inspector"
 
     @classmethod
     def all_staff(cls):
-        return [cls.ADMIN, cls.SALES, cls.SALES_MANAGER, cls.PRODUCTION_HEAD, cls.ACCOUNTS, cls.DISPATCH]
+        return [cls.ADMIN, cls.SALES, cls.SALES_MANAGER, cls.PRODUCTION_HEAD, cls.ACCOUNTS, cls.DISPATCH, cls.QUALITY_INSPECTOR]
 
     @classmethod
     def assignable(cls):
-        # Roles an admin can assign (customer stays managed by signup flow)
-        return [cls.ADMIN, cls.SALES_MANAGER, cls.PRODUCTION_HEAD, cls.ACCOUNTS, cls.DISPATCH, cls.CUSTOMER]
+        return [cls.ADMIN, cls.SALES_MANAGER, cls.PRODUCTION_HEAD, cls.ACCOUNTS, cls.DISPATCH, cls.QUALITY_INSPECTOR, cls.CUSTOMER]
 
 
 class UserRegister(BaseModel):

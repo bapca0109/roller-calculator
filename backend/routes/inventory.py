@@ -165,7 +165,7 @@ async def create_purchase_order(po: PurchaseOrderCreate, current_user: dict = De
 # ============= QC (Quality Check) =============
 
 @router.post("/qc")
-async def process_qc(qc: QCEntry, current_user: dict = Depends(require_role([UserRole.ADMIN]))):
+async def process_qc(qc: QCEntry, current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.QUALITY_INSPECTOR]))):
     po = await db.purchase_orders.find_one({"id": qc.po_id})
     if not po:
         raise HTTPException(status_code=404, detail="Purchase Order not found")

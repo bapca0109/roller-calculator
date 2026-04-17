@@ -339,7 +339,7 @@ async def create_work_order(
 @router.get("/work-orders")
 async def get_work_orders(
     stage: Optional[str] = None,
-    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES, UserRole.SALES_MANAGER, UserRole.PRODUCTION_HEAD, UserRole.ACCOUNTS, UserRole.DISPATCH]))
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES, UserRole.SALES_MANAGER, UserRole.PRODUCTION_HEAD, UserRole.ACCOUNTS, UserRole.DISPATCH, UserRole.QUALITY_INSPECTOR]))
 ):
     query = {}
     if stage:
@@ -349,7 +349,7 @@ async def get_work_orders(
 
 
 @router.get("/work-orders/{wo_id}")
-async def get_work_order(wo_id: str, current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES, UserRole.SALES_MANAGER, UserRole.PRODUCTION_HEAD, UserRole.ACCOUNTS, UserRole.DISPATCH]))):
+async def get_work_order(wo_id: str, current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.SALES, UserRole.SALES_MANAGER, UserRole.PRODUCTION_HEAD, UserRole.ACCOUNTS, UserRole.DISPATCH, UserRole.QUALITY_INSPECTOR]))):
     wo = await db.work_orders.find_one(
         {"$or": [{"id": wo_id}, {"wo_number": wo_id}]}, {"_id": 0}
     )
@@ -1258,3 +1258,49 @@ async def get_wo_shortages(current_user: dict = Depends(require_role([UserRole.A
         "total": len(consolidated),
         "detail": all_shortages,
     }
+
+
+# ============= FINISHED GOODS QC =============
+
+class FinishedGoodsQC(BaseModel):
+    status: str  # "passed" | "failed"
+    remarks: Optional[str] = None
+
+
+@router.post("/work-orders/{wo_id}/qc")
+async def stamp_wo_qc(
+    wo_id: str,
+    body: FinishedGoodsQC,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.QUALITY_INSPECTOR])),
+):
+    """Stamp outgoing QC on a Work Order. Only passed WOs can be dispatched."""
+    if body.status not in ("passed", "failed"):
+        raise HTTPException(status_code=400, detail="status must be 'passed' or 'failed'")
+    wo = await db.work_orders.find_one({"$or": [{"id": wo_id}, {"wo_number": wo_id}]}, {"_id": 0})
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work Order not found")
+    if wo.get("stage") != "completed":
+        raise HTTPException(status_code=400, detail="Only completed work orders can be QC-stamped")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.work_orders.update_one(
+        {"id": wo.get("id")},
+        {
+            "$set": {
+                "qc_status": body.status,
+                "qc_remarks": (body.remarks or "").strip(),
+                "qc_by": current_user.get("email"),
+                "qc_at": now_iso,
+                "updated_at": now_iso,
+            },
+            "$push": {
+                "stage_history": {
+                    "stage": f"qc_{body.status}",
+                    "timestamp": now_iso,
+                    "by": current_user.get("email"),
+                    "notes": (body.remarks or "").strip(),
+                }
+            },
+        },
+    )
+    return {"message": f"QC {body.status}", "wo_number": wo.get("wo_number")}
+

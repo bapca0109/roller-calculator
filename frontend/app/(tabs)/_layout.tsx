@@ -55,10 +55,10 @@ export default function TabsLayout() {
     crm:       ['admin', 'sales_manager'].includes(role),
     products:  ['admin', 'sales_manager', 'customer'].includes(role),
     cart:      ['admin', 'sales_manager', 'customer'].includes(role),
-    quotes:    ['admin', 'sales_manager', 'production_head', 'accounts', 'dispatch', 'customer'].includes(role),
+    quotes:    ['admin', 'sales_manager', 'production_head', 'accounts', 'dispatch', 'quality_inspector', 'customer'].includes(role),
     customers: ['admin', 'sales_manager'].includes(role),
     admin:     ['admin'].includes(role),
-    store:     ['admin', 'production_head'].includes(role),
+    store:     ['admin', 'production_head', 'quality_inspector'].includes(role),
     profile:   true,
   } as const;
 

@@ -112,6 +112,22 @@ async def create_delivery_challan(
     if not order:
         raise HTTPException(status_code=404, detail="Sales Order not found")
 
+    # Outgoing QC gate: if there are Work Orders for this SO, ALL must have
+    # qc_status == "passed" before a DC can be issued. This enforces the
+    # finished-goods quality checkpoint.
+    wos = await db.work_orders.find(
+        {"order_id": order.get("id")},
+        {"_id": 0, "wo_number": 1, "qc_status": 1, "stage": 1}
+    ).to_list(100)
+    if wos:
+        not_passed = [w for w in wos if (w.get("qc_status") or "pending") != "passed"]
+        if not_passed:
+            pending_list = ", ".join(f"{w.get('wo_number')} ({w.get('qc_status') or 'pending'})" for w in not_passed)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Finished-goods QC not passed for: {pending_list}. Quality Inspector must stamp 'passed' before dispatch."
+            )
+
     # Items: default to SO products, else use provided override
     if req.items:
         items = [it.model_dump() for it in req.items]
