@@ -735,7 +735,7 @@ async def get_sales_order_pdf(
     total_price = order.get("total_price", 0)
 
     # GST calculation (18%)
-    taxable = total_price
+    taxable = round(subtotal - total_discount + packing + freight_amount, 2)
     cgst = round(taxable * 0.09, 2)
     sgst = round(taxable * 0.09, 2)
     total_gst = round(cgst + sgst, 2)
