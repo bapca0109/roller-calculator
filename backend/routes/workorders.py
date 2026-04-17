@@ -563,20 +563,36 @@ async def get_work_order_pdf(
         slot_str = item.get("shaft_slot", "N/A")
         pipe_type_str = specs.get("pipe_type", "")
         
-        # Get pipe thickness from BOM or pipe_type
+        # Get pipe thickness from roller standards based on pipe_type (A/B/C)
         import re
         pipe_thk = "-"
-        # Try from BOM first
-        for b in item.get("bom", []):
-            if b.get("component") == "Pipe":
-                thk_match = re.search(r'x\s*(\d+\.?\d*)\s*mm\s*thk', b.get("description", ""))
-                if thk_match:
-                    pipe_thk = thk_match.group(1)
-                    break
+        # Extract pipe type letter from product code or specs
+        pipe_type_code = specs.get("pipe_type", "B").upper()
+        if len(pipe_type_code) == 1 and pipe_type_code in ("A", "B", "C"):
+            # Wall thickness lookup by pipe dia and type
+            PIPE_WALL_THK = {
+                60.8: {"A": 2.90, "B": 3.65, "C": 4.47},
+                76.1: {"A": 3.25, "B": 3.65, "C": 4.47},
+                88.9: {"A": 3.25, "B": 4.05, "C": 4.85},
+                114.3: {"A": 3.65, "B": 4.47, "C": 5.33},
+                127.0: {"A": 4.00, "B": 4.85, "C": 5.33},
+                139.7: {"A": 4.00, "B": 4.85, "C": 5.33},
+                152.4: {"A": 4.00, "B": 4.85, "C": 5.33},
+                159.0: {"A": 4.00, "B": 4.85, "C": 5.33},
+                165.0: {"A": 4.00, "B": 4.85, "C": 5.33},
+            }
+            thk_data = PIPE_WALL_THK.get(pipe_dia, {})
+            thk_val = thk_data.get(pipe_type_code)
+            if thk_val:
+                pipe_thk = str(thk_val)
         if pipe_thk == "-":
-            thk_match = re.search(r'(\d+\.?\d*)', str(pipe_type_str))
-            if thk_match:
-                pipe_thk = thk_match.group(1)
+            # Fallback: try from BOM description
+            for b in item.get("bom", []):
+                if b.get("component") == "Pipe":
+                    thk_match = re.search(r'x\s*(\d+\.?\d*)\s*mm\s*thk', b.get("description", ""))
+                    if thk_match:
+                        pipe_thk = thk_match.group(1)
+                        break
 
         # Get housing size from roller standards
         bearing_number = specs.get("bearing_number", specs.get("bearing", ""))
