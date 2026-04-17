@@ -875,6 +875,20 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
         thk_match = re.search(r'(\d+\.?\d*)\s*mm', str(pipe_type))
         if thk_match:
             wall_thk = float(thk_match.group(1))
+    # If pipe_type is just a letter (A/B/C), lookup from standard thickness table
+    if wall_thk == 0 and pipe_type and len(pipe_type.strip()) == 1 and pipe_type.strip().upper() in ("A", "B", "C"):
+        PIPE_WALL_THK = {
+            60.8: {"A": 2.9, "B": 3.6, "C": 4.5},
+            76.1: {"A": 3.2, "B": 3.6, "C": 4.5},
+            88.9: {"A": 3.2, "B": 4.0, "C": 4.8},
+            114.3: {"A": 3.6, "B": 4.5, "C": 5.4},
+            127.0: {"A": 4.0, "B": 4.8, "C": 5.4},
+            139.7: {"A": 4.0, "B": 4.8, "C": 5.4},
+            152.4: {"A": 4.0, "B": 4.8, "C": 5.4},
+            159.0: {"A": 4.0, "B": 4.8, "C": 5.4},
+            165.0: {"A": 4.0, "B": 4.8, "C": 5.4},
+        }
+        wall_thk = PIPE_WALL_THK.get(pipe_dia, {}).get(pipe_type.strip().upper(), 0)
 
     if is_roller:
         product_code = (product.get("product_id") or "").upper()
