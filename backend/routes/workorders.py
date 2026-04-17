@@ -620,7 +620,7 @@ async def get_work_order_pdf(
             <td style="text-align:center">{pipe_thk}</td>
             <td style="text-align:center">{housing_size}</td>
             <td style="text-align:center">{specs.get('shaft_diameter','')}</td>
-            <td style="text-align:center">{item.get('shaft_length_mm','')}</td>
+            <td style="text-align:center">{int(item.get('shaft_length_mm',0)) if item.get('shaft_length_mm') else ''}</td>
             <td style="text-align:center">{slot_str}</td>
             <td style="text-align:center">{bearing_display}</td>
             <td style="text-align:center;font-weight:700">{item.get('quantity','')}</td>
