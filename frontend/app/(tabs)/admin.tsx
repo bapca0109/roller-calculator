@@ -1328,6 +1328,7 @@ export default function AdminScreen() {
           </View>
         </View>
       </Modal>
+      </>
     </View>
   );
 }
