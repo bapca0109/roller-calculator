@@ -439,3 +439,142 @@ async def export_suppliers_excel(current_user: dict = Depends(require_role([User
     output = io.BytesIO(); wb.save(output); output.seek(0)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                            headers={"Content-Disposition": "attachment; filename=Suppliers.xlsx"})
+
+
+# ============= STOCK ADJUSTMENT =============
+
+class StockAdjustment(BaseModel):
+    stock_item_id: str
+    adjustment_qty: float  # positive = add, negative = deduct
+    reason: str  # damage, audit, opening_balance, correction, other
+    notes: Optional[str] = None
+
+
+@router.post("/adjust")
+async def adjust_stock(adj: StockAdjustment, current_user: dict = Depends(require_role([UserRole.ADMIN]))):
+    stock_item = await db.stock_items.find_one({"id": adj.stock_item_id})
+    if not stock_item:
+        raise HTTPException(status_code=404, detail="Stock item not found")
+
+    now = get_ist_now()
+    old_stock = stock_item.get("current_stock", 0)
+    new_stock = round(old_stock + adj.adjustment_qty, 3)
+    if new_stock < 0:
+        raise HTTPException(status_code=400, detail=f"Stock cannot go below 0. Current: {old_stock}, Adjustment: {adj.adjustment_qty}")
+
+    await db.stock_items.update_one({"id": adj.stock_item_id}, {"$set": {"current_stock": new_stock}})
+
+    # Log transaction
+    await db.stock_transactions.insert_one({
+        "id": str(ObjectId()),
+        "stock_item_id": adj.stock_item_id,
+        "stock_item_name": stock_item.get("name"),
+        "type": "adjust_in" if adj.adjustment_qty > 0 else "adjust_out",
+        "qty": abs(adj.adjustment_qty),
+        "reference": f"Adjustment: {adj.reason}",
+        "notes": adj.notes or "",
+        "by": current_user.get("email"),
+        "at": now.isoformat(),
+    })
+
+    return {"message": f"Stock adjusted: {stock_item.get('name')} — {old_stock} → {new_stock}", "new_stock": new_stock}
+
+
+# ============= PURCHASE ORDER PDF =============
+
+@router.get("/purchase-orders/{po_id}/pdf")
+async def get_po_pdf(po_id: str, token: Optional[str] = None, authorization: Optional[str] = None):
+    from fastapi import Header
+    from jose import jwt
+    from routes import SECRET_KEY, ALGORITHM
+
+    auth_token = token
+    if not auth_token and authorization and authorization.startswith("Bearer "):
+        auth_token = authorization[7:]
+    if not auth_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    try:
+        payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
+        if not payload.get("sub"):
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    po = await db.purchase_orders.find_one({"id": po_id}, {"_id": 0})
+    if not po:
+        raise HTTPException(status_code=404, detail="Purchase Order not found")
+
+    supplier = await db.suppliers_master.find_one({"id": po.get("supplier_id")}, {"_id": 0})
+    sup_name = supplier.get("name", "") if supplier else ""
+    sup_contact = supplier.get("contact_person", "") if supplier else ""
+    sup_phone = supplier.get("phone", "") if supplier else ""
+    sup_gst = supplier.get("gst_number", "") if supplier else ""
+    sup_city = supplier.get("city", "") if supplier else ""
+    sup_address = supplier.get("address", "") if supplier else ""
+
+    import os
+    COMPANY = {
+        "name": os.environ.get("COMPANY_NAME", "CONVERO SOLUTIONS"),
+        "address": os.environ.get("COMPANY_ADDRESS", ""),
+        "phone": os.environ.get("COMPANY_PHONE", ""),
+        "email": os.environ.get("COMPANY_EMAIL", ""),
+        "gstin": os.environ.get("COMPANY_GSTIN", ""),
+    }
+
+    item_rows = ""
+    total = 0
+    for i, item in enumerate(po.get("items", []), 1):
+        amt = item.get("amount", 0)
+        total += amt
+        item_rows += f"""<tr>
+            <td style="text-align:center">{i}</td>
+            <td>{item.get('stock_item_name','')}</td>
+            <td style="text-align:center">{item.get('qty_ordered','')}</td>
+            <td style="text-align:center">{item.get('unit','')}</td>
+            <td style="text-align:right">Rs.{item.get('rate',0):,.2f}</td>
+            <td style="text-align:right"><b>Rs.{amt:,.2f}</b></td>
+        </tr>"""
+
+    html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+    @page {{ size: A4; margin: 15mm; }}
+    * {{ margin:0; padding:0; box-sizing:border-box; }}
+    body {{ font-family: 'Helvetica Neue', Arial, sans-serif; color:#1E293B; font-size:11px; }}
+    .po {{ max-width:800px; margin:0 auto; }}
+    .header {{ display:flex; justify-content:space-between; border-bottom:3px solid #C5964A; padding-bottom:14px; margin-bottom:16px; }}
+    .company-name {{ font-size:22px; font-weight:800; color:#0F172A; }}
+    .company-details {{ font-size:10px; color:#475569; line-height:1.6; }}
+    .doc-title {{ font-size:22px; font-weight:800; color:#960018; text-align:right; }}
+    .info-grid {{ display:flex; gap:16px; margin-bottom:16px; }}
+    .info-box {{ flex:1; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:12px; }}
+    .info-label {{ font-size:9px; font-weight:700; color:#C5964A; letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; }}
+    .info-value {{ font-size:11px; color:#0F172A; }}
+    table.items {{ width:100%; border-collapse:collapse; margin-bottom:16px; }}
+    table.items th {{ background:#0F172A; color:#fff; padding:8px; font-size:10px; }}
+    table.items td {{ padding:8px; border-bottom:1px solid #E2E8F0; }}
+    .total-row {{ font-size:14px; font-weight:800; text-align:right; color:#960018; padding:10px 0; border-top:2px solid #C5964A; }}
+    .terms {{ font-size:10px; color:#64748B; margin-top:16px; }}
+    .stamp-area {{ display:flex; justify-content:space-between; margin-top:40px; }}
+    .stamp-line {{ width:180px; border-top:1px solid #CBD5E1; margin-top:50px; padding-top:4px; font-size:10px; color:#64748B; text-align:center; }}
+    .footer {{ text-align:center; margin-top:20px; padding-top:10px; border-top:1px solid #E2E8F0; font-size:9px; color:#94A3B8; }}
+</style></head><body>
+<div class="po">
+    <div class="header">
+        <div><div class="company-name">{COMPANY['name']}</div><div class="company-details">{COMPANY['address']}<br>Ph: {COMPANY['phone']} | {COMPANY['email']}<br><b>GSTIN: {COMPANY['gstin']}</b></div></div>
+        <div><div class="doc-title">PURCHASE ORDER</div><div style="font-size:14px;font-weight:600;text-align:right">{po.get('po_number','')}</div><div style="font-size:11px;color:#64748B;text-align:right">Date: {format_date_dmy(po.get('created_at'))}</div></div>
+    </div>
+    <div class="info-grid">
+        <div class="info-box"><div class="info-label">Supplier</div><div class="info-value"><b>{sup_name}</b><br>{sup_contact}<br>{sup_phone}<br>{sup_city} {sup_address}<br>{'GSTIN: ' + sup_gst if sup_gst else ''}</div></div>
+        <div class="info-box"><div class="info-label">PO Details</div><div class="info-value">Status: {po.get('status','')}<br>{'Expected: ' + po.get('expected_delivery','') if po.get('expected_delivery') else ''}<br>{'Notes: ' + po.get('notes','') if po.get('notes') else ''}</div></div>
+    </div>
+    <table class="items"><tr><th>Sr.</th><th>Item</th><th>Qty</th><th>Unit</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th></tr>{item_rows}</table>
+    <div class="total-row">Total: Rs.{total:,.2f}</div>
+    <div class="terms"><b>Terms:</b><br>1. Material must conform to IS standards.<br>2. Delivery as per schedule mentioned.<br>3. Payment as per agreed terms.<br>4. Subject to Ahmedabad jurisdiction.</div>
+    <div class="stamp-area"><div><div class="stamp-line">Supplier's Acceptance</div></div><div><div class="stamp-line">For {COMPANY['name']}<br>Authorized Signatory</div></div></div>
+    <div class="footer">{COMPANY['name']} | GSTIN: {COMPANY['gstin']} | {COMPANY['email']}</div>
+</div></body></html>"""
+
+    output = io.BytesIO(html.encode('utf-8'))
+    output.seek(0)
+    return StreamingResponse(output, media_type="text/html",
+                           headers={"Content-Disposition": f"attachment; filename={po.get('po_number','PO').replace('/','_')}.html"})
