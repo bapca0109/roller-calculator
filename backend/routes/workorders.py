@@ -956,7 +956,7 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             bom.append({
                 "component": "Housing",
                 "description": f"Housing {housing_size} for {pipe_dia}mm pipe",
-                "material": f"MS Housing {housing_size}",
+                "material": f"CRC Housing {housing_size}",
                 "qty_per_unit": 2, "total_qty": qty * 2,
                 "weight_per_unit_kg": 0, "total_weight_kg": 0,
             })
