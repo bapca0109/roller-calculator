@@ -13,7 +13,7 @@ import requests
 import os
 import json
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://conveyor-engineering.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://erp-conveyor-system.preview.emergentagent.com').rstrip('/')
 
 # Test credentials from previous iteration
 ADMIN_EMAIL = "test@test.com"

@@ -22,17 +22,18 @@
 - Excel/PDF exports across all modules
 - Premium glass UI, DD-MM-YYYY dates, full product codes in PDFs
 - Pulley prices migrated to MongoDB (editable via API)
+- **Pulley Admin Frontend [2026-02-17]**: Editable TextInputs for Pipe/Shaft/End-Plate/Hub/Rubber rates in Admin Prices tab. Includes Reset-to-Default and Save-as-Default buttons. 347 editable rows, tested end-to-end.
 
 ## P0 — Next
-- [ ] Pulley Admin Frontend (editable prices in Admin UI)
 - [ ] User Roles (Sales, Production, Accounts, Dispatch)
 
 ## P1
+- [ ] Inventory auto-deduct on WO processing/completion
 - [ ] Dispatch/Delivery Challan
 - [ ] Tax Invoice auto-gen on dispatch
 - [ ] Accounts Receivable
 - [ ] GST Reports
-- [ ] KLA pricing
+- [ ] KLA pricing (BLOCKED: waiting user data)
 
 ## Credentials
 - Admin: test@test.com / test123

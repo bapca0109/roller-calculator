@@ -7,7 +7,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://conveyor-engineering.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://erp-conveyor-system.preview.emergentagent.com').rstrip('/')
 
 class TestFreightCalculation:
     """Tests for freight calculation endpoint"""

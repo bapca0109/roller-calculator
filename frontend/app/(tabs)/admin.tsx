@@ -77,6 +77,11 @@ export default function AdminScreen() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render after reset
+
+  // Pulley price editing state
+  const [pulleyEditKey, setPulleyEditKey] = useState<string | null>(null);
+  const [pulleyEditValue, setPulleyEditValue] = useState('');
+  const [pulleySaving, setPulleySaving] = useState(false);
   
   // Set as Default OTP state
   const [showSetDefaultModal, setShowSetDefaultModal] = useState(false);
@@ -123,6 +128,101 @@ export default function AdminScreen() {
     } catch (error) {
       console.error('Error fetching pulley pricing:', error);
     }
+  };
+
+  // ============= PULLEY PRICE EDIT HELPERS =============
+  const startPulleyEdit = (editKey: string, value: number) => {
+    setPulleyEditKey(editKey);
+    setPulleyEditValue(String(value));
+  };
+
+  const cancelPulleyEdit = () => {
+    setPulleyEditKey(null);
+    setPulleyEditValue('');
+  };
+
+  // Set nested value immutably using path like ['pipe_rates', '219', '6']
+  const setNestedPath = (obj: any, path: string[], value: any): any => {
+    const copy: any = Array.isArray(obj) ? [...obj] : { ...(obj || {}) };
+    if (path.length === 1) {
+      copy[path[0]] = value;
+      return copy;
+    }
+    copy[path[0]] = setNestedPath(copy[path[0]] || {}, path.slice(1), value);
+    return copy;
+  };
+
+  const savePulleyEdit = async (path: string[]) => {
+    const num = parseFloat(pulleyEditValue);
+    if (isNaN(num) || num < 0) {
+      Alert.alert('Invalid Value', 'Please enter a valid positive number');
+      return;
+    }
+    try {
+      setPulleySaving(true);
+      const updated = setNestedPath(pulleyStandards || {}, path, num);
+      // Strip mongo id if present
+      if (updated._id) delete updated._id;
+      if (updated.id) delete updated.id;
+      await api.put('/pulley-pricing', updated);
+      await fetchPulleyPricing();
+      setPulleyEditKey(null);
+      setPulleyEditValue('');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to update pulley price');
+    } finally {
+      setPulleySaving(false);
+    }
+  };
+
+  const handleResetPulleyPrices = () => {
+    Alert.alert(
+      'Reset Pulley Prices',
+      'Reset all pulley prices to default values?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setPulleySaving(true);
+              await api.post('/pulley-pricing/reset');
+              await fetchPulleyPricing();
+              Alert.alert('Success', 'Pulley prices reset to default');
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.detail || 'Failed to reset');
+            } finally {
+              setPulleySaving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSetDefaultPulleyPrices = () => {
+    Alert.alert(
+      'Set as Default',
+      'Save current pulley prices as the new default?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            try {
+              setPulleySaving(true);
+              await api.post('/pulley-pricing/set-default');
+              Alert.alert('Success', 'Current pulley prices saved as default');
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.detail || 'Failed to set default');
+            } finally {
+              setPulleySaving(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   useEffect(() => {
@@ -573,6 +673,54 @@ export default function AdminScreen() {
     </View>
   );
 
+  // Editable row for pulley prices - uses path array to update nested MongoDB data
+  const renderPulleyEditableRow = (
+    label: string,
+    value: number,
+    editKey: string,
+    path: string[]
+  ) => (
+    <View style={styles.priceRow} key={editKey}>
+      <Text style={styles.priceLabel}>{label}</Text>
+      {pulleyEditKey === editKey ? (
+        <View style={styles.editContainer}>
+          <TextInput
+            style={styles.editInput}
+            value={pulleyEditValue}
+            onChangeText={setPulleyEditValue}
+            keyboardType="numeric"
+            autoFocus
+            testID={`pulley-input-${editKey}`}
+          />
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={() => savePulleyEdit(path)}
+            disabled={pulleySaving}
+            testID={`pulley-save-${editKey}`}
+          >
+            <Ionicons name="checkmark" size={20} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.cancelBtn}
+            onPress={cancelPulleyEdit}
+            testID={`pulley-cancel-${editKey}`}
+          >
+            <Ionicons name="close" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={styles.valueContainer}
+          onPress={() => startPulleyEdit(editKey, value)}
+          testID={`pulley-edit-${editKey}`}
+        >
+          <Text style={styles.priceValue}>₹{Number(value).toFixed(2)}</Text>
+          <Ionicons name="pencil" size={16} color="#960018" />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
   const renderBasicRates = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Basic Material Rates</Text>
@@ -976,77 +1124,105 @@ export default function AdminScreen() {
           </View>
 
           {productType === 'pulley' ? (
-            <ScrollView style={{ flex: 1, padding: 16 }}>
+            <ScrollView
+              style={{ flex: 1, padding: 16 }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor="#C5964A"
+                  colors={['#C5964A']}
+                />
+              }
+            >
               {!pulleyStandards ? (
                 <ActivityIndicator size="large" color="#C5964A" style={{ paddingVertical: 40 }} />
               ) : (
                 <>
-                  {/* Pipe Rates */}
+                  {/* Pipe Rates - nested: dia -> thk -> rate */}
                   <View style={styles.priceCard}>
                     <Text style={styles.priceSectionTitle}>Pipe Rates (Rs./kg)</Text>
                     {Object.entries(pulleyStandards.pipe_rates || {}).map(([dia, rates]: [string, any]) => (
-                      <View key={dia} style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>{dia}mm</Text>
-                        <Text style={styles.priceValue}>{Object.entries(rates).map(([thk, rate]: [string, any]) => `${thk}mm: Rs.${rate}`).join(' | ')}</Text>
+                      <View key={dia} style={{ marginBottom: 10 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#960018', marginBottom: 6 }}>{dia}mm Pipe</Text>
+                        {Object.entries(rates).map(([thk, rate]: [string, any]) => {
+                          const ek = `pipe_${dia}_${thk}`;
+                          return renderPulleyEditableRow(`${thk}mm thickness`, Number(rate), ek, ['pipe_rates', dia, thk]);
+                        })}
                       </View>
                     ))}
                   </View>
 
-                  {/* Shaft Rates */}
+                  {/* Shaft Rates - nested: dia -> material -> rate */}
                   <View style={styles.priceCard}>
                     <Text style={styles.priceSectionTitle}>Shaft Rates (Rs./kg)</Text>
-                    {Object.entries(pulleyStandards.shaft_rates || {}).slice(0, 10).map(([dia, rates]: [string, any]) => (
-                      <View key={dia} style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>{dia}mm</Text>
-                        <Text style={styles.priceValue}>MS:{rates.MS} | EN-8:{rates['EN-8']} | EN-9:{rates['EN-9']} | EN-19:{rates['EN-19']}</Text>
+                    {Object.entries(pulleyStandards.shaft_rates || {}).map(([dia, rates]: [string, any]) => (
+                      <View key={dia} style={{ marginBottom: 10 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#960018', marginBottom: 6 }}>{dia}mm Shaft</Text>
+                        {Object.entries(rates).map(([mat, rate]: [string, any]) => {
+                          const ek = `shaft_${dia}_${mat}`;
+                          return renderPulleyEditableRow(mat, Number(rate), ek, ['shaft_rates', dia, mat]);
+                        })}
                       </View>
                     ))}
-                    <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 4 }}>Showing 10 of {Object.keys(pulleyStandards.shaft_rates || {}).length} entries</Text>
                   </View>
 
                   {/* End Plate Rates */}
                   <View style={styles.priceCard}>
                     <Text style={styles.priceSectionTitle}>End Plate Rates (Rs./kg)</Text>
-                    {Object.entries(pulleyStandards.end_plate_rates || {}).map(([thk, rate]: [string, any]) => (
-                      <View key={thk} style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>{thk}mm</Text>
-                        <Text style={styles.priceValue}>Rs.{rate}/kg</Text>
-                      </View>
-                    ))}
+                    {Object.entries(pulleyStandards.end_plate_rates || {}).map(([thk, rate]: [string, any]) => {
+                      const ek = `endplate_${thk}`;
+                      return renderPulleyEditableRow(`${thk}mm`, Number(rate), ek, ['end_plate_rates', thk]);
+                    })}
                   </View>
 
                   {/* Hub Rates */}
                   <View style={styles.priceCard}>
                     <Text style={styles.priceSectionTitle}>Hub Rates (Rs./kg)</Text>
-                    {Object.entries(pulleyStandards.hub_rates || {}).slice(0, 10).map(([dia, rate]: [string, any]) => (
-                      <View key={dia} style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>{dia}mm</Text>
-                        <Text style={styles.priceValue}>Rs.{rate}/kg</Text>
-                      </View>
-                    ))}
-                    <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 4 }}>Showing 10 of {Object.keys(pulleyStandards.hub_rates || {}).length} entries</Text>
+                    {Object.entries(pulleyStandards.hub_rates || {}).map(([dia, rate]: [string, any]) => {
+                      const ek = `hub_${dia}`;
+                      return renderPulleyEditableRow(`${dia}mm`, Number(rate), ek, ['hub_rates', dia]);
+                    })}
                   </View>
 
-                  {/* Rubber Lagging */}
+                  {/* Rubber Lagging - Plain/Diamond */}
                   <View style={styles.priceCard}>
                     <Text style={styles.priceSectionTitle}>Rubber Lagging - Plain/Diamond (Rs./sqm)</Text>
-                    {Object.entries(pulleyStandards.rubber_plain_rates || {}).map(([thk, rate]: [string, any]) => (
-                      <View key={thk} style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>{thk}mm</Text>
-                        <Text style={styles.priceValue}>Rs.{rate}/sqm</Text>
-                      </View>
-                    ))}
+                    {Object.entries(pulleyStandards.rubber_plain_rates || {}).map(([thk, rate]: [string, any]) => {
+                      const ek = `rplain_${thk}`;
+                      return renderPulleyEditableRow(`${thk}mm`, Number(rate), ek, ['rubber_plain_rates', thk]);
+                    })}
                   </View>
 
+                  {/* Rubber Lagging - Ceramic */}
                   <View style={styles.priceCard}>
                     <Text style={styles.priceSectionTitle}>Rubber Lagging - Ceramic (Rs./sqm)</Text>
-                    {Object.entries(pulleyStandards.rubber_ceramic_rates || {}).map(([thk, rate]: [string, any]) => (
-                      <View key={thk} style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>{thk}mm</Text>
-                        <Text style={styles.priceValue}>Rs.{rate}/sqm</Text>
-                      </View>
-                    ))}
+                    {Object.entries(pulleyStandards.rubber_ceramic_rates || {}).map(([thk, rate]: [string, any]) => {
+                      const ek = `rcer_${thk}`;
+                      return renderPulleyEditableRow(`${thk}mm`, Number(rate), ek, ['rubber_ceramic_rates', thk]);
+                    })}
                   </View>
+
+                  {/* Action buttons */}
+                  <TouchableOpacity
+                    style={[styles.resetButton, { backgroundColor: '#C41E3A' }]}
+                    onPress={handleResetPulleyPrices}
+                    disabled={pulleySaving}
+                    testID="pulley-reset-btn"
+                  >
+                    <Ionicons name="refresh" size={20} color="#fff" />
+                    <Text style={[styles.resetButtonText, { color: '#fff' }]}>Reset Pulley to Default</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.resetButton, { backgroundColor: '#217346', marginTop: 12 }]}
+                    onPress={handleSetDefaultPulleyPrices}
+                    disabled={pulleySaving}
+                    testID="pulley-set-default-btn"
+                  >
+                    <Ionicons name="checkmark-done" size={20} color="#fff" />
+                    <Text style={[styles.resetButtonText, { color: '#fff' }]}>Save Current as Default</Text>
+                  </TouchableOpacity>
 
                   <View style={{ height: 100 }} />
                 </>

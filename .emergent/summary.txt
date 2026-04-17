@@ -1,141 +1,156 @@
-<analysis>**original_problem_statement**: Create a mobile application to calculate the price of belt conveyor rollers, serving as an engineering and quoting tool. The scope has expanded to include a product catalog search, an admin panel for price management, a customer database, and a complete quote/RFQ generation and approval workflow with file attachments. 
-**NEW PRODUCT REQUIREMENT**: The user now wants to add a completely new **Pulley Calculator**, isolated from the Roller calculation logic, but utilizing the same Add to Cart and RFQ/Quote workflow.
+<analysis>**original_problem_statement**: Create a mobile application to calculate the price of belt conveyor rollers and pulleys, serving as an engineering and quoting tool. The scope has vastly expanded into a full ERP system including a product catalog search, customer database, CRM (leads/follow-ups), complete quote/RFQ approval workflow, Sales Orders with invoicing (Proforma/Tax), Work Orders with auto-generated BOMs, and a Store/Inventory management system.
 
-**User's preferred language**: INSTRUCT next agent to respond in English.
+**PRODUCT REQUIREMENTS**: Build a full-fledged ERP. Current phase involves migrating remaining hardcoded configurations to MongoDB, building a Pulley Pricing Admin UI, setting up User Roles (Sales Manager, Production Head, Accounts, Dispatch), and automating Inventory deductions and dispatch challans. 
+
+**User's preferred language**: English (INSTRUCT next agent to respond in English only).
 
 **what currently exists?** 
-A full-stack Expo (React Native) + FastAPI application. Critical P0 issues regarding client-side caching have been resolved by implementing cache-busting timestamps () on all API requests and adding Pull-to-Refresh across all main tabs. EAS build issues (yarn.lock/package-lock conflicts) were fixed. The backend's Excel import logic was completely rewritten to accommodate the user's custom 9-sheet raw material pricing format. A critical bug where exported/loaded prices ignored the Set as Default () collection was fixed. The agent successfully passed the Deployer Agent health check. Currently, specs and a dynamic Excel template have been generated for the new Pulley Calculator feature.
+A heavily refactored full-stack Expo (React Native) + FastAPI application. The monolithic  (previously 9700+ lines) has been successfully modularized into dedicated route files. A premium Glass Morphism UI redesign has been applied to all frontend tabs. The app features fully functional Quote → Sales Order → Work Order pipelines, an auto-calculating BOM system directly linked to a newly built Store/Inventory module via strict  matching, and comprehensive PDF/Excel exports across all modules (with proper  formatting and auth token handling).
 
-**Last working item**:
-- Last item agent was working: Gathering detailed engineering specifications for the new **Pulley Calculator** and generating a dynamic Excel template () for the user to fill out raw material pricing for Pipe, Shaft, End Plates, Hubs, KLA, and Rubber Lagging. Finalized the logic constraint: .
+**Last working item**: 
+- Last item agent was working: **Pulley Admin Editable Prices (Frontend)**. The backend migration of Pulley prices from hardcoded Python dictionaries to MongoDB ( and ) is COMPLETE. The 4 backend APIs (, , ) are fully functional. The frontend in  needs to be updated to show editable  fields when the Pulley product toggle is active, replicating the Roller prices editing UI.
 - Status: IN PROGRESS
-- Agent Testing Done: Y (for prior backend fixes) / N (for Pulley, as UI isn't built yet)
-- Which testing method agent to use? Both (frontend UI screenshot for new Pulley screen, then testing agent for e2e calculation logic).
+- Agent Testing Done: Y (Backend tested via bash script), N (Frontend pending)
+- Which testing method agent to use? Frontend testing agent / screenshot tool.
 - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  Issue 1: Android App Bundle (AAB) signing key mismatch on Google Play.
-     - Attempted fixes: Agent bumped  to 2 and explained that the Expo-generated keystore differs from the user's original Play Store upload key. 
-     - Next debug checklist: Awaiting user to resolve this on the Google Play Console side via App Signing key reset or by recovering their original keystore. (No code changes needed for this).
-     - Why fix this issue and what will be achieved with the fix? Allows the user to publish their updated app to the Play Store.
-     - Status: USER VERIFICATION PENDING
+  Issue 1: KLA pricing for Pulleys is missing data.
+     - Attempted fixes: Hidden from UI per user request until data is provided.
+     - Next debug checklist: Wait for user to provide KLA pricing data (Model names, shaft ranges, prices), then unhide and implement.
+     - Why fix this issue and what will be achieved with the fix? Complete the Pulley calculator functionality.
+     - Status: BLOCKED (Waiting on user data)
      - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? NA
-     - Blocked on other issue: User action required on Google Play Console.
+     - Should Test frontend/backend/both after fix? Both
+     - Blocked on other issue: User action required.
 
 **In progress Task List**:
-  Task 1: Build Pulley Calculator (Frontend UI & Backend Logic)
-     - Where to resume: Create the new Pulley Calculator UI (e.g.,  or similar) based on the gathered specifications. Implement backend calculation logic once the user returns the filled Excel template. 
-     - What will be achieved with this? Fulfills the user's request for a secondary major product calculation module.
-     - Status: NOT STARTED (Requirements gathered, Excel template provided to user)
-     - Should Test frontend/backend/both after fix? Both
-     - Blocked on something: Waiting for user to upload the completed  for exact pricing backend implementation.
+  Task 1: Pulley Admin Editable Prices Frontend
+     - Where to resume: . Update the  section in the Prices tab.
+     - What will be achieved with this? Allows admins to update Pulley raw material rates dynamically from the app UI instead of relying on hardcoded constants.
+     - Status: IN PROGRESS (Backend finished, Frontend pending)
+     - Should Test frontend/backend/both after fix? Frontend
+     - Blocked on something: None.
 
-**Upcoming and Future Tasks**:
+**Upcoming and Future Tasks**
     Upcoming Tasks:
-    - **Refactor  (P0 - CRITICAL)**: The monolithic server file is over 9500 lines and urgently needs to be split into a standard FastAPI project structure with routers (e.g., , , ).
-    - **Implement Pulley Add-to-Cart Flow (P1)**: Ensure the new Pulley calculations seamlessly integrate into the existing Roller Cart/RFQ/Quote ecosystem.
+    - **User Roles (P0)**: Add specific roles beyond admin/customer: Sales Manager, Production Head, Accounts, Dispatch with granular tab-level access control.
+    - **Inventory tracking (P1)**: Auto-deduct raw materials from Store stock when a Work Order is processed/completed.
     
     Future Tasks:
-    - **Implement CRM Features (P2)**: Enhance customer management section with lead/opportunity tracking.
-    - **Show Original RFQ Number on Quote Cards (P3)**.
+    - **Dispatch/Delivery Challan (P2)**: Generate delivery challans for shipments.
+    - **Tax Invoice Auto-generation (P2)**: Trigger final tax invoice generation on dispatch.
+    - **Accounts Receivable / Aging Report (P3)**: Finance dashboard for pending payments.
+    - **GST Reports (P3)**: GSTR-1, GSTR-3B generation.
+    - **WhatsApp integration (P4)**: For sending quotes/invoices.
+    - **E-way bill generation (P4)**.
 
 **Completed work in this session**
-- Implemented global cache-busting ( timestamp) in  for all GET requests to bypass CDN/proxy caching.
-- Added Refresh All Data button and  (Pull-to-refresh) to , , , and .
-- Fixed EAS build failures by cleaning , generating clean , and adding  hook to .
-- Rewrote  in  to parse user's custom 9-sheet Excel format for Roller pricing (fixed regex for Rs.67 to , fixed Seal Costs column index).
-- Fixed Set as Default pricing bug: Updated , , and Excel/PDF exports to correctly fallback/read from  collection.
-- Passed Deployer Agent Health Check: Fixed  to unblock  files, removed hardcoded backend URL fallbacks, and optimized DB queries.
-- Bumped app  to 2 in .
-- Gathered engineering specs and generated dynamic  Excel file for the new Pulley feature.
+-  Refactoring (DONE) - Reduced from 9700+ to ~680 lines. Split into  modules.
+- Premium Glass UI Redesign (DONE) - Applied to all screens.
+- CRM Module (DONE) - Pipeline, Follow-ups, Activity Timeline, Analytics Dashboard.
+- Sales Orders (DONE) - Convert Quote to SO, Payment tracking, Proforma/Tax Invoice PDFs with GST and Company details.
+- Work Orders (DONE) - Single-click creation from SO, auto-generated BOM, Manual BOM editing, WO PDF with specs & full product codes.
+- Store/Inventory Module (DONE) - Dashboard, Stock, POs, QC, Suppliers, WO Shortages (Strict matching via ).
+- Date formatting standardized to  across all PDFs and UI (DONE).
+- Fixed Android Nav Bar overlap (DONE).
+- Fixed Web  nesting bugs using  (DONE).
+- Fixed PDF download Authentication using  tokens directly (DONE).
+- Pulley MongoDB backend migration (DONE).
 
 **Earlier issues found/mentioned but not fixed**
-   - Issue 1:
-     - Android system navigation bar overlaps with the app's bottom tab bar.
-     - Debug checklist: Reproduce on an Android device/simulator and investigate using  in .
-     - Why to solve this issue and what will be achieved with this? Fixes a UI layout bug that hinders navigation on Android.
-     - Should Test frontend/backend/both after fix: Frontend (Android device)
-     - Is recurring issue? Y
+   - None. All mentioned bugs (Expo cached build errors, Gitignore  blocking, duplicate imports,  missing) were aggressively tracked and fixed.
 
 **Known issue recurrence from previous fork**
-  - Issue recurrence in previous fork: Local environment and EAS build configuration errors.
+  - Issue recurrence in previous fork: React Native Web touch event propagation issues ( inside another touchable).
   - Recurrence count: High
-  - Status: RESOLVED (Agent stabilized the  and  build environment).
+  - Status: RESOLVED (Replaced nested buttons with  and removed  blockers).
+  *Note for next agent: Always use  for critical action buttons on the web interface to avoid event propagation issues.*
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Expo EAS Build System**: Handled lockfile resolution ( vs ) and pre-install hooks.
-- **Cache-Busting**: Added  to Axios interceptors to force native apps to bypass stale  / proxy caches.
-- **Python openpyxl**: Deep manipulation and data extraction from multi-sheet Excel files for both Roller and Pulley pricing.
-- **MongoDB Aggregation/Motor**: Fixed document retrieval to properly fallback to  when  are deleted.
+- **Frontend**: Expo React Native, Glass Morphism UI,  for JWT tokens.
+- **Backend**: FastAPI, Modular Routers.
+- **Database**: MongoDB (Motor async driver / Pymongo sync driver used interchangeably depending on sync/async requirements like ).
+- **File Gen**: FPDF2 for PDFs, OpenPyxl for Excel.
+- **Integration**: strict  logic (, ) to link WO BOM items directly to Store Inventory.
 
 **key DB schema**
-  - **custom_prices**: Active imported prices.
-  - **default_prices**: Fallback prices (used when user clicks Set as Default).
-  - **quotes / customers / products**: Core business entities.
+  - sales_orders: 
+  - work_orders: 
+  - stock_items: 
+  - pulley_custom_prices / pulley_default_prices: Store rates for Pulley raw materials.
 
 **changes in tech stack**
-  - None.
+  - Extensively utilized  for frontend Web click reliability over .
+  - Refactored monolith to standard  pattern.
 
 **All files of reference**
-- 
--  (calculator, admin, customers, quotes)
-- 
+-  (Current target for Pulley Admin UI)
 - 
 - 
 - 
+-  (Sales Orders & Work Orders UI)
+-  (Inventory UI)
 
 **Areas that need refactoring**:
--  MUST be broken down into modular routers. It is dangerously large and difficult to maintain.
+- None currently. The major 9700+ line  refactoring was successfully completed this session.
 
 **key api endpoints**
--  (Roller Excel import)
--  (NEW - Download Pulley Excel template)
-- 
+-  (Pulley Rates)
+-  (Single click WO + BOM creation)
+-  (BOM vs Stock shortages)
+- , , 
 
 **Critical Info for New Agent**
-- **PULLEY CALCULATOR Specs Established**: 
-  - Pipe Dia: 139-1000mm.
-  - Shaft Dia @ Centre: 50-300mm. Material: MS/EN-8/EN-9/EN-19.
-  - Hub Types: No Hub, With Hub, KLA. 
-  - Logic Constraint: . KLA requires .
-- The user is currently filling out the generated Excel template for Pulley pricing. You can begin building the Frontend UI for the Pulley Calculator while waiting for the Excel file upload.
-- **Deployment Status**: The backend is officially verified as Ready for Kubernetes Deployment by the Deployer Agent.
+- **Date Standard**: Always strictly use  for all frontend displays and PDF outputs.  helper exists in backend.
+- **PDF Downloads**: Web buttons initiating a PDF download ( or similar) must fetch the token directly from  because interceptor defaults do not automatically append to query parameters.
+- **BOM Logic**: Inventory and BOM matching is strictly enforced via . Do not revert to fuzzy name matching. 
 
 **documents and test reports created in this job**
   - 
-  - 
+  -  (Backend PDF tests)
+  -  (Comprehensive Full E2E tests)
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - User: hub dia should be available based on shaft dia selection. e.g. if shaft dia @ centre is 50 mm then hub dia should must be more than 40 mm plus means 90 mm minimum
- - Agent: Confirmed the logic rule () and asked user for next steps (wait for excel, start UI, etc.). **(PENDING USER ACTION: Provide Excel or UI instruction)**
- - User: yes (Confirmed Hub logic: No Hub / With Hub / KLA)
- - Agent: Updated Excel with 3 Hub options.
- - User: shaft dia @ hub is mandatory when hub type is KLA
- - Agent: Confirmed logic constraint for KLA hub.
- - User: change name of shaft dia at brg to shaft dia @ hub
- - Agent: Confirmed name change in specs.
- - User: haft dia @ brg not needed for price calculation
- - Agent: Removed that sheet from the template.
+ - User: Inventory tracking. suggest how to go
+ - Agent: Suggested BOM-driven inventory flow.
+ - User: phase 1+2+3 with below flow. Purchase Raw Material →QC→ Add to Stock → Create WO → manual issue from Stock → if Low Stock Alert→Purchase Raw Material
+ - Agent: Confirmed workflow and preferences via ask_human. Built Inventory/Store backend.
+ - User: Store Frontend — New Store tab...
+ - Agent: Built full frontend Store UI.
+ - User: Export Excel for Store data
+ - Agent: Built PO/Stock/Transactions/Supplier excel exports.
+ - User: after creating work order I m not able to see shortage items in store
+ - Agent: Identified fuzzy matching issue, implemented strict  linking logic between Stock and BOM. Fixed.
+ - User: can u show me stock of 6205 china bearing? ... yes add total raw material in stock items ... reset minimum stock level to 0
+ - Agent: Automatically seeded 251 stock items covering all raw materials and set reorder level to 0.
+ - User: Pulley Admin Editable Prices
+ - Agent: Migrated pulley backend prices to MongoDB. Frontend UI deferred due to context limits.
 
 **Project Health Check:**
-- Broken: None.
-- Mocked: Pulley Calculator data (awaiting real Excel data from user).
+- Broken: None. App is in a very stable state, successfully passing deployment checks.
+- Mocked: KLA Pulley Pricing (hidden from UI).
 
 **3rd Party Integrations**
-- No emergent LLM keys currently in use for the active workflow. 
+- No new integrations. Existing: GMAIL SMTP for notifications.
 
 **Testing status**
-  - Testing agent used after significant changes: NO (Pending UI build for Pulley).
-  - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: []
+  - Testing agent used after significant changes: YES (iterations 28 & 29). 31/31 backend tests passing.
+  - Troubleshoot agent used after agent stuck in loop: NO.
+  - Test files created:  unzipped and verified by testing agent.
   - Known regressions: None.
 
 **Credentials to test flow:**
-- Backend Preview URL is stored in frontend  via . Use standard test credentials if explicitly provided in  or rely on the  configuration.
+- Admin:  / 
+- Customer:  / 
 
 **What agent forgot to execute**
-- Refactoring  was continuously pushed to Future Tasks due to P0 bug fixes. It should be addressed soon.</analysis>
+- The frontend UI for the Pulley Admin panel in  (the  ternary block needs TextInputs for the data).
+
+<TESTING METHOD>
+Use testing method type based on:
+- For the Pulley Admin UI implementation: screenshot tool (Frontend UI change).
+</TESTING METHOD></analysis>
