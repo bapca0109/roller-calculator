@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { cacheEvents } from '../../utils/api';
 
-type MainTab = 'prices' | 'standards';
+type MainTab = 'prices' | 'standards' | 'history';
 type PriceCategory = 'basic' | 'bearing' | 'housing' | 'seal' | 'circlip' | 'rubber' | 'locking';
 
 interface Prices {
@@ -82,6 +82,15 @@ export default function AdminScreen() {
   const [pulleyEditKey, setPulleyEditKey] = useState<string | null>(null);
   const [pulleyEditValue, setPulleyEditValue] = useState('');
   const [pulleySaving, setPulleySaving] = useState(false);
+
+  // Pulley bulk-edit state
+  const [pulleyBulkMode, setPulleyBulkMode] = useState(false);
+  const [pulleyBulkDraft, setPulleyBulkDraft] = useState<any>(null);
+
+  // Price history state
+  const [historyItems, setHistoryItems] = useState<any[]>([]);
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'roller' | 'pulley'>('all');
+  const [historyLoading, setHistoryLoading] = useState(false);
   
   // Set as Default OTP state
   const [showSetDefaultModal, setShowSetDefaultModal] = useState(false);
@@ -225,11 +234,84 @@ export default function AdminScreen() {
     );
   };
 
+  // ============= PULLEY BULK EDIT =============
+  const enterBulkEdit = () => {
+    if (!pulleyStandards) return;
+    // Deep clone the current prices into draft (strip meta fields)
+    const draft = JSON.parse(JSON.stringify(pulleyStandards));
+    delete draft._id;
+    delete draft.id;
+    setPulleyBulkDraft(draft);
+    setPulleyBulkMode(true);
+  };
+
+  const cancelBulkEdit = () => {
+    setPulleyBulkMode(false);
+    setPulleyBulkDraft(null);
+  };
+
+  const updateBulkValue = (path: string[], value: string) => {
+    setPulleyBulkDraft((prev: any) => setNestedPath(prev || {}, path, value));
+  };
+
+  const saveBulkEdit = async () => {
+    // Convert all string values to numbers and validate
+    const draft = JSON.parse(JSON.stringify(pulleyBulkDraft));
+    const walk = (obj: any) => {
+      for (const k of Object.keys(obj)) {
+        const v = obj[k];
+        if (v && typeof v === 'object') walk(v);
+        else {
+          const n = parseFloat(v);
+          if (isNaN(n) || n < 0) {
+            throw new Error(`Invalid value "${v}"`);
+          }
+          obj[k] = n;
+        }
+      }
+    };
+    try {
+      walk(draft);
+    } catch (e: any) {
+      Alert.alert('Invalid value', e.message || 'All values must be valid positive numbers');
+      return;
+    }
+    try {
+      setPulleySaving(true);
+      await api.put('/pulley-pricing', draft);
+      await fetchPulleyPricing();
+      setPulleyBulkMode(false);
+      setPulleyBulkDraft(null);
+      Alert.alert('Success', 'All pulley prices saved');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to save prices');
+    } finally {
+      setPulleySaving(false);
+    }
+  };
+
+  // ============= PRICE HISTORY =============
+  const fetchPriceHistory = async () => {
+    try {
+      setHistoryLoading(true);
+      const params: any = { limit: 200 };
+      if (historyFilter !== 'all') params.product_type = historyFilter;
+      const response = await api.get('/price-history', { params });
+      setHistoryItems(response.data.items || []);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to fetch history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (mainTab === 'prices') {
       fetchPrices();
-    } else {
+    } else if (mainTab === 'standards') {
       fetchStandardsSummary();
+    } else if (mainTab === 'history') {
+      fetchPriceHistory();
     }
     
     // Listen for global refresh events
@@ -237,8 +319,10 @@ export default function AdminScreen() {
       console.log('[Admin] Received refresh event, refetching data...');
       if (mainTab === 'prices') {
         fetchPrices();
-      } else {
+      } else if (mainTab === 'standards') {
         fetchStandardsSummary();
+      } else if (mainTab === 'history') {
+        fetchPriceHistory();
       }
     };
     
@@ -248,6 +332,11 @@ export default function AdminScreen() {
       cacheEvents.off('refresh', handleRefresh);
     };
   }, [mainTab]);
+
+  // Refetch history when filter changes
+  useEffect(() => {
+    if (mainTab === 'history') fetchPriceHistory();
+  }, [historyFilter]);
 
   // ============= PRICES FUNCTIONS =============
   const fetchPrices = async () => {
@@ -679,47 +768,71 @@ export default function AdminScreen() {
     value: number,
     editKey: string,
     path: string[]
-  ) => (
-    <View style={styles.priceRow} key={editKey}>
-      <Text style={styles.priceLabel}>{label}</Text>
-      {pulleyEditKey === editKey ? (
-        <View style={styles.editContainer}>
-          <TextInput
-            style={styles.editInput}
-            value={pulleyEditValue}
-            onChangeText={setPulleyEditValue}
-            keyboardType="numeric"
-            autoFocus
-            testID={`pulley-input-${editKey}`}
-          />
-          <TouchableOpacity
-            style={styles.saveBtn}
-            onPress={() => savePulleyEdit(path)}
-            disabled={pulleySaving}
-            testID={`pulley-save-${editKey}`}
-          >
-            <Ionicons name="checkmark" size={20} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.cancelBtn}
-            onPress={cancelPulleyEdit}
-            testID={`pulley-cancel-${editKey}`}
-          >
-            <Ionicons name="close" size={20} color="#666" />
-          </TouchableOpacity>
+  ) => {
+    // Bulk edit mode: render a persistent TextInput bound to pulleyBulkDraft
+    if (pulleyBulkMode) {
+      // Read current value from draft along path
+      let draftVal: any = pulleyBulkDraft;
+      for (const seg of path) draftVal = draftVal?.[seg];
+      const shown = draftVal === undefined || draftVal === null ? String(value) : String(draftVal);
+      return (
+        <View style={styles.priceRow} key={editKey}>
+          <Text style={styles.priceLabel}>{label}</Text>
+          <View style={styles.editContainer}>
+            <Text style={{ fontSize: 13, color: '#94A3B8', marginRight: 4 }}>₹</Text>
+            <TextInput
+              style={[styles.editInput, { minWidth: 80 }]}
+              value={shown}
+              onChangeText={(t) => updateBulkValue(path, t)}
+              keyboardType="numeric"
+              testID={`pulley-bulk-${editKey}`}
+            />
+          </View>
         </View>
-      ) : (
-        <TouchableOpacity
-          style={styles.valueContainer}
-          onPress={() => startPulleyEdit(editKey, value)}
-          testID={`pulley-edit-${editKey}`}
-        >
-          <Text style={styles.priceValue}>₹{Number(value).toFixed(2)}</Text>
-          <Ionicons name="pencil" size={16} color="#960018" />
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+      );
+    }
+    return (
+      <View style={styles.priceRow} key={editKey}>
+        <Text style={styles.priceLabel}>{label}</Text>
+        {pulleyEditKey === editKey ? (
+          <View style={styles.editContainer}>
+            <TextInput
+              style={styles.editInput}
+              value={pulleyEditValue}
+              onChangeText={setPulleyEditValue}
+              keyboardType="numeric"
+              autoFocus
+              testID={`pulley-input-${editKey}`}
+            />
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={() => savePulleyEdit(path)}
+              disabled={pulleySaving}
+              testID={`pulley-save-${editKey}`}
+            >
+              <Ionicons name="checkmark" size={20} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={cancelPulleyEdit}
+              testID={`pulley-cancel-${editKey}`}
+            >
+              <Ionicons name="close" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.valueContainer}
+            onPress={() => startPulleyEdit(editKey, value)}
+            testID={`pulley-edit-${editKey}`}
+          >
+            <Text style={styles.priceValue}>₹{Number(value).toFixed(2)}</Text>
+            <Ionicons name="pencil" size={16} color="#960018" />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   const renderBasicRates = () => (
     <View style={styles.section}>
@@ -1106,6 +1219,20 @@ export default function AdminScreen() {
               Standards
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.mainTab, mainTab === 'history' && styles.mainTabActive]}
+            onPress={() => setMainTab('history')}
+            testID="history-tab"
+          >
+            <Ionicons
+              name="time-outline"
+              size={18}
+              color={mainTab === 'history' ? '#960018' : '#fff'}
+            />
+            <Text style={[styles.mainTabText, mainTab === 'history' && styles.mainTabTextActive]}>
+              History
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -1139,6 +1266,51 @@ export default function AdminScreen() {
                 <ActivityIndicator size="large" color="#C5964A" style={{ paddingVertical: 40 }} />
               ) : (
                 <>
+                  {/* Bulk edit toolbar */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: 10 }}>
+                    {pulleyBulkMode ? (
+                      <>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#C5964A' }}>
+                          Bulk edit active — change any value, then Save All
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TouchableOpacity
+                            onPress={cancelBulkEdit}
+                            disabled={pulleySaving}
+                            testID="pulley-bulk-cancel"
+                            style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          >
+                            <Ionicons name="close" size={14} color="#475569" />
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#475569' }}>Cancel</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={saveBulkEdit}
+                            disabled={pulleySaving}
+                            testID="pulley-bulk-save"
+                            style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#217346', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          >
+                            <Ionicons name="checkmark-done" size={14} color="#fff" />
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{pulleySaving ? 'Saving...' : 'Save All'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={{ fontSize: 13, color: '#64748B' }}>
+                          Tap any ₹ value to edit one — or switch to bulk edit to change many at once.
+                        </Text>
+                        <TouchableOpacity
+                          onPress={enterBulkEdit}
+                          testID="pulley-bulk-enter"
+                          style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#C5964A', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                        >
+                          <Ionicons name="create-outline" size={14} color="#fff" />
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>Bulk Edit</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </View>
+
                   {/* Pipe Rates - nested: dia -> thk -> rate */}
                   <View style={styles.priceCard}>
                     <Text style={styles.priceSectionTitle}>Pipe Rates (Rs./kg)</Text>
@@ -1365,7 +1537,7 @@ export default function AdminScreen() {
         </>
         )}
         </View>
-      ) : (
+      ) : mainTab === 'standards' ? (
         <>
           {loadingStandards ? (
             <View style={styles.loadingContainer}>
@@ -1396,6 +1568,91 @@ export default function AdminScreen() {
             </ScrollView>
           )}
         </>
+      ) : (
+        // History tab
+        <View style={{ flex: 1 }}>
+          {/* Filter chips */}
+          <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12 }}>
+            {(['all','roller','pulley'] as const).map((f) => (
+              <TouchableOpacity
+                key={f}
+                onPress={() => setHistoryFilter(f)}
+                testID={`history-filter-${f}`}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  backgroundColor: historyFilter === f ? '#960018' : 'rgba(255,255,255,0.6)',
+                  borderWidth: 1,
+                  borderColor: historyFilter === f ? '#960018' : '#E5E7EB',
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: historyFilter === f ? '#fff' : '#475569', textTransform: 'capitalize' }}>{f}</Text>
+              </TouchableOpacity>
+            ))}
+            <View style={{ flex: 1 }} />
+            <TouchableOpacity
+              onPress={fetchPriceHistory}
+              testID="history-refresh"
+              style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.6)', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <Ionicons name="refresh" size={14} color="#475569" />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#475569' }}>Refresh</Text>
+            </TouchableOpacity>
+          </View>
+
+          {historyLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#960018" />
+              <Text style={styles.loadingText}>Loading history...</Text>
+            </View>
+          ) : historyItems.length === 0 ? (
+            <View style={{ paddingTop: 60, alignItems: 'center' }}>
+              <Ionicons name="time-outline" size={56} color="#CBD5E1" />
+              <Text style={{ marginTop: 12, fontSize: 15, color: '#94A3B8' }}>No price changes logged yet</Text>
+            </View>
+          ) : (
+            <ScrollView style={{ flex: 1, padding: 16 }}>
+              {historyItems.map((h: any) => {
+                const when = new Date(h.timestamp);
+                const dd = String(when.getDate()).padStart(2,'0');
+                const mm = String(when.getMonth()+1).padStart(2,'0');
+                const yy = when.getFullYear();
+                const hh = String(when.getHours()).padStart(2,'0');
+                const mi = String(when.getMinutes()).padStart(2,'0');
+                const pretty = `${dd}-${mm}-${yy} ${hh}:${mi}`;
+                const pathStr = [h.category, h.key, h.sub_key].filter(Boolean).join(' → ');
+                const direction = (h.old_value ?? 0) < h.new_value ? 'up' : 'down';
+                const delta = h.old_value != null ? (h.new_value - h.old_value) : null;
+                return (
+                  <View key={h.id} style={{ backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 8, borderLeftWidth: 4, borderLeftColor: h.product_type === 'pulley' ? '#C5964A' : '#960018' }} testID={`history-row-${h.id}`}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: h.product_type === 'pulley' ? '#C5964A' : '#960018', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h.product_type}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937', marginTop: 2 }}>{pathStr}</Text>
+                        <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                          {h.old_value != null ? `₹${Number(h.old_value).toFixed(2)}` : '—'}
+                          <Text style={{ color: '#9CA3AF' }}>  →  </Text>
+                          <Text style={{ fontWeight: '700', color: '#1F2937' }}>₹{Number(h.new_value).toFixed(2)}</Text>
+                          {delta != null && (
+                            <Text style={{ color: direction === 'up' ? '#DC2626' : '#059669', fontWeight: '600' }}>
+                              {'  '}({direction === 'up' ? '+' : ''}{delta.toFixed(2)})
+                            </Text>
+                          )}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{ fontSize: 11, color: '#9CA3AF' }}>{pretty}</Text>
+                        <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{h.user_email}</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+              <View style={{ height: 100 }} />
+            </ScrollView>
+          )}
+        </View>
       )}
 
       {renderDetailModal()}

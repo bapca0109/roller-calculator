@@ -23,6 +23,8 @@
 - Premium glass UI, DD-MM-YYYY dates, full product codes in PDFs
 - Pulley prices migrated to MongoDB (editable via API)
 - **Pulley Admin Frontend [2026-02-17]**: Editable TextInputs for Pipe/Shaft/End-Plate/Hub/Rubber rates in Admin Prices tab. Includes Reset-to-Default and Save-as-Default buttons. 347 editable rows, tested end-to-end.
+- **Bulk Edit Mode for Pulley Prices [2026-02-17]**: Toggle bulk edit to show all 347 prices as persistent TextInputs, edit many, Save All persists in one PUT.
+- **Price Change History [2026-02-17]**: New `price_history` collection logs every roller + pulley rate change (user, timestamp, old→new, delta). History tab in Admin with All/Roller/Pulley filter chips. Endpoint: `GET /api/price-history?product_type=&limit=&offset=`.
 
 ## P0 — Next
 - [ ] User Roles (Sales, Production, Accounts, Dispatch)

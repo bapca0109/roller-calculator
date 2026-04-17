@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from bson import ObjectId
 from routes import db, get_current_user, require_role, ROOT_DIR, UserRole
+from routes.price_history import log_price_change
 import roller_standards as rs
 import io
 import base64
@@ -67,6 +68,35 @@ async def update_price(request: PriceUpdateRequest, current_user: dict = Depends
     custom_prices = await db.custom_prices.find_one({"_id": "prices"})
     if not custom_prices:
         custom_prices = {"_id": "prices"}
+
+    # Capture old value before mutation (for audit log)
+    def _get_old(cat: str, key: str, sub: Optional[str]):
+        try:
+            if cat == "pipe_cost":
+                return custom_prices.get("pipe_cost_per_kg", rs.PIPE_COST_PER_KG)
+            if cat == "shaft_cost":
+                return custom_prices.get("shaft_cost_per_kg", rs.SHAFT_COST_PER_KG)
+            if cat == "bearing":
+                return (custom_prices.get("bearing_costs") or rs.BEARING_COSTS).get(key, {}).get(sub)
+            if cat == "seal":
+                return (custom_prices.get("seal_costs") or rs.SEAL_COSTS).get(key)
+            if cat == "circlip":
+                return (custom_prices.get("circlip_costs") or {str(k): v for k, v in rs.CIRCLIP_COSTS.items()}).get(key)
+            if cat == "rubber_ring":
+                return (custom_prices.get("rubber_ring_costs") or rs.RUBBER_RING_COSTS).get(key)
+            if cat == "locking_ring":
+                return (custom_prices.get("locking_ring_costs") or {str(k): v for k, v in rs.LOCKING_RING_COSTS.items()}).get(key)
+            if cat == "housing":
+                return (custom_prices.get("housing_costs") or rs.HOUSING_COSTS).get(key)
+            if cat == "pipe_weight":
+                return (custom_prices.get("pipe_weight") or {str(k): v for k, v in rs.PIPE_WEIGHT_PER_METER.items()}).get(key, {}).get(sub)
+            if cat == "shaft_weight":
+                return (custom_prices.get("shaft_weight") or {str(k): v for k, v in rs.SHAFT_WEIGHT_PER_METER.items()}).get(key)
+        except Exception:
+            return None
+        return None
+
+    old_value = _get_old(request.category, request.key, request.sub_key)
     
     # Update based on category
     if request.category == "pipe_cost":
@@ -123,7 +153,21 @@ async def update_price(request: PriceUpdateRequest, current_user: dict = Depends
     # Invalidate price cache so calculations use new values immediately
     import price_loader
     price_loader.invalidate_cache()
-    
+
+    # Audit log (fire-and-forget)
+    try:
+        await log_price_change(
+            user_email=current_user.get("email") or "",
+            product_type="roller",
+            category=request.category,
+            key=request.key,
+            sub_key=request.sub_key,
+            old_value=old_value if isinstance(old_value, (int, float)) else None,
+            new_value=float(request.value),
+        )
+    except Exception:
+        pass
+
     return {"message": "Price updated successfully", "category": request.category, "key": request.key}
 
 # Set as Default - Send OTP for verification

@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, Dict, Any
 from routes import db, get_current_user, ROOT_DIR
+from routes.price_history import log_pulley_diff
 import pulley_standards as ps
 
 router = APIRouter()
@@ -139,8 +140,16 @@ async def get_pulley_pricing(current_user: dict = Depends(get_current_user)):
 @router.put("/pulley-pricing")
 async def update_pulley_pricing(prices: Dict[str, Any], current_user: dict = Depends(get_current_user)):
     """Update pulley prices in MongoDB"""
+    # Capture old state for diff logging
+    old = await db.pulley_custom_prices.find_one({"id": "pulley_prices"}, {"_id": 0}) or \
+          await db.pulley_default_prices.find_one({"id": "pulley_prices"}, {"_id": 0}) or {}
     prices["id"] = "pulley_prices"
     await db.pulley_custom_prices.replace_one({"id": "pulley_prices"}, prices, upsert=True)
+    # Audit diff (fire-and-forget)
+    try:
+        await log_pulley_diff(current_user.get("email") or "", old, prices)
+    except Exception:
+        pass
     return {"message": "Pulley prices updated"}
 
 
