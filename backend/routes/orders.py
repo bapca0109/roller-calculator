@@ -75,8 +75,16 @@ async def generate_invoice_number(doc_type="INV"):
 
 # ============= SALES ORDER ROUTES =============
 
+class ConvertToSORequest(BaseModel):
+    delivery_date: Optional[str] = None  # YYYY-MM-DD
+
+
 @router.post("/orders/from-quote/{quote_id}")
-async def convert_quote_to_order(quote_id: str, current_user: dict = Depends(require_role([UserRole.ADMIN]))):
+async def convert_quote_to_order(
+    quote_id: str,
+    body: Optional[ConvertToSORequest] = None,
+    current_user: dict = Depends(require_role([UserRole.ADMIN]))
+):
     """Convert an approved quote to a Sales Order"""
     # Try to find quote by various ID formats
     query_filters = [{"quote_number": quote_id}]
@@ -128,6 +136,7 @@ async def convert_quote_to_order(quote_id: str, current_user: dict = Depends(req
         "proforma_invoice": None,
         "tax_invoice": None,
         "notes": None,
+        "delivery_date": body.delivery_date if body else None,
         "stage_history": [{
             "stage": "confirmed",
             "timestamp": now.isoformat(),
@@ -824,6 +833,7 @@ async def get_sales_order_pdf(
             <div class="doc-title">SALES ORDER</div>
             <div class="doc-number">{so_num}</div>
             <div class="doc-date">Date: {so_date}</div>
+            {'<div class="doc-date">Delivery: ' + order.get('delivery_date', '') + '</div>' if order.get('delivery_date') else ''}
             {'<div class="doc-date">Quote: ' + quote_num + '</div>' if quote_num else ''}
         </div>
     </div>

@@ -808,6 +808,9 @@ export default function QuotesScreen() {
   const [calculatedFreightFromPincode, setCalculatedFreightFromPincode] = useState<number>(0);
   const [freightLoading, setFreightLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'active' | 'history'>('all');
+  const [showConvertSO, setShowConvertSO] = useState(false);
+  const [convertQuote, setConvertQuote] = useState<any>(null);
+  const [deliveryDate, setDeliveryDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Approval success popup state
@@ -2122,15 +2125,10 @@ export default function QuotesScreen() {
         isCustomer={isCustomer}
         docLabel={docLabel}
         onPress={openQuoteDetail}
-        onConvertToSO={async (quote) => {
-          try {
-            const quoteId = quote.id || quote._id;
-            const res = await api.post(`/orders/from-quote/${quoteId}`);
-            Alert.alert('Success', res.data.message);
-            fetchQuotes();
-          } catch (e: any) {
-            Alert.alert('Error', e.response?.data?.detail || 'Failed to convert');
-          }
+        onConvertToSO={(quote) => {
+          setConvertQuote(quote);
+          setDeliveryDate('');
+          setShowConvertSO(true);
         }}
         formatDate={formatDate}
         getStatusColor={getStatusColor}
@@ -2863,6 +2861,44 @@ export default function QuotesScreen() {
         history={revisionHistory}
         formatDate={formatRevisionDate}
       />
+
+      {/* Convert to SO Modal with Delivery Date */}
+      <Modal visible={showConvertSO} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A' }}>Convert to Sales Order</Text>
+              <TouchableOpacity onPress={() => setShowConvertSO(false)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity>
+            </View>
+            {convertQuote && <Text style={{ fontSize: 14, color: '#C5964A', fontWeight: '600', marginBottom: 16 }}>{convertQuote.quote_number} — {convertQuote.customer_name}</Text>}
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#C5964A', letterSpacing: 0.5, marginBottom: 6 }}>Delivery Date (YYYY-MM-DD) *</Text>
+            <TextInput
+              style={{ backgroundColor: 'rgba(241,245,249,0.8)', borderWidth: 1, borderColor: 'rgba(226,232,240,0.5)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#0F172A' }}
+              value={deliveryDate}
+              onChangeText={setDeliveryDate}
+              placeholder="2026-05-15"
+            />
+            <Pressable
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#C5964A', borderRadius: 14, paddingVertical: 15, marginTop: 18 }}
+              onPress={async () => {
+                if (!deliveryDate) { Alert.alert('Error', 'Please enter delivery date'); return; }
+                try {
+                  const quoteId = convertQuote?.id || convertQuote?._id;
+                  const res = await api.post(`/orders/from-quote/${quoteId}`, { delivery_date: deliveryDate });
+                  Alert.alert('Success', res.data.message);
+                  setShowConvertSO(false);
+                  fetchQuotes();
+                } catch (e: any) {
+                  Alert.alert('Error', e.response?.data?.detail || 'Failed to convert');
+                }
+              }}
+            >
+              <Ionicons name="cube" size={18} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Create Sales Order</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
