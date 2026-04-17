@@ -653,8 +653,8 @@ async def get_work_order_pdf(
             comp = b.get("component", "")
             desc = b.get("description", "")
             mat = b.get("material", "")
-            # Key by component + material to keep different sizes separate
-            key = f"{comp}|{mat}"
+            # Key by component + description to keep different sizes separate
+            key = f"{comp}|{desc}"
             if key in consolidated_bom:
                 consolidated_bom[key]["total_qty"] += b.get("total_qty", 0)
                 consolidated_bom[key]["total_weight_kg"] += b.get("total_weight_kg", 0)
@@ -669,11 +669,12 @@ async def get_work_order_pdf(
 
     consolidated_rows = ""
     grand_bom_weight = 0
-    for ci, (comp, cb) in enumerate(consolidated_bom.items(), 1):
+    for ci, (comp_key, cb) in enumerate(consolidated_bom.items(), 1):
         grand_bom_weight += cb["total_weight_kg"]
         consolidated_rows += f"""<tr>
             <td style="text-align:center">{ci}</td>
             <td><b>{cb['component']}</b></td>
+            <td>{cb['description']}</td>
             <td>{cb['material']}</td>
             <td style="text-align:center;font-weight:700">{cb['total_qty']}</td>
             <td style="text-align:right">{round(cb['total_weight_kg'],3) if cb['total_weight_kg'] else '-'}</td>
@@ -681,17 +682,18 @@ async def get_work_order_pdf(
 
     consolidated_bom_html = f"""
     <div style="font-size:12px;font-weight:700;color:#C5964A;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">Total Bill of Materials (All Items)</div>
-    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px">
+    <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:16px">
         <tr style="background:#1E293B;color:#fff">
-            <th style="padding:7px;text-align:center;width:40px">Sr.</th>
+            <th style="padding:7px;text-align:center;width:30px">Sr.</th>
             <th style="padding:7px">Component</th>
+            <th style="padding:7px">Description</th>
             <th style="padding:7px">Material</th>
             <th style="padding:7px;text-align:center">Total Qty</th>
             <th style="padding:7px;text-align:right">Total Wt (kg)</th>
         </tr>
         {consolidated_rows}
         <tr style="font-weight:700;background:#F0F4F8">
-            <td colspan="4" style="text-align:right;padding:8px">Grand Total Weight</td>
+            <td colspan="5" style="text-align:right;padding:8px">Grand Total Weight</td>
             <td style="text-align:right;padding:8px">{round(grand_bom_weight,3)} kg</td>
         </tr>
     </table>""" if consolidated_bom else ""
