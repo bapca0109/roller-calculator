@@ -1,11 +1,11 @@
 """Admin Routes — Raw Material Prices, Standards Data, Drawing Generator"""
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Body
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from bson import ObjectId
-from routes import db, get_current_user, require_role, ROOT_DIR, UserRole
+from routes import db, get_current_user, require_role, ROOT_DIR, UserRole, get_password_hash, generate_customer_code
 from routes.price_history import log_price_change
 import roller_standards as rs
 import io
@@ -1345,6 +1345,52 @@ Convero Solutions
 class UserRoleUpdate(BaseModel):
     email: str
     role: str
+
+
+class UserCreate(BaseModel):
+    email: str
+    password: str = Field(..., min_length=6)
+    name: str = Field(..., min_length=1)
+    role: str
+    company: Optional[str] = None
+    designation: Optional[str] = None
+
+
+@router.post("/admin/users")
+async def create_user_as_admin(req: UserCreate, current_user: dict = Depends(get_current_user)):
+    """Admin-only: create a new staff/customer user with a chosen role."""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if req.role not in UserRole.assignable():
+        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of {UserRole.assignable()}")
+    email = req.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email address")
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="Email already registered")
+    user_dict = {
+        "email": email,
+        "name": req.name.strip(),
+        "role": req.role,
+        "company": req.company,
+        "designation": req.designation,
+        "hashed_password": get_password_hash(req.password),
+        "created_at": datetime.now(timezone.utc),
+        "created_by": current_user.get("email"),
+    }
+    if req.role == UserRole.CUSTOMER:
+        user_dict["customer_code"] = await generate_customer_code()
+    await db.users.insert_one(user_dict)
+    return {
+        "message": f"User {email} created with role {req.role}",
+        "user": {
+            "email": email,
+            "name": user_dict["name"],
+            "role": user_dict["role"],
+            "company": user_dict.get("company"),
+            "customer_code": user_dict.get("customer_code"),
+        },
+    }
 
 
 @router.get("/admin/users")

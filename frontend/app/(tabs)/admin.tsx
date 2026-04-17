@@ -97,6 +97,15 @@ export default function AdminScreen() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [assignableRoles, setAssignableRoles] = useState<string[]>([]);
   const [rolePickerEmail, setRolePickerEmail] = useState<string | null>(null);
+
+  // Create user modal state
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState('sales_manager');
+  const [newUserCompany, setNewUserCompany] = useState('');
+  const [creatingUser, setCreatingUser] = useState(false);
   
   // Set as Default OTP state
   const [showSetDefaultModal, setShowSetDefaultModal] = useState(false);
@@ -332,6 +341,37 @@ export default function AdminScreen() {
       await fetchUsers();
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to update role');
+    }
+  };
+
+  const createUser = async () => {
+    const email = newUserEmail.trim().toLowerCase();
+    if (!email || !newUserName.trim() || !newUserPassword) {
+      Alert.alert('Missing fields', 'Email, Name and Password are required');
+      return;
+    }
+    if (newUserPassword.length < 6) {
+      Alert.alert('Weak password', 'Password must be at least 6 characters');
+      return;
+    }
+    try {
+      setCreatingUser(true);
+      await api.post('/admin/users', {
+        email,
+        name: newUserName.trim(),
+        password: newUserPassword,
+        role: newUserRole,
+        company: newUserCompany.trim() || null,
+      });
+      setShowCreateUser(false);
+      setNewUserEmail(''); setNewUserName(''); setNewUserPassword(''); setNewUserCompany('');
+      setNewUserRole('sales_manager');
+      await fetchUsers();
+      Alert.alert('User Created', `${email} is now active. Share the password with them.`);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to create user');
+    } finally {
+      setCreatingUser(false);
     }
   };
 
@@ -1704,10 +1744,18 @@ export default function AdminScreen() {
       ) : (
         // Users tab
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, alignItems: 'center', gap: 8 }}>
             <Text style={{ flex: 1, fontSize: 13, color: '#64748B' }}>
               Manage roles for all registered users. Click a role pill to change it.
             </Text>
+            <TouchableOpacity
+              onPress={() => setShowCreateUser(true)}
+              testID="create-user-btn"
+              style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#960018', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <Ionicons name="person-add" size={14} color="#fff" />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>New User</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={fetchUsers}
               testID="users-refresh"
@@ -1887,6 +1935,89 @@ export default function AdminScreen() {
                 </TouchableOpacity>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Create User Modal */}
+      <Modal visible={showCreateUser} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A' }}>Create New User</Text>
+              <TouchableOpacity onPress={() => setShowCreateUser(false)} testID="create-user-close">
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 520 }} showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 12, color: '#960018', fontWeight: '700', marginTop: 4, marginBottom: 4 }}>Email *</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, fontSize: 14, backgroundColor: '#F8FAFC' }}
+                value={newUserEmail} onChangeText={setNewUserEmail}
+                placeholder="user@company.com" keyboardType="email-address" autoCapitalize="none"
+                testID="cu-email"
+              />
+              <Text style={{ fontSize: 12, color: '#960018', fontWeight: '700', marginTop: 10, marginBottom: 4 }}>Full Name *</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, fontSize: 14, backgroundColor: '#F8FAFC' }}
+                value={newUserName} onChangeText={setNewUserName}
+                placeholder="e.g. Ramesh Patel"
+                testID="cu-name"
+              />
+              <Text style={{ fontSize: 12, color: '#960018', fontWeight: '700', marginTop: 10, marginBottom: 4 }}>Password * (min 6 chars)</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, fontSize: 14, backgroundColor: '#F8FAFC' }}
+                value={newUserPassword} onChangeText={setNewUserPassword}
+                placeholder="Temporary password" secureTextEntry
+                testID="cu-password"
+              />
+              <Text style={{ fontSize: 12, color: '#960018', fontWeight: '700', marginTop: 10, marginBottom: 4 }}>Company (optional)</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, fontSize: 14, backgroundColor: '#F8FAFC' }}
+                value={newUserCompany} onChangeText={setNewUserCompany}
+                placeholder="e.g. Convero Solutions"
+                testID="cu-company"
+              />
+              <Text style={{ fontSize: 12, color: '#960018', fontWeight: '700', marginTop: 12, marginBottom: 6 }}>Role *</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {['admin','sales_manager','production_head','accounts','dispatch','customer'].map((r) => {
+                  const roleColor: Record<string,string> = {
+                    admin:'#DC2626', sales_manager:'#C5964A', production_head:'#0891B2',
+                    accounts:'#7C3AED', dispatch:'#059669', customer:'#64748B',
+                  };
+                  const active = newUserRole === r;
+                  return (
+                    <TouchableOpacity
+                      key={r} onPress={() => setNewUserRole(r)}
+                      testID={`cu-role-${r}`}
+                      style={{
+                        paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16,
+                        backgroundColor: active ? roleColor[r] : '#F1F5F9',
+                        borderWidth: active ? 0 : 1, borderColor: '#E5E7EB',
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#fff' : '#475569', textTransform: 'capitalize' }}>
+                        {r.replace('_', ' ')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <TouchableOpacity
+                onPress={createUser}
+                disabled={creatingUser}
+                testID="cu-submit"
+                style={{ marginTop: 20, backgroundColor: '#960018', paddingVertical: 14, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              >
+                {creatingUser ? <ActivityIndicator color="#fff" /> : (
+                  <>
+                    <Ionicons name="person-add" size={18} color="#fff" />
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Create User</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <View style={{ height: 20 }} />
+            </ScrollView>
           </View>
         </View>
       </Modal>
