@@ -772,7 +772,7 @@ async def get_sales_order_pdf(
         terms_rows = ""
         term_labels = {
             "payment_terms": "Payment Terms",
-            "freight_terms": "Freight Terms",
+            "freight_terms": "Delivery Terms",
             "color_finish": "Color & Finish",
             "delivery_timeline": "Delivery Timeline",
             "warranty": "Warranty",
