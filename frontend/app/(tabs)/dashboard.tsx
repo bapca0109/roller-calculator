@@ -221,7 +221,7 @@ export default function CRMScreen() {
                   <View style={s.fuMeta}>
                     <Ionicons name={fu.follow_up_type === 'call' ? 'call' : fu.follow_up_type === 'email' ? 'mail' : 'calendar'} size={13} color="#94A3B8" />
                     <Text style={[s.fuDate, isOverdue && { color: '#EF4444', fontWeight: '600' }]}>
-                      {isOverdue ? 'OVERDUE' : ''} {fu.due_date?.split('T')[0]}
+                      {isOverdue ? 'OVERDUE' : ''} {fu.due_date?.split('T')[0]?.replace(/(\d{4})-(\d{2})-(\d{2})/, '$3-$2-$1')}
                     </Text>
                   </View>
                 </View>
@@ -240,7 +240,7 @@ export default function CRMScreen() {
                 <View style={[s.actDot, { backgroundColor: act.activity_type === 'status_change' ? '#C5964A' : act.activity_type === 'lead_created' ? '#3B82F6' : '#94A3B8' }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={s.actDesc}>{act.description}</Text>
-                  <Text style={s.actTime}>{act.created_by_name || act.created_by} · {act.created_at?.split('T')[0]}</Text>
+                  <Text style={s.actTime}>{act.created_by_name || act.created_by} · {act.created_at?.split('T')[0]?.replace(/(\d{4})-(\d{2})-(\d{2})/, '$3-$2-$1')}</Text>
                 </View>
               </View>
             ))}
@@ -297,8 +297,8 @@ export default function CRMScreen() {
                 <Text style={[s.srcChipText, newFU.follow_up_type === t && s.srcChipTextActive]}>{t.charAt(0).toUpperCase() + t.slice(1)}</Text>
               </TouchableOpacity>
             ))}</View>
-            <Text style={s.fieldLabel}>Due Date (YYYY-MM-DD)</Text>
-            <TextInput style={s.fieldInput} value={newFU.due_date} onChangeText={v => setNewFU({ ...newFU, due_date: v })} placeholder="2026-04-15" />
+            <Text style={s.fieldLabel}>Due Date (DD-MM-YYYY)</Text>
+            <TextInput style={s.fieldInput} value={newFU.due_date} onChangeText={v => setNewFU({ ...newFU, due_date: v })} placeholder="15-05-2026" />
             <Text style={s.fieldLabel}>Note</Text>
             <TextInput style={[s.fieldInput, { height: 70, textAlignVertical: 'top' }]} value={newFU.note} onChangeText={v => setNewFU({ ...newFU, note: v })} placeholder="Follow-up details..." multiline />
             <TouchableOpacity style={s.modalBtn} onPress={createFollowup}><Ionicons name="alarm" size={20} color="#fff" /><Text style={s.modalBtnText}>Schedule Follow-up</Text></TouchableOpacity>

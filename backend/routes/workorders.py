@@ -6,7 +6,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from bson import ObjectId
 from routes import (db, get_current_user, require_role, get_ist_now, get_financial_year, 
-                    UserRole, SECRET_KEY, ALGORITHM, get_convero_logo_base64)
+                    UserRole, SECRET_KEY, ALGORITHM, get_convero_logo_base64, format_date_dmy)
 from jose import jwt
 import logging
 import base64
@@ -789,7 +789,11 @@ async def get_work_order_pdf(
     # Stage history
     stage_html = ""
     for sh in wo.get("stage_history", []):
-        stage_html += f'<div style="margin-bottom:4px"><span style="display:inline-block;width:8px;height:8px;border-radius:4px;background:#C5964A;margin-right:6px"></span><b>{WO_STAGE_LABELS.get(sh.get("stage"), sh.get("stage",""))}</b> — {str(sh.get("timestamp",""))[:10]} by {sh.get("by","")}{(" — " + sh.get("notes")) if sh.get("notes") else ""}</div>'
+        sh_date = format_date_dmy(sh.get("timestamp"))
+        sh_stage_label = WO_STAGE_LABELS.get(sh.get("stage"), sh.get("stage", ""))
+        sh_by = sh.get("by", "")
+        sh_notes = (" — " + sh.get("notes")) if sh.get("notes") else ""
+        stage_html += f'<div style="margin-bottom:4px"><span style="display:inline-block;width:8px;height:8px;border-radius:4px;background:#C5964A;margin-right:6px"></span><b>{sh_stage_label}</b> — {sh_date} by {sh_by}{sh_notes}</div>'
 
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -818,7 +822,7 @@ async def get_work_order_pdf(
         <div style="text-align:right">
             <div class="wo-title">WORK ORDER</div>
             <div class="wo-num">{wo.get('wo_number','')}</div>
-            <div style="font-size:11px;color:#64748B">Date: {str(wo.get('created_at',''))[:10]}</div>
+            <div style="font-size:11px;color:#64748B">Date: {format_date_dmy(wo.get('created_at'))}</div>
         </div>
     </div>
 

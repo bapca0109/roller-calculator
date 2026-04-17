@@ -376,3 +376,14 @@ def get_convero_logo_base64():
     except Exception as e:
         logging.warning(f"Could not load logo: {e}")
     return None
+
+
+def format_date_dmy(date_str):
+    """Convert ISO date string to DD-MM-YYYY format"""
+    if not date_str:
+        return ""
+    s = str(date_str)[:10]  # Get YYYY-MM-DD part
+    parts = s.split("-")
+    if len(parts) == 3:
+        return f"{parts[2]}-{parts[1]}-{parts[0]}"
+    return s

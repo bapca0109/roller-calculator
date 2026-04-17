@@ -6,7 +6,8 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from bson import ObjectId
 from routes import (db, get_current_user, require_role, get_ist_now, get_financial_year,
-                    UserRole, GMAIL_USER, GMAIL_APP_PASSWORD, SECRET_KEY, ALGORITHM)
+                    UserRole, GMAIL_USER, GMAIL_APP_PASSWORD, SECRET_KEY, ALGORITHM,
+                    format_date_dmy)
 from jose import jwt
 import logging
 import io
@@ -393,7 +394,7 @@ def _generate_invoice_html(invoice: dict, order: dict = None) -> str:
     is_proforma = invoice.get("invoice_type") == "proforma"
     doc_title = "PROFORMA INVOICE" if is_proforma else "TAX INVOICE"
     inv_num = invoice.get("invoice_number", "")
-    inv_date = str(invoice.get("created_at", ""))[:10]
+    inv_date = format_date_dmy(invoice.get('created_at'))
 
     # Customer details
     cust = invoice.get("customer_details") or {}
@@ -447,7 +448,7 @@ def _generate_invoice_html(invoice: dict, order: dict = None) -> str:
     payment_rows = ""
     for pay in payments:
         payment_rows += f"""<tr>
-            <td>{str(pay.get('recorded_at',''))[:10]}</td>
+            <td>{format_date_dmy(pay.get('recorded_at'))}</td>
             <td>{pay.get('mode','').replace('_',' ').title()}</td>
             <td>{pay.get('reference','—')}</td>
             <td style="text-align:right">Rs.{pay.get('amount',0):,.2f}</td>
@@ -697,7 +698,7 @@ async def get_sales_order_pdf(
         raise HTTPException(status_code=404, detail="Order not found")
 
     so_num = order.get("so_number", "")
-    so_date = str(order.get("created_at", ""))[:10]
+    so_date = format_date_dmy(order.get('created_at'))
     quote_num = order.get("quote_number", "")
 
     # Customer

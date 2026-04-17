@@ -138,7 +138,7 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin }: { workOrder
                 <Text style={[wos.stageText, { color: WO_STAGE_COLORS[wo.stage] || '#94A3B8' }]}>{WO_STAGE_LABELS[wo.stage] || wo.stage}</Text>
               </View>
             </View>
-            <Text style={wos.itemCount}>{wo.items?.length || 0} item(s) | Created: {wo.created_at?.split('T')[0]}</Text>
+            <Text style={wos.itemCount}>{wo.items?.length || 0} item(s) | Created: {wo.created_at?.split('T')[0]?.replace(/(\d{4})-(\d{2})-(\d{2}).*/, '$3-$2-$1') || ''}</Text>
             {/* Items preview */}
             {(wo.items || []).slice(0, 3).map((item: any, i: number) => (
               <View key={i} style={wos.itemPreview}>
@@ -235,7 +235,7 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin }: { workOrder
                     {selectedWO.stage_history.map((sh: any, i: number) => (
                       <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 4 }}>
                         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: WO_STAGE_COLORS[sh.stage] || '#94A3B8', marginTop: 4 }} />
-                        <View><Text style={{ fontSize: 12, fontWeight: '600' }}>{WO_STAGE_LABELS[sh.stage] || sh.stage}</Text><Text style={{ fontSize: 10, color: '#94A3B8' }}>{sh.timestamp?.split('T')[0]} {sh.notes ? `— ${sh.notes}` : ''}</Text></View>
+                        <View><Text style={{ fontSize: 12, fontWeight: '600' }}>{WO_STAGE_LABELS[sh.stage] || sh.stage}</Text><Text style={{ fontSize: 10, color: '#94A3B8' }}>{sh.timestamp?.split('T')[0]?.replace(/(\d{4})-(\d{2})-(\d{2}).*/, '$3-$2-$1') || ''} {sh.notes ? `— ${sh.notes}` : ''}</Text></View>
                       </View>
                     ))}
                   </View>
@@ -593,7 +593,7 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
                           <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }}>Rs.{pay.amount?.toLocaleString()}</Text>
                           <Text style={{ fontSize: 11, color: '#94A3B8' }}>{pay.mode?.replace('_', ' ')} {pay.reference ? `| ${pay.reference}` : ''}</Text>
                         </View>
-                        <Text style={{ fontSize: 11, color: '#94A3B8' }}>{pay.recorded_at?.split('T')[0]}</Text>
+                        <Text style={{ fontSize: 11, color: '#94A3B8' }}>{pay.recorded_at?.split('T')[0]?.replace(/(\d{4})-(\d{2})-(\d{2}).*/, '$3-$2-$1') || ''}</Text>
                       </View>
                     ))}
                   </>
@@ -629,7 +629,7 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
                         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: ORDER_STAGE_COLORS[sh.stage] || '#94A3B8', marginTop: 4 }} />
                         <View style={{ flex: 1 }}>
                           <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }}>{ORDER_STAGE_LABELS[sh.stage] || sh.stage}</Text>
-                          <Text style={{ fontSize: 11, color: '#94A3B8' }}>{sh.timestamp?.split('T')[0]} {sh.by ? `by ${sh.by}` : ''}</Text>
+                          <Text style={{ fontSize: 11, color: '#94A3B8' }}>{sh.timestamp?.split('T')[0]?.replace(/(\d{4})-(\d{2})-(\d{2}).*/, '$3-$2-$1') || ''} {sh.by ? `by ${sh.by}` : ''}</Text>
                           {sh.notes && <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{sh.notes}</Text>}
                         </View>
                       </View>
@@ -2876,7 +2876,7 @@ export default function QuotesScreen() {
               style={{ backgroundColor: 'rgba(241,245,249,0.8)', borderWidth: 1, borderColor: 'rgba(226,232,240,0.5)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#0F172A' }}
               value={deliveryDate}
               onChangeText={setDeliveryDate}
-              placeholder="2026-05-15"
+              placeholder="15-05-2026"
             />
             <Pressable
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#C5964A', borderRadius: 14, paddingVertical: 15, marginTop: 18 }}
