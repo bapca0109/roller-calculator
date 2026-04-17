@@ -1169,20 +1169,10 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
 # ============= BOM-STOCK MATCHING & SHORTAGE CHECK =============
 
 async def _match_bom_to_stock(bom_component: str, bom_description: str, bom_material: str, bom_match_key: str = None) -> dict:
-    """Find matching stock item for a BOM component using bom_match_key first, then fuzzy"""
-    # Strategy 1: Exact match on bom_match_key
+    """Find matching stock item for a BOM component using bom_match_key (exact match only)"""
+    # Exact match on bom_match_key — no fuzzy fallback to prevent wrong matches
     if bom_match_key:
         stock_item = await db.stock_items.find_one({"bom_match_key": bom_match_key}, {"_id": 0})
-        if stock_item:
-            return stock_item
-    
-    # Strategy 2: Fuzzy search by description keywords
-    query_options = [
-        {"name": {"$regex": bom_description.split(" x ")[0] if " x " in bom_description else bom_description, "$options": "i"}},
-        {"name": {"$regex": bom_component, "$options": "i"}},
-    ]
-    for query in query_options:
-        stock_item = await db.stock_items.find_one(query, {"_id": 0})
         if stock_item:
             return stock_item
     return None

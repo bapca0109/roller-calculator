@@ -346,9 +346,15 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
         paint_spec: woPaintSpec,
       };
       const res = await api.post(`/orders/${woOrder.id}/create-work-order`, payload);
-      Alert.alert('Success', res.data.message);
+      const shortages = res.data.shortages || [];
       setShowCreateWO(false);
       onRefresh();
+      if (shortages.length > 0) {
+        const shortList = shortages.slice(0, 5).map((s: any) => `${s.component}: need ${s.required}, have ${s.available}, short ${s.shortage} ${s.unit}`).join('\n');
+        Alert.alert('Work Order Created — SHORTAGES FOUND', `${res.data.message}\n\n${shortages.length} material shortage(s):\n\n${shortList}${shortages.length > 5 ? '\n...and more' : ''}\n\nCheck Store → Shortages tab`);
+      } else {
+        Alert.alert('Success', res.data.message + '\n\nAll materials available in stock');
+      }
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.detail || 'Failed to create work order');
     } finally { setWoCreating(false); }
