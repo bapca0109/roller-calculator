@@ -117,16 +117,38 @@ async def generate_quote_number():
 
 
 async def generate_rfq_number():
+    """Generate next RFQ number for current FY.
+
+    Every approved RFQ becomes a Quote (quote_number changes from RFQ/FY/N to
+    Q/FY/M). Looking only at RFQ/ records would reset the counter to 0001 after
+    all RFQs are approved, causing duplicate numbers. We therefore also scan
+    approved Quotes for the same FY and take max of both to get the true
+    highest sequence issued.
+    """
     fy = get_financial_year()
-    prefix = f"RFQ/{fy}/"
+    rfq_prefix = f"RFQ/{fy}/"
+    q_prefix = f"Q/{fy}/"
+
+    def _num(doc):
+        try:
+            return int((doc.get("quote_number") or "").split("/")[-1])
+        except (ValueError, IndexError):
+            return 0
+
     last_rfq = await db.quotes.find(
-        {"quote_number": {"$regex": f"^{prefix.replace('/', '/')}"}},
+        {"quote_number": {"$regex": f"^{rfq_prefix}"}},
         {"quote_number": 1}
     ).sort("quote_number", -1).limit(1).to_list(1)
-    if last_rfq:
-        last_num = int(last_rfq[0]["quote_number"].split("/")[-1])
-        return f"{prefix}{last_num + 1:04d}"
-    return f"{prefix}0001"
+    last_q = await db.quotes.find(
+        {"quote_number": {"$regex": f"^{q_prefix}"}},
+        {"quote_number": 1}
+    ).sort("quote_number", -1).limit(1).to_list(1)
+
+    highest = max(
+        _num(last_rfq[0]) if last_rfq else 0,
+        _num(last_q[0]) if last_q else 0,
+    )
+    return f"{rfq_prefix}{highest + 1:04d}"
 
 
 async def generate_customer_code() -> str:
