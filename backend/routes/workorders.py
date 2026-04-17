@@ -135,10 +135,18 @@ async def bulk_create_work_order(
             "production_notes": item_data.production_notes,
         }
 
-    # Step 2: Validate all items have required fields
+    # Step 2: Validate all items have required fields (skip for pulley)
     missing = []
     for i, p in enumerate(products):
         pd = p.get("production_details")
+        product_name = (p.get("product_name") or "").lower()
+        is_pulley = "pulley" in product_name
+
+        if is_pulley:
+            if not pd:
+                products[i]["production_details"] = {}
+            continue
+
         if not pd:
             missing.append(f"Item {i+1}: No production details")
             continue

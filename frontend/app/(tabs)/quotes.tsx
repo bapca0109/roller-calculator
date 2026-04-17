@@ -729,11 +729,15 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
               </View>
 
               {/* Per Item Details */}
-              {woItems.map((item: any, idx: number) => (
+              {woItems.map((item: any, idx: number) => {
+                const productName = (woOrder?.products?.[idx]?.product_name || '').toLowerCase();
+                const isPulley = productName.includes('pulley');
+                return (
                 <View key={idx} style={{ backgroundColor: 'rgba(241,245,249,0.7)', borderRadius: 12, padding: 14, marginBottom: 12 }}>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 10 }}>
                     Item {idx + 1}: {woOrder?.products?.[idx]?.product_name || 'Product'}
                   </Text>
+                  {!isPulley && (<>
                   <Text style={os.label}>Drawing Number *</Text>
                   <TextInput style={os.input} value={item.drawing_number} onChangeText={v => { const arr = [...woItems]; arr[idx].drawing_number = v; setWoItems(arr); }} placeholder="DWG-001" />
                   <Text style={os.label}>Shaft Length (mm) *</Text>
@@ -753,10 +757,12 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
                       <TextInput style={os.input} value={item.slot_type} onChangeText={v => { const arr = [...woItems]; arr[idx].slot_type = v; setWoItems(arr); }} placeholder="A / B5 / C35" />
                     </View>
                   </View>
+                  </>)}
                   <Text style={os.label}>Production Notes</Text>
                   <TextInput style={[os.input, { height: 50, textAlignVertical: 'top' }]} value={item.production_notes} onChangeText={v => { const arr = [...woItems]; arr[idx].production_notes = v; setWoItems(arr); }} placeholder="Notes..." multiline />
                 </View>
-              ))}
+                );
+              })}
             </ScrollView>
             <Pressable style={[os.saveBtn, woCreating && { opacity: 0.6 }]} onPress={createWorkOrder} disabled={woCreating}>
               {woCreating ? <ActivityIndicator color="#fff" /> : <><Ionicons name="construct" size={18} color="#fff" /><Text style={os.saveBtnText}>Create Work Order + BOM</Text></>}
