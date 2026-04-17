@@ -130,7 +130,6 @@ async def bulk_create_work_order(
             "drawing_number": item_data.drawing_number,
             "drawing_base64": item_data.drawing_base64,
             "drawing_filename": item_data.drawing_filename,
-            "paint_details": item_data.paint_details,
             "shaft_length": item_data.shaft_length,
             "shaft_slot": item_data.shaft_slot.dict() if item_data.shaft_slot else None,
             "production_notes": item_data.production_notes,
