@@ -230,8 +230,11 @@ async def bulk_create_work_order(
         {"$set": {"work_order": wo_number, "updated_at": now.isoformat()}}
     )
 
+    # Auto-check BOM against stock and find shortages
+    shortages = await _check_bom_shortages(work_order)
+
     del work_order["_id"]
-    return {"message": f"Work Order {wo_number} created with {len(wo_items)} items", "work_order": work_order}
+    return {"message": f"Work Order {wo_number} created with {len(wo_items)} items", "work_order": work_order, "shortages": shortages}
 
 @router.post("/orders/{order_id}/work-order")
 async def create_work_order(
@@ -1149,3 +1152,106 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
         item["_total_bom_weight_kg"] = round(total_weight, 3)
 
     return bom
+
+
+# ============= BOM-STOCK MATCHING & SHORTAGE CHECK =============
+
+async def _match_bom_to_stock(bom_component: str, bom_description: str, bom_material: str) -> dict:
+    """Try to find a matching stock item for a BOM component"""
+    # Strategy: search by component name in stock item name, or by description keywords
+    query_options = [
+        {"name": {"$regex": bom_description.split(" x ")[0] if " x " in bom_description else bom_description, "$options": "i"}},
+        {"name": {"$regex": bom_component, "$options": "i"}},
+    ]
+    
+    for query in query_options:
+        stock_item = await db.stock_items.find_one(query, {"_id": 0})
+        if stock_item:
+            return stock_item
+    return None
+
+
+async def _check_bom_shortages(work_order: dict) -> list:
+    """Check all BOM items against stock and return shortage list"""
+    shortages = []
+    
+    for item in work_order.get("items", []):
+        for bom in item.get("bom", []):
+            component = bom.get("component", "")
+            description = bom.get("description", "")
+            material = bom.get("material", "")
+            required_qty = bom.get("total_qty", 0)
+            
+            if required_qty <= 0:
+                continue
+            
+            stock_item = await _match_bom_to_stock(component, description, material)
+            
+            if stock_item:
+                available = stock_item.get("current_stock", 0)
+                if available < required_qty:
+                    shortages.append({
+                        "component": component,
+                        "description": description,
+                        "stock_item_id": stock_item.get("id"),
+                        "stock_item_name": stock_item.get("name"),
+                        "required": required_qty,
+                        "available": available,
+                        "shortage": round(required_qty - available, 3),
+                        "unit": stock_item.get("unit_purchase", "nos"),
+                        "wo_number": work_order.get("wo_number"),
+                    })
+            else:
+                # No matching stock item found — report as unknown
+                shortages.append({
+                    "component": component,
+                    "description": description,
+                    "stock_item_id": None,
+                    "stock_item_name": "NOT IN STOCK REGISTER",
+                    "required": required_qty,
+                    "available": 0,
+                    "shortage": required_qty,
+                    "unit": "nos",
+                    "wo_number": work_order.get("wo_number"),
+                })
+    
+    return shortages
+
+
+@router.get("/wo-shortages")
+async def get_wo_shortages(current_user: dict = Depends(require_role([UserRole.ADMIN]))):
+    """Get material shortages for all pending (non-completed) work orders"""
+    wos = await db.work_orders.find({"stage": {"$ne": "completed"}}, {"_id": 0}).to_list(100)
+    
+    all_shortages = []
+    for wo in wos:
+        shortages = await _check_bom_shortages(wo)
+        if shortages:
+            all_shortages.extend(shortages)
+    
+    # Group by stock item for consolidated view
+    consolidated = {}
+    for s in all_shortages:
+        key = s.get("stock_item_name", s.get("description", ""))
+        if key in consolidated:
+            consolidated[key]["required"] += s["required"]
+            consolidated[key]["shortage"] += s["shortage"]
+            consolidated[key]["wo_numbers"].append(s["wo_number"])
+        else:
+            consolidated[key] = {
+                "component": s["component"],
+                "description": s["description"],
+                "stock_item_id": s["stock_item_id"],
+                "stock_item_name": s["stock_item_name"],
+                "required": s["required"],
+                "available": s["available"],
+                "shortage": s["shortage"],
+                "unit": s["unit"],
+                "wo_numbers": [s["wo_number"]],
+            }
+    
+    return {
+        "shortages": list(consolidated.values()),
+        "total": len(consolidated),
+        "detail": all_shortages,
+    }

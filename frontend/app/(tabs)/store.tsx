@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import { ExportButtons } from '../../components/shared/ExportButtons';
 
-type Tab = 'dashboard' | 'stock' | 'po' | 'suppliers' | 'alerts';
+type Tab = 'dashboard' | 'stock' | 'po' | 'suppliers' | 'alerts' | 'shortages';
 
 export default function StoreScreen() {
   const { user } = useAuth();
@@ -18,6 +18,7 @@ export default function StoreScreen() {
   const [pos, setPos] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [woShortages, setWoShortages] = useState<any[]>([]);
   // Modals
   const [showAddItem, setShowAddItem] = useState(false);
   const [showAddPO, setShowAddPO] = useState(false);
@@ -39,16 +40,17 @@ export default function StoreScreen() {
 
   const fetchAll = async () => {
     try {
-      const [dashRes, itemsRes, posRes, suppRes, alertRes] = await Promise.all([
+      const [dashRes, itemsRes, posRes, suppRes, alertRes, shortRes] = await Promise.all([
         api.get('/store/dashboard'), api.get('/store/items'),
         api.get('/store/purchase-orders'), api.get('/suppliers'),
-        api.get('/store/alerts'),
+        api.get('/store/alerts'), api.get('/wo-shortages'),
       ]);
       setDashboard(dashRes.data);
       setStockItems(itemsRes.data.items || []);
       setPos(posRes.data.purchase_orders || []);
       setSuppliers(suppRes.data.suppliers || []);
       setAlerts(alertRes.data.alerts || []);
+      setWoShortages(shortRes.data.shortages || []);
     } catch (e) { console.log('Store fetch error', e); }
     finally { setLoading(false); }
   };
@@ -112,10 +114,10 @@ export default function StoreScreen() {
 
       {/* Tab Bar */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44, marginHorizontal: 14, marginTop: 12 }}>
-        {([['dashboard','grid-outline','Dashboard'],['stock','layers-outline','Stock'],['po','cart-outline','POs'],['suppliers','business-outline','Suppliers'],['alerts','alert-circle-outline','Alerts']] as const).map(([key, icon, label]) => (
+        {([['dashboard','grid-outline','Dashboard'],['stock','layers-outline','Stock'],['po','cart-outline','POs'],['suppliers','business-outline','Suppliers'],['shortages','warning-outline','Shortages'],['alerts','alert-circle-outline','Alerts']] as const).map(([key, icon, label]) => (
           <TouchableOpacity key={key} style={[s.tabBtn, tab === key && s.tabBtnActive]} onPress={() => setTab(key as Tab)}>
             <Ionicons name={icon as any} size={15} color={tab === key ? '#C5964A' : '#94A3B8'} />
-            <Text style={[s.tabText, tab === key && s.tabTextActive]}>{label}{key === 'alerts' && alerts.length > 0 ? ` (${alerts.length})` : ''}</Text>
+            <Text style={[s.tabText, tab === key && s.tabTextActive]}>{label}{key === 'alerts' && alerts.length > 0 ? ` (${alerts.length})` : ''}{key === 'shortages' && woShortages.length > 0 ? ` (${woShortages.length})` : ''}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -215,6 +217,32 @@ export default function StoreScreen() {
                 <Text style={s.cardMeta}>{sup.contact_person} | {sup.phone} | {sup.city}</Text>
                 {sup.gst_number && <Text style={s.cardMeta}>GST: {sup.gst_number}</Text>}
                 {sup.payment_terms && <Text style={s.cardMeta}>Terms: {sup.payment_terms}</Text>}
+              </View>
+            ))}
+          </>
+        )}
+
+        {/* SHORTAGES — WO BOM vs Stock */}
+        {tab === 'shortages' && (
+          <>
+            <Text style={s.sectionTitle}>WO Material Shortages ({woShortages.length})</Text>
+            {woShortages.length === 0 ? <View style={s.emptyState}><Ionicons name="checkmark-circle" size={48} color="#10B981" /><Text style={s.emptyText}>No shortages — all WO materials available</Text></View> :
+            woShortages.map((sh: any, i: number) => (
+              <View key={i} style={[s.card, { borderLeftWidth: 3, borderLeftColor: sh.stock_item_id ? '#F59E0B' : '#EF4444' }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.cardTitle}>{sh.component}</Text>
+                    <Text style={s.cardMeta}>{sh.description}</Text>
+                    {!sh.stock_item_id && <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '700', marginTop: 2 }}>NOT IN STOCK REGISTER</Text>}
+                    {sh.stock_item_id && <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>Stock: {sh.stock_item_name}</Text>}
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
+                  <View><Text style={s.alertLabel}>Required</Text><Text style={s.alertValue}>{sh.required} {sh.unit}</Text></View>
+                  <View><Text style={s.alertLabel}>Available</Text><Text style={[s.alertValue, { color: '#10B981' }]}>{sh.available} {sh.unit}</Text></View>
+                  <View><Text style={s.alertLabel}>Shortage</Text><Text style={[s.alertValue, { color: '#EF4444', fontWeight: '800' }]}>{sh.shortage} {sh.unit}</Text></View>
+                </View>
+                <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 6 }}>WOs: {(sh.wo_numbers || []).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(', ')}</Text>
               </View>
             ))}
           </>
