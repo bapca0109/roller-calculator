@@ -52,20 +52,19 @@ class OrderStageUpdate(BaseModel):
 
 async def generate_so_number():
     fy = get_financial_year()
-    prefix = f"SO/{fy}/"
-    from routes import _next_seq, _max_suffix
-    seed = await _max_suffix(db.sales_orders, "so_number", prefix)
+    from routes import _next_seq, _max_suffix, format_number
+    seed = await _max_suffix(db.sales_orders, "so_number", f"SO/{fy}/")
     n = await _next_seq(f"so:{fy}", seed_value=seed)
-    return f"{prefix}{n:04d}"
+    return await format_number("so", n)
 
 
 async def generate_invoice_number(doc_type="INV"):
     fy = get_financial_year()
-    prefix = f"{doc_type}/{fy}/"
-    from routes import _next_seq, _max_suffix
-    seed = await _max_suffix(db.invoices, "invoice_number", prefix)
-    n = await _next_seq(f"{doc_type.lower()}:{fy}", seed_value=seed)
-    return f"{prefix}{n:04d}"
+    from routes import _next_seq, _max_suffix, format_number
+    key = doc_type.lower()
+    seed = await _max_suffix(db.invoices, "invoice_number", f"{doc_type}/{fy}/")
+    n = await _next_seq(f"{key}:{fy}", seed_value=seed)
+    return await format_number(key, n)
 
 
 # ============= SALES ORDER ROUTES =============

@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from bson import ObjectId
-from routes import db, get_current_user, require_role, ROOT_DIR, UserRole, get_password_hash, generate_customer_code
+from routes import db, get_current_user, require_role, ROOT_DIR, UserRole, get_password_hash, generate_customer_code, get_numbering_config, DEFAULT_NUMBERING_TEMPLATES, _resolve_tokens
 from routes.price_history import log_price_change
 import roller_standards as rs
 import io
@@ -1422,3 +1422,66 @@ async def update_user_role(req: UserRoleUpdate, current_user: dict = Depends(get
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": f"Role updated to {req.role} for {req.email}"}
+
+
+# ============= NUMBERING CONFIG (Admin-only) =============
+
+class NumberingConfigUpdate(BaseModel):
+    templates: Dict[str, Dict[str, Any]]
+
+
+@router.get("/admin/numbering-config")
+async def get_numbering(current_user: dict = Depends(get_current_user)):
+    """Return current numbering templates + resolved preview for each doc type."""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    cfg = await get_numbering_config()
+    # Add preview (what the NEXT number would look like if current counter value is N)
+    result = {}
+    for k, v in cfg.items():
+        pad = int(v.get("pad") or 4)
+        resolved_prefix = _resolve_tokens(v.get("prefix") or "")
+        result[k] = {
+            **v,
+            "resolved_prefix": resolved_prefix,
+            "sample_next": f"{resolved_prefix}{1:0{pad}d}",
+        }
+    return {
+        "templates": result,
+        "defaults": DEFAULT_NUMBERING_TEMPLATES,
+        "tokens": ["{FY}", "{YYYY}", "{MM}", "{DD}"],
+    }
+
+
+@router.put("/admin/numbering-config")
+async def update_numbering(req: NumberingConfigUpdate, current_user: dict = Depends(get_current_user)):
+    """Admin-only: persist custom numbering templates. Validates each entry."""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    clean: Dict[str, Dict[str, Any]] = {}
+    for k, v in (req.templates or {}).items():
+        if k not in DEFAULT_NUMBERING_TEMPLATES:
+            continue  # silently skip unknown doc types
+        prefix = (v.get("prefix") or "").strip()
+        pad = int(v.get("pad") or 4)
+        if not prefix:
+            raise HTTPException(status_code=400, detail=f"Prefix for '{k}' cannot be empty")
+        if pad < 1 or pad > 10:
+            raise HTTPException(status_code=400, detail=f"Pad for '{k}' must be 1-10")
+        clean[k] = {"prefix": prefix, "pad": pad}
+    await db.numbering_config.update_one(
+        {"_id": "templates"},
+        {"$set": {"templates": clean, "updated_at": datetime.now(timezone.utc).isoformat(), "updated_by": current_user.get("email")}},
+        upsert=True,
+    )
+    return {"message": "Numbering templates updated", "count": len(clean)}
+
+
+@router.post("/admin/numbering-config/reset")
+async def reset_numbering(current_user: dict = Depends(get_current_user)):
+    """Admin-only: delete custom templates and revert to defaults."""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    await db.numbering_config.delete_one({"_id": "templates"})
+    return {"message": "Numbering templates reset to defaults"}
+

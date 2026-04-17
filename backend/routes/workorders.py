@@ -44,11 +44,10 @@ class UpdateProductionDetails(BaseModel):
 
 async def generate_wo_number():
     fy = get_financial_year()
-    prefix = f"WO/{fy}/"
-    from routes import _next_seq, _max_suffix
-    seed = await _max_suffix(db.work_orders, "wo_number", prefix)
+    from routes import _next_seq, _max_suffix, format_number
+    seed = await _max_suffix(db.work_orders, "wo_number", f"WO/{fy}/")
     n = await _next_seq(f"wo:{fy}", seed_value=seed)
-    return f"{prefix}{n:04d}"
+    return await format_number("wo", n)
 
 
 # ============= UPDATE PRODUCTION DETAILS ON SO ITEM =============

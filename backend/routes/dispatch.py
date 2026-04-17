@@ -55,11 +55,10 @@ class DeliveryChallanCreate(BaseModel):
 
 async def generate_dc_number() -> str:
     fy = get_financial_year()
-    prefix = f"DC/{fy}/"
-    from routes import _next_seq, _max_suffix
-    seed = await _max_suffix(db.delivery_challans, "dc_number", prefix)
+    from routes import _next_seq, _max_suffix, format_number
+    seed = await _max_suffix(db.delivery_challans, "dc_number", f"DC/{fy}/")
     n = await _next_seq(f"dc:{fy}", seed_value=seed)
-    return f"{prefix}{n:04d}"
+    return await format_number("dc", n)
 
 
 def format_date_dmy(value) -> str:

@@ -104,6 +104,58 @@ def require_role(allowed_roles: List[str]):
     return role_checker
 
 
+
+# ============= NUMBERING TEMPLATES =============
+# Doc-type → default prefix template + pad width. Tokens in template:
+#   {FY}   → "26-27" (current financial year short form)
+#   {YYYY} → 4-digit year (calendar)
+#   {MM}   → 2-digit month (01-12)
+#   {DD}   → 2-digit day
+# Admin can override these via `GET/PUT /api/admin/numbering-config`.
+DEFAULT_NUMBERING_TEMPLATES = {
+    "rfq": {"prefix": "RFQ/{FY}/", "pad": 4, "label": "RFQ (customer request)"},
+    "q":   {"prefix": "Q/{FY}/",   "pad": 4, "label": "Quote"},
+    "so":  {"prefix": "SO/{FY}/",  "pad": 4, "label": "Sales Order"},
+    "wo":  {"prefix": "WO/{FY}/",  "pad": 4, "label": "Work Order"},
+    "po":  {"prefix": "PO/{FY}/",  "pad": 4, "label": "Purchase Order"},
+    "dc":  {"prefix": "DC/{FY}/",  "pad": 4, "label": "Delivery Challan"},
+    "inv": {"prefix": "INV/{FY}/", "pad": 4, "label": "Tax Invoice"},
+    "pi":  {"prefix": "PI/{FY}/",  "pad": 4, "label": "Proforma Invoice"},
+    "c":   {"prefix": "C/{FY}/",   "pad": 4, "label": "Customer Code"},
+}
+
+
+def _resolve_tokens(template: str) -> str:
+    """Replace {FY} / {YYYY} / {MM} / {DD} tokens in a template prefix."""
+    now = datetime.now(IST)
+    return (
+        template
+        .replace("{FY}", get_financial_year())
+        .replace("{YYYY}", now.strftime("%Y"))
+        .replace("{MM}", now.strftime("%m"))
+        .replace("{DD}", now.strftime("%d"))
+    )
+
+
+async def get_numbering_config() -> dict:
+    """Return merged templates: DB overrides on top of DEFAULT_NUMBERING_TEMPLATES."""
+    stored = await db.numbering_config.find_one({"_id": "templates"}, {"_id": 0}) or {}
+    overrides = stored.get("templates") or {}
+    out = {}
+    for k, v in DEFAULT_NUMBERING_TEMPLATES.items():
+        out[k] = {**v, **(overrides.get(k) or {})}
+    return out
+
+
+async def format_number(doc_type: str, seq: int) -> str:
+    """Render `{prefix}{seq:0{pad}d}` where prefix is token-resolved."""
+    cfg = await get_numbering_config()
+    tpl = cfg.get(doc_type) or DEFAULT_NUMBERING_TEMPLATES.get(doc_type) or {"prefix": f"{doc_type.upper()}/", "pad": 4}
+    prefix = _resolve_tokens(tpl["prefix"])
+    pad = int(tpl.get("pad") or 4)
+    return f"{prefix}{seq:0{pad}d}"
+
+
 async def _next_seq(counter_key: str, seed_value: int = 0) -> int:
     """Atomic monotonically-increasing counter stored in `counters` collection.
 
@@ -147,33 +199,27 @@ async def _max_suffix(collection, field: str, prefix: str) -> int:
 
 async def generate_quote_number():
     fy = get_financial_year()
-    prefix = f"Q/{fy}/"
-    # Seed: max of existing Q/FY/… suffixes. RFQ numbers are NOT included — the
-    # Q sequence is independent (Q is assigned on approval from its own counter).
-    seed = await _max_suffix(db.quotes, "quote_number", prefix)
+    # Seed from max of existing Q/FY/… suffixes (Q is its own sequence).
+    seed = await _max_suffix(db.quotes, "quote_number", f"Q/{fy}/")
     n = await _next_seq(f"q:{fy}", seed_value=seed)
-    return f"{prefix}{n:04d}"
+    return await format_number("q", n)
 
 
 async def generate_rfq_number():
     fy = get_financial_year()
-    rfq_prefix = f"RFQ/{fy}/"
-    q_prefix = f"Q/{fy}/"
-    # Seed from max across BOTH prefixes: every approved RFQ became a Q, so the
-    # highest-issued RFQ number = max(max existing RFQ/, max existing Q/).
-    rfq_max = await _max_suffix(db.quotes, "quote_number", rfq_prefix)
-    q_max = await _max_suffix(db.quotes, "quote_number", q_prefix)
+    # Seed from max across BOTH prefixes: every approved RFQ became a Q.
+    rfq_max = await _max_suffix(db.quotes, "quote_number", f"RFQ/{fy}/")
+    q_max = await _max_suffix(db.quotes, "quote_number", f"Q/{fy}/")
     seed = max(rfq_max, q_max)
     n = await _next_seq(f"rfq:{fy}", seed_value=seed)
-    return f"{rfq_prefix}{n:04d}"
+    return await format_number("rfq", n)
 
 
 async def generate_customer_code() -> str:
     fy = get_financial_year()
-    prefix = f"C/{fy}/"
-    seed = await _max_suffix(db.customers, "customer_code", prefix)
+    seed = await _max_suffix(db.customers, "customer_code", f"C/{fy}/")
     n = await _next_seq(f"c:{fy}", seed_value=seed)
-    return f"{prefix}{n:04d}"
+    return await format_number("c", n)
 
 
 # ============= SHARED MODELS =============

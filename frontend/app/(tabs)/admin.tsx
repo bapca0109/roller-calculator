@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { cacheEvents } from '../../utils/api';
 
-type MainTab = 'prices' | 'standards' | 'history' | 'users';
+type MainTab = 'prices' | 'standards' | 'history' | 'users' | 'numbering';
 type PriceCategory = 'basic' | 'bearing' | 'housing' | 'seal' | 'circlip' | 'rubber' | 'locking';
 
 interface Prices {
@@ -106,6 +106,12 @@ export default function AdminScreen() {
   const [newUserRole, setNewUserRole] = useState('sales_manager');
   const [newUserCompany, setNewUserCompany] = useState('');
   const [creatingUser, setCreatingUser] = useState(false);
+
+  // Numbering config state
+  const [numberingCfg, setNumberingCfg] = useState<any>(null);
+  const [numberingDraft, setNumberingDraft] = useState<any>(null);
+  const [numberingSaving, setNumberingSaving] = useState(false);
+  const [numberingTokens, setNumberingTokens] = useState<string[]>([]);
   
   // Set as Default OTP state
   const [showSetDefaultModal, setShowSetDefaultModal] = useState(false);
@@ -375,6 +381,80 @@ export default function AdminScreen() {
     }
   };
 
+  // ============= NUMBERING CONFIG =============
+  const fetchNumberingConfig = async () => {
+    try {
+      const response = await api.get('/admin/numbering-config');
+      setNumberingCfg(response.data);
+      setNumberingTokens(response.data.tokens || []);
+      // Build draft = just the editable fields (prefix + pad) per doc type
+      const draft: any = {};
+      for (const [k, v] of Object.entries(response.data.templates || {}) as any) {
+        draft[k] = { prefix: v.prefix, pad: v.pad };
+      }
+      setNumberingDraft(draft);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to fetch numbering config');
+    }
+  };
+
+  const updateDraftField = (key: string, field: 'prefix' | 'pad', value: any) => {
+    setNumberingDraft((prev: any) => ({ ...prev, [key]: { ...(prev?.[key] || {}), [field]: value } }));
+  };
+
+  const saveNumberingConfig = async () => {
+    // Validate
+    for (const [k, v] of Object.entries(numberingDraft || {}) as any) {
+      if (!v.prefix || !v.prefix.trim()) {
+        Alert.alert('Invalid', `Prefix for "${k}" cannot be empty`);
+        return;
+      }
+      const pad = parseInt(v.pad);
+      if (isNaN(pad) || pad < 1 || pad > 10) {
+        Alert.alert('Invalid', `Pad for "${k}" must be 1–10`);
+        return;
+      }
+    }
+    try {
+      setNumberingSaving(true);
+      // Convert pad to int
+      const clean: any = {};
+      for (const [k, v] of Object.entries(numberingDraft) as any) {
+        clean[k] = { prefix: v.prefix.trim(), pad: parseInt(v.pad) };
+      }
+      await api.put('/admin/numbering-config', { templates: clean });
+      await fetchNumberingConfig();
+      Alert.alert('Saved', 'Numbering templates updated. New numbers will use these formats.');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to save');
+    } finally {
+      setNumberingSaving(false);
+    }
+  };
+
+  const resetNumberingConfig = () => {
+    Alert.alert(
+      'Reset to defaults?',
+      'Revert all numbering templates to the factory defaults (e.g. RFQ/{FY}/0001).',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setNumberingSaving(true);
+              await api.post('/admin/numbering-config/reset');
+              await fetchNumberingConfig();
+            } finally {
+              setNumberingSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   useEffect(() => {
     if (mainTab === 'prices') {
       fetchPrices();
@@ -384,6 +464,8 @@ export default function AdminScreen() {
       fetchPriceHistory();
     } else if (mainTab === 'users') {
       fetchUsers();
+    } else if (mainTab === 'numbering') {
+      fetchNumberingConfig();
     }
     
     // Listen for global refresh events
@@ -1321,6 +1403,20 @@ export default function AdminScreen() {
               Users
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.mainTab, mainTab === 'numbering' && styles.mainTabActive]}
+            onPress={() => setMainTab('numbering')}
+            testID="numbering-tab"
+          >
+            <Ionicons
+              name="pricetags-outline"
+              size={18}
+              color={mainTab === 'numbering' ? '#960018' : '#fff'}
+            />
+            <Text style={[styles.mainTabText, mainTab === 'numbering' && styles.mainTabTextActive]}>
+              Numbering
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -1741,7 +1837,7 @@ export default function AdminScreen() {
             </ScrollView>
           )}
         </View>
-      ) : (
+      ) : mainTab === 'users' ? (
         // Users tab
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, alignItems: 'center', gap: 8 }}>
@@ -1826,6 +1922,100 @@ export default function AdminScreen() {
                 );
               })}
               <View style={{ height: 100 }} />
+            </ScrollView>
+          )}
+        </View>
+      ) : (
+        // Numbering tab
+        <View style={{ flex: 1 }}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+            <Text style={{ fontSize: 13, color: '#64748B' }}>
+              Customize the prefix and pad width for each document type. Tokens:{' '}
+              {numberingTokens.map((t) => (
+                <Text key={t} style={{ fontFamily: 'monospace', backgroundColor: '#F1F5F9', paddingHorizontal: 4, paddingVertical: 1, fontSize: 11, color: '#960018' }}>{t} </Text>
+              ))}
+            </Text>
+          </View>
+          {!numberingDraft ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#960018" />
+              <Text style={styles.loadingText}>Loading templates...</Text>
+            </View>
+          ) : (
+            <ScrollView style={{ flex: 1, padding: 16 }}>
+              {Object.entries(numberingCfg?.templates || {}).map(([key, v]: [string, any]) => {
+                const draft = numberingDraft[key] || {};
+                const pad = parseInt(draft.pad || v.pad || 4);
+                const safePad = isNaN(pad) ? 4 : Math.max(1, Math.min(10, pad));
+                const previewSeq = '0'.repeat(Math.max(0, safePad - 1)) + '1';
+                // Resolve tokens locally for preview
+                const now = new Date();
+                const fy = (() => {
+                  const m = now.getMonth() + 1, y = now.getFullYear();
+                  return m >= 4 ? `${String(y).slice(-2)}-${String(y+1).slice(-2)}` : `${String(y-1).slice(-2)}-${String(y).slice(-2)}`;
+                })();
+                const resolvedPrefix = (draft.prefix || '')
+                  .replace('{FY}', fy)
+                  .replace('{YYYY}', String(now.getFullYear()))
+                  .replace('{MM}', String(now.getMonth()+1).padStart(2,'0'))
+                  .replace('{DD}', String(now.getDate()).padStart(2,'0'));
+                const preview = `${resolvedPrefix}${previewSeq}`;
+                return (
+                  <View key={key} style={{ backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#E5E7EB' }} testID={`numbering-row-${key}`}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#960018', textTransform: 'uppercase', letterSpacing: 0.8 }}>{v.label || key}</Text>
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 8, alignItems: 'flex-end' }}>
+                      <View style={{ flex: 2 }}>
+                        <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Prefix Template</Text>
+                        <TextInput
+                          style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, fontSize: 13, fontFamily: 'monospace', backgroundColor: '#F8FAFC' }}
+                          value={draft.prefix || ''}
+                          onChangeText={(t) => updateDraftField(key, 'prefix', t)}
+                          testID={`numbering-prefix-${key}`}
+                          autoCapitalize="none"
+                        />
+                      </View>
+                      <View style={{ width: 70 }}>
+                        <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Pad</Text>
+                        <TextInput
+                          style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, fontSize: 13, textAlign: 'center', backgroundColor: '#F8FAFC' }}
+                          value={String(draft.pad ?? 4)}
+                          onChangeText={(t) => updateDraftField(key, 'pad', t)}
+                          keyboardType="numeric"
+                          testID={`numbering-pad-${key}`}
+                        />
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', marginTop: 6, alignItems: 'center', gap: 6 }}>
+                      <Text style={{ fontSize: 11, color: '#64748B' }}>Preview:</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#059669', fontFamily: 'monospace' }}>{preview}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 40 }}>
+                <TouchableOpacity
+                  onPress={resetNumberingConfig}
+                  disabled={numberingSaving}
+                  testID="numbering-reset"
+                  style={{ flex: 1, backgroundColor: '#E5E7EB', paddingVertical: 12, borderRadius: 8, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }}
+                >
+                  <Ionicons name="refresh" size={16} color="#475569" />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569' }}>Reset to Defaults</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={saveNumberingConfig}
+                  disabled={numberingSaving}
+                  testID="numbering-save"
+                  style={{ flex: 1, backgroundColor: '#960018', paddingVertical: 12, borderRadius: 8, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }}
+                >
+                  {numberingSaving ? <ActivityIndicator color="#fff" /> : (
+                    <>
+                      <Ionicons name="save" size={16} color="#fff" />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>Save Templates</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             </ScrollView>
           )}
         </View>

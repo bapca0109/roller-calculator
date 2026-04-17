@@ -59,11 +59,10 @@ class StockIssue(BaseModel):
 
 async def generate_po_number():
     fy = get_financial_year()
-    prefix = f"PO/{fy}/"
-    from routes import _next_seq, _max_suffix
-    seed = await _max_suffix(db.purchase_orders, "po_number", prefix)
+    from routes import _next_seq, _max_suffix, format_number
+    seed = await _max_suffix(db.purchase_orders, "po_number", f"PO/{fy}/")
     n = await _next_seq(f"po:{fy}", seed_value=seed)
-    return f"{prefix}{n:04d}"
+    return await format_number("po", n)
 
 
 # ============= STOCK ITEMS =============
