@@ -563,10 +563,14 @@ async def get_work_order_pdf(
         slot_str = item.get("shaft_slot", "N/A")
         pipe_type_str = specs.get("pipe_type", "")
         
+        # Get housing size from roller standards
+        bearing_number = specs.get("bearing_number", specs.get("bearing", ""))
+        bearing_make = specs.get("bearing_make", "china")
+        pipe_dia = specs.get("pipe_diameter", 0)
+
         # Get pipe thickness from roller standards based on pipe_type (A/B/C)
         import re
         pipe_thk = "-"
-        # Extract pipe type letter from product code or specs
         pipe_type_code = specs.get("pipe_type", "B").upper()
         if len(pipe_type_code) == 1 and pipe_type_code in ("A", "B", "C"):
             # Wall thickness lookup by pipe dia and type
@@ -595,9 +599,6 @@ async def get_work_order_pdf(
                         break
 
         # Get housing size from roller standards
-        bearing_number = specs.get("bearing_number", specs.get("bearing", ""))
-        bearing_make = specs.get("bearing_make", "china")
-        pipe_dia = specs.get("pipe_diameter", 0)
         housing_size = rs.get_housing_for_pipe_and_bearing(pipe_dia, bearing_number) if pipe_dia and bearing_number else "-"
         if not housing_size:
             housing_size = "-"
