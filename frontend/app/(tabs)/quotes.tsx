@@ -462,6 +462,19 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
                   <Ionicons name="cash-outline" size={15} color="#C5964A" />
                   <Text style={os.actionText}>Payment</Text>
                 </TouchableOpacity>
+                <Pressable style={[os.actionBtn, { backgroundColor: 'rgba(15,23,42,0.06)', borderColor: '#0F172A' }]} onPress={async () => {
+                  try {
+                    const token = await AsyncStorage.getItem('token');
+                    if (token) {
+                      const url = api.defaults.baseURL + `/orders/${order.id}/pdf?token=${token}`;
+                      if (typeof window !== 'undefined') window.open(url, '_blank');
+                      else Alert.alert('SO PDF', order.so_number);
+                    }
+                  } catch { Alert.alert('Error', 'Could not download SO'); }
+                }}>
+                  <Ionicons name="download-outline" size={15} color="#0F172A" />
+                  <Text style={[os.actionText, { color: '#0F172A' }]}>SO PDF</Text>
+                </Pressable>
                 {order.proforma_invoice && (
                   <TouchableOpacity style={[os.actionBtn, { backgroundColor: 'rgba(139,92,246,0.1)', borderColor: '#8B5CF6' }]} onPress={async () => {
                     try {

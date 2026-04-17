@@ -661,3 +661,222 @@ async def get_invoice_pdf(
         media_type="text/html",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+# ============= SALES ORDER PDF =============
+
+@router.get("/orders/{order_id}/pdf")
+async def get_sales_order_pdf(
+    order_id: str,
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    auth_token = token
+    if not auth_token and authorization and authorization.startswith("Bearer "):
+        auth_token = authorization[7:]
+    if not auth_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    try:
+        payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
+        if not payload.get("sub"):
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    order = await db.sales_orders.find_one({"$or": [{"id": order_id}, {"so_number": order_id}]}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    so_num = order.get("so_number", "")
+    so_date = str(order.get("created_at", ""))[:10]
+    quote_num = order.get("quote_number", "")
+
+    # Customer
+    cust = order.get("customer_details") or {}
+    cust_name = cust.get("name") or order.get("customer_name", "")
+    cust_company = cust.get("company") or order.get("customer_company", "")
+    cust_address = ", ".join(filter(None, [cust.get("address"), cust.get("city"), cust.get("state"), cust.get("pincode")]))
+    cust_gst = cust.get("gst_number", "")
+    cust_phone = cust.get("phone", "")
+    cust_email = cust.get("email") or order.get("customer_email", "")
+    cust_code = order.get("customer_code", "")
+
+    # Products
+    products = order.get("products") or []
+    product_rows = ""
+    for i, p in enumerate(products, 1):
+        qty = p.get("quantity", 1)
+        unit = p.get("unit_price", 0)
+        total = qty * unit
+        specs = p.get("specifications", {})
+        spec_parts = []
+        if specs.get("pipe_diameter"): spec_parts.append(f"Pipe: {specs['pipe_diameter']}mm")
+        if specs.get("shaft_diameter"): spec_parts.append(f"Shaft: {specs['shaft_diameter']}mm")
+        if specs.get("pipe_length"): spec_parts.append(f"L: {specs['pipe_length']}mm")
+        spec_text = " | ".join(spec_parts)
+        weight = p.get("weight_kg", p.get("weight", 0)) or 0
+        product_rows += f"""<tr>
+            <td style="text-align:center">{i}</td>
+            <td><b>{p.get('product_name','')}</b><br><span style="color:#960018;font-size:9px;font-weight:600">Code: {p.get('product_id','')}</span><br><span style="color:#64748B;font-size:9px">{spec_text}</span></td>
+            <td style="text-align:center">{COMPANY['hsn_code']}</td>
+            <td style="text-align:center">{qty}</td>
+            <td style="text-align:right">{weight:.2f}</td>
+            <td style="text-align:right">{unit:,.2f}</td>
+            <td style="text-align:right"><b>{total:,.2f}</b></td>
+        </tr>"""
+
+    # Pricing
+    subtotal = order.get("subtotal", 0)
+    total_discount = order.get("total_discount", 0)
+    packing = order.get("packing_charges", 0)
+    shipping = order.get("shipping_cost", 0)
+    total_price = order.get("total_price", 0)
+
+    # Commercial terms
+    terms = order.get("commercial_terms") or {}
+    terms_html = ""
+    if terms:
+        terms_rows = ""
+        term_labels = {
+            "payment_terms": "Payment Terms",
+            "freight_terms": "Freight Terms",
+            "color_finish": "Color & Finish",
+            "delivery_timeline": "Delivery Timeline",
+            "warranty": "Warranty",
+            "validity": "Validity",
+        }
+        for key, label in term_labels.items():
+            val = terms.get(key)
+            if val:
+                terms_rows += f"<tr><td style='padding:5px 10px;color:#64748B;font-size:10px;width:140px;vertical-align:top'>{label}</td><td style='padding:5px 10px;font-size:11px;color:#0F172A'>{val}</td></tr>"
+        if terms_rows:
+            terms_html = f"""<div style="font-size:11px;font-weight:700;color:#C5964A;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">Commercial Terms</div>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:12px;background:#F8FAFC;border-radius:6px">{terms_rows}</table>"""
+
+    # Freight details
+    freight = order.get("freight_details") or {}
+    freight_html = ""
+    if freight:
+        freight_parts = []
+        if freight.get("delivery_location"): freight_parts.append(f"Delivery: {freight['delivery_location']}")
+        if freight.get("freight_cost"): freight_parts.append(f"Freight: Rs.{freight['freight_cost']:,.2f}")
+        if freight.get("distance_km"): freight_parts.append(f"Distance: {freight['distance_km']} km")
+        if freight_parts:
+            freight_html = f"""<div style="font-size:10px;color:#64748B;margin-bottom:8px">{'  |  '.join(freight_parts)}</div>"""
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+    @page {{ size: A4; margin: 15mm; }}
+    * {{ margin:0; padding:0; box-sizing:border-box; }}
+    body {{ font-family: 'Helvetica Neue', Arial, sans-serif; color:#1E293B; font-size:11px; line-height:1.5; }}
+    .so {{ max-width:800px; margin:0 auto; }}
+    .header {{ display:flex; justify-content:space-between; border-bottom:3px solid #C5964A; padding-bottom:14px; margin-bottom:16px; }}
+    .company-name {{ font-size:22px; font-weight:800; color:#0F172A; letter-spacing:1px; }}
+    .company-details {{ font-size:10px; color:#475569; line-height:1.6; }}
+    .doc-title {{ font-size:22px; font-weight:800; color:#960018; text-align:right; }}
+    .doc-number {{ font-size:14px; font-weight:600; color:#0F172A; text-align:right; }}
+    .doc-date {{ font-size:11px; color:#64748B; text-align:right; }}
+    .info-grid {{ display:flex; gap:16px; margin-bottom:16px; }}
+    .info-box {{ flex:1; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:12px; }}
+    .info-label {{ font-size:9px; font-weight:700; color:#C5964A; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }}
+    .info-value {{ font-size:11px; color:#0F172A; }}
+    table.items {{ width:100%; border-collapse:collapse; margin-bottom:16px; }}
+    table.items th {{ background:#0F172A; color:#fff; padding:7px 8px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }}
+    table.items td {{ padding:7px 8px; border-bottom:1px solid #E2E8F0; font-size:11px; }}
+    table.items tr:nth-child(even) {{ background:#F8FAFC; }}
+    .totals {{ display:flex; justify-content:flex-end; }}
+    .totals-table {{ width:320px; }}
+    .totals-table td {{ padding:5px 10px; font-size:11px; }}
+    .totals-table .label {{ color:#64748B; text-align:right; }}
+    .totals-table .value {{ text-align:right; font-weight:600; color:#0F172A; }}
+    .totals-table .grand {{ font-size:14px; font-weight:800; color:#960018; border-top:2px solid #C5964A; padding-top:8px; }}
+    .grand-label {{ font-size:14px; font-weight:800; color:#0F172A; }}
+    .stamp-area {{ display:flex; justify-content:space-between; margin-top:40px; }}
+    .stamp-line {{ width:180px; border-top:1px solid #CBD5E1; margin-top:50px; padding-top:4px; font-size:10px; color:#64748B; text-align:center; }}
+    .footer {{ text-align:center; margin-top:20px; padding-top:10px; border-top:1px solid #E2E8F0; font-size:9px; color:#94A3B8; }}
+</style>
+</head><body>
+<div class="so">
+    <div class="header">
+        <div>
+            <div class="company-name">{COMPANY['name']}</div>
+            <div class="company-details">
+                {COMPANY['address']}<br>
+                Ph: {COMPANY['phone']} | {COMPANY['email']}<br>
+                {COMPANY['website']}<br>
+                <b>GSTIN: {COMPANY['gstin']}</b>
+            </div>
+        </div>
+        <div>
+            <div class="doc-title">SALES ORDER</div>
+            <div class="doc-number">{so_num}</div>
+            <div class="doc-date">Date: {so_date}</div>
+            {'<div class="doc-date">Quote: ' + quote_num + '</div>' if quote_num else ''}
+        </div>
+    </div>
+
+    <div class="info-grid">
+        <div class="info-box">
+            <div class="info-label">Bill To</div>
+            <div class="info-value">
+                <b>{cust_company or cust_name}</b><br>
+                {cust_name if cust_company else ''}<br>
+                {cust_address}<br>
+                {'Ph: ' + cust_phone + '<br>' if cust_phone else ''}
+                {cust_email}<br>
+                {'<b>GSTIN: ' + cust_gst + '</b><br>' if cust_gst else ''}
+                {'Code: ' + cust_code if cust_code else ''}
+            </div>
+        </div>
+        <div class="info-box">
+            <div class="info-label">Ship To</div>
+            <div class="info-value">
+                <b>{cust_company or cust_name}</b><br>
+                {cust_address or 'Same as billing address'}
+            </div>
+        </div>
+    </div>
+
+    {freight_html}
+
+    <table class="items">
+        <tr>
+            <th style="width:30px">Sr.</th>
+            <th>Description</th>
+            <th style="width:70px">HSN</th>
+            <th style="width:40px">Qty</th>
+            <th style="width:70px;text-align:right">Wt (kg)</th>
+            <th style="width:80px;text-align:right">Unit Price</th>
+            <th style="width:90px;text-align:right">Amount (Rs.)</th>
+        </tr>
+        {product_rows}
+    </table>
+
+    <div class="totals">
+        <table class="totals-table">
+            <tr><td class="label">Subtotal</td><td class="value">Rs.{subtotal:,.2f}</td></tr>
+            {'<tr><td class="label">Discount</td><td class="value">- Rs.' + f'{total_discount:,.2f}' + '</td></tr>' if total_discount > 0 else ''}
+            {'<tr><td class="label">Packing Charges</td><td class="value">Rs.' + f'{packing:,.2f}' + '</td></tr>' if packing > 0 else ''}
+            {'<tr><td class="label">Freight / Shipping</td><td class="value">Rs.' + f'{shipping:,.2f}' + '</td></tr>' if shipping > 0 else ''}
+            <tr><td class="grand-label">Total</td><td class="grand">Rs.{total_price:,.2f}</td></tr>
+        </table>
+    </div>
+
+    {terms_html}
+
+    <div class="stamp-area">
+        <div><div class="stamp-line">Customer's Seal & Signature</div></div>
+        <div><div class="stamp-line">For {COMPANY['name']}<br>Authorized Signatory</div></div>
+    </div>
+
+    <div class="footer">This is a computer-generated document. | {COMPANY['name']} | GSTIN: {COMPANY['gstin']} | {COMPANY['email']}</div>
+</div>
+</body></html>"""
+
+    output = io.BytesIO(html.encode('utf-8'))
+    output.seek(0)
+    filename = f"{so_num.replace('/', '-')}.html"
+
+    return StreamingResponse(output, media_type="text/html",
+                           headers={"Content-Disposition": f"attachment; filename={filename}"})
