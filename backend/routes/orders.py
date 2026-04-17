@@ -734,16 +734,16 @@ async def get_sales_order_pdf(
     shipping = order.get("shipping_cost", 0)
     total_price = order.get("total_price", 0)
 
+    # Freight details
+    freight = order.get("freight_details") or {}
+    freight_amount = freight.get("freight_amount", freight.get("freight_cost", shipping)) or 0
+
     # GST calculation (18%)
     taxable = round(subtotal - total_discount + packing + freight_amount, 2)
     cgst = round(taxable * 0.09, 2)
     sgst = round(taxable * 0.09, 2)
     total_gst = round(cgst + sgst, 2)
     grand_total = round(taxable + total_gst, 2)
-
-    # Freight details
-    freight = order.get("freight_details") or {}
-    freight_amount = freight.get("freight_amount", freight.get("freight_cost", shipping)) or 0
 
     # Commercial terms
     terms = order.get("commercial_terms") or {}
