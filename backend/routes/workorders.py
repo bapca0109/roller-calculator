@@ -673,23 +673,37 @@ async def get_work_order_pdf(
 
     consolidated_rows = ""
     grand_bom_weight = 0
-    for ci, (comp_key, cb) in enumerate(consolidated_bom.items(), 1):
-        grand_bom_weight += cb["total_weight_kg"]
-        consolidated_rows += f"""<tr>
-            <td style="text-align:center">{ci}</td>
-            <td><b>{cb['component']}</b></td>
+    # Group by component for section headers
+    from collections import OrderedDict
+    component_groups = OrderedDict()
+    for comp_key, cb in consolidated_bom.items():
+        comp = cb["component"]
+        if comp not in component_groups:
+            component_groups[comp] = []
+        component_groups[comp].append(cb)
+
+    sr = 1
+    for comp_name, items in component_groups.items():
+        # Component header row
+        consolidated_rows += f"""<tr style="background:#E2E8F0">
+            <td colspan="6" style="padding:6px 10px;font-weight:700;color:#0F172A;font-size:11px">{comp_name}</td>
+        </tr>"""
+        for cb in items:
+            grand_bom_weight += cb["total_weight_kg"]
+            consolidated_rows += f"""<tr>
+            <td style="text-align:center">{sr}</td>
             <td>{cb['description']}</td>
             <td>{cb['material']}</td>
             <td style="text-align:center;font-weight:700">{cb['total_qty']}</td>
             <td style="text-align:right">{round(cb['total_weight_kg'],3) if cb['total_weight_kg'] else '-'}</td>
         </tr>"""
+            sr += 1
 
     consolidated_bom_html = f"""
     <div style="font-size:12px;font-weight:700;color:#C5964A;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">Total Bill of Materials (All Items)</div>
     <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:16px">
         <tr style="background:#1E293B;color:#fff">
             <th style="padding:7px;text-align:center;width:30px">Sr.</th>
-            <th style="padding:7px">Component</th>
             <th style="padding:7px">Description</th>
             <th style="padding:7px">Material</th>
             <th style="padding:7px;text-align:center">Total Qty</th>
@@ -697,7 +711,7 @@ async def get_work_order_pdf(
         </tr>
         {consolidated_rows}
         <tr style="font-weight:700;background:#F0F4F8">
-            <td colspan="5" style="text-align:right;padding:8px">Grand Total Weight</td>
+            <td colspan="4" style="text-align:right;padding:8px">Grand Total Weight</td>
             <td style="text-align:right;padding:8px">{round(grand_bom_weight,3)} kg</td>
         </tr>
     </table>""" if consolidated_bom else ""
