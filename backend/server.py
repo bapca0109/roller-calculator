@@ -35,6 +35,7 @@ from routes.workorders import router as workorders_router
 from routes.suppliers import router as suppliers_router
 from routes.inventory import router as inventory_router
 from routes.price_history import router as price_history_router
+from routes.dispatch import router as dispatch_router
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -649,6 +650,7 @@ api_router.include_router(workorders_router)
 api_router.include_router(suppliers_router)
 api_router.include_router(inventory_router)
 api_router.include_router(price_history_router)
+api_router.include_router(dispatch_router)
 app.include_router(api_router)
 
 app.add_middleware(

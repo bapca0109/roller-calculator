@@ -86,7 +86,7 @@ function OrdersAndWOView({ orders, ordersLoading, fetchOrders, workOrders, woLoa
       )}
 
       {subTab === 'so' ? (
-        <OrdersView orders={orders} loading={ordersLoading} onRefresh={fetchOrders} isAdmin={isAdmin} />
+        <OrdersView orders={orders} loading={ordersLoading} onRefresh={fetchOrders} isAdmin={isAdmin} userRole={role} />
       ) : (
         <WorkOrdersView workOrders={workOrders} loading={woLoading} onRefresh={fetchWorkOrders} isAdmin={isAdmin} />
       )}
@@ -299,11 +299,26 @@ const ORDER_STAGE_LABELS: Record<string, string> = {
 };
 const PAYMENT_COLORS: Record<string, string> = { unpaid: '#EF4444', partial: '#F59E0B', paid: '#10B981' };
 
-function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; loading: boolean; onRefresh: () => void; isAdmin: boolean }) {
+function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders: any[]; loading: boolean; onRefresh: () => void; isAdmin: boolean; userRole?: string }) {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [detailOrder, setDetailOrder] = useState<any>(null);
+
+  // Delivery Challan state
+  const [showChallan, setShowChallan] = useState(false);
+  const [challanOrder, setChallanOrder] = useState<any>(null);
+  const [dcVehicleNo, setDcVehicleNo] = useState('');
+  const [dcDriverName, setDcDriverName] = useState('');
+  const [dcDriverPhone, setDcDriverPhone] = useState('');
+  const [dcTransporter, setDcTransporter] = useState('');
+  const [dcEwayBill, setDcEwayBill] = useState('');
+  const [dcDispatchDate, setDcDispatchDate] = useState(() => {
+    const d = new Date();
+    return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+  });
+  const [dcRemarks, setDcRemarks] = useState('');
+  const [dcSaving, setDcSaving] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showCreateWO, setShowCreateWO] = useState(false);
   const [woOrder, setWoOrder] = useState<any>(null);
@@ -396,6 +411,41 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
       onRefresh();
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
     finally { setProcessing(false); }
+  };
+
+  const submitChallan = async () => {
+    if (!challanOrder) return;
+    if (!dcVehicleNo || !dcDriverName || !dcTransporter || !dcDispatchDate) {
+      Alert.alert('Missing fields', 'Vehicle No, Driver, Transporter and Dispatch Date are mandatory');
+      return;
+    }
+    try {
+      setDcSaving(true);
+      const res = await api.post('/delivery-challans', {
+        order_id: challanOrder.id,
+        vehicle_no: dcVehicleNo,
+        driver_name: dcDriverName,
+        driver_phone: dcDriverPhone || null,
+        transporter_name: dcTransporter,
+        eway_bill_no: dcEwayBill || null,
+        dispatch_date: dcDispatchDate,
+        remarks: dcRemarks || null,
+      });
+      const dc = res.data.challan;
+      Alert.alert('Challan Created', `${dc.dc_number} created successfully. Order marked as dispatched.`);
+      setShowChallan(false);
+      onRefresh();
+      // Offer to download PDF
+      if (Platform.OS === 'web') {
+        const token = await AsyncStorage.getItem('token');
+        const url = `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/delivery-challans/${dc.id}/pdf?token=${token}`;
+        window.open(url, '_blank');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'Failed to create challan');
+    } finally {
+      setDcSaving(false);
+    }
   };
 
   const updateStage = async (orderId: string, stage: string) => {
@@ -679,12 +729,58 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
                 )}
 
                 {/* Actions */}
-                {isAdmin && (
+                {(isAdmin || userRole === 'dispatch') && (
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-                    <TouchableOpacity style={[os.actionBtn, { flex: 1 }]} onPress={() => { setSelectedOrder(detailOrder); setShowDetail(false); setShowPayment(true); }}>
-                      <Ionicons name="cash-outline" size={15} color="#C5964A" />
-                      <Text style={os.actionText}>Record Payment</Text>
-                    </TouchableOpacity>
+                    {isAdmin && (
+                      <TouchableOpacity style={[os.actionBtn, { flex: 1 }]} onPress={() => { setSelectedOrder(detailOrder); setShowDetail(false); setShowPayment(true); }}>
+                        <Ionicons name="cash-outline" size={15} color="#C5964A" />
+                        <Text style={os.actionText}>Record Payment</Text>
+                      </TouchableOpacity>
+                    )}
+                    {detailOrder.stage !== 'dispatched' && detailOrder.stage !== 'cancelled' && (
+                      <TouchableOpacity
+                        style={[os.actionBtn, { flex: 1 }]}
+                        onPress={() => {
+                          setChallanOrder(detailOrder);
+                          setDcVehicleNo('');
+                          setDcDriverName('');
+                          setDcDriverPhone('');
+                          setDcTransporter('');
+                          setDcEwayBill('');
+                          setDcRemarks('');
+                          setShowDetail(false);
+                          setShowChallan(true);
+                        }}
+                        testID="btn-create-challan"
+                      >
+                        <Ionicons name="send-outline" size={15} color="#059669" />
+                        <Text style={os.actionText}>Create Challan</Text>
+                      </TouchableOpacity>
+                    )}
+                    {detailOrder.stage === 'dispatched' && detailOrder.dc_number && (
+                      <TouchableOpacity
+                        style={[os.actionBtn, { flex: 1 }]}
+                        onPress={async () => {
+                          try {
+                            const token = await AsyncStorage.getItem('token');
+                            // Lookup the DC by order id to get its id
+                            const list = await api.get('/delivery-challans', { params: { order_id: detailOrder.id } });
+                            const dc = list.data.challans?.[0];
+                            if (!dc) { Alert.alert('Error', 'Challan not found'); return; }
+                            const url = `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/delivery-challans/${dc.id}/pdf?token=${token}`;
+                            if (Platform.OS === 'web') {
+                              window.open(url, '_blank');
+                            }
+                          } catch (e: any) {
+                            Alert.alert('Error', e.response?.data?.detail || 'Failed to download DC');
+                          }
+                        }}
+                        testID="btn-download-dc"
+                      >
+                        <Ionicons name="download-outline" size={15} color="#059669" />
+                        <Text style={os.actionText}>Download DC PDF</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
 
@@ -716,6 +812,49 @@ function OrdersView({ orders, loading, onRefresh, isAdmin }: { orders: any[]; lo
             <TouchableOpacity style={os.saveBtn} onPress={addPayment} disabled={processing}>
               {processing ? <ActivityIndicator color="#fff" /> : <><Ionicons name="checkmark" size={20} color="#fff" /><Text style={os.saveBtnText}>Record Payment</Text></>}
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delivery Challan Modal */}
+      <Modal visible={showChallan} animationType="slide" transparent>
+        <View style={os.modalOverlay}>
+          <View style={[os.modal, { maxHeight: '90%' }]}>
+            <View style={os.modalHead}>
+              <Text style={os.modalTitle}>Create Delivery Challan</Text>
+              <TouchableOpacity onPress={() => setShowChallan(false)} testID="dc-close"><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity>
+            </View>
+            {challanOrder && (
+              <Text style={os.modalSub}>
+                {challanOrder.so_number} — {challanOrder.customer_company || challanOrder.customer_name}
+              </Text>
+            )}
+            <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
+              {challanOrder && (challanOrder.total_price || 0) > 50000 && (
+                <View style={{ backgroundColor: '#FEF2F2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 8, padding: 10, marginBottom: 10 }}>
+                  <Text style={{ color: '#B91C1C', fontSize: 12, fontWeight: '700' }}>
+                    ⚠ Consignment value Rs. {challanOrder.total_price?.toLocaleString()} exceeds ₹50,000 — E-way Bill No. is mandatory.
+                  </Text>
+                </View>
+              )}
+              <Text style={os.label}>Vehicle No. *</Text>
+              <TextInput style={os.input} value={dcVehicleNo} onChangeText={setDcVehicleNo} placeholder="e.g. GJ05AB1234" autoCapitalize="characters" testID="dc-vehicle" />
+              <Text style={os.label}>Transporter Name *</Text>
+              <TextInput style={os.input} value={dcTransporter} onChangeText={setDcTransporter} placeholder="e.g. VRL Logistics" testID="dc-transporter" />
+              <Text style={os.label}>Driver Name *</Text>
+              <TextInput style={os.input} value={dcDriverName} onChangeText={setDcDriverName} placeholder="Driver's full name" testID="dc-driver" />
+              <Text style={os.label}>Driver Phone</Text>
+              <TextInput style={os.input} value={dcDriverPhone} onChangeText={setDcDriverPhone} keyboardType="phone-pad" placeholder="Optional" testID="dc-phone" />
+              <Text style={os.label}>E-way Bill No.{challanOrder && (challanOrder.total_price || 0) > 50000 ? ' *' : ' (optional under ₹50k)'}</Text>
+              <TextInput style={os.input} value={dcEwayBill} onChangeText={setDcEwayBill} placeholder="12-digit e-way bill" testID="dc-eway" />
+              <Text style={os.label}>Dispatch Date (DD-MM-YYYY) *</Text>
+              <TextInput style={os.input} value={dcDispatchDate} onChangeText={setDcDispatchDate} placeholder="DD-MM-YYYY" testID="dc-date" />
+              <Text style={os.label}>Remarks</Text>
+              <TextInput style={[os.input, { height: 60 }]} value={dcRemarks} onChangeText={setDcRemarks} multiline placeholder="Optional notes" testID="dc-remarks" />
+              <TouchableOpacity style={[os.saveBtn, { marginTop: 10 }]} onPress={submitChallan} disabled={dcSaving} testID="dc-submit">
+                {dcSaving ? <ActivityIndicator color="#fff" /> : <><Ionicons name="send" size={18} color="#fff" /><Text style={os.saveBtnText}>Create Challan & Download PDF</Text></>}
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>
