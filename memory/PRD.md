@@ -1,47 +1,39 @@
-# Belt Conveyor Roller & Pulley ERP - PRD
+# Belt Conveyor ERP - PRD
 
-## Original Problem Statement
-Full ERP mobile application for belt conveyor engineering — roller/pulley pricing, quoting, CRM, sales orders, work orders, invoicing, inventory/store management, and production tracking.
+## Architecture
+- Backend: FastAPI with 13 route modules (690 line server.py)
+- Frontend: Expo React Native (iOS + Android + Web)
+- Database: MongoDB
+- Tabs: CRM, Products, Cart, Sales, Customers, Admin, Store, Profile
 
-## What's Implemented
+## Completed Features
+- Roller + Pulley calculators with real pricing
+- Quote/RFQ workflow with approval + PDF email attachments
+- CRM: Leads, Follow-ups, Activity Timeline
+- Sales Orders with delivery date, SO PDF
+- Work Orders with production details, auto BOM (8 components for roller), WO PDF
+- Invoicing: Proforma + Tax Invoice PDFs with company/bank details
+- Payment tracking
+- Inventory/Store: 251 stock items, POs, QC, Issue, Shortages, Alerts
+- Supplier management with PO PDF
+- Stock Adjustment (opening balance, damage, audit)
+- Analytics Dashboard (revenue trends, order pipeline, WO stats)
+- Stock-BOM linking via bom_match_key
+- Excel/PDF exports across all modules
+- Premium glass UI, DD-MM-YYYY dates, full product codes in PDFs
+- Pulley prices migrated to MongoDB (editable via API)
 
-### Inventory/Store Backend (April 17, 2026) — NEW
-- [x] `routes/inventory.py` — Full store management (300+ lines)
-- [x] `routes/suppliers.py` — Supplier database CRUD
-- [x] Stock Items: CRUD with categories, units (meters/kg/nos), reorder levels
-- [x] Purchase Orders: Create PO with supplier, items, rates → PO/26-27/0001 format
-- [x] QC: Pass/Fail/Partial with accepted/rejected qty, auto-adds to stock on pass
-- [x] Stock Issue: Manual issue against Work Orders, deducts from stock, logs transactions
-- [x] Stock Transactions Log: In/Out with reference (PO/WO), who, when
-- [x] Low Stock Alerts: Items below reorder level
-- [x] Store Dashboard: Total items, POs, pending POs, low stock count, categories, recent transactions
-- [x] All APIs verified working end-to-end
+## P0 — Next
+- [ ] Pulley Admin Frontend (editable prices in Admin UI)
+- [ ] User Roles (Sales, Production, Accounts, Dispatch)
 
-### Backend APIs
-- `GET/POST /api/store/items` — Stock items CRUD
-- `GET/POST /api/store/purchase-orders` — Purchase orders
-- `POST /api/store/qc` — Quality check (pass/fail/partial)
-- `POST /api/store/issue` — Issue stock against WO
-- `GET /api/store/transactions` — Transaction log
-- `GET /api/store/alerts` — Low stock alerts
-- `GET /api/store/dashboard` — Store summary
-- `GET /api/store/options` — Categories, statuses, units
-- `GET/POST/PUT/DELETE /api/suppliers` — Supplier management
-
-### MongoDB Collections
-- `stock_items` — inventory items with current stock
-- `purchase_orders` — POs with QC status per item
-- `stock_transactions` — in/out transaction log
-- `suppliers_master` — supplier database
-
-## P0 — Next Priority
-- [ ] **Store Frontend** — New "Store" tab with: Dashboard, Stock Levels, Purchase Orders, QC, Issue, Suppliers, Alerts
-- [ ] Pulley Admin Editable Prices (MongoDB-backed)
-
-## P1 — Important
+## P1
+- [ ] Dispatch/Delivery Challan
+- [ ] Tax Invoice auto-gen on dispatch
+- [ ] Accounts Receivable
+- [ ] GST Reports
 - [ ] KLA pricing
-- [ ] Convert to SO button reliability
 
-## Test Credentials
-- **Admin**: test@test.com / test123
-- **Customer**: customer@test.com / test123
+## Credentials
+- Admin: test@test.com / test123
+- Customer: customer@test.com / test123
