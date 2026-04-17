@@ -962,7 +962,7 @@ export default function AdminScreen() {
       </View>
 
       {mainTab === 'prices' ? (
-        <>
+        <View style={{flex: 1}}>
           {/* Roller / Pulley Toggle */}
           <View style={{ flexDirection: 'row', marginHorizontal: 16, marginTop: 12, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: 3 }}>
             <TouchableOpacity style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 8, gap: 6 }, productType === 'roller' && { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }]} onPress={() => setProductType('roller')}>
@@ -1328,7 +1328,6 @@ export default function AdminScreen() {
           </View>
         </View>
       </Modal>
-      </>
     </View>
   );
 }
