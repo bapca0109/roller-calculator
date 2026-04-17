@@ -728,9 +728,22 @@ async def get_sales_order_pdf(
     # Pricing
     subtotal = order.get("subtotal", 0)
     total_discount = order.get("total_discount", 0)
+    discount_percent = order.get("discount_percent", 0)
     packing = order.get("packing_charges", 0)
+    packing_type = order.get("packing_type", "")
     shipping = order.get("shipping_cost", 0)
     total_price = order.get("total_price", 0)
+
+    # GST calculation (18%)
+    taxable = total_price
+    cgst = round(taxable * 0.09, 2)
+    sgst = round(taxable * 0.09, 2)
+    total_gst = round(cgst + sgst, 2)
+    grand_total = round(taxable + total_gst, 2)
+
+    # Freight details
+    freight = order.get("freight_details") or {}
+    freight_amount = freight.get("freight_amount", freight.get("freight_cost", shipping)) or 0
 
     # Commercial terms
     terms = order.get("commercial_terms") or {}
@@ -856,10 +869,13 @@ async def get_sales_order_pdf(
     <div class="totals">
         <table class="totals-table">
             <tr><td class="label">Subtotal</td><td class="value">Rs.{subtotal:,.2f}</td></tr>
-            {'<tr><td class="label">Discount</td><td class="value">- Rs.' + f'{total_discount:,.2f}' + '</td></tr>' if total_discount > 0 else ''}
-            {'<tr><td class="label">Packing Charges</td><td class="value">Rs.' + f'{packing:,.2f}' + '</td></tr>' if packing > 0 else ''}
-            {'<tr><td class="label">Freight / Shipping</td><td class="value">Rs.' + f'{shipping:,.2f}' + '</td></tr>' if shipping > 0 else ''}
-            <tr><td class="grand-label">Total</td><td class="grand">Rs.{total_price:,.2f}</td></tr>
+            {'<tr><td class="label">Discount (' + str(discount_percent) + '%)</td><td class="value">- Rs.' + f'{total_discount:,.2f}' + '</td></tr>' if total_discount > 0 else ''}
+            {'<tr><td class="label">Packing (' + packing_type + ')</td><td class="value">Rs.' + f'{packing:,.2f}' + '</td></tr>' if packing > 0 else ''}
+            {'<tr><td class="label">Freight</td><td class="value">Rs.' + f'{freight_amount:,.2f}' + '</td></tr>' if freight_amount > 0 else ''}
+            <tr><td class="label" style="border-top:1px solid #E2E8F0;padding-top:6px">Taxable Amount</td><td class="value" style="border-top:1px solid #E2E8F0;padding-top:6px">Rs.{taxable:,.2f}</td></tr>
+            <tr><td class="label">CGST @ 9%</td><td class="value">Rs.{cgst:,.2f}</td></tr>
+            <tr><td class="label">SGST @ 9%</td><td class="value">Rs.{sgst:,.2f}</td></tr>
+            <tr><td class="grand-label">Grand Total</td><td class="grand">Rs.{grand_total:,.2f}</td></tr>
         </table>
     </div>
 
