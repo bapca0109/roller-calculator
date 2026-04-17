@@ -4,6 +4,7 @@ Database connection, auth middleware, utility functions, and constants.
 """
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pymongo import ReturnDocument
 from motor.motor_asyncio import AsyncIOMotorClient
 from passlib.context import CryptContext
 from jose import jwt, JWTError
@@ -103,68 +104,76 @@ def require_role(allowed_roles: List[str]):
     return role_checker
 
 
+async def _next_seq(counter_key: str, seed_value: int = 0) -> int:
+    """Atomic monotonically-increasing counter stored in `counters` collection.
+
+    - `counter_key`: e.g. "rfq:26-27", "so:26-27", "c:26-27"
+    - `seed_value`: on first use (doc not present) the counter is initialised to
+      this value using `$setOnInsert`; `$inc` then always returns the next.
+    This is race-safe (single atomic `find_one_and_update`) and immune to
+    renumbering/deletion patterns because the DB no longer has to be scanned.
+    """
+    # Idempotent seed: only sets `value` if the doc is new.
+    await db.counters.update_one(
+        {"_id": counter_key},
+        {"$setOnInsert": {"value": seed_value}},
+        upsert=True,
+    )
+    doc = await db.counters.find_one_and_update(
+        {"_id": counter_key},
+        {"$inc": {"value": 1}},
+        return_document=ReturnDocument.AFTER,
+    )
+    return int(doc["value"])
+
+
+def _parse_suffix(value: str) -> int:
+    """Return the trailing numeric portion of a code like 'RFQ/26-27/0042' -> 42.
+    Returns 0 if not parseable."""
+    try:
+        return int((value or "").split("/")[-1])
+    except (ValueError, IndexError):
+        return 0
+
+
+async def _max_suffix(collection, field: str, prefix: str) -> int:
+    """Highest numeric suffix across all docs in `collection` whose `field`
+    starts with `prefix`. Used only once (per FY) to seed the counter."""
+    doc = await collection.find(
+        {field: {"$regex": f"^{prefix}"}}, {field: 1}
+    ).sort(field, -1).limit(1).to_list(1)
+    return _parse_suffix(doc[0][field]) if doc else 0
+
+
 async def generate_quote_number():
     fy = get_financial_year()
     prefix = f"Q/{fy}/"
-    last_quote = await db.quotes.find(
-        {"quote_number": {"$regex": f"^{prefix.replace('/', '/')}"}},
-        {"quote_number": 1}
-    ).sort("quote_number", -1).limit(1).to_list(1)
-    if last_quote:
-        last_num = int(last_quote[0]["quote_number"].split("/")[-1])
-        return f"{prefix}{last_num + 1:04d}"
-    return f"{prefix}0001"
+    # Seed: max of existing Q/FY/… suffixes. RFQ numbers are NOT included — the
+    # Q sequence is independent (Q is assigned on approval from its own counter).
+    seed = await _max_suffix(db.quotes, "quote_number", prefix)
+    n = await _next_seq(f"q:{fy}", seed_value=seed)
+    return f"{prefix}{n:04d}"
 
 
 async def generate_rfq_number():
-    """Generate next RFQ number for current FY.
-
-    Every approved RFQ becomes a Quote (quote_number changes from RFQ/FY/N to
-    Q/FY/M). Looking only at RFQ/ records would reset the counter to 0001 after
-    all RFQs are approved, causing duplicate numbers. We therefore also scan
-    approved Quotes for the same FY and take max of both to get the true
-    highest sequence issued.
-    """
     fy = get_financial_year()
     rfq_prefix = f"RFQ/{fy}/"
     q_prefix = f"Q/{fy}/"
-
-    def _num(doc):
-        try:
-            return int((doc.get("quote_number") or "").split("/")[-1])
-        except (ValueError, IndexError):
-            return 0
-
-    last_rfq = await db.quotes.find(
-        {"quote_number": {"$regex": f"^{rfq_prefix}"}},
-        {"quote_number": 1}
-    ).sort("quote_number", -1).limit(1).to_list(1)
-    last_q = await db.quotes.find(
-        {"quote_number": {"$regex": f"^{q_prefix}"}},
-        {"quote_number": 1}
-    ).sort("quote_number", -1).limit(1).to_list(1)
-
-    highest = max(
-        _num(last_rfq[0]) if last_rfq else 0,
-        _num(last_q[0]) if last_q else 0,
-    )
-    return f"{rfq_prefix}{highest + 1:04d}"
+    # Seed from max across BOTH prefixes: every approved RFQ became a Q, so the
+    # highest-issued RFQ number = max(max existing RFQ/, max existing Q/).
+    rfq_max = await _max_suffix(db.quotes, "quote_number", rfq_prefix)
+    q_max = await _max_suffix(db.quotes, "quote_number", q_prefix)
+    seed = max(rfq_max, q_max)
+    n = await _next_seq(f"rfq:{fy}", seed_value=seed)
+    return f"{rfq_prefix}{n:04d}"
 
 
 async def generate_customer_code() -> str:
     fy = get_financial_year()
     prefix = f"C/{fy}/"
-    last_customer = await db.customers.find(
-        {"customer_code": {"$regex": f"^{prefix}"}},
-        {"customer_code": 1}
-    ).sort("customer_code", -1).limit(1).to_list(1)
-    if last_customer:
-        try:
-            last_num = int(last_customer[0]["customer_code"].split("/")[-1])
-            return f"{prefix}{last_num + 1:04d}"
-        except (ValueError, IndexError):
-            pass
-    return f"{prefix}0001"
+    seed = await _max_suffix(db.customers, "customer_code", prefix)
+    n = await _next_seq(f"c:{fy}", seed_value=seed)
+    return f"{prefix}{n:04d}"
 
 
 # ============= SHARED MODELS =============

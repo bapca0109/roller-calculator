@@ -56,17 +56,10 @@ class DeliveryChallanCreate(BaseModel):
 async def generate_dc_number() -> str:
     fy = get_financial_year()
     prefix = f"DC/{fy}/"
-    last = await db.delivery_challans.find(
-        {"dc_number": {"$regex": f"^{prefix}"}},
-        {"dc_number": 1}
-    ).sort("dc_number", -1).limit(1).to_list(1)
-    if last:
-        try:
-            n = int(last[0]["dc_number"].split("/")[-1])
-            return f"{prefix}{n + 1:04d}"
-        except (ValueError, IndexError):
-            pass
-    return f"{prefix}0001"
+    from routes import _next_seq, _max_suffix
+    seed = await _max_suffix(db.delivery_challans, "dc_number", prefix)
+    n = await _next_seq(f"dc:{fy}", seed_value=seed)
+    return f"{prefix}{n:04d}"
 
 
 def format_date_dmy(value) -> str:

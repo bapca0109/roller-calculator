@@ -53,25 +53,19 @@ class OrderStageUpdate(BaseModel):
 async def generate_so_number():
     fy = get_financial_year()
     prefix = f"SO/{fy}/"
-    last = await db.sales_orders.find(
-        {"so_number": {"$regex": f"^{prefix}"}}, {"so_number": 1}
-    ).sort("so_number", -1).limit(1).to_list(1)
-    if last:
-        num = int(last[0]["so_number"].split("/")[-1])
-        return f"{prefix}{num + 1:04d}"
-    return f"{prefix}0001"
+    from routes import _next_seq, _max_suffix
+    seed = await _max_suffix(db.sales_orders, "so_number", prefix)
+    n = await _next_seq(f"so:{fy}", seed_value=seed)
+    return f"{prefix}{n:04d}"
 
 
 async def generate_invoice_number(doc_type="INV"):
     fy = get_financial_year()
     prefix = f"{doc_type}/{fy}/"
-    last = await db.invoices.find(
-        {"invoice_number": {"$regex": f"^{prefix}"}}, {"invoice_number": 1}
-    ).sort("invoice_number", -1).limit(1).to_list(1)
-    if last:
-        num = int(last[0]["invoice_number"].split("/")[-1])
-        return f"{prefix}{num + 1:04d}"
-    return f"{prefix}0001"
+    from routes import _next_seq, _max_suffix
+    seed = await _max_suffix(db.invoices, "invoice_number", prefix)
+    n = await _next_seq(f"{doc_type.lower()}:{fy}", seed_value=seed)
+    return f"{prefix}{n:04d}"
 
 
 # ============= SALES ORDER ROUTES =============
