@@ -557,28 +557,50 @@ async def get_work_order_pdf(
     
     # TABLE 1: Items Summary
     items_summary_rows = ""
+    import roller_standards as rs
     for idx, item in enumerate(all_items, 1):
         specs = item.get("specifications", {})
-        pd_slot = item.get("shaft_slot_details", {})
         slot_str = item.get("shaft_slot", "N/A")
         pipe_type_str = specs.get("pipe_type", "")
-        # Extract thickness from pipe_type like "8mm wall"
+        
+        # Get pipe thickness from BOM or pipe_type
         import re
-        thk_match = re.search(r'(\d+\.?\d*)', str(pipe_type_str))
-        pipe_thk = thk_match.group(1) if thk_match else "-"
+        pipe_thk = "-"
+        # Try from BOM first
+        for b in item.get("bom", []):
+            if b.get("component") == "Pipe":
+                thk_match = re.search(r'x\s*(\d+\.?\d*)\s*mm\s*thk', b.get("description", ""))
+                if thk_match:
+                    pipe_thk = thk_match.group(1)
+                    break
+        if pipe_thk == "-":
+            thk_match = re.search(r'(\d+\.?\d*)', str(pipe_type_str))
+            if thk_match:
+                pipe_thk = thk_match.group(1)
+
+        # Get housing size from roller standards
+        bearing_number = specs.get("bearing_number", specs.get("bearing", ""))
+        bearing_make = specs.get("bearing_make", "china")
+        pipe_dia = specs.get("pipe_diameter", 0)
+        housing_size = rs.get_housing_for_pipe_and_bearing(pipe_dia, bearing_number) if pipe_dia and bearing_number else "-"
+        if not housing_size:
+            housing_size = "-"
+
+        # Bearing with make
+        bearing_display = f"{bearing_number} {(bearing_make or 'china').upper()}" if bearing_number else "-"
         
         items_summary_rows += f"""<tr>
             <td style="text-align:center">{idx}</td>
             <td>{item.get('product_code','')}</td>
-            <td style="text-align:center">{specs.get('pipe_diameter','')}</td>
+            <td style="text-align:center">{pipe_dia}</td>
             <td style="text-align:center">{specs.get('rubber_diameter','') or '-'}</td>
             <td style="text-align:center">{specs.get('pipe_length','') or specs.get('face_length','')}</td>
             <td style="text-align:center">{pipe_thk}</td>
-            <td style="text-align:center">2</td>
+            <td style="text-align:center">{housing_size}</td>
             <td style="text-align:center">{specs.get('shaft_diameter','')}</td>
             <td style="text-align:center">{item.get('shaft_length_mm','')}</td>
             <td style="text-align:center">{slot_str}</td>
-            <td style="text-align:center">{specs.get('bearing_number','') or specs.get('bearing','') or '-'}</td>
+            <td style="text-align:center">{bearing_display}</td>
             <td style="text-align:center;font-weight:700">{item.get('quantity','')}</td>
         </tr>"""
 
