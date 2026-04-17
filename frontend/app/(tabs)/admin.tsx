@@ -1188,6 +1188,7 @@ export default function AdminScreen() {
           )}
         </>
         )}
+        </View>
       ) : (
         <>
           {loadingStandards ? (
