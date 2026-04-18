@@ -207,6 +207,46 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                     <Text style={[wos.actionText, { color: '#C5964A' }]}>PDF</Text>
                   </TouchableOpacity>
                 )}
+                {isAdmin && (
+                  <TouchableOpacity
+                    style={[wos.actionBtn, { borderColor: '#960018' }]}
+                    onPress={async () => {
+                      try {
+                        const token = await AsyncStorage.getItem('token');
+                        const res = await api.get(`/work-orders/${wo.id}/sub-wos`);
+                        const subs = res.data.sub_work_orders || [];
+                        const pipe = subs.find((s: any) => s.type === 'pipe');
+                        if (!pipe) { Alert.alert('Not available', 'No pipe details found for this WO'); return; }
+                        const url = `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/sub-work-orders/${pipe.id}/pdf?token=${token}`;
+                        if (Platform.OS === 'web') window.open(url, '_blank');
+                      } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed to load pipe job card'); }
+                    }}
+                    testID={`pipe-card-${wo.wo_number}`}
+                  >
+                    <Ionicons name="construct-outline" size={14} color="#960018" />
+                    <Text style={[wos.actionText, { color: '#960018' }]}>Pipe Card</Text>
+                  </TouchableOpacity>
+                )}
+                {isAdmin && (
+                  <TouchableOpacity
+                    style={[wos.actionBtn, { borderColor: '#0F766E' }]}
+                    onPress={async () => {
+                      try {
+                        const token = await AsyncStorage.getItem('token');
+                        const res = await api.get(`/work-orders/${wo.id}/sub-wos`);
+                        const subs = res.data.sub_work_orders || [];
+                        const shaft = subs.find((s: any) => s.type === 'shaft');
+                        if (!shaft) { Alert.alert('Not available', 'No shaft details found for this WO'); return; }
+                        const url = `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/sub-work-orders/${shaft.id}/pdf?token=${token}`;
+                        if (Platform.OS === 'web') window.open(url, '_blank');
+                      } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed to load shaft job card'); }
+                    }}
+                    testID={`shaft-card-${wo.wo_number}`}
+                  >
+                    <Ionicons name="cog-outline" size={14} color="#0F766E" />
+                    <Text style={[wos.actionText, { color: '#0F766E' }]}>Shaft Card</Text>
+                  </TouchableOpacity>
+                )}
                 {isAdmin && wo.stage !== 'completed' && (() => {
                   const stages = ['created', 'completed'];
                   const next = stages[stages.indexOf(wo.stage) + 1];

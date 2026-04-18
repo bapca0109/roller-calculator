@@ -253,11 +253,14 @@ async def bulk_create_work_order(
          "$set": {"work_order": wo_number, "updated_at": now.isoformat()}}
     )
 
+    # Auto-create Pipe + Shaft sub-work-orders (job cards for shop floor)
+    sub_wos = await _create_sub_wos(work_order, current_user.get("email"))
+
     # Auto-check BOM against stock and find shortages
     shortages = await _check_bom_shortages(work_order)
 
     del work_order["_id"]
-    return {"message": f"Work Order {wo_number} created with {len(wo_items)} item(s)", "work_order": work_order, "shortages": shortages}
+    return {"message": f"Work Order {wo_number} created with {len(wo_items)} item(s)", "work_order": work_order, "shortages": shortages, "sub_work_orders": [{"sub_wo_number": s["sub_wo_number"], "type": s["type"], "lines": len(s["items"])} for s in sub_wos]}
 
 @router.post("/orders/{order_id}/work-order")
 async def create_work_order(
@@ -924,6 +927,137 @@ STEEL_DENSITY = 7850  # kg/m³
 def _calc_weight(volume_mm3):
     """Convert volume in mm³ to weight in kg"""
     return round(volume_mm3 / 1e9 * STEEL_DENSITY, 3)
+
+
+def _build_sub_wo_items(wo_items: list) -> tuple:
+    """From WO items, extract pipe & shaft job card lines.
+    Returns (pipe_items, shaft_items).
+    """
+    import roller_standards as rs
+    import re
+    pipe_items = []
+    shaft_items = []
+    for it in wo_items:
+        specs = it.get("specifications") or {}
+        qty = int(it.get("quantity") or 1)
+        name = (it.get("product_name") or "").lower()
+        is_pulley = "pulley" in name
+
+        pipe_dia = specs.get("pipe_diameter") or 0
+        pipe_length = specs.get("pipe_length") or 0
+        shaft_dia = specs.get("shaft_diameter") or 0
+        shaft_length = it.get("shaft_length_mm") or specs.get("shaft_length") or 0
+        pipe_type = specs.get("pipe_type") or ""
+        bearing_number = specs.get("bearing_number") or specs.get("bearing") or ""
+        bearing_make = specs.get("bearing_make") or "china"
+
+        # Derive wall thickness from pipe_type (A/B/C or explicit mm)
+        wall_thk = 0
+        if pipe_type:
+            m = re.search(r'(\d+\.?\d*)\s*mm', str(pipe_type))
+            if m:
+                wall_thk = float(m.group(1))
+        if wall_thk == 0 and pipe_type and len(str(pipe_type).strip()) == 1:
+            PIPE_WALL_THK = {
+                60.8: {"A": 2.9, "B": 3.6, "C": 4.5},
+                76.1: {"A": 3.2, "B": 3.6, "C": 4.5},
+                88.9: {"A": 3.2, "B": 4.0, "C": 4.8},
+                114.3: {"A": 3.6, "B": 4.5, "C": 5.4},
+                127.0: {"A": 4.0, "B": 4.8, "C": 5.4},
+                139.7: {"A": 4.0, "B": 4.8, "C": 5.4},
+                152.4: {"A": 4.0, "B": 4.8, "C": 5.4},
+                159.0: {"A": 4.0, "B": 4.8, "C": 5.4},
+                165.0: {"A": 4.0, "B": 4.8, "C": 5.4},
+            }
+            wall_thk = PIPE_WALL_THK.get(pipe_dia, {}).get(str(pipe_type).strip().upper(), 0)
+
+        # Housing size (CRC) — only if we have pipe + bearing
+        housing_size = None
+        if pipe_dia and bearing_number:
+            try:
+                housing_size = rs.get_housing_for_pipe_and_bearing(pipe_dia, bearing_number)
+            except Exception:
+                housing_size = None
+
+        base = {
+            "product_name": it.get("product_name"),
+            "product_code": it.get("product_code"),
+            "drawing_number": it.get("drawing_number"),
+            "quantity": qty,
+        }
+
+        # Pipe sub-WO line (skip if no pipe dia/length)
+        if pipe_dia and pipe_length:
+            pipe_items.append({
+                **base,
+                "pipe_diameter": pipe_dia,
+                "pipe_thickness": wall_thk,
+                "pipe_length": pipe_length,
+                "pipe_type": pipe_type,
+                "housing_number": housing_size or "-",
+                "housing_qty": qty * 2,  # 2 housings per roller
+            })
+
+        # Shaft sub-WO line (skip if pulley without shaft_dia)
+        if shaft_dia or shaft_length:
+            slot = it.get("shaft_slot_details") or {}
+            slot_str = it.get("shaft_slot") or ""
+            if not slot_str and slot:
+                slot_str = f"{slot.get('width','')}×{slot.get('dimension','')} {slot.get('slot_type','')}"
+            shaft_items.append({
+                **base,
+                "shaft_diameter": shaft_dia,
+                "shaft_length": shaft_length,
+                "end_slot": slot_str or "-",
+                "bearing_number": bearing_number or "-",
+                "bearing_make": (bearing_make or "china").upper(),
+                "bearing_qty": qty * 2,  # 2 bearings per roller (1 pair per pulley if applicable)
+            })
+
+    return pipe_items, shaft_items
+
+
+async def _create_sub_wos(work_order: dict, current_user_email: str):
+    """Create Pipe + Shaft sub-WOs linked to the main Work Order."""
+    pipe_items, shaft_items = _build_sub_wo_items(work_order.get("items") or [])
+    now_iso = datetime.now(timezone.utc).isoformat()
+    parent = {
+        "parent_wo_id": work_order.get("id"),
+        "parent_wo_number": work_order.get("wo_number"),
+        "order_id": work_order.get("order_id"),
+        "so_number": work_order.get("so_number"),
+        "customer_name": work_order.get("customer_name"),
+        "customer_company": work_order.get("customer_company"),
+        "customer_po_number": work_order.get("customer_po_number"),
+        "customer_po_date": work_order.get("customer_po_date"),
+        "delivery_date": work_order.get("delivery_date"),
+        "created_at": now_iso,
+        "created_by": current_user_email,
+    }
+    created = []
+    if pipe_items:
+        doc = {
+            "id": str(ObjectId()),
+            "sub_wo_number": f"{work_order.get('wo_number')}/P",
+            "type": "pipe",
+            "items": pipe_items,
+            **parent,
+        }
+        await db.sub_work_orders.insert_one(doc)
+        doc.pop("_id", None)
+        created.append(doc)
+    if shaft_items:
+        doc = {
+            "id": str(ObjectId()),
+            "sub_wo_number": f"{work_order.get('wo_number')}/S",
+            "type": "shaft",
+            "items": shaft_items,
+            **parent,
+        }
+        await db.sub_work_orders.insert_one(doc)
+        doc.pop("_id", None)
+        created.append(doc)
+    return created
 
 
 def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int) -> list:
@@ -1598,4 +1732,149 @@ async def get_wo_qc_report_pdf(
         output, media_type="text/html",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+# ============= SUB WORK ORDERS (Pipe & Shaft job cards) =============
+
+@router.get("/work-orders/{wo_id}/sub-wos")
+async def get_sub_wos(
+    wo_id: str,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.PRODUCTION_HEAD])),
+):
+    """List Pipe + Shaft sub-work-orders for a parent WO."""
+    wo = await db.work_orders.find_one({"$or": [{"id": wo_id}, {"wo_number": wo_id}]}, {"_id": 0, "id": 1, "wo_number": 1})
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work Order not found")
+    subs = await db.sub_work_orders.find({"parent_wo_id": wo.get("id")}, {"_id": 0}).to_list(10)
+    # Lazy backfill: if no sub-WOs exist yet for this WO, create them now from the stored WO
+    if not subs:
+        full_wo = await db.work_orders.find_one({"id": wo.get("id")}, {"_id": 0})
+        if full_wo and full_wo.get("items"):
+            await _create_sub_wos(full_wo, current_user.get("email"))
+            subs = await db.sub_work_orders.find({"parent_wo_id": wo.get("id")}, {"_id": 0}).to_list(10)
+    return {"parent_wo_number": wo.get("wo_number"), "sub_work_orders": subs}
+
+
+def _render_sub_wo_pdf(sub: dict) -> str:
+    """Render an A4 HTML job card for a pipe or shaft sub-WO."""
+    sub_type = sub.get("type", "pipe")
+    title = "PIPE PROCESS JOB CARD" if sub_type == "pipe" else "SHAFT PROCESS JOB CARD"
+    accent = "#960018" if sub_type == "pipe" else "#0F766E"
+    subtitle = "Pipe Cutting & Housing Assembly" if sub_type == "pipe" else "Shaft Turning, Slotting & Bearing Fitment"
+    items = sub.get("items") or []
+
+    # Build header row and body rows by type
+    if sub_type == "pipe":
+        headers = ["#", "Product", "Drawing", "Pipe OD (mm)", "Wall Thk (mm)", "Pipe Length (mm)", "Qty", "Housing (CRC)", "Housing Qty"]
+        rows = ""
+        for i, it in enumerate(items, 1):
+            rows += f"""<tr>
+                <td style="text-align:center">{i}</td>
+                <td><b>{it.get('product_name','')}</b><br><span style="color:#64748B;font-size:10px">{it.get('product_code','')}</span></td>
+                <td style="text-align:center;font-weight:700;color:{accent}">{it.get('drawing_number') or '-'}</td>
+                <td style="text-align:center;font-weight:700">{it.get('pipe_diameter','-')}</td>
+                <td style="text-align:center">{it.get('pipe_thickness') or '-'}</td>
+                <td style="text-align:center;font-weight:700">{it.get('pipe_length','-')}</td>
+                <td style="text-align:center;font-weight:700">{it.get('quantity',1)}</td>
+                <td style="text-align:center;font-weight:700;color:{accent}">{it.get('housing_number','-')}</td>
+                <td style="text-align:center;font-weight:700">{it.get('housing_qty','-')}</td>
+            </tr>"""
+    else:
+        headers = ["#", "Product", "Drawing", "Shaft Dia (mm)", "Shaft Length (mm)", "End Slot (W×D T)", "Qty", "Bearing", "Bearing Qty"]
+        rows = ""
+        for i, it in enumerate(items, 1):
+            brg = it.get('bearing_number','-')
+            mk = it.get('bearing_make','')
+            rows += f"""<tr>
+                <td style="text-align:center">{i}</td>
+                <td><b>{it.get('product_name','')}</b><br><span style="color:#64748B;font-size:10px">{it.get('product_code','')}</span></td>
+                <td style="text-align:center;font-weight:700;color:{accent}">{it.get('drawing_number') or '-'}</td>
+                <td style="text-align:center;font-weight:700">{it.get('shaft_diameter','-')}</td>
+                <td style="text-align:center;font-weight:700">{it.get('shaft_length','-')}</td>
+                <td style="text-align:center">{it.get('end_slot','-')}</td>
+                <td style="text-align:center;font-weight:700">{it.get('quantity',1)}</td>
+                <td style="text-align:center;font-weight:700;color:{accent}">{brg}<br><span style="font-size:9px;color:#64748B;font-weight:400">{mk}</span></td>
+                <td style="text-align:center;font-weight:700">{it.get('bearing_qty','-')}</td>
+            </tr>"""
+
+    header_html = "".join(f'<th style="padding:8px;background:{accent};color:#fff;font-size:11px;font-weight:700;border:1px solid #fff">{h}</th>' for h in headers)
+
+    po_html = f'<span>PO: <b>{sub.get("customer_po_number","-")}</b> &nbsp;·&nbsp; Date: {sub.get("customer_po_date","-")}</span>' if sub.get('customer_po_number') else ''
+    delivery_html = f'<span style="color:{accent};font-weight:700">Delivery: {sub.get("delivery_date","-")}</span>' if sub.get('delivery_date') else ''
+
+    html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>{sub.get('sub_wo_number','')}</title>
+<style>
+@page {{ size: A4; margin: 12mm; }}
+body {{ font-family: 'Helvetica', sans-serif; margin:0; padding:0; color:#0F172A; }}
+.page {{ padding: 8mm; }}
+.banner {{ background: {accent}; color: #fff; padding: 14px 18px; border-radius: 6px; }}
+.banner h1 {{ margin: 0; font-size: 22px; letter-spacing: 1.5px; }}
+.banner .sub {{ font-size: 11px; opacity: 0.9; letter-spacing: 0.5px; }}
+.banner .num {{ position: absolute; right: 24px; top: 18px; font-size: 14px; background: rgba(255,255,255,0.18); padding: 6px 14px; border-radius: 20px; font-weight: 700; letter-spacing: 1px; }}
+.meta-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }}
+.meta {{ background: #F8FAFC; border-left: 3px solid {accent}; padding: 8px 12px; border-radius: 4px; }}
+.meta .k {{ font-size: 9px; color: #64748B; letter-spacing: 0.5px; text-transform: uppercase; }}
+.meta .v {{ font-size: 13px; font-weight: 700; color: #0F172A; margin-top: 2px; }}
+table {{ width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }}
+td {{ padding: 8px; border: 1px solid #CBD5E1; vertical-align: top; }}
+.instructions {{ background: #FFFBEB; border: 1px dashed #F59E0B; padding: 10px 14px; border-radius: 6px; margin-top: 16px; font-size: 11px; color: #92400E; }}
+.instructions b {{ color: #78350F; }}
+.sig-row {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 45px; padding-top: 14px; }}
+.sig {{ border-top: 2px dashed #94A3B8; padding-top: 8px; font-size: 11px; text-align: center; color: #475569; font-weight: 600; }}
+.footer {{ font-size: 9px; color: #94A3B8; text-align: center; margin-top: 20px; padding-top: 8px; border-top: 1px solid #E2E8F0; }}
+</style></head><body><div class="page">
+  <div class="banner" style="position:relative">
+    <h1>{title}</h1>
+    <div class="sub">{subtitle}</div>
+    <div class="num">{sub.get('sub_wo_number','')}</div>
+  </div>
+  <div class="meta-grid">
+    <div class="meta"><div class="k">Parent WO</div><div class="v">{sub.get('parent_wo_number','-')}</div></div>
+    <div class="meta"><div class="k">Sales Order</div><div class="v">{sub.get('so_number','-')}</div></div>
+    <div class="meta"><div class="k">Customer</div><div class="v">{sub.get('customer_name','-')}{('<br><span style="font-size:10px;font-weight:400;color:#64748B">'+sub.get('customer_company','')+'</span>') if sub.get('customer_company') else ''}</div></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;color:#475569;margin-bottom:8px">{po_html}{delivery_html}</div>
+  <table>
+    <thead><tr>{header_html}</tr></thead>
+    <tbody>{rows}</tbody>
+  </table>
+  <div class="instructions">
+    <b>Shop-floor instructions:</b>
+    {'Cut pipes to the exact length shown. Check OD and wall thickness against drawing. Pair with the specified CRC Housing (press-fit). Deburr and inspect weld seams before next station.' if sub_type=='pipe' else 'Turn shaft to the exact diameter ±0.05mm. Cut to length. Mill end slot as per drawing (Width × Depth × Type). Install bearing at both ends with the specified make. Check rotation before hand-over.'}
+  </div>
+  <div class="sig-row">
+    <div class="sig">Issued By (Production Head)</div>
+    <div class="sig">{'Pipe' if sub_type=='pipe' else 'Shaft'} Operator</div>
+    <div class="sig">QC Verified</div>
+  </div>
+  <div class="footer">{COMPANY['name']} | {COMPANY['email']} | {COMPANY['phone']}</div>
+</div></body></html>"""
+    return html
+
+
+@router.get("/sub-work-orders/{sub_id}/pdf")
+async def sub_wo_pdf(sub_id: str, token: Optional[str] = None, authorization: Optional[str] = Header(None)):
+    """A4 printable job card for Pipe or Shaft sub-WO."""
+    auth_token = token
+    if not auth_token and authorization and authorization.startswith("Bearer "):
+        auth_token = authorization[7:]
+    if not auth_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    try:
+        payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
+        if not payload.get("sub"):
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    sub = await db.sub_work_orders.find_one({"id": sub_id}, {"_id": 0})
+    if not sub:
+        raise HTTPException(status_code=404, detail="Sub Work Order not found")
+
+    html = _render_sub_wo_pdf(sub)
+    output = io.BytesIO(html.encode('utf-8'))
+    output.seek(0)
+    filename = f"{sub.get('sub_wo_number','sub').replace('/', '-')}-JobCard.html"
+    return StreamingResponse(output, media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename={filename}"})
 
