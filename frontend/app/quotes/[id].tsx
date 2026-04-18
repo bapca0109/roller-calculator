@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import { confirmAction } from '../../components/shared/confirm';
 
 interface QuoteProduct {
   product_id: string;
@@ -57,6 +58,7 @@ export default function QuoteDetailScreen() {
   };
 
   const updateStatus = async (newStatus: string) => {
+    if (!(await confirmAction(`Mark quote as ${newStatus}?`, `This will change the quote status to "${newStatus}".`))) return;
     try {
       await api.put(`/quotes/${id}`, { status: newStatus });
       Alert.alert('Success', `Quote ${newStatus} successfully`);

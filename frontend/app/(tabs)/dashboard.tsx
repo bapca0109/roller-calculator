@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import { confirmAction } from '../../components/shared/confirm';
 import { ExportButtons } from '../../components/shared/ExportButtons';
 
 const STAGES = ['new', 'contacted', 'quoted', 'negotiation', 'won', 'lost'];
@@ -73,6 +74,7 @@ export default function CRMScreen() {
 
   const createLead = async () => {
     if (!newLead.name.trim()) { Alert.alert('Error', 'Lead name is required'); return; }
+    if (!(await confirmAction('Create new Lead?', `${newLead.name} will be added to the CRM pipeline.`))) return;
     try {
       await api.post('/crm/leads', { ...newLead, estimated_value: newLead.estimated_value ? parseFloat(newLead.estimated_value) : null });
       setShowAddLead(false);
@@ -83,6 +85,7 @@ export default function CRMScreen() {
   };
 
   const updateStage = async (leadId: string, stage: string) => {
+    if (!(await confirmAction('Move lead to this stage?', `Change stage to "${STAGE_LABELS[stage] || stage}".`))) return;
     try {
       await api.put(`/crm/leads/${leadId}`, { stage });
       fetchAll();
@@ -91,6 +94,7 @@ export default function CRMScreen() {
 
   const createFollowup = async () => {
     if (!selectedLead || !newFU.due_date || !newFU.note) { Alert.alert('Error', 'Fill all fields'); return; }
+    if (!(await confirmAction('Schedule follow-up?', `A ${newFU.follow_up_type} follow-up for ${selectedLead.name} on ${newFU.due_date}.`))) return;
     try {
       await api.post('/crm/followups', { lead_id: selectedLead.id, ...newFU });
       setShowAddFollowup(false);
@@ -100,6 +104,7 @@ export default function CRMScreen() {
   };
 
   const completeFollowup = async (fuId: string) => {
+    if (!(await confirmAction('Mark follow-up complete?'))) return;
     try { await api.put(`/crm/followups/${fuId}/complete`); fetchAll(); }
     catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };

@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { cacheEvents } from '../../utils/api';
+import { confirmAction } from '../../components/shared/confirm';
 import { ExportButtons } from '../../components/shared/ExportButtons';
 
 interface Customer {
@@ -183,9 +184,11 @@ export default function CustomersScreen() {
     try {
       setSaving(true);
       if (editingCustomer) {
+        if (!(await confirmAction('Save customer changes?', `${formData.name}${formData.company ? ' — ' + formData.company : ''} will be updated.`))) { setSaving(false); return; }
         await api.put(`/customers/${editingCustomer.id}`, formData);
         Alert.alert('Success', 'Customer updated successfully');
       } else {
+        if (!(await confirmAction('Create new customer?', `${formData.name}${formData.company ? ' — ' + formData.company : ''} will be added.`))) { setSaving(false); return; }
         await api.post('/customers', formData);
         Alert.alert('Success', 'Customer created successfully');
       }

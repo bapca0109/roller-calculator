@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../context/CartContext';
 import api from '../../utils/api';
+import { confirmAction } from '../../components/shared/confirm';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
@@ -466,6 +467,8 @@ export default function SearchScreen() {
         calculated_discount: 0,
         custom_premium: 0
       }));
+
+      if (!(await confirmAction('Submit RFQ?', `An RFQ with ${products.length} item(s) will be created${selectedCustomer?.name ? ` for ${selectedCustomer.name}` : ''}.`))) return;
 
       const response = await api.post('/quotes', {
         products,

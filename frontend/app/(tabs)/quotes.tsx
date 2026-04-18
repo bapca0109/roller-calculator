@@ -18,6 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { cacheEvents } from '../../utils/api';
+import { confirmAction } from '../../components/shared/confirm';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -112,12 +113,14 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
   };
 
   const updateStage = async (woId: string, stage: string) => {
+    if (!(await confirmAction(`Update Work Order stage?`, `Move WO ${woId} to "${stage}". This will advance the production flow.`))) return;
     try { await api.put(`/work-orders/${woId}/stage?stage=${stage}`); onRefresh(); }
     catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
   const stampQC = (wo: any, status: 'passed' | 'failed') => {
     const doIt = async (remarks: string) => {
+      if (!(await confirmAction(`Stamp QC ${status.toUpperCase()}?`, `${wo.wo_number} will be marked as QC-${status}. ${status === 'passed' ? 'Dispatch will be unlocked.' : 'Dispatch will remain blocked.'}`))) return;
       try {
         await api.post(`/work-orders/${wo.id}/qc`, { status, remarks });
         Alert.alert('QC Stamped', `${wo.wo_number}: ${status.toUpperCase()}`);
@@ -466,6 +469,7 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
         paint_type: woPaintType,
         paint_spec: woPaintSpec,
       };
+      if (!(await confirmAction('Create Work Order?', `This will generate a new WO for ${selectedItems.length} item(s) on ${woOrder.so_number} and auto-generate its BOM.`))) { setWoCreating(false); return; }
       const res = await api.post(`/orders/${woOrder.id}/create-work-order`, payload);
       const shortages = res.data.shortages || [];
       setShowCreateWO(false);
@@ -496,6 +500,7 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
 
   const addPayment = async () => {
     if (!selectedOrder || !payAmount) return;
+    if (!(await confirmAction('Record this payment?', `Rs. ${payAmount} via ${payMode.replace('_',' ')} for ${selectedOrder.so_number}. This will update the order's payment balance.`))) return;
     setProcessing(true);
     try {
       await api.post(`/orders/${selectedOrder.id}/payments`, { amount: parseFloat(payAmount), mode: payMode, reference: payRef });
@@ -512,6 +517,7 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
       Alert.alert('Missing fields', 'Vehicle No, Driver, Transporter and Dispatch Date are mandatory');
       return;
     }
+    if (!(await confirmAction('Create Delivery Challan?', `A DC will be generated for ${challanOrder.so_number} (vehicle ${dcVehicleNo}). Order will be marked Dispatched.`))) return;
     try {
       setDcSaving(true);
       const res = await api.post('/delivery-challans', {
@@ -542,6 +548,7 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
   };
 
   const updateStage = async (orderId: string, stage: string) => {
+    if (!(await confirmAction('Update order stage?', `Move ${orderId} to "${stage}".`))) return;
     try {
       await api.put(`/orders/${orderId}/stage`, { stage });
       onRefresh();
@@ -549,6 +556,8 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
   };
 
   const generateInvoice = async (orderId: string, type: 'proforma' | 'tax-invoice') => {
+    const label = type === 'proforma' ? 'Proforma Invoice' : 'Tax Invoice';
+    if (!(await confirmAction(`Generate ${label}?`, `A new ${label} will be created and linked to ${orderId}.`))) return;
     try {
       const res = await api.post(`/orders/${orderId}/${type}`);
       Alert.alert('Success', res.data.message);
@@ -1743,6 +1752,7 @@ export default function QuotesScreen() {
   // Save all changes and send email (single button for Edit Quote)
   const saveAndMailQuote = async () => {
     if (!editingQuote) return;
+    if (!(await confirmAction('Save changes and email quote?', `${editingQuote.quote_number} will be updated and a revised quote emailed to the customer.`))) return;
     
     setSavingEdit(true);
     try {
@@ -2072,6 +2082,8 @@ export default function QuotesScreen() {
       Alert.alert('Error', 'Please enter a valid pincode before approving.');
       return;
     }
+
+    if (!(await confirmAction('Approve this RFQ?', `${quote.quote_number} (${quote.customer_name}) will be converted to an approved Quote and emailed to the customer.`))) return;
     
     setApprovingId(quote.id);
     try {
@@ -2227,6 +2239,7 @@ export default function QuotesScreen() {
   // Confirm reject RFQ
   const confirmRejectRfq = async () => {
     if (!rejectingQuote || !selectedRejectReason) return;
+    if (!(await confirmAction('Reject this RFQ?', `${rejectingQuote.quote_number} will be marked rejected and the customer notified. Reason: ${selectedRejectReason}`))) return;
     
     setRejectingId(rejectingQuote.id);
     try {
@@ -3271,6 +3284,7 @@ export default function QuotesScreen() {
               data-testid="so-convert-submit"
               onPress={async () => {
                 if (!deliveryDate) { Alert.alert('Error', 'Please enter delivery date'); return; }
+                if (!(await confirmAction('Convert Quote to Sales Order?', `${convertQuote?.quote_number} will be converted to a new SO with delivery date ${deliveryDate}${customerPoNumber ? ` and PO# ${customerPoNumber}` : ''}.`))) return;
                 try {
                   const quoteId = convertQuote?.id || convertQuote?._id;
                   const item_drawings = convertItemDrawings

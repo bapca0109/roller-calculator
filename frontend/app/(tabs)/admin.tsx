@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { cacheEvents } from '../../utils/api';
+import { confirmAction } from '../../components/shared/confirm';
 
 type MainTab = 'prices' | 'standards' | 'history' | 'users' | 'numbering';
 type PriceCategory = 'basic' | 'bearing' | 'housing' | 'seal' | 'circlip' | 'rubber' | 'locking';
@@ -194,6 +195,7 @@ export default function AdminScreen() {
       // Strip mongo id if present
       if (updated._id) delete updated._id;
       if (updated.id) delete updated.id;
+      if (!(await confirmAction('Save pulley price?', `Update value to ${num} at ${path.join(' → ')}.`))) { setPulleySaving(false); return; }
       await api.put('/pulley-pricing', updated);
       await fetchPulleyPricing();
       setPulleyEditKey(null);
@@ -299,6 +301,7 @@ export default function AdminScreen() {
     }
     try {
       setPulleySaving(true);
+      if (!(await confirmAction('Save all pulley price changes?', `All draft values will overwrite the live pulley pricing table.`))) { setPulleySaving(false); return; }
       await api.put('/pulley-pricing', draft);
       await fetchPulleyPricing();
       setPulleyBulkMode(false);
@@ -341,6 +344,7 @@ export default function AdminScreen() {
   };
 
   const updateUserRole = async (email: string, role: string) => {
+    if (!(await confirmAction('Change user role?', `Assign ${role.replace('_',' ')} to ${email}. They'll see different tabs on next login.`))) return;
     try {
       await api.put('/admin/users/role', { email, role });
       setRolePickerEmail(null);
@@ -362,6 +366,7 @@ export default function AdminScreen() {
     }
     try {
       setCreatingUser(true);
+      if (!(await confirmAction('Create new user?', `${email} will be added as ${newUserRole.replace('_',' ')}.`))) { setCreatingUser(false); return; }
       await api.post('/admin/users', {
         email,
         name: newUserName.trim(),
@@ -422,6 +427,7 @@ export default function AdminScreen() {
       for (const [k, v] of Object.entries(numberingDraft) as any) {
         clean[k] = { prefix: v.prefix.trim(), pad: parseInt(v.pad) };
       }
+      if (!(await confirmAction('Save numbering templates?', `New documents will use these prefix/pad formats going forward.`))) { setNumberingSaving(false); return; }
       await api.put('/admin/numbering-config', { templates: clean });
       await fetchNumberingConfig();
       Alert.alert('Saved', 'Numbering templates updated. New numbers will use these formats.');
@@ -510,6 +516,7 @@ export default function AdminScreen() {
   const handleUpdatePrice = async (category: string, key: string, subKey: string | null, value: number) => {
     try {
       setSaving(true);
+      if (!(await confirmAction('Update price?', `Set ${category} → ${key}${subKey ? ` → ${subKey}` : ''} to ${value}.`))) { setSaving(false); return; }
       await api.post('/admin/prices/update', {
         category,
         key,
@@ -807,6 +814,7 @@ export default function AdminScreen() {
       
       const query = getItemKeyFields(editingItem);
       
+      if (!(await confirmAction('Save standard item?', `Update ${selectedCollection} entry with ${Object.keys(updateData).length} field(s).`))) { setSavingStandard(false); return; }
       await api.put(`/admin/standards/${selectedCollection}`, {
         query,
         update_data: updateData

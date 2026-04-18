@@ -20,6 +20,7 @@ import { CustomDropdown } from '../../components/CustomDropdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../context/CartContext';
 import api, { cacheEvents } from '../../utils/api';
+import { confirmAction } from '../../components/shared/confirm';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -695,6 +696,7 @@ export default function CalculatorScreen() {
 
   const saveQuote = async () => {
     if (!result) return;
+    if (!(await confirmAction('Save this Roller RFQ?', `An RFQ will be created${selectedCustomer?.name ? ` for ${selectedCustomer.name}` : ''}.`))) return;
 
     setSavingQuote(true);
     try {
@@ -721,7 +723,6 @@ export default function CalculatorScreen() {
         grand_total: result.grand_total,
         notes: `Roller: ${result.configuration.product_code}`
       });
-      
       Alert.alert(
         'Quote Saved!', 
         `Quote Number: ${response.data.quote_number}\nCustomer: ${selectedCustomer?.name || 'N/A'}\nTotal: Rs. ${response.data.total_price.toFixed(2)}`,
@@ -896,6 +897,7 @@ export default function CalculatorScreen() {
       Alert.alert('Error', 'No items in quote');
       return null;
     }
+    if (!(await confirmAction('Submit RFQ?', `An RFQ with ${quoteItems.length} item(s) will be created.`))) return null;
 
     setSavingQuote(true);
     try {

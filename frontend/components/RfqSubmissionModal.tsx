@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCart, CartItem } from '../app/context/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
+import { confirmAction } from './shared/confirm';
 
 // Packing types (removed "No Packing" as per user request)
 const PACKING_TYPES = [
@@ -80,6 +81,8 @@ export default function RfqSubmissionModal({
           base64: att.base64 || null,
         })) || [],
       }));
+
+      if (!(await confirmAction('Submit RFQ?', `${cartItems.length} item(s) will be sent${selectedCustomer?.name ? ` for ${selectedCustomer.name}` : ''}.`))) return;
 
       const response = await api.post('/quotes', {
         products,

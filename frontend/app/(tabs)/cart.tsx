@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import { confirmAction } from '../../components/shared/confirm';
 import { ExportButtons } from '../../components/shared/ExportButtons';
 
 // Packing types
@@ -311,6 +312,8 @@ export default function CartScreen() {
           base64: att.base64 || null,
         })) || [],
       }));
+
+      if (!(await confirmAction('Submit RFQ?', `An RFQ with ${products.length} item(s) will be created${selectedCustomer?.name ? ` for ${selectedCustomer.name}` : ''}.`))) return;
 
       const response = await api.post('/quotes', {
         products,

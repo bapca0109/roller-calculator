@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, 
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
+import { confirmAction } from '../../components/shared/confirm';
 import { ExportButtons } from '../../components/shared/ExportButtons';
 
 type Tab = 'dashboard' | 'stock' | 'po' | 'suppliers' | 'alerts' | 'shortages';
@@ -68,6 +69,7 @@ export default function StoreScreen() {
     else matchKey += name.toLowerCase().replace(/\s+/g, '_');
     
     try {
+      if (!(await confirmAction('Create stock item?', `${newItem.name} will be added to the inventory master.`))) return;
       await api.post('/store/items', { ...newItem, reorder_level: parseFloat(newItem.reorder_level) || 0, current_stock: 0, bom_match_key: matchKey });
       setShowAddItem(false); setNewItem({ name: '', category: 'pipe', unit_purchase: 'meters', unit_bom: 'kg', reorder_level: '' });
       fetchAll(); Alert.alert('Success', `Stock item created\nMatch Key: ${matchKey}`);
@@ -77,6 +79,7 @@ export default function StoreScreen() {
   const createSupplier = async () => {
     if (!newSupplier.name) { Alert.alert('Error', 'Name required'); return; }
     try {
+      if (!(await confirmAction('Create supplier?', `${newSupplier.name} will be added to the supplier list.`))) return;
       await api.post('/suppliers', newSupplier);
       setShowAddSupplier(false); setNewSupplier({ name: '', contact_person: '', phone: '', gst_number: '', city: '', payment_terms: '' });
       fetchAll(); Alert.alert('Success', 'Supplier created');
@@ -87,6 +90,7 @@ export default function StoreScreen() {
     if (!newPO.supplier_id || !newPO.items[0]?.stock_item_id) { Alert.alert('Error', 'Select supplier and item'); return; }
     try {
       const items = newPO.items.map(i => ({ stock_item_id: i.stock_item_id, qty: parseFloat(i.qty) || 0, rate: parseFloat(i.rate) || 0 }));
+      if (!(await confirmAction('Create Purchase Order?', `A new PO will be raised with ${items.length} line(s).`))) return;
       await api.post('/store/purchase-orders', { supplier_id: newPO.supplier_id, items });
       setShowAddPO(false); setNewPO({ supplier_id: '', items: [{ stock_item_id: '', qty: '', rate: '' }] });
       fetchAll(); Alert.alert('Success', 'Purchase Order created');
@@ -96,6 +100,7 @@ export default function StoreScreen() {
   const processQC = async (status: string) => {
     if (!selectedPO) return;
     try {
+      if (!(await confirmAction(`Mark QC as ${status.toUpperCase()}?`, `Accepted: ${qcData.accepted_qty || 0}, Rejected: ${qcData.rejected_qty || 0}. This updates the PO inwards and stock levels.`))) return;
       await api.post('/store/qc', { po_id: selectedPO.id, item_index: qcItemIndex, status, accepted_qty: parseFloat(qcData.accepted_qty) || 0, rejected_qty: parseFloat(qcData.rejected_qty) || 0, reason: qcData.reason });
       setShowQC(false); setQcData({ accepted_qty: '', rejected_qty: '', reason: '' });
       fetchAll(); Alert.alert('Success', `QC ${status}`);
@@ -105,7 +110,9 @@ export default function StoreScreen() {
   const issueStock = async () => {
     if (!issueWOId || issueItems.length === 0) { Alert.alert('Error', 'Select WO and items'); return; }
     try {
-      await api.post('/store/issue', { wo_id: issueWOId, items: issueItems.filter(i => i.qty > 0).map(i => ({ stock_item_id: i.stock_item_id, qty: parseFloat(i.qty) })) });
+      const toIssue = issueItems.filter(i => i.qty > 0);
+      if (!(await confirmAction('Issue material to Work Order?', `${toIssue.length} line(s) will be deducted from current stock.`))) return;
+      await api.post('/store/issue', { wo_id: issueWOId, items: toIssue.map(i => ({ stock_item_id: i.stock_item_id, qty: parseFloat(i.qty) })) });
       setShowIssue(false); fetchAll(); Alert.alert('Success', 'Stock issued');
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
