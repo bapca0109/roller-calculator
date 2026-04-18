@@ -1011,6 +1011,7 @@ def _build_sub_wo_items(wo_items: list) -> tuple:
                 "shaft_diameter": shaft_dia,
                 "shaft_length": shaft_length,
                 "end_slot": slot_str or "-",
+                "shaft_slot_details": slot or {},
                 "bearing_number": bearing_number or "-",
                 "bearing_make": (bearing_make or "china").upper(),
                 "bearing_qty": qty * 2,  # 2 bearings per roller (1 pair per pulley if applicable)
@@ -1757,7 +1758,7 @@ async def get_sub_wos(
     return {"parent_wo_number": wo.get("wo_number"), "sub_work_orders": subs}
 
 
-# ============= WIP QC for Pipe sub-WOs =============
+# ============= WIP QC for Pipe & Shaft sub-WOs =============
 
 class PipeQCSample(BaseModel):
     sample_no: int
@@ -1777,6 +1778,30 @@ class PipeQCItemRecord(BaseModel):
 
 class PipeWIPQCRequest(BaseModel):
     items: List[PipeQCItemRecord]
+
+
+class ShaftQCSample(BaseModel):
+    sample_no: int
+    shaft_dia_ok: Optional[bool] = None
+    shaft_dia_remarks: Optional[str] = None
+    shaft_length_measured: Optional[float] = None
+    shaft_length_remarks: Optional[str] = None
+    slot_width_measured: Optional[float] = None
+    slot_width_remarks: Optional[str] = None
+    slot_dimension_measured: Optional[float] = None
+    slot_dimension_remarks: Optional[str] = None
+    slot_third_measured: Optional[float] = None   # Notch (B) or Centre (C)
+    slot_third_remarks: Optional[str] = None
+
+
+class ShaftQCItemRecord(BaseModel):
+    item_index: int
+    sample_qty: int
+    samples: List[ShaftQCSample]
+
+
+class ShaftWIPQCRequest(BaseModel):
+    items: List[ShaftQCItemRecord]
 
 
 def _evaluate_pipe_sample(sample: dict, required_length: float, required_thickness: float):
@@ -1799,60 +1824,218 @@ def _evaluate_pipe_sample(sample: dict, required_length: float, required_thickne
     return (dia_ok and length_ok and thk_ok), {"dia_ok": dia_ok, "length_ok": length_ok, "thk_ok": thk_ok}
 
 
+def _parse_slot_meta(slot_type: str):
+    """Parse shaft end-type string (A, B5, B7, B10, C30, C35 …) into QC metadata.
+    Returns: {
+      kind: 'A' | 'B' | 'C',
+      third_label: None | 'Notch' | 'Centre',
+      third_required: None | float,  # mm (derived from numeric suffix)
+      third_tol: None | float,       # ± tolerance (0.5 for B, 1.0 for C)
+    }
+    Slot Width tolerance is always -0.2 / +0 (asymmetric).
+    Slot Dimension tolerance is always ±0.5.
+    """
+    import re as _re
+    st = (slot_type or "").strip().upper()
+    if not st:
+        return {"kind": None, "third_label": None, "third_required": None, "third_tol": None}
+    kind = st[0]
+    third_required = None
+    m = _re.search(r"(\d+(?:\.\d+)?)", st)
+    if m:
+        try:
+            third_required = float(m.group(1))
+        except Exception:
+            third_required = None
+    if kind == "A":
+        return {"kind": "A", "third_label": None, "third_required": None, "third_tol": None}
+    if kind == "B":
+        return {"kind": "B", "third_label": "Notch", "third_required": third_required, "third_tol": 0.5}
+    if kind == "C":
+        return {"kind": "C", "third_label": "Centre", "third_required": third_required, "third_tol": 1.0}
+    return {"kind": kind, "third_label": None, "third_required": None, "third_tol": None}
+
+
+def _ensure_shaft_slot_details(item: dict) -> dict:
+    """Back-compat: older shaft sub-WO items only stored `end_slot` as a display string
+    (e.g. "14.0 × 9.0 A" or "12×8 B7"). Parse it into a structured dict if
+    `shaft_slot_details` is missing, so QC tolerances can be evaluated."""
+    import re as _re
+    existing = item.get("shaft_slot_details") or {}
+    if existing and existing.get("slot_type"):
+        return existing
+    s = str(item.get("end_slot") or "").strip()
+    if not s or s == "-":
+        return existing or {}
+    # Normalise separators
+    s = s.replace("×", "x").replace("X", "x").replace("*", "x")
+    m = _re.match(r"\s*(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*([A-Za-z]\d*)?", s)
+    if not m:
+        return existing or {}
+    width = float(m.group(1))
+    dimension = float(m.group(2))
+    slot_type = (m.group(3) or "").upper()
+    return {"width": width, "dimension": dimension, "slot_type": slot_type}
+
+
+def _evaluate_shaft_sample(sample: dict, req_dia, req_length: float, slot: dict, slot_meta: dict):
+    """Return (overall_pass, flags).
+    Length tolerance: ±1mm
+    Slot Width tolerance: -0.2 / +0 (i.e. actual must be in [W-0.2, W])
+    Slot Dimension tolerance: ±0.5mm
+    Third (Notch B = ±0.5, Centre C = ±1.0) when applicable.
+    """
+    flags = {}
+    # Dia Y/N
+    dia_ok = bool(sample.get("shaft_dia_ok"))
+    flags["dia_ok"] = dia_ok
+    # Length ±1
+    length_val = sample.get("shaft_length_measured")
+    length_ok = False
+    if length_val is not None and req_length:
+        length_ok = abs(float(length_val) - float(req_length)) <= 1.0
+    flags["length_ok"] = length_ok
+    overall = dia_ok and length_ok
+
+    req_w = float((slot or {}).get("width") or 0)
+    req_d = float((slot or {}).get("dimension") or 0)
+
+    # Width: actual in [req_w - 0.2, req_w] (asymmetric -0.2 / +0)
+    w_val = sample.get("slot_width_measured")
+    width_ok = False
+    if w_val is not None and req_w:
+        v = float(w_val)
+        width_ok = (v <= req_w) and (v >= req_w - 0.2)
+    flags["width_ok"] = width_ok
+    overall = overall and width_ok
+
+    # Dimension: ±0.5
+    d_val = sample.get("slot_dimension_measured")
+    dim_ok = False
+    if d_val is not None and req_d:
+        dim_ok = abs(float(d_val) - req_d) <= 0.5
+    flags["dim_ok"] = dim_ok
+    overall = overall and dim_ok
+
+    # Third (Notch/Centre) only when applicable
+    if slot_meta and slot_meta.get("third_label") and slot_meta.get("third_required") is not None:
+        t_val = sample.get("slot_third_measured")
+        t_req = float(slot_meta["third_required"])
+        t_tol = float(slot_meta.get("third_tol") or 0.5)
+        third_ok = False
+        if t_val is not None:
+            third_ok = abs(float(t_val) - t_req) <= t_tol
+        flags["third_ok"] = third_ok
+        overall = overall and third_ok
+
+    return overall, flags
+
+
 @router.get("/sub-work-orders/{sub_id}/wip-qc")
-async def get_pipe_wip_qc(
+async def get_sub_wo_wip_qc(
     sub_id: str,
     current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.PRODUCTION_HEAD, UserRole.QUALITY_INSPECTOR])),
 ):
     sub = await db.sub_work_orders.find_one({"id": sub_id}, {"_id": 0})
     if not sub:
         raise HTTPException(status_code=404, detail="Sub Work Order not found")
-    if sub.get("type") != "pipe":
-        raise HTTPException(status_code=400, detail="WIP QC is only supported on Pipe sub-WOs")
-    return {"sub_wo_number": sub.get("sub_wo_number"), "items": sub.get("items", []), "wip_qc": sub.get("wip_qc")}
+    stype = sub.get("type")
+    if stype not in ("pipe", "shaft"):
+        raise HTTPException(status_code=400, detail="WIP QC is only supported on Pipe or Shaft sub-WOs")
+    payload = {
+        "sub_wo_number": sub.get("sub_wo_number"),
+        "type": stype,
+        "items": sub.get("items", []),
+        "wip_qc": sub.get("wip_qc"),
+    }
+    # For shaft, enrich each item with slot_meta so frontend can render dynamic fields
+    if stype == "shaft":
+        for it in payload["items"]:
+            slot = _ensure_shaft_slot_details(it)
+            it["shaft_slot_details"] = slot
+            it["slot_meta"] = _parse_slot_meta((slot or {}).get("slot_type") or "")
+    return payload
 
 
 @router.post("/sub-work-orders/{sub_id}/wip-qc")
-async def save_pipe_wip_qc(
+async def save_sub_wo_wip_qc(
     sub_id: str,
-    data: PipeWIPQCRequest,
+    data: dict,
     current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.PRODUCTION_HEAD, UserRole.QUALITY_INSPECTOR])),
 ):
     sub = await db.sub_work_orders.find_one({"id": sub_id})
     if not sub:
         raise HTTPException(status_code=404, detail="Sub Work Order not found")
-    if sub.get("type") != "pipe":
-        raise HTTPException(status_code=400, detail="WIP QC is only supported on Pipe sub-WOs")
+    stype = sub.get("type")
+    if stype not in ("pipe", "shaft"):
+        raise HTTPException(status_code=400, detail="WIP QC is only supported on Pipe or Shaft sub-WOs")
 
-    items = sub.get("items") or []
+    items_src = sub.get("items") or []
+    records_in = (data or {}).get("items") or []
     enriched = []
     any_fail = False
-    for rec in data.items:
-        if rec.item_index < 0 or rec.item_index >= len(items):
-            continue
-        src = items[rec.item_index]
-        req_length = float(src.get("pipe_length") or 0)
-        req_thk = float(src.get("pipe_thickness") or 0)
-        samples_out = []
-        pass_count = 0
-        for s in rec.samples:
-            sd = s.dict()
-            overall, flags = _evaluate_pipe_sample(sd, req_length, req_thk)
-            sd.update(flags)
-            sd["overall_pass"] = overall
-            samples_out.append(sd)
-            if overall: pass_count += 1
-            else: any_fail = True
-        enriched.append({
-            "item_index": rec.item_index,
-            "sample_qty": rec.sample_qty,
-            "samples": samples_out,
-            "pass_count": pass_count,
-            "fail_count": len(samples_out) - pass_count,
-            "required_dia": src.get("pipe_diameter"),
-            "required_length": req_length,
-            "required_thickness": req_thk,
-        })
+
+    if stype == "pipe":
+        for rec in records_in:
+            idx = rec.get("item_index")
+            if idx is None or idx < 0 or idx >= len(items_src):
+                continue
+            src = items_src[idx]
+            req_length = float(src.get("pipe_length") or 0)
+            req_thk = float(src.get("pipe_thickness") or 0)
+            samples_out = []
+            pass_count = 0
+            for s in rec.get("samples") or []:
+                sd = dict(s)
+                overall, flags = _evaluate_pipe_sample(sd, req_length, req_thk)
+                sd.update(flags)
+                sd["overall_pass"] = overall
+                samples_out.append(sd)
+                if overall: pass_count += 1
+                else: any_fail = True
+            enriched.append({
+                "item_index": idx,
+                "sample_qty": int(rec.get("sample_qty") or 0),
+                "samples": samples_out,
+                "pass_count": pass_count,
+                "fail_count": len(samples_out) - pass_count,
+                "required_dia": src.get("pipe_diameter"),
+                "required_length": req_length,
+                "required_thickness": req_thk,
+            })
+    else:  # shaft
+        for rec in records_in:
+            idx = rec.get("item_index")
+            if idx is None or idx < 0 or idx >= len(items_src):
+                continue
+            src = items_src[idx]
+            req_dia = src.get("shaft_diameter")
+            req_length = float(src.get("shaft_length") or 0)
+            slot = _ensure_shaft_slot_details(src)
+            slot_meta = _parse_slot_meta((slot or {}).get("slot_type") or "")
+            samples_out = []
+            pass_count = 0
+            for s in rec.get("samples") or []:
+                sd = dict(s)
+                overall, flags = _evaluate_shaft_sample(sd, req_dia, req_length, slot, slot_meta)
+                sd.update(flags)
+                sd["overall_pass"] = overall
+                samples_out.append(sd)
+                if overall: pass_count += 1
+                else: any_fail = True
+            enriched.append({
+                "item_index": idx,
+                "sample_qty": int(rec.get("sample_qty") or 0),
+                "samples": samples_out,
+                "pass_count": pass_count,
+                "fail_count": len(samples_out) - pass_count,
+                "required_dia": req_dia,
+                "required_length": req_length,
+                "required_slot_width": slot.get("width"),
+                "required_slot_dimension": slot.get("dimension"),
+                "slot_type": slot.get("slot_type"),
+                "slot_meta": slot_meta,
+            })
 
     now = datetime.now(timezone.utc).isoformat()
     wip_qc = {
@@ -1860,12 +2043,14 @@ async def save_pipe_wip_qc(
         "status": "failed" if any_fail else "passed",
         "inspected_by": current_user.get("email"),
         "inspected_at": now,
+        "type": stype,
     }
     await db.sub_work_orders.update_one(
         {"_id": sub["_id"]},
         {"$set": {"wip_qc": wip_qc}},
     )
-    return {"message": f"Pipe WIP QC saved — status: {wip_qc['status'].upper()}", "wip_qc": wip_qc}
+    label = "Pipe" if stype == "pipe" else "Shaft"
+    return {"message": f"{label} WIP QC saved — status: {wip_qc['status'].upper()}", "wip_qc": wip_qc}
 
 
 def _render_sub_wo_pdf(sub: dict) -> str:

@@ -39,9 +39,10 @@
 - **Sub-Work Orders for Pipe & Shaft [2026-02-18]**: Auto-generation of Pipe Job Cards (`/P`) and Shaft Job Cards (`/S`) for Rollers (skipped for Pulleys). Added PDF endpoints and UI buttons per WO card.
 - **Pipe WIP QC Module [2026-02-18]**: Tolerance engine + dynamic sample modal capturing Pipe Dia (Yes/No), Pipe Length (±1mm), Pipe Thickness (±10%). Auto-evaluates Pass/Fail per sample with running pass/fail counts. Endpoints: `GET/POST /api/sub-work-orders/{id}/wip-qc`.
 - **RFQ Approve Fix [2026-02-18]**: Fixed Approve RFQ button silently failing. Root cause: `onPress={confirmApproveRfq}` passed the synthetic press event as the `quoteOverride` argument, triggering the "Invalid quote - missing ID" early-exit. Wrapped in arrow function `() => confirmApproveRfq()`. Added `data-testid="approve-rfq-confirm-btn"`. Verified end-to-end: RFQ/2026/00028 → Q/26-27/0032 success dialog.
+- **Shaft WIP QC Module [2026-02-18]**: Mirror of Pipe QC for Shaft job cards. Dynamic sample modal captures Shaft Dia (Yes/No + remarks), Shaft Length (±1mm), and End Slot fields that adapt to the slot type from the WO: Type A → Width (-0.2/+0), Dimension (±0.5); Type B5/B7/B10 → adds Notch (B-number mm, ±0.5); Type C30/C35 → adds Centre (C-number mm, ±1). Endpoints refactored to a unified `GET/POST /api/sub-work-orders/{id}/wip-qc` that dispatches by type (pipe | shaft). Includes back-compat parser (`_ensure_shaft_slot_details`) that reconstructs slot structure from legacy `end_slot` display string for sub-WOs created before this release. New shaft sub-WOs now persist `shaft_slot_details` alongside `end_slot`. Teal "Shaft QC" button added to every non-pulley WO card. Verified curl + Playwright: 2-sample Type-A run → sample 1 PASS, sample 2 FAIL (dia No, length 355 out of ±1, width 13.7 below tol) → status FAILED persisted.
 
 ## P0 — Next
-- [ ] Shaft WIP QC (mirror of Pipe QC): Shaft Dia (Yes/No), Shaft Length (±1mm), End Slot WxD type (Yes/No)
+- [x] Shaft WIP QC — done 2026-02-18
 
 ## P1
 - [ ] Tax Invoice auto-gen on dispatch

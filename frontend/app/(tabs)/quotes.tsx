@@ -107,6 +107,11 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
   const [pipeQCRecords, setPipeQCRecords] = useState<any[]>([]);
   const [pipeQCSaving, setPipeQCSaving] = useState(false);
 
+  const [showShaftQC, setShowShaftQC] = useState(false);
+  const [shaftQCSub, setShaftQCSub] = useState<any>(null);
+  const [shaftQCRecords, setShaftQCRecords] = useState<any[]>([]);
+  const [shaftQCSaving, setShaftQCSaving] = useState(false);
+
   const openPipeQC = async (pipeSub: any) => {
     try {
       const res = await api.get(`/sub-work-orders/${pipeSub.id}/wip-qc`);
@@ -195,6 +200,120 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.detail || 'Failed');
     } finally { setPipeQCSaving(false); }
+  };
+
+  // ============= Shaft WIP QC =============
+  const openShaftQC = async (shaftSub: any) => {
+    try {
+      const res = await api.get(`/sub-work-orders/${shaftSub.id}/wip-qc`);
+      const sub = { ...shaftSub, ...res.data };
+      const existing = res.data.wip_qc?.items || [];
+      const records = (sub.items || []).map((it: any, idx: number) => {
+        const prev = existing.find((e: any) => e.item_index === idx);
+        const slot = it.shaft_slot_details || {};
+        return {
+          item_index: idx,
+          product_name: it.product_name,
+          required_dia: it.shaft_diameter,
+          required_length: it.shaft_length,
+          required_width: slot.width,
+          required_dim: slot.dimension,
+          slot_type: slot.slot_type,
+          slot_meta: it.slot_meta || { kind: null, third_label: null, third_required: null, third_tol: null },
+          quantity: it.quantity,
+          sample_qty: prev?.sample_qty ? String(prev.sample_qty) : '',
+          samples: prev?.samples || [],
+        };
+      });
+      setShaftQCSub(sub);
+      setShaftQCRecords(records);
+      setShowShaftQC(true);
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'Failed to load shaft QC');
+    }
+  };
+
+  const updateShaftSampleQty = (idx: number, qtyStr: string) => {
+    const n = parseInt(qtyStr.replace(/[^0-9]/g, '') || '0');
+    const arr = [...shaftQCRecords];
+    arr[idx].sample_qty = qtyStr.replace(/[^0-9]/g, '');
+    const current = arr[idx].samples || [];
+    if (n > current.length) {
+      for (let s = current.length; s < n; s++) {
+        current.push({
+          sample_no: s + 1,
+          shaft_dia_ok: null, shaft_dia_remarks: '',
+          shaft_length_measured: '', shaft_length_remarks: '',
+          slot_width_measured: '', slot_width_remarks: '',
+          slot_dimension_measured: '', slot_dimension_remarks: '',
+          slot_third_measured: '', slot_third_remarks: '',
+        });
+      }
+    } else {
+      current.length = n;
+    }
+    arr[idx].samples = current;
+    setShaftQCRecords(arr);
+  };
+
+  const setShaftSampleField = (itemIdx: number, sampleIdx: number, field: string, value: any) => {
+    const arr = [...shaftQCRecords];
+    arr[itemIdx].samples[sampleIdx] = { ...arr[itemIdx].samples[sampleIdx], [field]: value };
+    setShaftQCRecords(arr);
+  };
+
+  const withinShaftLen = (val: any, required: number) => {
+    const v = parseFloat(val);
+    if (isNaN(v) || !required) return null;
+    return Math.abs(v - required) <= 1;
+  };
+  const withinSlotWidth = (val: any, required: number) => {
+    const v = parseFloat(val);
+    if (isNaN(v) || !required) return null;
+    return v <= required && v >= required - 0.2;
+  };
+  const withinSlotDim = (val: any, required: number) => {
+    const v = parseFloat(val);
+    if (isNaN(v) || !required) return null;
+    return Math.abs(v - required) <= 0.5;
+  };
+  const withinSlotThird = (val: any, required: number, tol: number) => {
+    const v = parseFloat(val);
+    if (isNaN(v) || !required) return null;
+    return Math.abs(v - required) <= tol;
+  };
+
+  const submitShaftQC = async () => {
+    if (!shaftQCSub) return;
+    const payloadItems = shaftQCRecords
+      .filter((r: any) => parseInt(r.sample_qty || '0') > 0)
+      .map((r: any) => ({
+        item_index: r.item_index,
+        sample_qty: parseInt(r.sample_qty),
+        samples: r.samples.map((s: any, i: number) => ({
+          sample_no: i + 1,
+          shaft_dia_ok: s.shaft_dia_ok === null ? false : !!s.shaft_dia_ok,
+          shaft_dia_remarks: s.shaft_dia_remarks || null,
+          shaft_length_measured: s.shaft_length_measured !== '' ? parseFloat(s.shaft_length_measured) : null,
+          shaft_length_remarks: s.shaft_length_remarks || null,
+          slot_width_measured: s.slot_width_measured !== '' ? parseFloat(s.slot_width_measured) : null,
+          slot_width_remarks: s.slot_width_remarks || null,
+          slot_dimension_measured: s.slot_dimension_measured !== '' ? parseFloat(s.slot_dimension_measured) : null,
+          slot_dimension_remarks: s.slot_dimension_remarks || null,
+          slot_third_measured: s.slot_third_measured !== '' ? parseFloat(s.slot_third_measured) : null,
+          slot_third_remarks: s.slot_third_remarks || null,
+        })),
+      }));
+    if (payloadItems.length === 0) { Alert.alert('Error', 'Enter sample qty for at least one item'); return; }
+    if (!(await confirmAction('Save Shaft WIP QC?', `QC results will be stored against ${shaftQCSub.sub_wo_number}.`))) return;
+    try {
+      setShaftQCSaving(true);
+      const res = await api.post(`/sub-work-orders/${shaftQCSub.id}/wip-qc`, { items: payloadItems });
+      Alert.alert('Success', res.data.message);
+      setShowShaftQC(false);
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'Failed');
+    } finally { setShaftQCSaving(false); }
   };
 
   const updateStage = async (woId: string, stage: string) => {
@@ -348,6 +467,24 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                   >
                     <Ionicons name="cog-outline" size={14} color="#0F766E" />
                     <Text style={[wos.actionText, { color: '#0F766E' }]}>Shaft Card</Text>
+                  </TouchableOpacity>
+                )}
+                {isAdmin && (wo.items || []).some((it: any) => !(it.product_name || '').toLowerCase().includes('pulley')) && (
+                  <TouchableOpacity
+                    style={[wos.actionBtn, { borderColor: '#0891B2' }]}
+                    onPress={async () => {
+                      try {
+                        const res = await api.get(`/work-orders/${wo.id}/sub-wos`);
+                        const subs = res.data.sub_work_orders || [];
+                        const shaft = subs.find((s: any) => s.type === 'shaft');
+                        if (!shaft) { Alert.alert('Not available', 'No shaft details found for this WO'); return; }
+                        openShaftQC && openShaftQC(shaft);
+                      } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed to load shaft QC'); }
+                    }}
+                    testID={`shaft-qc-${wo.wo_number}`}
+                  >
+                    <Ionicons name="clipboard-outline" size={14} color="#0891B2" />
+                    <Text style={[wos.actionText, { color: '#0891B2' }]}>Shaft QC</Text>
                   </TouchableOpacity>
                 )}
                 {isAdmin && wo.stage !== 'completed' && (() => {
@@ -607,6 +744,180 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
               testID="pipe-qc-submit"
             >
               {pipeQCSaving ? <ActivityIndicator color="#fff" /> : <><Ionicons name="clipboard" size={18} color="#fff" /><Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Save Pipe WIP QC</Text></>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Shaft WIP QC Modal */}
+      <Modal visible={showShaftQC} animationType="slide" transparent>
+        <View style={wos.modalOverlay}>
+          <View style={[wos.modal, { maxHeight: '92%' }]}>
+            <View style={wos.modalHead}>
+              <View>
+                <Text style={wos.modalTitle}>Shaft WIP QC</Text>
+                {shaftQCSub && <Text style={{ fontSize: 12, color: '#0891B2', fontWeight: '700' }}>{shaftQCSub.sub_wo_number}</Text>}
+              </View>
+              <TouchableOpacity onPress={() => setShowShaftQC(false)} testID="shaft-qc-close"><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 600 }}>
+              {shaftQCRecords.map((rec: any, idx: number) => {
+                const nSamples = parseInt(rec.sample_qty || '0');
+                const meta = rec.slot_meta || {};
+                const showThird = !!meta.third_label && meta.third_required != null;
+                const thirdTol = meta.third_tol || 0.5;
+                return (
+                  <View key={idx} style={{ backgroundColor: 'rgba(241,245,249,0.55)', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4 }}>Item {idx + 1}: {rec.product_name}</Text>
+                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+                      <Text style={{ fontSize: 11, color: '#64748B' }}>Req Dia: <Text style={{ color: '#0F172A', fontWeight: '700' }}>{rec.required_dia} mm</Text></Text>
+                      <Text style={{ fontSize: 11, color: '#64748B' }}>Req Length: <Text style={{ color: '#0F172A', fontWeight: '700' }}>{rec.required_length} mm</Text> (±1)</Text>
+                      {rec.slot_type ? (
+                        <Text style={{ fontSize: 11, color: '#64748B' }}>End: <Text style={{ color: '#0F172A', fontWeight: '700' }}>{rec.required_width}×{rec.required_dim}{showThird ? `×${meta.third_required}` : ''} {rec.slot_type}</Text></Text>
+                      ) : null}
+                      <Text style={{ fontSize: 11, color: '#64748B' }}>Qty: <Text style={{ color: '#0F172A', fontWeight: '700' }}>{rec.quantity}</Text></Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#0891B2' }}>Sample Qty:</Text>
+                      <TextInput
+                        data-testid={`sqc-sample-qty-${idx}`}
+                        style={{ width: 80, backgroundColor: '#fff', borderWidth: 1, borderColor: '#C5964A', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 14, fontWeight: '700', color: '#0F172A', textAlign: 'center' }}
+                        value={rec.sample_qty}
+                        onChangeText={(v) => updateShaftSampleQty(idx, v)}
+                        keyboardType="numeric"
+                        placeholder="0"
+                      />
+                      <Text style={{ fontSize: 10, color: '#94A3B8' }}>(out of {rec.quantity})</Text>
+                    </View>
+                    {nSamples > 0 && rec.samples.slice(0, nSamples).map((s: any, si: number) => {
+                      const lenOk = withinShaftLen(s.shaft_length_measured, rec.required_length);
+                      const wOk = withinSlotWidth(s.slot_width_measured, rec.required_width);
+                      const dOk = withinSlotDim(s.slot_dimension_measured, rec.required_dim);
+                      const tOk = showThird ? withinSlotThird(s.slot_third_measured, meta.third_required, thirdTol) : null;
+                      return (
+                        <View key={si} style={{ backgroundColor: '#fff', borderRadius: 10, padding: 10, marginBottom: 8, borderLeftWidth: 3, borderLeftColor: '#0891B2' }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A', marginBottom: 8 }}>Sample {si + 1}</Text>
+
+                          {/* Shaft Dia Y/N */}
+                          <View style={{ marginBottom: 8 }}>
+                            <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Shaft Dia = {rec.required_dia} mm — match?</Text>
+                            <View style={{ flexDirection: 'row', gap: 6 }}>
+                              <Pressable onPress={() => setShaftSampleField(idx, si, 'shaft_dia_ok', true)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: s.shaft_dia_ok === true ? '#10B981' : '#CBD5E1', backgroundColor: s.shaft_dia_ok === true ? 'rgba(16,185,129,0.12)' : 'transparent' }}>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: s.shaft_dia_ok === true ? '#10B981' : '#94A3B8' }}>Yes</Text>
+                              </Pressable>
+                              <Pressable onPress={() => setShaftSampleField(idx, si, 'shaft_dia_ok', false)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: s.shaft_dia_ok === false ? '#EF4444' : '#CBD5E1', backgroundColor: s.shaft_dia_ok === false ? 'rgba(239,68,68,0.12)' : 'transparent' }}>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: s.shaft_dia_ok === false ? '#EF4444' : '#94A3B8' }}>No</Text>
+                              </Pressable>
+                            </View>
+                            {s.shaft_dia_ok === false && (
+                              <TextInput
+                                style={{ marginTop: 6, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, color: '#0F172A' }}
+                                placeholder="Reason (e.g. OD under-size by 0.3mm)"
+                                value={s.shaft_dia_remarks}
+                                onChangeText={(v) => setShaftSampleField(idx, si, 'shaft_dia_remarks', v)}
+                              />
+                            )}
+                          </View>
+
+                          {/* Shaft Length */}
+                          <View style={{ marginBottom: 8 }}>
+                            <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Shaft Length = {rec.required_length} mm (±1) — actual?</Text>
+                            <TextInput
+                              style={{ backgroundColor: lenOk === true ? '#ECFDF5' : lenOk === false ? '#FEF2F2' : '#fff', borderWidth: 1, borderColor: lenOk === true ? '#10B981' : lenOk === false ? '#EF4444' : '#CBD5E1', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, fontWeight: '700', color: '#0F172A' }}
+                              placeholder={`e.g. ${rec.required_length}`}
+                              value={String(s.shaft_length_measured ?? '')}
+                              onChangeText={(v) => setShaftSampleField(idx, si, 'shaft_length_measured', v)}
+                              keyboardType="numeric"
+                            />
+                            {lenOk === false && (
+                              <TextInput
+                                style={{ marginTop: 6, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, color: '#0F172A' }}
+                                placeholder="Reason for length out of tolerance"
+                                value={s.shaft_length_remarks}
+                                onChangeText={(v) => setShaftSampleField(idx, si, 'shaft_length_remarks', v)}
+                              />
+                            )}
+                          </View>
+
+                          {/* End Slot — only if slot details exist */}
+                          {rec.required_width ? (
+                            <>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: '#0891B2', marginBottom: 6, marginTop: 2 }}>End Slot ({rec.slot_type})</Text>
+                              {/* Width -0.2 / +0 */}
+                              <View style={{ marginBottom: 8 }}>
+                                <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Width = {rec.required_width} mm (-0.2 / +0) — actual?</Text>
+                                <TextInput
+                                  style={{ backgroundColor: wOk === true ? '#ECFDF5' : wOk === false ? '#FEF2F2' : '#fff', borderWidth: 1, borderColor: wOk === true ? '#10B981' : wOk === false ? '#EF4444' : '#CBD5E1', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, fontWeight: '700', color: '#0F172A' }}
+                                  placeholder={`e.g. ${rec.required_width}`}
+                                  value={String(s.slot_width_measured ?? '')}
+                                  onChangeText={(v) => setShaftSampleField(idx, si, 'slot_width_measured', v)}
+                                  keyboardType="numeric"
+                                />
+                                {wOk === false && (
+                                  <TextInput
+                                    style={{ marginTop: 6, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, color: '#0F172A' }}
+                                    placeholder="Reason for width out of tolerance"
+                                    value={s.slot_width_remarks}
+                                    onChangeText={(v) => setShaftSampleField(idx, si, 'slot_width_remarks', v)}
+                                  />
+                                )}
+                              </View>
+                              {/* Dimension ±0.5 */}
+                              <View style={{ marginBottom: 8 }}>
+                                <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Dimension (D) = {rec.required_dim} mm (±0.5) — actual?</Text>
+                                <TextInput
+                                  style={{ backgroundColor: dOk === true ? '#ECFDF5' : dOk === false ? '#FEF2F2' : '#fff', borderWidth: 1, borderColor: dOk === true ? '#10B981' : dOk === false ? '#EF4444' : '#CBD5E1', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, fontWeight: '700', color: '#0F172A' }}
+                                  placeholder={`e.g. ${rec.required_dim}`}
+                                  value={String(s.slot_dimension_measured ?? '')}
+                                  onChangeText={(v) => setShaftSampleField(idx, si, 'slot_dimension_measured', v)}
+                                  keyboardType="numeric"
+                                />
+                                {dOk === false && (
+                                  <TextInput
+                                    style={{ marginTop: 6, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, color: '#0F172A' }}
+                                    placeholder="Reason for dimension out of tolerance"
+                                    value={s.slot_dimension_remarks}
+                                    onChangeText={(v) => setShaftSampleField(idx, si, 'slot_dimension_remarks', v)}
+                                  />
+                                )}
+                              </View>
+                              {/* Third: Notch (B, ±0.5) or Centre (C, ±1) */}
+                              {showThird && (
+                                <View>
+                                  <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>{meta.third_label} = {meta.third_required} mm (±{thirdTol}) — actual?</Text>
+                                  <TextInput
+                                    style={{ backgroundColor: tOk === true ? '#ECFDF5' : tOk === false ? '#FEF2F2' : '#fff', borderWidth: 1, borderColor: tOk === true ? '#10B981' : tOk === false ? '#EF4444' : '#CBD5E1', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, fontWeight: '700', color: '#0F172A' }}
+                                    placeholder={`e.g. ${meta.third_required}`}
+                                    value={String(s.slot_third_measured ?? '')}
+                                    onChangeText={(v) => setShaftSampleField(idx, si, 'slot_third_measured', v)}
+                                    keyboardType="numeric"
+                                  />
+                                  {tOk === false && (
+                                    <TextInput
+                                      style={{ marginTop: 6, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, color: '#0F172A' }}
+                                      placeholder={`Reason for ${(meta.third_label || '').toLowerCase()} out of tolerance`}
+                                      value={s.slot_third_remarks}
+                                      onChangeText={(v) => setShaftSampleField(idx, si, 'slot_third_remarks', v)}
+                                    />
+                                  )}
+                                </View>
+                              )}
+                            </>
+                          ) : null}
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0891B2', borderRadius: 14, paddingVertical: 15, marginTop: 10, opacity: shaftQCSaving ? 0.6 : 1 }}
+              onPress={submitShaftQC}
+              testID="shaft-qc-submit"
+            >
+              {shaftQCSaving ? <ActivityIndicator color="#fff" /> : <><Ionicons name="clipboard" size={18} color="#fff" /><Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Save Shaft WIP QC</Text></>}
             </TouchableOpacity>
           </View>
         </View>
