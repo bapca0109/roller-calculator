@@ -411,15 +411,23 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
 
   const openCreateWO = (order: any) => {
     setWoOrder(order);
-    const items = (order.products || []).map((_: any, i: number) => ({
-      item_index: i,
-      drawing_number: '',
-      shaft_length: '',
-      slot_width: '',
-      slot_dimension: '',
-      slot_type: 'A',
-      production_notes: '',
-    }));
+    const products = order.products || [];
+    const items = products.map((p: any, i: number) => {
+      const existingDwg = (p?.production_details && p.production_details.drawing_number) || '';
+      return {
+        item_index: i,
+        product_name: p?.product_name || '',
+        drawing_number: existingDwg,  // pre-filled from SO production_details (set during Convert-to-SO)
+        shaft_length: '',
+        slot_width: '',
+        slot_dimension: '',
+        slot_type: 'A',
+        production_notes: '',
+        has_wo: !!p?.wo_number,
+        wo_number: p?.wo_number || null,
+        selected: !p?.wo_number,  // default: select only items not yet in a WO
+      };
+    });
     setWoItems(items);
     setWoRalCode('');
     setWoPaintType('');
@@ -429,21 +437,29 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
 
   const createWorkOrder = async () => {
     if (!woOrder) return;
-    // Validate
-    for (let i = 0; i < woItems.length; i++) {
-      const item = woItems[i];
-      if (!item.drawing_number) { Alert.alert('Error', `Item ${i+1}: Drawing number required`); return; }
+    const selectedItems = woItems.filter((it: any) => it.selected && !it.has_wo);
+    if (selectedItems.length === 0) { Alert.alert('Error', 'Select at least one item to create a Work Order'); return; }
+    // Validate selected items
+    for (const item of selectedItems) {
+      const i = item.item_index;
+      const productName = (woOrder.products?.[i]?.product_name || '').toLowerCase();
+      const isPulley = productName.includes('pulley');
+      if (isPulley) continue;
+      if (!item.drawing_number) { Alert.alert('Error', `Item ${i+1}: Drawing number required (set during Convert-to-SO)`); return; }
       if (!item.shaft_length) { Alert.alert('Error', `Item ${i+1}: Shaft length required`); return; }
       if (!item.slot_width || !item.slot_dimension || !item.slot_type) { Alert.alert('Error', `Item ${i+1}: Shaft slot details required`); return; }
     }
     setWoCreating(true);
     try {
       const payload = {
-        items: woItems.map(item => ({
+        selected_item_indexes: selectedItems.map((it: any) => it.item_index),
+        items: selectedItems.map((item: any) => ({
           item_index: item.item_index,
           drawing_number: item.drawing_number,
-          shaft_length: parseFloat(item.shaft_length),
-          shaft_slot: { width: parseFloat(item.slot_width), dimension: parseFloat(item.slot_dimension), slot_type: item.slot_type },
+          shaft_length: item.shaft_length ? parseFloat(item.shaft_length) : undefined,
+          shaft_slot: (item.slot_width && item.slot_dimension && item.slot_type)
+            ? { width: parseFloat(item.slot_width), dimension: parseFloat(item.slot_dimension), slot_type: item.slot_type }
+            : undefined,
           production_notes: item.production_notes,
         })),
         ral_code: woRalCode,
@@ -605,7 +621,12 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
             <View style={os.invoiceRow}>
               {order.proforma_invoice && <View style={os.invoiceTag}><Ionicons name="document-outline" size={12} color="#8B5CF6" /><Text style={os.invoiceTagText}>PI: {order.proforma_invoice}</Text></View>}
               {order.quote_number && <View style={os.invoiceTag}><Ionicons name="document-text-outline" size={12} color="#94A3B8" /><Text style={os.invoiceTagText}>{order.quote_number}</Text></View>}
-              {order.work_order && <View style={os.invoiceTag}><Ionicons name="construct" size={12} color="#10B981" /><Text style={os.invoiceTagText}>{order.work_order}</Text></View>}
+              {(order.work_orders && order.work_orders.length > 0)
+                ? order.work_orders.map((wn: string) => (
+                    <View key={wn} style={os.invoiceTag}><Ionicons name="construct" size={12} color="#10B981" /><Text style={os.invoiceTagText}>{wn}</Text></View>
+                  ))
+                : (order.work_order && <View style={os.invoiceTag}><Ionicons name="construct" size={12} color="#10B981" /><Text style={os.invoiceTagText}>{order.work_order}</Text></View>)}
+              {order.customer_po_number && <View style={os.invoiceTag}><Ionicons name="receipt-outline" size={12} color="#0F766E" /><Text style={os.invoiceTagText}>PO: {order.customer_po_number}</Text></View>}
             </View>
 
             {/* Actions */}
@@ -645,13 +666,21 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
                     <Text style={[os.actionText, { color: '#8B5CF6' }]}>PI PDF</Text>
                   </TouchableOpacity>
                 )}
-                {!order.work_order && (
-                  <Pressable style={[os.actionBtn, { backgroundColor: 'rgba(197,150,74,0.1)', borderColor: '#C5964A' }]} onPress={() => openCreateWO(order)}>
-                    <Ionicons name="construct-outline" size={15} color="#C5964A" />
-                    <Text style={[os.actionText, { color: '#C5964A' }]}>Create WO</Text>
-                  </Pressable>
-                )}
-                {order.work_order && (
+                {(() => {
+                  const prods = order.products || [];
+                  const unassigned = prods.filter((p: any) => !p.wo_number).length;
+                  const hasAnyWO = !!order.work_order || (order.work_orders && order.work_orders.length > 0);
+                  if (unassigned > 0) {
+                    return (
+                      <Pressable style={[os.actionBtn, { backgroundColor: 'rgba(197,150,74,0.1)', borderColor: '#C5964A' }]} onPress={() => openCreateWO(order)} data-testid={`create-wo-btn-${order.id}`}>
+                        <Ionicons name="construct-outline" size={15} color="#C5964A" />
+                        <Text style={[os.actionText, { color: '#C5964A' }]}>{hasAnyWO ? `Create WO (${unassigned} left)` : 'Create WO'}</Text>
+                      </Pressable>
+                    );
+                  }
+                  return null;
+                })()}
+                {((!order.work_orders || order.work_orders.length === 0) && order.work_order) && (
                   <View style={[os.actionBtn, { backgroundColor: 'rgba(16,185,129,0.08)', borderColor: '#10B981' }]}>
                     <Ionicons name="construct" size={15} color="#10B981" />
                     <Text style={[os.actionText, { color: '#10B981' }]}>{order.work_order}</Text>
@@ -967,40 +996,57 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
               {woItems.map((item: any, idx: number) => {
                 const productName = (woOrder?.products?.[idx]?.product_name || '').toLowerCase();
                 const isPulley = productName.includes('pulley');
+                const disabled = !!item.has_wo;
+                const cardBg = disabled ? 'rgba(226,232,240,0.55)' : (item.selected ? 'rgba(197,150,74,0.10)' : 'rgba(241,245,249,0.7)');
                 return (
-                <View key={idx} style={{ backgroundColor: 'rgba(241,245,249,0.7)', borderRadius: 12, padding: 14, marginBottom: 12 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 10 }}>
-                    Item {idx + 1}: {woOrder?.products?.[idx]?.product_name || 'Product'}
-                  </Text>
-                  {!isPulley && (<>
-                  <Text style={os.label}>Drawing Number *</Text>
-                  <TextInput style={os.input} value={item.drawing_number} onChangeText={v => { const arr = [...woItems]; arr[idx].drawing_number = v; setWoItems(arr); }} placeholder="DWG-001" />
-                  <Text style={os.label}>Shaft Length (mm) *</Text>
-                  <TextInput style={os.input} value={item.shaft_length} onChangeText={v => { const arr = [...woItems]; arr[idx].shaft_length = v; setWoItems(arr); }} placeholder="600" keyboardType="numeric" />
-                  <Text style={os.label}>Shaft End Slot *</Text>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 10, color: '#94A3B8' }}>Width</Text>
-                      <TextInput style={os.input} value={item.slot_width} onChangeText={v => { const arr = [...woItems]; arr[idx].slot_width = v; setWoItems(arr); }} placeholder="14" keyboardType="numeric" />
+                <View key={idx} style={{ backgroundColor: cardBg, borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: item.selected && !disabled ? 1 : 0, borderColor: '#C5964A' }}>
+                  <Pressable
+                    onPress={() => { if (disabled) return; const arr = [...woItems]; arr[idx].selected = !arr[idx].selected; setWoItems(arr); }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}
+                    data-testid={`wo-item-checkbox-${idx}`}
+                  >
+                    <View style={{ width: 22, height: 22, borderRadius: 5, borderWidth: 2, borderColor: disabled ? '#94A3B8' : (item.selected ? '#C5964A' : '#CBD5E1'), alignItems: 'center', justifyContent: 'center', backgroundColor: item.selected && !disabled ? '#C5964A' : 'transparent' }}>
+                      {item.selected && !disabled && <Ionicons name="checkmark" size={16} color="#fff" />}
+                      {disabled && <Ionicons name="lock-closed" size={12} color="#94A3B8" />}
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 10, color: '#94A3B8' }}>Dim</Text>
-                      <TextInput style={os.input} value={item.slot_dimension} onChangeText={v => { const arr = [...woItems]; arr[idx].slot_dimension = v; setWoItems(arr); }} placeholder="9" keyboardType="numeric" />
+                    <Text style={{ flex: 1, fontSize: 13, fontWeight: '700', color: disabled ? '#94A3B8' : '#0F172A' }}>
+                      Item {idx + 1}: {woOrder?.products?.[idx]?.product_name || 'Product'}
+                      {disabled && <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '600' }}>  ✓ in {item.wo_number}</Text>}
+                    </Text>
+                  </Pressable>
+                  {item.selected && !disabled && !isPulley && (<>
+                    <Text style={os.label}>Drawing Number (from SO)</Text>
+                    <View style={[os.input, { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center' }]}>
+                      <Text style={{ fontSize: 14, color: item.drawing_number ? '#0F172A' : '#EF4444', fontWeight: '600' }}>
+                        {item.drawing_number || 'Not set — edit the Sales Order conversion to add drawing #'}
+                      </Text>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 10, color: '#94A3B8' }}>Type</Text>
-                      <TextInput style={os.input} value={item.slot_type} onChangeText={v => { const arr = [...woItems]; arr[idx].slot_type = v; setWoItems(arr); }} placeholder="A / B5 / C35" />
+                    <Text style={os.label}>Shaft Length (mm) *</Text>
+                    <TextInput style={os.input} value={item.shaft_length} onChangeText={v => { const arr = [...woItems]; arr[idx].shaft_length = v; setWoItems(arr); }} placeholder="600" keyboardType="numeric" />
+                    <Text style={os.label}>Shaft End Slot *</Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 10, color: '#94A3B8' }}>Width</Text>
+                        <TextInput style={os.input} value={item.slot_width} onChangeText={v => { const arr = [...woItems]; arr[idx].slot_width = v; setWoItems(arr); }} placeholder="14" keyboardType="numeric" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 10, color: '#94A3B8' }}>Dim</Text>
+                        <TextInput style={os.input} value={item.slot_dimension} onChangeText={v => { const arr = [...woItems]; arr[idx].slot_dimension = v; setWoItems(arr); }} placeholder="9" keyboardType="numeric" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 10, color: '#94A3B8' }}>Type</Text>
+                        <TextInput style={os.input} value={item.slot_type} onChangeText={v => { const arr = [...woItems]; arr[idx].slot_type = v; setWoItems(arr); }} placeholder="A / B5 / C35" />
+                      </View>
                     </View>
-                  </View>
+                    <Text style={os.label}>Production Notes</Text>
+                    <TextInput style={[os.input, { height: 50, textAlignVertical: 'top' }]} value={item.production_notes} onChangeText={v => { const arr = [...woItems]; arr[idx].production_notes = v; setWoItems(arr); }} placeholder="Notes..." multiline />
                   </>)}
-                  <Text style={os.label}>Production Notes</Text>
-                  <TextInput style={[os.input, { height: 50, textAlignVertical: 'top' }]} value={item.production_notes} onChangeText={v => { const arr = [...woItems]; arr[idx].production_notes = v; setWoItems(arr); }} placeholder="Notes..." multiline />
                 </View>
                 );
               })}
             </ScrollView>
-            <Pressable style={[os.saveBtn, woCreating && { opacity: 0.6 }]} onPress={createWorkOrder} disabled={woCreating}>
-              {woCreating ? <ActivityIndicator color="#fff" /> : <><Ionicons name="construct" size={18} color="#fff" /><Text style={os.saveBtnText}>Create Work Order + BOM</Text></>}
+            <Pressable style={[os.saveBtn, woCreating && { opacity: 0.6 }]} onPress={createWorkOrder} disabled={woCreating} data-testid="wo-create-submit">
+              {woCreating ? <ActivityIndicator color="#fff" /> : <><Ionicons name="construct" size={18} color="#fff" /><Text style={os.saveBtnText}>Create WO for {woItems.filter((it: any) => it.selected && !it.has_wo).length} Item(s) + BOM</Text></>}
             </Pressable>
           </View>
         </View>
@@ -1087,6 +1133,9 @@ export default function QuotesScreen() {
   const [showConvertSO, setShowConvertSO] = useState(false);
   const [convertQuote, setConvertQuote] = useState<any>(null);
   const [deliveryDate, setDeliveryDate] = useState('');
+  const [customerPoNumber, setCustomerPoNumber] = useState('');
+  const [customerPoDate, setCustomerPoDate] = useState('');
+  const [convertItemDrawings, setConvertItemDrawings] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Approval success popup state
@@ -2399,6 +2448,9 @@ export default function QuotesScreen() {
         onConvertToSO={(quote) => {
           setConvertQuote(quote);
           setDeliveryDate('');
+          setCustomerPoNumber('');
+          setCustomerPoDate('');
+          setConvertItemDrawings(new Array((quote?.products || []).length).fill(''));
           setShowConvertSO(true);
         }}
         formatDate={formatDate}
@@ -3139,35 +3191,97 @@ export default function QuotesScreen() {
       {/* Convert to SO Modal with Delivery Date */}
       <Modal visible={showConvertSO} animationType="slide" transparent>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22 }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22, maxHeight: '92%' }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A' }}>Convert to Sales Order</Text>
               <TouchableOpacity onPress={() => setShowConvertSO(false)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity>
             </View>
             {convertQuote && <Text style={{ fontSize: 14, color: '#C5964A', fontWeight: '600', marginBottom: 16 }}>{convertQuote.quote_number} — {convertQuote.customer_name}</Text>}
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#C5964A', letterSpacing: 0.5, marginBottom: 6 }}>Delivery Date *</Text>
-            {Platform.OS === 'web' ? (
-              <input
-                type="date"
-                value={deliveryDate}
-                onChange={(e: any) => setDeliveryDate(e.target.value)}
-                style={{ backgroundColor: 'rgba(241,245,249,0.8)', border: '1px solid rgba(226,232,240,0.5)', borderRadius: 12, padding: '12px 14px', fontSize: 15, color: '#0F172A', width: '100%', fontFamily: 'inherit' } as any}
-              />
-            ) : (
-              <TextInput
-                style={{ backgroundColor: 'rgba(241,245,249,0.8)', borderWidth: 1, borderColor: 'rgba(226,232,240,0.5)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#0F172A' }}
-                value={deliveryDate}
-                onChangeText={setDeliveryDate}
-                placeholder="DD-MM-YYYY"
-              />
-            )}
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 560 }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#C5964A', letterSpacing: 0.5, marginBottom: 6 }}>Delivery Date *</Text>
+              {Platform.OS === 'web' ? (
+                <input
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e: any) => setDeliveryDate(e.target.value)}
+                  data-testid="so-delivery-date"
+                  style={{ backgroundColor: 'rgba(241,245,249,0.8)', border: '1px solid rgba(226,232,240,0.5)', borderRadius: 12, padding: '12px 14px', fontSize: 15, color: '#0F172A', width: '100%', fontFamily: 'inherit' } as any}
+                />
+              ) : (
+                <TextInput
+                  style={{ backgroundColor: 'rgba(241,245,249,0.8)', borderWidth: 1, borderColor: 'rgba(226,232,240,0.5)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#0F172A' }}
+                  value={deliveryDate}
+                  onChangeText={setDeliveryDate}
+                  placeholder="DD-MM-YYYY"
+                />
+              )}
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#C5964A', letterSpacing: 0.5, marginBottom: 6 }}>Customer PO No.</Text>
+                  <TextInput
+                    style={{ backgroundColor: 'rgba(241,245,249,0.8)', borderWidth: 1, borderColor: 'rgba(226,232,240,0.5)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#0F172A' }}
+                    value={customerPoNumber}
+                    onChangeText={setCustomerPoNumber}
+                    placeholder="e.g. PO-12345"
+                    data-testid="so-customer-po-number"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#C5964A', letterSpacing: 0.5, marginBottom: 6 }}>PO Date</Text>
+                  {Platform.OS === 'web' ? (
+                    <input
+                      type="date"
+                      value={customerPoDate}
+                      onChange={(e: any) => setCustomerPoDate(e.target.value)}
+                      data-testid="so-customer-po-date"
+                      style={{ backgroundColor: 'rgba(241,245,249,0.8)', border: '1px solid rgba(226,232,240,0.5)', borderRadius: 12, padding: '12px 14px', fontSize: 15, color: '#0F172A', width: '100%', fontFamily: 'inherit' } as any}
+                    />
+                  ) : (
+                    <TextInput
+                      style={{ backgroundColor: 'rgba(241,245,249,0.8)', borderWidth: 1, borderColor: 'rgba(226,232,240,0.5)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#0F172A' }}
+                      value={customerPoDate}
+                      onChangeText={setCustomerPoDate}
+                      placeholder="DD-MM-YYYY"
+                    />
+                  )}
+                </View>
+              </View>
+
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#C5964A', letterSpacing: 0.5, marginTop: 18, marginBottom: 8, textTransform: 'uppercase' }}>Drawing Numbers (per item)</Text>
+              {(convertQuote?.products || []).map((p: any, idx: number) => (
+                <View key={idx} style={{ backgroundColor: 'rgba(241,245,249,0.6)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                  <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '600', marginBottom: 6 }}>Item {idx+1}: {p.product_name} <Text style={{ color: '#94A3B8', fontWeight: '400' }}>(Qty {p.quantity})</Text></Text>
+                  <TextInput
+                    style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#0F172A' }}
+                    value={convertItemDrawings[idx] || ''}
+                    onChangeText={(v) => {
+                      const arr = [...convertItemDrawings];
+                      arr[idx] = v;
+                      setConvertItemDrawings(arr);
+                    }}
+                    placeholder="Drawing No. (e.g. DWG-001)"
+                    data-testid={`so-item-drawing-${idx}`}
+                  />
+                </View>
+              ))}
+            </ScrollView>
             <Pressable
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#C5964A', borderRadius: 14, paddingVertical: 15, marginTop: 18 }}
+              data-testid="so-convert-submit"
               onPress={async () => {
                 if (!deliveryDate) { Alert.alert('Error', 'Please enter delivery date'); return; }
                 try {
                   const quoteId = convertQuote?.id || convertQuote?._id;
-                  const res = await api.post(`/orders/from-quote/${quoteId}`, { delivery_date: deliveryDate });
+                  const item_drawings = convertItemDrawings
+                    .map((dwg, i) => ({ item_index: i, drawing_number: (dwg || '').trim() }))
+                    .filter(d => d.drawing_number);
+                  const res = await api.post(`/orders/from-quote/${quoteId}`, {
+                    delivery_date: deliveryDate,
+                    customer_po_number: customerPoNumber || undefined,
+                    customer_po_date: customerPoDate || undefined,
+                    item_drawings: item_drawings.length > 0 ? item_drawings : undefined,
+                  });
                   Alert.alert('Success', res.data.message);
                   setShowConvertSO(false);
                   fetchQuotes();

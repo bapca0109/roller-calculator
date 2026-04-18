@@ -98,6 +98,7 @@ class BulkCreateWorkOrder(BaseModel):
     ral_code: Optional[str] = None  # e.g., "RAL 9005"
     paint_type: Optional[str] = None  # Synthetic Enamel / Auto Paint / Epoxy / PU
     paint_spec: Optional[str] = None  # Auto-carried from quote commercial_terms.color_finish
+    selected_item_indexes: Optional[List[int]] = None  # if provided, WO only for these items
 
 
 @router.post("/orders/{order_id}/create-work-order")
@@ -106,35 +107,52 @@ async def bulk_create_work_order(
     data: BulkCreateWorkOrder,
     current_user: dict = Depends(require_role([UserRole.ADMIN]))
 ):
-    """Single click: set production details for all items + auto-generate BOM + create Work Order"""
+    """Single click: set production details for selected items + auto-generate BOM + create Work Order.
+    Supports partial WOs — multiple WOs per SO, one per batch of selected items.
+    """
     order = await db.sales_orders.find_one({"$or": [{"id": order_id}, {"so_number": order_id}]})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    existing = await db.work_orders.find_one({"order_id": order.get("id")})
-    if existing:
-        raise HTTPException(status_code=400, detail=f"Work Order already exists: {existing['wo_number']}")
-
     products = order.get("products", [])
+    n_products = len(products)
 
-    # Step 1: Apply production details to all items
-    for item_data in data.items:
-        idx = item_data.item_index
-        if idx < 0 or idx >= len(products):
-            raise HTTPException(status_code=400, detail=f"Invalid item index: {idx}")
-        products[idx]["production_details"] = {
-            "drawing_number": item_data.drawing_number,
-            "drawing_base64": item_data.drawing_base64,
-            "drawing_filename": item_data.drawing_filename,
-            "shaft_length": item_data.shaft_length,
-            "shaft_slot": item_data.shaft_slot.dict() if item_data.shaft_slot else None,
-            "production_notes": item_data.production_notes,
-        }
+    # Determine which item indexes this WO is for. If none given, all items.
+    payload_indexes = {it.item_index for it in data.items}
+    if data.selected_item_indexes:
+        target_indexes = [i for i in data.selected_item_indexes if 0 <= i < n_products]
+    else:
+        target_indexes = sorted(payload_indexes)
+    if not target_indexes:
+        raise HTTPException(status_code=400, detail="No items selected for Work Order")
 
-    # Step 2: Validate all items have required fields (skip for pulley)
+    # Check items already assigned to a WO
+    already = [i for i in target_indexes if products[i].get("wo_number")]
+    if already:
+        raise HTTPException(status_code=400, detail=f"Items {', '.join(str(i+1) for i in already)} already have a Work Order")
+
+    # Step 1: Apply production details to targeted items
+    items_by_idx = {it.item_index: it for it in data.items}
+    for idx in target_indexes:
+        item_data = items_by_idx.get(idx)
+        existing_pd = products[idx].get("production_details") or {}
+        if item_data:
+            # Keep existing drawing_number if new one not provided (e.g. inherited from SO conversion)
+            new_dwg = item_data.drawing_number or existing_pd.get("drawing_number")
+            products[idx]["production_details"] = {
+                "drawing_number": new_dwg,
+                "drawing_base64": item_data.drawing_base64 or existing_pd.get("drawing_base64"),
+                "drawing_filename": item_data.drawing_filename or existing_pd.get("drawing_filename"),
+                "shaft_length": item_data.shaft_length if item_data.shaft_length is not None else existing_pd.get("shaft_length"),
+                "shaft_slot": item_data.shaft_slot.dict() if item_data.shaft_slot else existing_pd.get("shaft_slot"),
+                "production_notes": item_data.production_notes if item_data.production_notes is not None else existing_pd.get("production_notes"),
+            }
+
+    # Step 2: Validate targeted items have required fields (skip for pulley)
     missing = []
-    for i, p in enumerate(products):
-        pd = p.get("production_details")
+    for i in target_indexes:
+        p = products[i]
+        pd = p.get("production_details") or {}
         product_name = (p.get("product_name") or "").lower()
         is_pulley = "pulley" in product_name
 
@@ -156,26 +174,30 @@ async def bulk_create_work_order(
     if missing:
         raise HTTPException(status_code=400, detail=f"Production details incomplete: {'; '.join(missing)}")
 
-    # Step 3: Save production details to SO
-    await db.sales_orders.update_one(
-        {"_id": order["_id"]},
-        {"$set": {"products": products, "updated_at": get_ist_now().isoformat()}}
-    )
-
-    # Step 4: Build WO items with BOM
+    # Step 3: Generate WO number first so we can tag products
     now = get_ist_now()
     wo_number = await generate_wo_number()
 
+    # Step 4: Save production details + WO tag on targeted products
+    for idx in target_indexes:
+        products[idx]["wo_number"] = wo_number
+    await db.sales_orders.update_one(
+        {"_id": order["_id"]},
+        {"$set": {"products": products, "updated_at": now.isoformat()}}
+    )
+
+    # Step 5: Build WO items for targeted products only
     wo_items = []
-    for i, p in enumerate(products):
-        pd = p.get("production_details", {})
-        slot = pd.get("shaft_slot", {})
+    for i in target_indexes:
+        p = products[i]
+        pd = p.get("production_details", {}) or {}
+        slot = pd.get("shaft_slot", {}) or {}
         slot_str = ""
         if slot:
             st = slot.get("slot_type", "")
             slot_str = f"{slot.get('width', '')} × {slot.get('dimension', '')} {st}"
 
-        specs = p.get("specifications", {})
+        specs = p.get("specifications", {}) or {}
         qty = p.get("quantity", 1)
         bom = _generate_bom(p, pd, specs, qty)
 
@@ -197,7 +219,6 @@ async def bulk_create_work_order(
             "item_status": "pending",
         })
 
-    # Get paint spec from quote commercial terms if not provided
     commercial_terms = order.get("commercial_terms") or {}
     paint_spec = data.paint_spec or commercial_terms.get("color_finish", "")
 
@@ -209,28 +230,34 @@ async def bulk_create_work_order(
         "quote_number": order.get("quote_number"),
         "customer_name": order.get("customer_name"),
         "customer_company": order.get("customer_company"),
+        "customer_po_number": order.get("customer_po_number"),
+        "customer_po_date": order.get("customer_po_date"),
+        "delivery_date": order.get("delivery_date"),
+        "so_item_indexes": target_indexes,
         "items": wo_items,
         "ral_code": data.ral_code or "",
         "paint_type": data.paint_type or "",
         "paint_spec": paint_spec,
         "stage": "created",
-        "stage_history": [{"stage": "created", "timestamp": now.isoformat(), "by": current_user.get("email"), "notes": f"Created from {order.get('so_number')} with {len(wo_items)} items"}],
+        "stage_history": [{"stage": "created", "timestamp": now.isoformat(), "by": current_user.get("email"), "notes": f"Created from {order.get('so_number')} — items {', '.join(str(i+1) for i in target_indexes)} ({len(wo_items)} line(s))"}],
         "created_by": current_user.get("email"),
         "created_at": now.isoformat(),
         "updated_at": now.isoformat(),
     }
 
     await db.work_orders.insert_one(work_order)
+    # Append to SO's work_orders list (instead of singleton)
     await db.sales_orders.update_one(
         {"_id": order["_id"]},
-        {"$set": {"work_order": wo_number, "updated_at": now.isoformat()}}
+        {"$addToSet": {"work_orders": wo_number},
+         "$set": {"work_order": wo_number, "updated_at": now.isoformat()}}
     )
 
     # Auto-check BOM against stock and find shortages
     shortages = await _check_bom_shortages(work_order)
 
     del work_order["_id"]
-    return {"message": f"Work Order {wo_number} created with {len(wo_items)} items", "work_order": work_order, "shortages": shortages}
+    return {"message": f"Work Order {wo_number} created with {len(wo_items)} item(s)", "work_order": work_order, "shortages": shortages}
 
 @router.post("/orders/{order_id}/work-order")
 async def create_work_order(
@@ -853,6 +880,11 @@ async def get_work_order_pdf(
         <div class="info-box"><div class="info-label">Stage</div><div class="info-value">{WO_STAGE_LABELS.get(wo.get('stage',''), wo.get('stage',''))}</div></div>
     </div>
     <div class="info-grid">
+        <div class="info-box"><div class="info-label">Customer PO</div><div class="info-value">{wo.get('customer_po_number','') or 'N/A'}</div></div>
+        <div class="info-box"><div class="info-label">PO Date</div><div class="info-value">{wo.get('customer_po_date','') or 'N/A'}</div></div>
+        <div class="info-box"><div class="info-label">Delivery Date</div><div class="info-value" style="font-weight:700;color:#960018">{wo.get('delivery_date','') or 'N/A'}</div></div>
+    </div>
+    <div class="info-grid">
         <div class="info-box"><div class="info-label">RAL Code</div><div class="info-value" style="font-weight:700;color:#960018">{wo.get('ral_code','') or 'N/A'}</div></div>
         <div class="info-box"><div class="info-label">Paint Type</div><div class="info-value">{wo.get('paint_type','') or 'N/A'}</div></div>
         <div class="info-box" style="flex:3"><div class="info-label">Paint Specification</div><div class="info-value">{wo.get('paint_spec','') or 'N/A'}</div></div>
@@ -888,10 +920,16 @@ async def get_work_order_pdf(
 import math
 
 STEEL_DENSITY = 7850  # kg/m³
+RUBBER_DENSITY = 1100  # kg/m³ — Natural rubber typical
 
 def _calc_weight(volume_mm3):
     """Convert volume in mm³ to weight in kg"""
     return round(volume_mm3 / 1e9 * STEEL_DENSITY, 3)
+
+
+def _calc_rubber_weight(volume_mm3):
+    """Convert volume in mm³ to weight in kg for rubber"""
+    return round(volume_mm3 / 1e9 * RUBBER_DENSITY, 3)
 
 
 def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int) -> list:
@@ -970,16 +1008,19 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "weight_per_unit_kg": shaft_wt, "total_weight_kg": round(shaft_wt * qty, 3),
             })
 
-        # 3. Bearing — number + make
+        # 3. Bearing — number + make, with standard weight from datasheet
         if bearing_number:
             make_label = (bearing_make or "china").upper()
+            brg_unit_wt = rs.BEARING_WEIGHT_KG.get(bearing_number, 0) or 0
+            brg_qty_per_unit = 2
             bom.append({
                 "component": "Bearing",
                 "description": f"{bearing_number} ZZ - {make_label} (OD: {bearing_od}mm)",
                 "material": f"{bearing_number} - {make_label}",
                 "bom_match_key": f"bearing:{bearing_number}:{(bearing_make or 'china').lower()}",
-                "qty_per_unit": 2, "total_qty": qty * 2,
-                "weight_per_unit_kg": 0, "total_weight_kg": 0,
+                "qty_per_unit": brg_qty_per_unit, "total_qty": qty * brg_qty_per_unit,
+                "weight_per_unit_kg": brg_unit_wt,
+                "total_weight_kg": round(brg_unit_wt * brg_qty_per_unit * qty, 3),
             })
 
         # 4. Housing — with size (housing_dia/bearing_OD)
@@ -1044,6 +1085,11 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             if not rubber_dia:
                 options = rs.RUBBER_LAGGING_OPTIONS.get(ring_id, [])
                 rubber_dia = options[0] if options else 0
+            # Weight: annular cylinder — π/4 × (OD² - ID²) × thk × rubber density
+            ring_unit_wt = 0
+            if rubber_dia and rubber_dia > ring_id:
+                ring_vol = (math.pi / 4) * (rubber_dia**2 - ring_id**2) * ring_width
+                ring_unit_wt = _calc_rubber_weight(ring_vol)
             ring_desc = f"{ring_id}mm ID x {rubber_dia}mm OD x {ring_width}mm thk" if rubber_dia else f"{ring_id}mm ID x {ring_width}mm thk"
             bom.append({
                 "component": "Rubber Ring",
@@ -1051,7 +1097,8 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
                 "material": "Natural Rubber",
                 "bom_match_key": f"rubber_ring:{ring_id}:{rubber_dia}",
                 "qty_per_unit": ring_qty, "total_qty": qty * ring_qty,
-                "weight_per_unit_kg": 0, "total_weight_kg": 0,
+                "weight_per_unit_kg": ring_unit_wt,
+                "total_weight_kg": round(ring_unit_wt * ring_qty * qty, 3),
             })
 
     elif is_pulley:

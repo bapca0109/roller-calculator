@@ -164,6 +164,19 @@ BEARING_OD = {
     "6210": 90, "6310": 110
 }
 
+# Standard Deep Groove Ball Bearing weights (kg per piece) - reference SKF/FAG datasheets
+# Used in BOM to compute per-unit and total material weight
+BEARING_WEIGHT_KG = {
+    # 6200 series (light)
+    "6204": 0.106, "6205": 0.129, "6206": 0.200,
+    "6207": 0.288, "6208": 0.367, "6209": 0.409, "6210": 0.462,
+    # 6300 series (medium)
+    "6304": 0.143, "6305": 0.226, "6306": 0.350,
+    "6307": 0.462, "6308": 0.625, "6309": 0.818, "6310": 1.080,
+    # 420200 series (sealed cartridge variants ~ equiv to 6200 series light)
+    "420204": 0.110, "420205": 0.135, "420206": 0.205,
+}
+
 # Bearing Costs by Make (INR per piece) - ACTUAL PRICES
 BEARING_COSTS = {
     # 20mm shaft bearings

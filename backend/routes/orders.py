@@ -69,8 +69,16 @@ async def generate_invoice_number(doc_type="INV"):
 
 # ============= SALES ORDER ROUTES =============
 
+class ItemDrawing(BaseModel):
+    item_index: int
+    drawing_number: Optional[str] = None
+
+
 class ConvertToSORequest(BaseModel):
     delivery_date: Optional[str] = None  # YYYY-MM-DD
+    customer_po_number: Optional[str] = None
+    customer_po_date: Optional[str] = None  # YYYY-MM-DD or DD-MM-YYYY
+    item_drawings: Optional[List[ItemDrawing]] = None  # per-item drawing numbers
 
 
 @router.post("/orders/from-quote/{quote_id}")
@@ -101,6 +109,15 @@ async def convert_quote_to_order(
     so_number = await generate_so_number()
     quote_id_str = str(quote.get("_id", quote.get("id")))
 
+    # Apply per-item drawing numbers from request
+    products = [dict(p) for p in (quote.get("products") or [])]
+    if body and body.item_drawings:
+        for d in body.item_drawings:
+            if 0 <= d.item_index < len(products) and d.drawing_number:
+                pd = products[d.item_index].get("production_details") or {}
+                pd["drawing_number"] = d.drawing_number.strip()
+                products[d.item_index]["production_details"] = pd
+
     order = {
         "id": str(ObjectId()),
         "so_number": so_number,
@@ -112,7 +129,9 @@ async def convert_quote_to_order(
         "customer_company": quote.get("customer_company"),
         "customer_code": quote.get("customer_code"),
         "customer_details": quote.get("customer_details"),
-        "products": quote.get("products", []),
+        "customer_po_number": (body.customer_po_number.strip() if body and body.customer_po_number else None),
+        "customer_po_date": (body.customer_po_date.strip() if body and body.customer_po_date else None),
+        "products": products,
         "subtotal": quote.get("subtotal", 0),
         "discount_percent": quote.get("discount_percent", 0),
         "total_discount": quote.get("total_discount", 0),
@@ -721,9 +740,11 @@ async def get_sales_order_pdf(
         weight = p.get("weight_kg", p.get("weight", 0)) or 0
         item_total_weight = weight * qty
         grand_weight += item_total_weight
+        dwg_no = (p.get("production_details") or {}).get("drawing_number") or ""
+        dwg_html = f'<br><span style="color:#0F766E;font-size:9px;font-weight:700">DWG: {dwg_no}</span>' if dwg_no else ''
         product_rows += f"""<tr>
             <td style="text-align:center">{i}</td>
-            <td><b>{p.get('product_name','')}</b><br><span style="color:#960018;font-size:9px;font-weight:600">Code: {p.get('product_id','')}</span><br><span style="color:#64748B;font-size:9px">{spec_text}</span></td>
+            <td><b>{p.get('product_name','')}</b><br><span style="color:#960018;font-size:9px;font-weight:600">Code: {p.get('product_id','')}</span>{dwg_html}<br><span style="color:#64748B;font-size:9px">{spec_text}</span></td>
             <td style="text-align:center">{COMPANY['hsn_code']}</td>
             <td style="text-align:center">{qty}</td>
             <td style="text-align:right">{weight:.2f}</td>
@@ -838,6 +859,8 @@ async def get_sales_order_pdf(
             <div class="doc-number">{so_num}</div>
             <div class="doc-date">Date: {so_date}</div>
             {'<div class="doc-date">Delivery: ' + order.get('delivery_date', '') + '</div>' if order.get('delivery_date') else ''}
+            {'<div class="doc-date">Cust PO: ' + order.get('customer_po_number', '') + '</div>' if order.get('customer_po_number') else ''}
+            {'<div class="doc-date">PO Date: ' + order.get('customer_po_date', '') + '</div>' if order.get('customer_po_date') else ''}
             {'<div class="doc-date">Quote: ' + quote_num + '</div>' if quote_num else ''}
         </div>
     </div>
