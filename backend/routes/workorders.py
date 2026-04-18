@@ -1757,6 +1757,117 @@ async def get_sub_wos(
     return {"parent_wo_number": wo.get("wo_number"), "sub_work_orders": subs}
 
 
+# ============= WIP QC for Pipe sub-WOs =============
+
+class PipeQCSample(BaseModel):
+    sample_no: int
+    pipe_dia_ok: Optional[bool] = None            # yes/no answer
+    pipe_dia_remarks: Optional[str] = None
+    pipe_length_measured: Optional[float] = None  # actual length measured
+    pipe_length_remarks: Optional[str] = None
+    pipe_thickness_measured: Optional[float] = None  # actual thickness measured
+    pipe_thickness_remarks: Optional[str] = None
+
+
+class PipeQCItemRecord(BaseModel):
+    item_index: int
+    sample_qty: int
+    samples: List[PipeQCSample]
+
+
+class PipeWIPQCRequest(BaseModel):
+    items: List[PipeQCItemRecord]
+
+
+def _evaluate_pipe_sample(sample: dict, required_length: float, required_thickness: float):
+    """Return (overall_pass: bool, per_field: dict) for a pipe sample.
+    Length tolerance: ±1mm
+    Thickness tolerance: ±10%"""
+    # Dia check
+    dia_ok = bool(sample.get("pipe_dia_ok"))
+    # Length
+    length_val = sample.get("pipe_length_measured")
+    length_ok = False
+    if length_val is not None and required_length:
+        length_ok = abs(float(length_val) - float(required_length)) <= 1.0
+    # Thickness (±10%)
+    thk_val = sample.get("pipe_thickness_measured")
+    thk_ok = False
+    if thk_val is not None and required_thickness:
+        tol = float(required_thickness) * 0.10
+        thk_ok = abs(float(thk_val) - float(required_thickness)) <= tol
+    return (dia_ok and length_ok and thk_ok), {"dia_ok": dia_ok, "length_ok": length_ok, "thk_ok": thk_ok}
+
+
+@router.get("/sub-work-orders/{sub_id}/wip-qc")
+async def get_pipe_wip_qc(
+    sub_id: str,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.PRODUCTION_HEAD, UserRole.QUALITY_INSPECTOR])),
+):
+    sub = await db.sub_work_orders.find_one({"id": sub_id}, {"_id": 0})
+    if not sub:
+        raise HTTPException(status_code=404, detail="Sub Work Order not found")
+    if sub.get("type") != "pipe":
+        raise HTTPException(status_code=400, detail="WIP QC is only supported on Pipe sub-WOs")
+    return {"sub_wo_number": sub.get("sub_wo_number"), "items": sub.get("items", []), "wip_qc": sub.get("wip_qc")}
+
+
+@router.post("/sub-work-orders/{sub_id}/wip-qc")
+async def save_pipe_wip_qc(
+    sub_id: str,
+    data: PipeWIPQCRequest,
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.PRODUCTION_HEAD, UserRole.QUALITY_INSPECTOR])),
+):
+    sub = await db.sub_work_orders.find_one({"id": sub_id})
+    if not sub:
+        raise HTTPException(status_code=404, detail="Sub Work Order not found")
+    if sub.get("type") != "pipe":
+        raise HTTPException(status_code=400, detail="WIP QC is only supported on Pipe sub-WOs")
+
+    items = sub.get("items") or []
+    enriched = []
+    any_fail = False
+    for rec in data.items:
+        if rec.item_index < 0 or rec.item_index >= len(items):
+            continue
+        src = items[rec.item_index]
+        req_length = float(src.get("pipe_length") or 0)
+        req_thk = float(src.get("pipe_thickness") or 0)
+        samples_out = []
+        pass_count = 0
+        for s in rec.samples:
+            sd = s.dict()
+            overall, flags = _evaluate_pipe_sample(sd, req_length, req_thk)
+            sd.update(flags)
+            sd["overall_pass"] = overall
+            samples_out.append(sd)
+            if overall: pass_count += 1
+            else: any_fail = True
+        enriched.append({
+            "item_index": rec.item_index,
+            "sample_qty": rec.sample_qty,
+            "samples": samples_out,
+            "pass_count": pass_count,
+            "fail_count": len(samples_out) - pass_count,
+            "required_dia": src.get("pipe_diameter"),
+            "required_length": req_length,
+            "required_thickness": req_thk,
+        })
+
+    now = datetime.now(timezone.utc).isoformat()
+    wip_qc = {
+        "items": enriched,
+        "status": "failed" if any_fail else "passed",
+        "inspected_by": current_user.get("email"),
+        "inspected_at": now,
+    }
+    await db.sub_work_orders.update_one(
+        {"_id": sub["_id"]},
+        {"$set": {"wip_qc": wip_qc}},
+    )
+    return {"message": f"Pipe WIP QC saved — status: {wip_qc['status'].upper()}", "wip_qc": wip_qc}
+
+
 def _render_sub_wo_pdf(sub: dict) -> str:
     """Render an A4 HTML job card for a pipe or shaft sub-WO."""
     sub_type = sub.get("type", "pipe")

@@ -102,14 +102,99 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
   const [selectedWO, setSelectedWO] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const canStampQC = isAdmin || userRole === 'quality_inspector';
+  const [showPipeQC, setShowPipeQC] = useState(false);
+  const [pipeQCSub, setPipeQCSub] = useState<any>(null);
+  const [pipeQCRecords, setPipeQCRecords] = useState<any[]>([]);
+  const [pipeQCSaving, setPipeQCSaving] = useState(false);
 
-  const openWODetail = async (wo: any) => {
-    setDetailLoading(true);
+  const openPipeQC = async (pipeSub: any) => {
     try {
-      const res = await api.get(`/work-orders/${wo.id}`);
-      setSelectedWO(res.data);
-    } catch { setSelectedWO(wo); }
-    finally { setDetailLoading(false); }
+      const res = await api.get(`/sub-work-orders/${pipeSub.id}/wip-qc`);
+      const sub = { ...pipeSub, ...res.data };
+      const existing = res.data.wip_qc?.items || [];
+      const records = (sub.items || []).map((it: any, idx: number) => {
+        const prev = existing.find((e: any) => e.item_index === idx);
+        return {
+          item_index: idx,
+          product_name: it.product_name,
+          required_dia: it.pipe_diameter,
+          required_length: it.pipe_length,
+          required_thickness: it.pipe_thickness,
+          quantity: it.quantity,
+          sample_qty: prev?.sample_qty ? String(prev.sample_qty) : '',
+          samples: prev?.samples || [],
+        };
+      });
+      setPipeQCSub(sub);
+      setPipeQCRecords(records);
+      setShowPipeQC(true);
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'Failed to load pipe QC');
+    }
+  };
+
+  const updateSampleQty = (idx: number, qtyStr: string) => {
+    const n = parseInt(qtyStr.replace(/[^0-9]/g, '') || '0');
+    const arr = [...pipeQCRecords];
+    arr[idx].sample_qty = qtyStr.replace(/[^0-9]/g, '');
+    // Resize samples array
+    const current = arr[idx].samples || [];
+    if (n > current.length) {
+      for (let s = current.length; s < n; s++) {
+        current.push({ sample_no: s + 1, pipe_dia_ok: null, pipe_dia_remarks: '', pipe_length_measured: '', pipe_length_remarks: '', pipe_thickness_measured: '', pipe_thickness_remarks: '' });
+      }
+    } else {
+      current.length = n;
+    }
+    arr[idx].samples = current;
+    setPipeQCRecords(arr);
+  };
+
+  const setSampleField = (itemIdx: number, sampleIdx: number, field: string, value: any) => {
+    const arr = [...pipeQCRecords];
+    arr[itemIdx].samples[sampleIdx] = { ...arr[itemIdx].samples[sampleIdx], [field]: value };
+    setPipeQCRecords(arr);
+  };
+
+  const withinLength = (val: any, required: number) => {
+    const v = parseFloat(val);
+    if (isNaN(v) || !required) return null;
+    return Math.abs(v - required) <= 1;
+  };
+  const withinThk = (val: any, required: number) => {
+    const v = parseFloat(val);
+    if (isNaN(v) || !required) return null;
+    return Math.abs(v - required) <= (required * 0.1);
+  };
+
+  const submitPipeQC = async () => {
+    if (!pipeQCSub) return;
+    // Build payload
+    const payloadItems = pipeQCRecords
+      .filter((r: any) => parseInt(r.sample_qty || '0') > 0)
+      .map((r: any) => ({
+        item_index: r.item_index,
+        sample_qty: parseInt(r.sample_qty),
+        samples: r.samples.map((s: any, i: number) => ({
+          sample_no: i + 1,
+          pipe_dia_ok: s.pipe_dia_ok === null ? false : !!s.pipe_dia_ok,
+          pipe_dia_remarks: s.pipe_dia_remarks || null,
+          pipe_length_measured: s.pipe_length_measured !== '' ? parseFloat(s.pipe_length_measured) : null,
+          pipe_length_remarks: s.pipe_length_remarks || null,
+          pipe_thickness_measured: s.pipe_thickness_measured !== '' ? parseFloat(s.pipe_thickness_measured) : null,
+          pipe_thickness_remarks: s.pipe_thickness_remarks || null,
+        })),
+      }));
+    if (payloadItems.length === 0) { Alert.alert('Error', 'Enter sample qty for at least one item'); return; }
+    if (!(await confirmAction('Save Pipe WIP QC?', `QC results will be stored against ${pipeQCSub.sub_wo_number}.`))) return;
+    try {
+      setPipeQCSaving(true);
+      const res = await api.post(`/sub-work-orders/${pipeQCSub.id}/wip-qc`, { items: payloadItems });
+      Alert.alert('Success', res.data.message);
+      setShowPipeQC(false);
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'Failed');
+    } finally { setPipeQCSaving(false); }
   };
 
   const updateStage = async (woId: string, stage: string) => {
@@ -225,6 +310,24 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                   >
                     <Ionicons name="construct-outline" size={14} color="#960018" />
                     <Text style={[wos.actionText, { color: '#960018' }]}>Pipe Card</Text>
+                  </TouchableOpacity>
+                )}
+                {isAdmin && (wo.items || []).some((it: any) => !(it.product_name || '').toLowerCase().includes('pulley')) && (
+                  <TouchableOpacity
+                    style={[wos.actionBtn, { borderColor: '#8B5CF6' }]}
+                    onPress={async () => {
+                      try {
+                        const res = await api.get(`/work-orders/${wo.id}/sub-wos`);
+                        const subs = res.data.sub_work_orders || [];
+                        const pipe = subs.find((s: any) => s.type === 'pipe');
+                        if (!pipe) { Alert.alert('Not available', 'No pipe details found for this WO'); return; }
+                        openPipeQC && openPipeQC(pipe);
+                      } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed to load pipe QC'); }
+                    }}
+                    testID={`pipe-qc-${wo.wo_number}`}
+                  >
+                    <Ionicons name="clipboard-outline" size={14} color="#8B5CF6" />
+                    <Text style={[wos.actionText, { color: '#8B5CF6' }]}>Pipe QC</Text>
                   </TouchableOpacity>
                 )}
                 {isAdmin && (wo.items || []).some((it: any) => !(it.product_name || '').toLowerCase().includes('pulley')) && (
@@ -384,6 +487,127 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                 <View style={{ height: 20 }} />
               </ScrollView>
             ) : null}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Pipe WIP QC Modal */}
+      <Modal visible={showPipeQC} animationType="slide" transparent>
+        <View style={wos.modalOverlay}>
+          <View style={[wos.modal, { maxHeight: '92%' }]}>
+            <View style={wos.modalHead}>
+              <View>
+                <Text style={wos.modalTitle}>Pipe WIP QC</Text>
+                {pipeQCSub && <Text style={{ fontSize: 12, color: '#8B5CF6', fontWeight: '700' }}>{pipeQCSub.sub_wo_number}</Text>}
+              </View>
+              <TouchableOpacity onPress={() => setShowPipeQC(false)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 600 }}>
+              {pipeQCRecords.map((rec: any, idx: number) => {
+                const nSamples = parseInt(rec.sample_qty || '0');
+                return (
+                  <View key={idx} style={{ backgroundColor: 'rgba(241,245,249,0.55)', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4 }}>Item {idx + 1}: {rec.product_name}</Text>
+                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+                      <Text style={{ fontSize: 11, color: '#64748B' }}>Req Dia: <Text style={{ color: '#0F172A', fontWeight: '700' }}>{rec.required_dia} mm</Text></Text>
+                      <Text style={{ fontSize: 11, color: '#64748B' }}>Req Length: <Text style={{ color: '#0F172A', fontWeight: '700' }}>{rec.required_length} mm</Text> (±1)</Text>
+                      <Text style={{ fontSize: 11, color: '#64748B' }}>Req Thk: <Text style={{ color: '#0F172A', fontWeight: '700' }}>{rec.required_thickness} mm</Text> (±10%)</Text>
+                      <Text style={{ fontSize: 11, color: '#64748B' }}>Qty: <Text style={{ color: '#0F172A', fontWeight: '700' }}>{rec.quantity}</Text></Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#8B5CF6' }}>Sample Qty:</Text>
+                      <TextInput
+                        data-testid={`pqc-sample-qty-${idx}`}
+                        style={{ width: 80, backgroundColor: '#fff', borderWidth: 1, borderColor: '#C5964A', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 14, fontWeight: '700', color: '#0F172A', textAlign: 'center' }}
+                        value={rec.sample_qty}
+                        onChangeText={(v) => updateSampleQty(idx, v)}
+                        keyboardType="numeric"
+                        placeholder="0"
+                      />
+                      <Text style={{ fontSize: 10, color: '#94A3B8' }}>(out of {rec.quantity})</Text>
+                    </View>
+                    {nSamples > 0 && rec.samples.slice(0, nSamples).map((s: any, si: number) => {
+                      const lenOk = withinLength(s.pipe_length_measured, rec.required_length);
+                      const thkOk = withinThk(s.pipe_thickness_measured, rec.required_thickness);
+                      return (
+                        <View key={si} style={{ backgroundColor: '#fff', borderRadius: 10, padding: 10, marginBottom: 8, borderLeftWidth: 3, borderLeftColor: '#8B5CF6' }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A', marginBottom: 8 }}>Sample {si + 1}</Text>
+
+                          {/* Pipe Dia Y/N */}
+                          <View style={{ marginBottom: 8 }}>
+                            <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Pipe Dia = {rec.required_dia} mm — match?</Text>
+                            <View style={{ flexDirection: 'row', gap: 6 }}>
+                              <Pressable onPress={() => setSampleField(idx, si, 'pipe_dia_ok', true)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: s.pipe_dia_ok === true ? '#10B981' : '#CBD5E1', backgroundColor: s.pipe_dia_ok === true ? 'rgba(16,185,129,0.12)' : 'transparent' }}>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: s.pipe_dia_ok === true ? '#10B981' : '#94A3B8' }}>Yes</Text>
+                              </Pressable>
+                              <Pressable onPress={() => setSampleField(idx, si, 'pipe_dia_ok', false)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: s.pipe_dia_ok === false ? '#EF4444' : '#CBD5E1', backgroundColor: s.pipe_dia_ok === false ? 'rgba(239,68,68,0.12)' : 'transparent' }}>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: s.pipe_dia_ok === false ? '#EF4444' : '#94A3B8' }}>No</Text>
+                              </Pressable>
+                            </View>
+                            {s.pipe_dia_ok === false && (
+                              <TextInput
+                                style={{ marginTop: 6, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, color: '#0F172A' }}
+                                placeholder="Reason (e.g. OD out of spec by 0.4mm)"
+                                value={s.pipe_dia_remarks}
+                                onChangeText={(v) => setSampleField(idx, si, 'pipe_dia_remarks', v)}
+                              />
+                            )}
+                          </View>
+
+                          {/* Pipe Length */}
+                          <View style={{ marginBottom: 8 }}>
+                            <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Pipe Length = {rec.required_length} mm (±1) — actual?</Text>
+                            <TextInput
+                              style={{ backgroundColor: lenOk === true ? '#ECFDF5' : lenOk === false ? '#FEF2F2' : '#fff', borderWidth: 1, borderColor: lenOk === true ? '#10B981' : lenOk === false ? '#EF4444' : '#CBD5E1', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, fontWeight: '700', color: '#0F172A' }}
+                              placeholder={`e.g. ${rec.required_length}`}
+                              value={String(s.pipe_length_measured ?? '')}
+                              onChangeText={(v) => setSampleField(idx, si, 'pipe_length_measured', v)}
+                              keyboardType="numeric"
+                            />
+                            {lenOk === false && (
+                              <TextInput
+                                style={{ marginTop: 6, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, color: '#0F172A' }}
+                                placeholder="Reason for length out of tolerance"
+                                value={s.pipe_length_remarks}
+                                onChangeText={(v) => setSampleField(idx, si, 'pipe_length_remarks', v)}
+                              />
+                            )}
+                          </View>
+
+                          {/* Pipe Thickness */}
+                          <View>
+                            <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Pipe Thk = {rec.required_thickness} mm (±10%) — actual?</Text>
+                            <TextInput
+                              style={{ backgroundColor: thkOk === true ? '#ECFDF5' : thkOk === false ? '#FEF2F2' : '#fff', borderWidth: 1, borderColor: thkOk === true ? '#10B981' : thkOk === false ? '#EF4444' : '#CBD5E1', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, fontWeight: '700', color: '#0F172A' }}
+                              placeholder={`e.g. ${rec.required_thickness}`}
+                              value={String(s.pipe_thickness_measured ?? '')}
+                              onChangeText={(v) => setSampleField(idx, si, 'pipe_thickness_measured', v)}
+                              keyboardType="numeric"
+                            />
+                            {thkOk === false && (
+                              <TextInput
+                                style={{ marginTop: 6, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 12, color: '#0F172A' }}
+                                placeholder="Reason for thickness out of tolerance"
+                                value={s.pipe_thickness_remarks}
+                                onChangeText={(v) => setSampleField(idx, si, 'pipe_thickness_remarks', v)}
+                              />
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#8B5CF6', borderRadius: 14, paddingVertical: 15, marginTop: 10, opacity: pipeQCSaving ? 0.6 : 1 }}
+              onPress={submitPipeQC}
+              testID="pipe-qc-submit"
+            >
+              {pipeQCSaving ? <ActivityIndicator color="#fff" /> : <><Ionicons name="clipboard" size={18} color="#fff" /><Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Save Pipe WIP QC</Text></>}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
