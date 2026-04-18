@@ -920,16 +920,10 @@ async def get_work_order_pdf(
 import math
 
 STEEL_DENSITY = 7850  # kg/m³
-RUBBER_DENSITY = 1100  # kg/m³ — Natural rubber typical
 
 def _calc_weight(volume_mm3):
     """Convert volume in mm³ to weight in kg"""
     return round(volume_mm3 / 1e9 * STEEL_DENSITY, 3)
-
-
-def _calc_rubber_weight(volume_mm3):
-    """Convert volume in mm³ to weight in kg for rubber"""
-    return round(volume_mm3 / 1e9 * RUBBER_DENSITY, 3)
 
 
 def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int) -> list:
@@ -1085,11 +1079,12 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
             if not rubber_dia:
                 options = rs.RUBBER_LAGGING_OPTIONS.get(ring_id, [])
                 rubber_dia = options[0] if options else 0
-            # Weight: annular cylinder — π/4 × (OD² - ID²) × thk × rubber density
+            # Weight from the master RUBBER_RING_WEIGHTS lookup (user-provided sheet)
             ring_unit_wt = 0
-            if rubber_dia and rubber_dia > ring_id:
-                ring_vol = (math.pi / 4) * (rubber_dia**2 - ring_id**2) * ring_width
-                ring_unit_wt = _calc_rubber_weight(ring_vol)
+            if rubber_dia:
+                lookup_wt = rs.get_rubber_ring_weight(pipe_dia, rubber_dia)
+                if lookup_wt is not None:
+                    ring_unit_wt = lookup_wt
             ring_desc = f"{ring_id}mm ID x {rubber_dia}mm OD x {ring_width}mm thk" if rubber_dia else f"{ring_id}mm ID x {ring_width}mm thk"
             bom.append({
                 "component": "Rubber Ring",
