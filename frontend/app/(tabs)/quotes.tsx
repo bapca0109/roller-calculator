@@ -234,6 +234,24 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                     </TouchableOpacity>
                   </>
                 )}
+                {wo.stage === 'completed' && wo.qc_status && wo.qc_status !== 'pending' && (
+                  <TouchableOpacity
+                    style={[wos.actionBtn, { borderColor: '#0F766E' }]}
+                    onPress={async () => {
+                      try {
+                        const token = await AsyncStorage.getItem('token');
+                        const url = `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/work-orders/${wo.id}/qc-report?token=${token}`;
+                        if (Platform.OS === 'web') window.open(url, '_blank');
+                      } catch (e: any) {
+                        Alert.alert('Error', 'Failed to open QC report');
+                      }
+                    }}
+                    testID={`qc-report-${wo.wo_number}`}
+                  >
+                    <Ionicons name="document-text-outline" size={14} color="#0F766E" />
+                    <Text style={[wos.actionText, { color: '#0F766E' }]}>QC Report</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </TouchableOpacity>

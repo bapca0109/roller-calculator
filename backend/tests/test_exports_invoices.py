@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # Use the public URL for testing
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://erp-conveyor-system.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://inventory-qc-hub-1.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "test@test.com"

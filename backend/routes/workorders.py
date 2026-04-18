@@ -543,6 +543,7 @@ COMPANY = {
     "address": os.environ.get("COMPANY_ADDRESS", ""),
     "phone": os.environ.get("COMPANY_PHONE", ""),
     "email": os.environ.get("COMPANY_EMAIL", ""),
+    "gstin": os.environ.get("COMPANY_GSTIN", "24BAUPP4310D2ZT"),
 }
 
 @router.get("/work-orders/{wo_id}/pdf")
@@ -1303,4 +1304,166 @@ async def stamp_wo_qc(
         },
     )
     return {"message": f"QC {body.status}", "wo_number": wo.get("wo_number")}
+
+
+
+# ============= QC REPORT PDF =============
+
+def _format_dmy(iso_val) -> str:
+    if not iso_val:
+        return ""
+    try:
+        from datetime import datetime as _dt
+        if isinstance(iso_val, str):
+            dt = _dt.fromisoformat(iso_val.replace("Z", "+00:00"))
+        else:
+            dt = iso_val
+        return dt.strftime("%d-%m-%Y %H:%M")
+    except Exception:
+        return str(iso_val)[:16]
+
+
+@router.get("/work-orders/{wo_id}/qc-report")
+async def get_wo_qc_report_pdf(
+    wo_id: str,
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+):
+    """Branded A4 QC Report PDF (HTML) for a Work Order."""
+    auth_token = token
+    if not auth_token and authorization and authorization.startswith("Bearer "):
+        auth_token = authorization[7:]
+    if not auth_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    try:
+        payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
+        if not payload.get("sub"):
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    wo = await db.work_orders.find_one({"$or": [{"id": wo_id}, {"wo_number": wo_id}]}, {"_id": 0})
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work Order not found")
+
+    qc_status = (wo.get("qc_status") or "pending").lower()
+    stamp_color = "#059669" if qc_status == "passed" else "#DC2626" if qc_status == "failed" else "#D97706"
+    stamp_label = {"passed": "PASSED", "failed": "FAILED", "pending": "PENDING"}[qc_status]
+
+    # Build item inspection rows
+    item_rows = ""
+    for idx, item in enumerate(wo.get("items") or [], 1):
+        specs = item.get("specifications") or {}
+        inspected = []
+        if specs.get("pipe_diameter"): inspected.append(f"Pipe Ø{specs['pipe_diameter']}mm")
+        if specs.get("pipe_length"): inspected.append(f"L={specs['pipe_length']}mm")
+        if specs.get("shaft_diameter"): inspected.append(f"Shaft Ø{specs['shaft_diameter']}mm")
+        if specs.get("bearing_number"): inspected.append(f"Brg {specs['bearing_number']}")
+        if specs.get("pipe_thickness"): inspected.append(f"Wall {specs['pipe_thickness']}mm")
+        item_rows += f"""<tr>
+          <td style="text-align:center">{idx}</td>
+          <td><b>{item.get('product_name','')}</b><br><span style="color:#960018;font-size:9px">{item.get('product_id','')}</span></td>
+          <td style="font-size:10px;color:#475569">{' | '.join(inspected)}</td>
+          <td style="text-align:center;font-weight:700">{item.get('quantity',1)}</td>
+          <td style="text-align:center">
+            <span style="display:inline-block;padding:2px 6px;border-radius:4px;background:{stamp_color}18;color:{stamp_color};font-weight:800;font-size:10px">{stamp_label}</span>
+          </td>
+        </tr>"""
+
+    qc_by = wo.get("qc_by") or "—"
+    qc_at = _format_dmy(wo.get("qc_at")) or "—"
+    remarks = (wo.get("qc_remarks") or "").strip() or "No additional observations."
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>QC Report — {wo.get('wo_number','')}</title>
+<style>
+  @page {{ size: A4; margin: 14mm; }}
+  body {{ font-family: -apple-system, Arial, sans-serif; color: #1F2937; font-size: 11px; }}
+  .wrap {{ max-width: 800px; margin: 0 auto; position: relative; }}
+  .head {{ display: flex; justify-content: space-between; border-bottom: 3px solid #960018; padding-bottom: 10px; margin-bottom: 14px; }}
+  .head h1 {{ margin: 0; color: #960018; font-size: 22px; letter-spacing: 1px; }}
+  .head .sub {{ color: #64748B; font-size: 10px; margin-top: 2px; }}
+  .doc-title {{ text-align: right; }}
+  .doc-title .label {{ color: #64748B; font-size: 10px; letter-spacing: 1.5px; }}
+  .doc-title h2 {{ margin: 2px 0; font-size: 20px; color: #111; letter-spacing: 1.2px; }}
+  .meta-grid {{ display: flex; gap: 12px; margin-bottom: 14px; }}
+  .meta-box {{ flex: 1; border: 1px solid #E2E8F0; border-radius: 6px; padding: 10px; background: #fff; }}
+  .meta-box .title {{ color: #960018; font-weight: 700; font-size: 10px; letter-spacing: 1.2px; margin-bottom: 4px; }}
+  .meta-row {{ display: flex; justify-content: space-between; margin-bottom: 2px; font-size: 10px; }}
+  .meta-row span:first-child {{ color: #64748B; }}
+  table {{ width: 100%; border-collapse: collapse; margin-top: 4px; }}
+  th {{ background: #960018; color: #fff; padding: 8px 6px; font-size: 10px; text-align: left; }}
+  td {{ border-bottom: 1px solid #E2E8F0; padding: 7px; font-size: 10px; vertical-align: top; }}
+  .verdict {{
+    position: absolute; top: 60px; right: 20px;
+    border: 4px solid {stamp_color}; color: {stamp_color};
+    font-weight: 900; font-size: 28px; letter-spacing: 3px;
+    padding: 6px 18px; transform: rotate(-12deg); opacity: 0.85;
+    font-family: 'Courier New', monospace;
+  }}
+  .remarks {{ background: #FFFBEB; border: 1px dashed #F59E0B; padding: 10px; border-radius: 6px; margin-top: 14px; }}
+  .remarks b {{ color: #92400E; }}
+  .sign {{ display: flex; gap: 18px; margin-top: 40px; }}
+  .sign div {{ flex: 1; border-top: 1px solid #64748B; padding-top: 4px; font-size: 10px; color: #64748B; text-align: center; }}
+  .footer {{ text-align: center; color: #94A3B8; font-size: 9px; margin-top: 20px; border-top: 1px solid #E2E8F0; padding-top: 6px; }}
+</style></head><body><div class="wrap">
+  <div class="verdict">{stamp_label}</div>
+  <div class="head">
+    <div>
+      <h1>{COMPANY['name']}</h1>
+      <div class="sub">{COMPANY['address']}<br>GSTIN: {COMPANY['gstin']}  |  {COMPANY['email']}</div>
+    </div>
+    <div class="doc-title">
+      <div class="label">QC INSPECTION REPORT</div>
+      <h2>{wo.get('wo_number','')}</h2>
+      <div style="font-size:10px;color:#64748B">Inspected: <b>{qc_at}</b></div>
+    </div>
+  </div>
+
+  <div class="meta-grid">
+    <div class="meta-box">
+      <div class="title">WORK ORDER</div>
+      <div class="meta-row"><span>SO Ref.</span><b>{wo.get('so_number','')}</b></div>
+      <div class="meta-row"><span>Customer</span><b>{wo.get('customer_name','')}</b></div>
+      <div class="meta-row"><span>Stage</span><b>{wo.get('stage','')}</b></div>
+    </div>
+    <div class="meta-box">
+      <div class="title">INSPECTOR</div>
+      <div class="meta-row"><span>Inspected By</span><b>{qc_by}</b></div>
+      <div class="meta-row"><span>Date & Time</span><b>{qc_at}</b></div>
+      <div class="meta-row"><span>Verdict</span><b style="color:{stamp_color}">{stamp_label}</b></div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th style="width:30px;text-align:center">#</th>
+      <th>Item / Product Code</th>
+      <th>Measured Specifications</th>
+      <th style="width:50px;text-align:center">Qty</th>
+      <th style="width:80px;text-align:center">Verdict</th>
+    </tr></thead>
+    <tbody>{item_rows or '<tr><td colspan="5" style="text-align:center;color:#9CA3AF;padding:20px">No items on this WO.</td></tr>'}</tbody>
+  </table>
+
+  <div class="remarks"><b>Inspector's Remarks:</b><br>{remarks}</div>
+
+  <div class="sign">
+    <div>Quality Inspector<br><span style="font-size:9px">{qc_by if qc_status != 'pending' else ''}</span></div>
+    <div>Production Head</div>
+    <div>Authorised Signatory<br>(for {COMPANY['name']})</div>
+  </div>
+
+  <div class="footer">
+    This is a system-generated QC Report. | {COMPANY['name']} | GSTIN: {COMPANY['gstin']}
+  </div>
+</div></body></html>"""
+
+    output = io.BytesIO(html.encode("utf-8"))
+    output.seek(0)
+    filename = f"QC-{(wo.get('wo_number','report')).replace('/', '-')}.html"
+    return StreamingResponse(
+        output, media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
