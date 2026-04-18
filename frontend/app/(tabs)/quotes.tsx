@@ -207,7 +207,7 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                     <Text style={[wos.actionText, { color: '#C5964A' }]}>PDF</Text>
                   </TouchableOpacity>
                 )}
-                {isAdmin && (
+                {isAdmin && (wo.items || []).some((it: any) => !(it.product_name || '').toLowerCase().includes('pulley')) && (
                   <TouchableOpacity
                     style={[wos.actionBtn, { borderColor: '#960018' }]}
                     onPress={async () => {
@@ -227,7 +227,7 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                     <Text style={[wos.actionText, { color: '#960018' }]}>Pipe Card</Text>
                   </TouchableOpacity>
                 )}
-                {isAdmin && (
+                {isAdmin && (wo.items || []).some((it: any) => !(it.product_name || '').toLowerCase().includes('pulley')) && (
                   <TouchableOpacity
                     style={[wos.actionBtn, { borderColor: '#0F766E' }]}
                     onPress={async () => {

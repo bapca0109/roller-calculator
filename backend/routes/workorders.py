@@ -942,6 +942,9 @@ def _build_sub_wo_items(wo_items: list) -> tuple:
         qty = int(it.get("quantity") or 1)
         name = (it.get("product_name") or "").lower()
         is_pulley = "pulley" in name
+        # Sub-WOs (Pipe/Shaft job cards) are rollers-only; pulleys have different processing parameters
+        if is_pulley:
+            continue
 
         pipe_dia = specs.get("pipe_diameter") or 0
         pipe_length = specs.get("pipe_length") or 0
