@@ -479,7 +479,7 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
   };
 
   const createWorkOrder = async () => {
-    if (!woOrder) return;
+    if (!woOrder || woCreating) return;
     const selectedItems = woItems.filter((it: any) => it.selected && !it.has_wo);
     if (selectedItems.length === 0) { Alert.alert('Error', 'Select at least one item to create a Work Order'); return; }
     // Validate selected items
@@ -492,6 +492,7 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
       if (!item.shaft_length) { Alert.alert('Error', `Item ${i+1}: Shaft length required`); return; }
       if (!item.slot_width || !item.slot_dimension || !item.slot_type) { Alert.alert('Error', `Item ${i+1}: Shaft slot details required`); return; }
     }
+    if (!(await confirmAction('Create Work Order?', `This will generate a new WO for ${selectedItems.length} item(s) on ${woOrder.so_number} and auto-generate its BOM.`))) return;
     setWoCreating(true);
     try {
       const payload = {
@@ -509,7 +510,6 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
         paint_type: woPaintType,
         paint_spec: woPaintSpec,
       };
-      if (!(await confirmAction('Create Work Order?', `This will generate a new WO for ${selectedItems.length} item(s) on ${woOrder.so_number} and auto-generate its BOM.`))) { setWoCreating(false); return; }
       const res = await api.post(`/orders/${woOrder.id}/create-work-order`, payload);
       const shortages = res.data.shortages || [];
       setShowCreateWO(false);
@@ -1094,9 +1094,14 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
                 );
               })}
             </ScrollView>
-            <Pressable style={[os.saveBtn, woCreating && { opacity: 0.6 }]} onPress={createWorkOrder} disabled={woCreating} data-testid="wo-create-submit">
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={[os.saveBtn, woCreating && { opacity: 0.6 }]}
+              onPress={createWorkOrder}
+              testID="wo-create-submit"
+            >
               {woCreating ? <ActivityIndicator color="#fff" /> : <><Ionicons name="construct" size={18} color="#fff" /><Text style={os.saveBtnText}>Create WO for {woItems.filter((it: any) => it.selected && !it.has_wo).length} Item(s) + BOM</Text></>}
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

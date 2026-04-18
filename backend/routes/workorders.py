@@ -164,8 +164,7 @@ async def bulk_create_work_order(
         if not pd:
             missing.append(f"Item {i+1}: No production details")
             continue
-        if not pd.get("drawing_number"):
-            missing.append(f"Item {i+1}: Drawing number missing")
+        # Drawing number is optional — can be added later from Admin/Dispatch
         if not pd.get("shaft_length"):
             missing.append(f"Item {i+1}: Shaft length missing")
         if not pd.get("shaft_slot") or not pd["shaft_slot"].get("slot_type"):
@@ -285,8 +284,7 @@ async def create_work_order(
         if not pd:
             missing.append(f"Item {i+1}: No production details")
             continue
-        if not pd.get("drawing_number"):
-            missing.append(f"Item {i+1}: Drawing number missing")
+        # Drawing number is optional — can be added later from Admin/Dispatch
         if not pd.get("shaft_length"):
             missing.append(f"Item {i+1}: Shaft length missing")
         if not pd.get("shaft_slot") or not pd["shaft_slot"].get("slot_type"):
