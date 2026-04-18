@@ -1303,6 +1303,77 @@ async def get_wo_shortages(current_user: dict = Depends(require_role([UserRole.A
     }
 
 
+@router.get("/work-orders/{wo_id}/issue-plan")
+async def get_wo_issue_plan(wo_id: str, current_user: dict = Depends(require_role([UserRole.ADMIN]))):
+    """For manual stock issue against a WO:
+    returns every BOM line consolidated by bom_match_key, showing
+    required_qty, already_issued_qty, remaining_qty, stock_item match and current stock.
+    """
+    wo = await db.work_orders.find_one({"$or": [{"id": wo_id}, {"wo_number": wo_id}]}, {"_id": 0})
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work Order not found")
+
+    # 1. Aggregate required qty across all WO items by bom_match_key
+    required_map: Dict[str, Dict[str, Any]] = {}
+    for item in wo.get("items", []):
+        for bom in item.get("bom", []):
+            key = bom.get("bom_match_key")
+            if not key:
+                continue
+            q = float(bom.get("total_qty") or 0)
+            if q <= 0:
+                continue
+            if key not in required_map:
+                required_map[key] = {
+                    "bom_match_key": key,
+                    "component": bom.get("component"),
+                    "description": bom.get("description"),
+                    "required_qty": 0,
+                }
+            required_map[key]["required_qty"] = round(required_map[key]["required_qty"] + q, 3)
+
+    # 2. Sum already-issued qty from stock_transactions for this WO
+    issued_map: Dict[str, float] = {}
+    cursor = db.stock_transactions.find(
+        {"wo_id": wo.get("id"), "type": "out"},
+        {"_id": 0, "stock_item_id": 1, "qty": 1},
+    )
+    async for t in cursor:
+        sid = t.get("stock_item_id")
+        if sid:
+            issued_map[sid] = round(issued_map.get(sid, 0) + float(t.get("qty") or 0), 3)
+
+    # 3. Match each bom_match_key to a stock_item and build the plan
+    plan = []
+    for key, row in required_map.items():
+        stock_item = await db.stock_items.find_one({"bom_match_key": key}, {"_id": 0})
+        stock_item_id = stock_item.get("id") if stock_item else None
+        already = issued_map.get(stock_item_id, 0) if stock_item_id else 0
+        remaining = max(round(row["required_qty"] - already, 3), 0)
+        available = float(stock_item.get("current_stock", 0)) if stock_item else 0
+        plan.append({
+            "bom_match_key": key,
+            "component": row["component"],
+            "description": row["description"],
+            "required_qty": row["required_qty"],
+            "already_issued_qty": already,
+            "remaining_qty": remaining,
+            "stock_item_id": stock_item_id,
+            "stock_item_name": stock_item.get("name") if stock_item else None,
+            "current_stock": available,
+            "unit": stock_item.get("unit_purchase", "nos") if stock_item else "nos",
+            "in_register": stock_item is not None,
+        })
+
+    # Also list all extra stock_items the user may want to add manually (not in BOM) — skip for minimalism
+    return {
+        "wo_number": wo.get("wo_number"),
+        "stage": wo.get("stage"),
+        "plan": plan,
+        "total_lines": len(plan),
+    }
+
+
 # ============= FINISHED GOODS QC =============
 
 class FinishedGoodsQC(BaseModel):

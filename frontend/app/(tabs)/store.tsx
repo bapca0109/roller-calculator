@@ -107,12 +107,57 @@ export default function StoreScreen() {
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
-  const issueStock = async () => {
-    if (!issueWOId || issueItems.length === 0) { Alert.alert('Error', 'Select WO and items'); return; }
+  const openIssueModal = async () => {
     try {
-      const toIssue = issueItems.filter(i => i.qty > 0);
+      const res = await api.get('/work-orders');
+      setWorkOrders(res.data.work_orders || []);
+      // Start empty; filled when user picks a WO
+      setIssueItems([]);
+      setIssueWOId('');
+      setShowIssue(true);
+    } catch {}
+  };
+
+  const loadIssuePlan = async (woId: string) => {
+    setIssueWOId(woId);
+    if (!woId) { setIssueItems([]); return; }
+    try {
+      const res = await api.get(`/work-orders/${woId}/issue-plan`);
+      const plan = res.data.plan || [];
+      // Pre-fill qty = remaining_qty (what's still pending to issue). User can edit before submit.
+      const rows = plan.map((p: any) => ({
+        stock_item_id: p.stock_item_id,
+        name: p.stock_item_name || `${p.component} — ${p.description}`,
+        bom_match_key: p.bom_match_key,
+        component: p.component,
+        required_qty: p.required_qty,
+        already_issued_qty: p.already_issued_qty,
+        remaining_qty: p.remaining_qty,
+        current_stock: p.current_stock,
+        unit: p.unit,
+        in_register: p.in_register,
+        qty: p.remaining_qty > 0 ? String(p.remaining_qty) : '',
+      }));
+      // Items with no stock_item match can't be issued — include for visibility but disable
+      setIssueItems(rows);
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'Failed to load WO BOM');
+      setIssueItems([]);
+    }
+  };
+
+  const issueStock = async () => {
+    if (!issueWOId) { Alert.alert('Error', 'Select a Work Order first'); return; }
+    const toIssue = issueItems.filter((i: any) => i.stock_item_id && parseFloat(i.qty || '0') > 0);
+    if (toIssue.length === 0) { Alert.alert('Error', 'Enter at least one qty'); return; }
+    const shorts = toIssue.filter((i: any) => parseFloat(i.qty) > (i.current_stock || 0));
+    if (shorts.length > 0) {
+      Alert.alert('Insufficient stock', shorts.map((s: any) => `${s.name}: need ${s.qty}, have ${s.current_stock}`).join('\n'));
+      return;
+    }
+    try {
       if (!(await confirmAction('Issue material to Work Order?', `${toIssue.length} line(s) will be deducted from current stock.`))) return;
-      await api.post('/store/issue', { wo_id: issueWOId, items: toIssue.map(i => ({ stock_item_id: i.stock_item_id, qty: parseFloat(i.qty) })) });
+      await api.post('/store/issue', { wo_id: issueWOId, items: toIssue.map((i: any) => ({ stock_item_id: i.stock_item_id, qty: parseFloat(i.qty) })) });
       setShowIssue(false); fetchAll(); Alert.alert('Success', 'Stock issued');
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
@@ -170,7 +215,7 @@ export default function StoreScreen() {
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <ExportButtons endpoint="/store/export/stock" filenamePrefix="Stock" compact showExcel showPdf={false} />
                 <Pressable style={s.actionBtn} onPress={() => setShowAddItem(true)}><Ionicons name="add" size={16} color="#C5964A" /><Text style={s.actionText}>Add Item</Text></Pressable>
-                <Pressable style={s.actionBtn} onPress={async () => { try { const res = await api.get('/work-orders'); setWorkOrders(res.data.work_orders || []); setIssueItems(stockItems.map(i => ({ stock_item_id: i.id, name: i.name, qty: '' }))); setShowIssue(true); } catch {} }}><Ionicons name="arrow-up-circle-outline" size={16} color="#8B5CF6" /><Text style={[s.actionText, { color: '#8B5CF6' }]}>Issue</Text></Pressable>
+                <Pressable style={s.actionBtn} onPress={openIssueModal} data-testid="issue-stock-btn"><Ionicons name="arrow-up-circle-outline" size={16} color="#8B5CF6" /><Text style={[s.actionText, { color: '#8B5CF6' }]}>Issue</Text></Pressable>
               </View>
             </View>
             {stockItems.map((item: any) => (
@@ -371,22 +416,58 @@ export default function StoreScreen() {
 
       {/* Issue Stock Modal */}
       <Modal visible={showIssue} animationType="slide" transparent>
-        <View style={s.modalOverlay}><View style={[s.modal, { maxHeight: '85%' }]}>
-          <View style={s.modalHead}><Text style={s.modalTitle}>Issue Stock</Text><TouchableOpacity onPress={() => setShowIssue(false)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity></View>
-          <Text style={s.label}>Work Order</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-            {workOrders.map(wo => (<Pressable key={wo.id} style={[s.chip, issueWOId === wo.id && s.chipActive]} onPress={() => setIssueWOId(wo.id)}><Text style={[s.chipText, issueWOId === wo.id && s.chipTextActive]}>{wo.wo_number}</Text></Pressable>))}
+        <View style={s.modalOverlay}><View style={[s.modal, { maxHeight: '88%' }]}>
+          <View style={s.modalHead}><Text style={s.modalTitle}>Issue Stock to Work Order</Text><TouchableOpacity onPress={() => setShowIssue(false)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity></View>
+          <Text style={s.label}>Select Work Order</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+            {workOrders.map(wo => (<Pressable key={wo.id} style={[s.chip, issueWOId === wo.id && s.chipActive]} onPress={() => loadIssuePlan(wo.id)} data-testid={`issue-wo-chip-${wo.wo_number}`}><Text style={[s.chipText, issueWOId === wo.id && s.chipTextActive]}>{wo.wo_number}</Text></Pressable>))}
           </ScrollView>
-          <Text style={s.label}>Items & Qty</Text>
-          <ScrollView style={{ maxHeight: 250 }}>
-            {issueItems.map((item: any, i: number) => (
-              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <Text style={{ flex: 2, fontSize: 12 }}>{item.name}</Text>
-                <TextInput style={[s.input, { flex: 1, marginBottom: 0 }]} value={item.qty} onChangeText={v => { const arr = [...issueItems]; arr[i].qty = v; setIssueItems(arr); }} placeholder="0" keyboardType="numeric" />
+          {issueWOId ? (
+            <>
+              <View style={{ backgroundColor: 'rgba(139,92,246,0.08)', borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                <Text style={{ fontSize: 11, color: '#64748B' }}>BOM-based issue plan. Qty is pre-filled with remaining-to-issue — edit freely for urgent / partial issues.</Text>
               </View>
-            ))}
-          </ScrollView>
-          <Pressable style={[s.saveBtn, { backgroundColor: '#8B5CF6' }]} onPress={issueStock}><Ionicons name="arrow-up-circle" size={18} color="#fff" /><Text style={s.saveBtnText}>Issue Stock</Text></Pressable>
+              <Text style={s.label}>BOM Lines</Text>
+              <ScrollView style={{ maxHeight: 340 }}>
+                {issueItems.length === 0 && (<Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', padding: 20 }}>No BOM lines found for this WO</Text>)}
+                {issueItems.map((item: any, i: number) => {
+                  const locked = !item.in_register;
+                  const overStock = parseFloat(item.qty || '0') > (item.current_stock || 0);
+                  return (
+                    <View key={i} style={{ backgroundColor: locked ? 'rgba(226,232,240,0.5)' : '#FFFFFF', borderRadius: 10, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: overStock ? '#EF4444' : locked ? '#CBD5E1' : '#E2E8F0' }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: locked ? '#94A3B8' : '#0F172A' }}>{item.component}</Text>
+                          <Text style={{ fontSize: 11, color: '#64748B' }} numberOfLines={2}>{item.name}</Text>
+                          {!locked && (
+                            <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                              <Text style={{ fontSize: 10, color: '#0F766E', fontWeight: '600' }}>Req: {item.required_qty} {item.unit}</Text>
+                              <Text style={{ fontSize: 10, color: '#8B5CF6', fontWeight: '600' }}>Issued: {item.already_issued_qty}</Text>
+                              <Text style={{ fontSize: 10, color: '#C5964A', fontWeight: '600' }}>Pending: {item.remaining_qty}</Text>
+                              <Text style={{ fontSize: 10, color: (item.current_stock || 0) >= item.remaining_qty ? '#10B981' : '#EF4444', fontWeight: '700' }}>Stock: {item.current_stock}</Text>
+                            </View>
+                          )}
+                          {locked && <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '600', marginTop: 4 }}>⚠ Not in stock register — add item to Store first</Text>}
+                        </View>
+                        <TextInput
+                          style={[s.input, { width: 80, marginBottom: 0, textAlign: 'center', backgroundColor: locked ? '#F1F5F9' : '#fff', color: overStock ? '#EF4444' : '#0F172A' }]}
+                          editable={!locked}
+                          value={item.qty}
+                          onChangeText={v => { const arr = [...issueItems]; arr[i].qty = v; setIssueItems(arr); }}
+                          placeholder="0"
+                          keyboardType="numeric"
+                          data-testid={`issue-qty-${i}`}
+                        />
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </>
+          ) : (
+            <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', padding: 40 }}>Select a Work Order above to load its BOM</Text>
+          )}
+          <Pressable style={[s.saveBtn, { backgroundColor: '#8B5CF6', opacity: issueWOId ? 1 : 0.4 }]} onPress={issueStock} disabled={!issueWOId} data-testid="issue-stock-submit"><Ionicons name="arrow-up-circle" size={18} color="#fff" /><Text style={s.saveBtnText}>Issue Stock</Text></Pressable>
         </View></View>
       </Modal>
     </View>
