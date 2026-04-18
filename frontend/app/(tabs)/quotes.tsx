@@ -1185,6 +1185,9 @@ export default function QuotesScreen() {
   const [customerPoNumber, setCustomerPoNumber] = useState('');
   const [customerPoDate, setCustomerPoDate] = useState('');
   const [convertItemDrawings, setConvertItemDrawings] = useState<string[]>([]);
+  const [convertTests, setConvertTests] = useState<{[k: string]: boolean}>({
+    runout: false, water: false, dust: false, friction_factor: false, painting: false,
+  });
   const [searchQuery, setSearchQuery] = useState('');
   
   // Approval success popup state
@@ -2504,6 +2507,7 @@ export default function QuotesScreen() {
           setCustomerPoNumber('');
           setCustomerPoDate('');
           setConvertItemDrawings(new Array((quote?.products || []).length).fill(''));
+          setConvertTests({ runout: false, water: false, dust: false, friction_factor: false, painting: false });
           setShowConvertSO(true);
         }}
         formatDate={formatDate}
@@ -3301,6 +3305,37 @@ export default function QuotesScreen() {
                 </View>
               </View>
 
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#C5964A', letterSpacing: 0.5, marginTop: 18, marginBottom: 8, textTransform: 'uppercase' }}>QC / Testing Parameters</Text>
+              <View style={{ backgroundColor: 'rgba(241,245,249,0.6)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                {[
+                  { key: 'runout', label: 'Run-out Test' },
+                  { key: 'water', label: 'Water Test' },
+                  { key: 'dust', label: 'Dust Test' },
+                  { key: 'friction_factor', label: 'Friction Factor Test' },
+                  { key: 'painting', label: 'Painting Test' },
+                ].map(t => (
+                  <View key={t.key} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(226,232,240,0.6)' }}>
+                    <Text style={{ fontSize: 13, color: '#0F172A', fontWeight: '600', flex: 1 }}>{t.label}</Text>
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <Pressable
+                        data-testid={`so-test-${t.key}-applicable`}
+                        onPress={() => setConvertTests(prev => ({ ...prev, [t.key]: true }))}
+                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: convertTests[t.key] ? '#10B981' : '#CBD5E1', backgroundColor: convertTests[t.key] ? 'rgba(16,185,129,0.12)' : 'transparent' }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: convertTests[t.key] ? '#10B981' : '#94A3B8' }}>Applicable</Text>
+                      </Pressable>
+                      <Pressable
+                        data-testid={`so-test-${t.key}-na`}
+                        onPress={() => setConvertTests(prev => ({ ...prev, [t.key]: false }))}
+                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: !convertTests[t.key] ? '#64748B' : '#CBD5E1', backgroundColor: !convertTests[t.key] ? 'rgba(100,116,139,0.12)' : 'transparent' }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: !convertTests[t.key] ? '#64748B' : '#94A3B8' }}>Not Applicable</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
               <Text style={{ fontSize: 12, fontWeight: '700', color: '#C5964A', letterSpacing: 0.5, marginTop: 18, marginBottom: 8, textTransform: 'uppercase' }}>Drawing Numbers (per item)</Text>
               {(convertQuote?.products || []).map((p: any, idx: number) => (
                 <View key={idx} style={{ backgroundColor: 'rgba(241,245,249,0.6)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
@@ -3335,6 +3370,7 @@ export default function QuotesScreen() {
                     customer_po_number: customerPoNumber || undefined,
                     customer_po_date: customerPoDate || undefined,
                     item_drawings: item_drawings.length > 0 ? item_drawings : undefined,
+                    test_requirements: convertTests,
                   });
                   Alert.alert('Success', res.data.message);
                   setShowConvertSO(false);

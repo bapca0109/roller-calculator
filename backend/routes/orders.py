@@ -74,11 +74,20 @@ class ItemDrawing(BaseModel):
     drawing_number: Optional[str] = None
 
 
+class TestRequirements(BaseModel):
+    runout: Optional[bool] = False
+    water: Optional[bool] = False
+    dust: Optional[bool] = False
+    friction_factor: Optional[bool] = False
+    painting: Optional[bool] = False
+
+
 class ConvertToSORequest(BaseModel):
     delivery_date: Optional[str] = None  # YYYY-MM-DD
     customer_po_number: Optional[str] = None
     customer_po_date: Optional[str] = None  # YYYY-MM-DD or DD-MM-YYYY
     item_drawings: Optional[List[ItemDrawing]] = None  # per-item drawing numbers
+    test_requirements: Optional[TestRequirements] = None  # QC tests applicable to this order
 
 
 @router.post("/orders/from-quote/{quote_id}")
@@ -131,6 +140,7 @@ async def convert_quote_to_order(
         "customer_details": quote.get("customer_details"),
         "customer_po_number": (body.customer_po_number.strip() if body and body.customer_po_number else None),
         "customer_po_date": (body.customer_po_date.strip() if body and body.customer_po_date else None),
+        "test_requirements": (body.test_requirements.dict() if body and body.test_requirements else {"runout": False, "water": False, "dust": False, "friction_factor": False, "painting": False}),
         "products": products,
         "subtotal": quote.get("subtotal", 0),
         "discount_percent": quote.get("discount_percent", 0),
@@ -400,6 +410,25 @@ async def get_order_stats(current_user: dict = Depends(require_role([UserRole.AD
 
 
 # ============= INVOICE PDF GENERATION =============
+
+def _render_test_requirements_html(tests: dict) -> str:
+    """Render the 5 QC tests as pills (Applicable = green, N/A = grey) inside the SO PDF header."""
+    labels = [
+        ("runout", "Run-out"),
+        ("water", "Water"),
+        ("dust", "Dust"),
+        ("friction_factor", "Friction Factor"),
+        ("painting", "Painting"),
+    ]
+    pills = []
+    for key, label in labels:
+        applicable = bool(tests.get(key))
+        color = "#10B981" if applicable else "#94A3B8"
+        bg = "rgba(16,185,129,0.12)" if applicable else "rgba(148,163,184,0.12)"
+        status = "Applicable" if applicable else "N/A"
+        pills.append(f'<span style="display:inline-block;padding:3px 10px;margin:2px 4px 2px 0;background:{bg};color:{color};border:1px solid {color};border-radius:10px;font-size:10px;font-weight:700">{label}: {status}</span>')
+    return f'<div style="margin-top:8px;text-align:right"><span style="font-size:9px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-right:6px">QC Tests:</span>{"".join(pills)}</div>'
+
 
 def _generate_invoice_html(invoice: dict, order: dict = None) -> str:
     """Generate professional HTML invoice for PDF rendering"""
@@ -862,6 +891,7 @@ async def get_sales_order_pdf(
             {'<div class="doc-date">Cust PO: ' + order.get('customer_po_number', '') + '</div>' if order.get('customer_po_number') else ''}
             {'<div class="doc-date">PO Date: ' + order.get('customer_po_date', '') + '</div>' if order.get('customer_po_date') else ''}
             {'<div class="doc-date">Quote: ' + quote_num + '</div>' if quote_num else ''}
+            {_render_test_requirements_html(order.get('test_requirements') or {})}
         </div>
     </div>
 

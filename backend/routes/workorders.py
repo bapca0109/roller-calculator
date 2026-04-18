@@ -233,6 +233,7 @@ async def bulk_create_work_order(
         "customer_po_number": order.get("customer_po_number"),
         "customer_po_date": order.get("customer_po_date"),
         "delivery_date": order.get("delivery_date"),
+        "test_requirements": order.get("test_requirements") or {},
         "so_item_indexes": target_indexes,
         "items": wo_items,
         "ral_code": data.ral_code or "",
