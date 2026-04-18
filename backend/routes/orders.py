@@ -74,6 +74,11 @@ class ItemDrawing(BaseModel):
     drawing_number: Optional[str] = None
 
 
+class ItemOverride(BaseModel):
+    item_index: int  # index into original quote.products
+    quantity: Optional[int] = None  # override quantity; None keeps original
+
+
 class TestRequirements(BaseModel):
     runout: Optional[bool] = False
     water: Optional[bool] = False
@@ -87,6 +92,7 @@ class ConvertToSORequest(BaseModel):
     customer_po_number: Optional[str] = None
     customer_po_date: Optional[str] = None  # YYYY-MM-DD or DD-MM-YYYY
     item_drawings: Optional[List[ItemDrawing]] = None  # per-item drawing numbers
+    items_override: Optional[List[ItemOverride]] = None  # filter items + override qty; if None, include all
     test_requirements: Optional[TestRequirements] = None  # QC tests applicable to this order
 
 
@@ -118,14 +124,71 @@ async def convert_quote_to_order(
     so_number = await generate_so_number()
     quote_id_str = str(quote.get("_id", quote.get("id")))
 
-    # Apply per-item drawing numbers from request
-    products = [dict(p) for p in (quote.get("products") or [])]
+    # Start with all products, then apply filters/overrides
+    raw_products = list(quote.get("products") or [])
+    products = []
+    old_to_new_index: Dict[int, int] = {}  # for mapping drawings afterwards
+
+    if body and body.items_override is not None:
+        # Only keep items listed in items_override (partial conversion)
+        for ov in body.items_override:
+            if 0 <= ov.item_index < len(raw_products):
+                p = dict(raw_products[ov.item_index])
+                if ov.quantity is not None and ov.quantity > 0:
+                    old_qty = p.get("quantity") or 1
+                    new_qty = int(ov.quantity)
+                    # Recalculate totals proportionally when qty overridden
+                    if old_qty and old_qty != new_qty:
+                        unit_price = p.get("unit_price") or 0
+                        p["quantity"] = new_qty
+                        p["total_price"] = round(unit_price * new_qty, 2)
+                        if "total_amount" in p:
+                            p["total_amount"] = round(unit_price * new_qty, 2)
+                    else:
+                        p["quantity"] = new_qty
+                old_to_new_index[ov.item_index] = len(products)
+                products.append(p)
+    else:
+        for i, p in enumerate(raw_products):
+            products.append(dict(p))
+            old_to_new_index[i] = i
+
+    if not products:
+        raise HTTPException(status_code=400, detail="At least one item is required to create a Sales Order")
+
+    # Apply per-item drawing numbers from request (indexed by ORIGINAL quote index)
     if body and body.item_drawings:
         for d in body.item_drawings:
-            if 0 <= d.item_index < len(products) and d.drawing_number:
-                pd = products[d.item_index].get("production_details") or {}
+            new_idx = old_to_new_index.get(d.item_index)
+            if new_idx is not None and d.drawing_number:
+                pd = products[new_idx].get("production_details") or {}
                 pd["drawing_number"] = d.drawing_number.strip()
-                products[d.item_index]["production_details"] = pd
+                products[new_idx]["production_details"] = pd
+
+    # If items were overridden (partial/edited), recompute totals based on new products
+    was_overridden = body and body.items_override is not None
+    if was_overridden:
+        new_subtotal = round(sum((p.get("unit_price") or 0) * (p.get("quantity") or 0) for p in products), 2)
+        orig_subtotal = quote.get("subtotal") or 0
+        scale = (new_subtotal / orig_subtotal) if orig_subtotal else 1
+        total_discount = round((quote.get("total_discount") or 0) * scale, 2)
+        packing_charges = round((quote.get("packing_charges") or 0) * scale, 2)
+        shipping_cost = round((quote.get("shipping_cost") or 0) * scale, 2)
+        gst_percent = (quote.get("gst_percent") or 18)
+        taxable = round(new_subtotal - total_discount + packing_charges + shipping_cost, 2)
+        gst = round(taxable * gst_percent / 100, 2)
+        new_grand = round(taxable + gst, 2)
+        so_subtotal = new_subtotal
+        so_total_discount = total_discount
+        so_packing = packing_charges
+        so_shipping = shipping_cost
+        so_total_price = new_grand
+    else:
+        so_subtotal = quote.get("subtotal", 0)
+        so_total_discount = quote.get("total_discount", 0)
+        so_packing = quote.get("packing_charges", 0)
+        so_shipping = quote.get("shipping_cost", 0)
+        so_total_price = quote.get("total_price", 0)
 
     order = {
         "id": str(ObjectId()),
@@ -142,20 +205,20 @@ async def convert_quote_to_order(
         "customer_po_date": (body.customer_po_date.strip() if body and body.customer_po_date else None),
         "test_requirements": (body.test_requirements.dict() if body and body.test_requirements else {"runout": False, "water": False, "dust": False, "friction_factor": False, "painting": False}),
         "products": products,
-        "subtotal": quote.get("subtotal", 0),
+        "subtotal": so_subtotal,
         "discount_percent": quote.get("discount_percent", 0),
-        "total_discount": quote.get("total_discount", 0),
-        "packing_charges": quote.get("packing_charges", 0),
+        "total_discount": so_total_discount,
+        "packing_charges": so_packing,
         "packing_type": quote.get("packing_type"),
-        "shipping_cost": quote.get("shipping_cost", 0),
+        "shipping_cost": so_shipping,
         "freight_details": quote.get("freight_details"),
-        "total_price": quote.get("total_price", 0),
+        "total_price": so_total_price,
         "commercial_terms": quote.get("commercial_terms"),
         "stage": "confirmed",
         "payment_status": "unpaid",
         "payments": [],
         "total_paid": 0,
-        "balance_due": quote.get("total_price", 0),
+        "balance_due": so_total_price,
         "proforma_invoice": None,
         "tax_invoice": None,
         "notes": None,
@@ -164,7 +227,7 @@ async def convert_quote_to_order(
             "stage": "confirmed",
             "timestamp": now.isoformat(),
             "by": current_user.get("email"),
-            "notes": f"Converted from {quote.get('quote_number')}"
+            "notes": f"Converted from {quote.get('quote_number')}" + (f" (partial: {len(products)}/{len(raw_products)} items)" if was_overridden else "")
         }],
         "created_by": current_user.get("email"),
         "created_at": now.isoformat(),

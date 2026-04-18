@@ -488,7 +488,7 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
       const productName = (woOrder.products?.[i]?.product_name || '').toLowerCase();
       const isPulley = productName.includes('pulley');
       if (isPulley) continue;
-      if (!item.drawing_number) { Alert.alert('Error', `Item ${i+1}: Drawing number required (set during Convert-to-SO)`); return; }
+      // Drawing number is optional (may be added later from Admin/Dispatch)
       if (!item.shaft_length) { Alert.alert('Error', `Item ${i+1}: Shaft length required`); return; }
       if (!item.slot_width || !item.slot_dimension || !item.slot_type) { Alert.alert('Error', `Item ${i+1}: Shaft slot details required`); return; }
     }
@@ -1066,8 +1066,8 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
                   {item.selected && !disabled && !isPulley && (<>
                     <Text style={os.label}>Drawing Number (from SO)</Text>
                     <View style={[os.input, { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center' }]}>
-                      <Text style={{ fontSize: 14, color: item.drawing_number ? '#0F172A' : '#EF4444', fontWeight: '600' }}>
-                        {item.drawing_number || 'Not set — edit the Sales Order conversion to add drawing #'}
+                      <Text style={{ fontSize: 14, color: item.drawing_number ? '#0F172A' : '#94A3B8', fontWeight: '600' }}>
+                        {item.drawing_number || 'Optional — add later if needed'}
                       </Text>
                     </View>
                     <Text style={os.label}>Shaft Length (mm) *</Text>
@@ -1185,6 +1185,7 @@ export default function QuotesScreen() {
   const [customerPoNumber, setCustomerPoNumber] = useState('');
   const [customerPoDate, setCustomerPoDate] = useState('');
   const [convertItemDrawings, setConvertItemDrawings] = useState<string[]>([]);
+  const [convertItemRows, setConvertItemRows] = useState<any[]>([]);
   const [convertTests, setConvertTests] = useState<{[k: string]: boolean}>({
     runout: false, water: false, dust: false, friction_factor: false, painting: false,
   });
@@ -2506,7 +2507,15 @@ export default function QuotesScreen() {
           setDeliveryDate('');
           setCustomerPoNumber('');
           setCustomerPoDate('');
-          setConvertItemDrawings(new Array((quote?.products || []).length).fill(''));
+          const products = quote?.products || [];
+          setConvertItemDrawings(new Array(products.length).fill(''));
+          setConvertItemRows(products.map((p: any, idx: number) => ({
+            item_index: idx,
+            product_name: p.product_name,
+            quantity: String(p.quantity ?? 1),
+            unit_price: p.unit_price ?? 0,
+            included: true,
+          })));
           setConvertTests({ runout: false, water: false, dust: false, friction_factor: false, painting: false });
           setShowConvertSO(true);
         }}
@@ -3336,21 +3345,59 @@ export default function QuotesScreen() {
                 ))}
               </View>
 
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#C5964A', letterSpacing: 0.5, marginTop: 18, marginBottom: 8, textTransform: 'uppercase' }}>Drawing Numbers (per item)</Text>
-              {(convertQuote?.products || []).map((p: any, idx: number) => (
-                <View key={idx} style={{ backgroundColor: 'rgba(241,245,249,0.6)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
-                  <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '600', marginBottom: 6 }}>Item {idx+1}: {p.product_name} <Text style={{ color: '#94A3B8', fontWeight: '400' }}>(Qty {p.quantity})</Text></Text>
-                  <TextInput
-                    style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#0F172A' }}
-                    value={convertItemDrawings[idx] || ''}
-                    onChangeText={(v) => {
-                      const arr = [...convertItemDrawings];
-                      arr[idx] = v;
-                      setConvertItemDrawings(arr);
-                    }}
-                    placeholder="Drawing No. (e.g. DWG-001)"
-                    data-testid={`so-item-drawing-${idx}`}
-                  />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#C5964A', letterSpacing: 0.5, marginTop: 18, marginBottom: 4, textTransform: 'uppercase' }}>Order Items</Text>
+              <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 8 }}>Edit qty or remove items for partial orders. Drawing number is optional.</Text>
+              {convertItemRows.map((row: any, idx: number) => (
+                <View key={idx} style={{ backgroundColor: row.included ? 'rgba(241,245,249,0.7)' : 'rgba(254,226,226,0.35)', borderRadius: 10, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: row.included ? '#E2E8F0' : '#FCA5A5' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text style={{ flex: 1, fontSize: 12, color: row.included ? '#0F172A' : '#94A3B8', fontWeight: '600', textDecorationLine: row.included ? 'none' : 'line-through' }} numberOfLines={2}>
+                      Item {idx+1}: {row.product_name} <Text style={{ color: '#94A3B8', fontSize: 11 }}>@ Rs.{Number(row.unit_price).toFixed(2)}</Text>
+                    </Text>
+                    <Pressable
+                      data-testid={`so-item-toggle-${idx}`}
+                      onPress={() => {
+                        const arr = [...convertItemRows];
+                        arr[idx] = { ...arr[idx], included: !arr[idx].included };
+                        setConvertItemRows(arr);
+                      }}
+                      style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: row.included ? '#EF4444' : '#10B981', backgroundColor: row.included ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)' }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: row.included ? '#EF4444' : '#10B981' }}>{row.included ? 'Remove' : 'Include'}</Text>
+                    </Pressable>
+                  </View>
+                  {row.included && (
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <View style={{ width: 90 }}>
+                        <Text style={{ fontSize: 10, color: '#94A3B8', marginBottom: 3 }}>Qty</Text>
+                        <TextInput
+                          data-testid={`so-item-qty-${idx}`}
+                          style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, fontWeight: '700', color: '#0F172A', textAlign: 'center' }}
+                          value={row.quantity}
+                          onChangeText={v => {
+                            const arr = [...convertItemRows];
+                            arr[idx] = { ...arr[idx], quantity: v.replace(/[^0-9]/g, '') };
+                            setConvertItemRows(arr);
+                          }}
+                          keyboardType="numeric"
+                          placeholder="1"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 10, color: '#94A3B8', marginBottom: 3 }}>Drawing No. <Text style={{ color: '#64748B' }}>(optional)</Text></Text>
+                        <TextInput
+                          data-testid={`so-item-drawing-${idx}`}
+                          style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, color: '#0F172A' }}
+                          value={convertItemDrawings[idx] || ''}
+                          onChangeText={(v) => {
+                            const arr = [...convertItemDrawings];
+                            arr[idx] = v;
+                            setConvertItemDrawings(arr);
+                          }}
+                          placeholder="e.g. DWG-001"
+                        />
+                      </View>
+                    </View>
+                  )}
                 </View>
               ))}
             </ScrollView>
@@ -3359,17 +3406,32 @@ export default function QuotesScreen() {
               data-testid="so-convert-submit"
               onPress={async () => {
                 if (!deliveryDate) { Alert.alert('Error', 'Please enter delivery date'); return; }
-                if (!(await confirmAction('Convert Quote to Sales Order?', `${convertQuote?.quote_number} will be converted to a new SO with delivery date ${deliveryDate}${customerPoNumber ? ` and PO# ${customerPoNumber}` : ''}.`))) return;
+                const includedRows = convertItemRows.filter((r: any) => r.included && parseInt(r.quantity || '0') > 0);
+                if (includedRows.length === 0) { Alert.alert('Error', 'Include at least one item with qty > 0'); return; }
+                const originalProducts = convertQuote?.products || [];
+                const anyChange =
+                  includedRows.length !== originalProducts.length ||
+                  includedRows.some((r: any) => parseInt(r.quantity) !== (originalProducts[r.item_index]?.quantity ?? 1));
+                const items_override = anyChange
+                  ? includedRows.map((r: any) => ({ item_index: r.item_index, quantity: parseInt(r.quantity) }))
+                  : undefined;
+                const msg = anyChange
+                  ? `Partial SO: ${includedRows.length}/${originalProducts.length} items. This cannot be undone.`
+                  : `${convertQuote?.quote_number} will be converted to a new SO with delivery date ${deliveryDate}${customerPoNumber ? ` and PO# ${customerPoNumber}` : ''}.`;
+                if (!(await confirmAction('Convert Quote to Sales Order?', msg))) return;
                 try {
                   const quoteId = convertQuote?.id || convertQuote?._id;
+                  // Only attach drawings for included items
+                  const includedIdxSet = new Set(includedRows.map((r: any) => r.item_index));
                   const item_drawings = convertItemDrawings
                     .map((dwg, i) => ({ item_index: i, drawing_number: (dwg || '').trim() }))
-                    .filter(d => d.drawing_number);
+                    .filter(d => d.drawing_number && includedIdxSet.has(d.item_index));
                   const res = await api.post(`/orders/from-quote/${quoteId}`, {
                     delivery_date: deliveryDate,
                     customer_po_number: customerPoNumber || undefined,
                     customer_po_date: customerPoDate || undefined,
                     item_drawings: item_drawings.length > 0 ? item_drawings : undefined,
+                    items_override,
                     test_requirements: convertTests,
                   });
                   Alert.alert('Success', res.data.message);
