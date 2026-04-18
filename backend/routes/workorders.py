@@ -1758,6 +1758,69 @@ async def get_sub_wos(
     return {"parent_wo_number": wo.get("wo_number"), "sub_work_orders": subs}
 
 
+@router.get("/wip-qc/overview")
+async def get_wip_qc_overview(
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.PRODUCTION_HEAD, UserRole.QUALITY_INSPECTOR])),
+):
+    """Aggregated view of Pipe + Shaft WIP QC status for every Work Order.
+    Response: { rows: [ { wo_id, wo_number, customer_name, so_number,
+                          delivery_date, stage, pipe: {...}|None, shaft: {...}|None } ] }
+    Each pipe/shaft block: { sub_wo_id, sub_wo_number, status: 'pending'|'passed'|'failed',
+                             pass_count, fail_count, inspected_by, inspected_at }
+    """
+    # Pull non-pulley WOs (rollers only); sub-WOs exist only for rollers
+    wos = await db.work_orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    subs = await db.sub_work_orders.find({}, {"_id": 0}).to_list(5000)
+    sub_by_parent: dict = {}
+    for s in subs:
+        sub_by_parent.setdefault(s.get("parent_wo_id"), []).append(s)
+
+    def _block(sub: dict | None):
+        if not sub:
+            return None
+        wip = sub.get("wip_qc") or None
+        pass_count = 0
+        fail_count = 0
+        if wip and isinstance(wip.get("items"), list):
+            for it in wip["items"]:
+                pass_count += int(it.get("pass_count") or 0)
+                fail_count += int(it.get("fail_count") or 0)
+        status = (wip or {}).get("status") or "pending"
+        return {
+            "sub_wo_id": sub.get("id"),
+            "sub_wo_number": sub.get("sub_wo_number"),
+            "status": status,
+            "pass_count": pass_count,
+            "fail_count": fail_count,
+            "inspected_by": (wip or {}).get("inspected_by"),
+            "inspected_at": (wip or {}).get("inspected_at"),
+        }
+
+    rows = []
+    for wo in wos:
+        items = wo.get("items") or []
+        # Only include WOs that have any non-pulley items (rollers have sub-WOs)
+        has_roller = any(not ("pulley" in (it.get("product_name") or "").lower()) for it in items)
+        if not has_roller:
+            continue
+        wo_subs = sub_by_parent.get(wo.get("id")) or []
+        pipe = next((s for s in wo_subs if s.get("type") == "pipe"), None)
+        shaft = next((s for s in wo_subs if s.get("type") == "shaft"), None)
+        rows.append({
+            "wo_id": wo.get("id"),
+            "wo_number": wo.get("wo_number"),
+            "so_number": wo.get("so_number"),
+            "customer_name": wo.get("customer_name"),
+            "customer_company": wo.get("customer_company"),
+            "delivery_date": wo.get("delivery_date"),
+            "stage": wo.get("stage"),
+            "item_count": len(items),
+            "pipe": _block(pipe),
+            "shaft": _block(shaft),
+        })
+    return {"rows": rows}
+
+
 # ============= WIP QC for Pipe & Shaft sub-WOs =============
 
 class PipeQCSample(BaseModel):

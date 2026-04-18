@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { cacheEvents } from '../../utils/api';
 import { confirmAction } from '../../components/shared/confirm';
+import { usePipeQC, useShaftQC } from '../../components/quotes/QCModals';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -97,6 +98,190 @@ function OrdersAndWOView({ orders, ordersLoading, fetchOrders, workOrders, woLoa
 
 const WO_STAGE_COLORS: Record<string, string> = { created: '#3B82F6', material_issued: '#8B5CF6', in_progress: '#C5964A', qc: '#F59E0B', completed: '#10B981' };
 const WO_STAGE_LABELS: Record<string, string> = { created: 'Created', material_issued: 'Material Issued', in_progress: 'In Progress', qc: 'QC', completed: 'Completed' };
+
+function QCView({ isAdmin, userRole }: { isAdmin: boolean; userRole: string }) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [typeFilter, setTypeFilter] = useState<'both' | 'pipe' | 'shaft'>('both');
+
+  const { open: openPipeQC, render: renderPipeModal } = usePipeQC(() => fetchRows());
+  const { open: openShaftQC, render: renderShaftModal } = useShaftQC(() => fetchRows());
+
+  const fetchRows = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/wip-qc/overview');
+      setRows(res.data.rows || []);
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'Failed to load QC overview');
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchRows(); }, []);
+
+  const canEdit = isAdmin || userRole === 'quality_inspector' || userRole === 'production_head';
+
+  const filtered = rows.filter((r: any) => {
+    const p = r.pipe?.status;
+    const s = r.shaft?.status;
+    if (statusFilter === 'pending') {
+      if (typeFilter === 'pipe') return p === 'pending';
+      if (typeFilter === 'shaft') return s === 'pending';
+      return p === 'pending' || s === 'pending';
+    }
+    if (statusFilter === 'completed') {
+      if (typeFilter === 'pipe') return p && p !== 'pending';
+      if (typeFilter === 'shaft') return s && s !== 'pending';
+      return (p && p !== 'pending') || (s && s !== 'pending');
+    }
+    return true;
+  });
+
+  const counts = rows.reduce((acc: any, r: any) => {
+    if (r.pipe?.status === 'pending') acc.pipePending++;
+    if (r.pipe?.status && r.pipe.status !== 'pending') acc.pipeDone++;
+    if (r.shaft?.status === 'pending') acc.shaftPending++;
+    if (r.shaft?.status && r.shaft.status !== 'pending') acc.shaftDone++;
+    return acc;
+  }, { pipePending: 0, pipeDone: 0, shaftPending: 0, shaftDone: 0 });
+
+  const StatusChip = ({ block, label, onPress, color }: any) => {
+    if (!block) return <View style={qv.noChip}><Text style={qv.noChipText}>—</Text></View>;
+    const st = block.status;
+    const bg = st === 'passed' ? '#10B981' : st === 'failed' ? '#EF4444' : '#F59E0B';
+    const icon: any = st === 'passed' ? 'checkmark-circle' : st === 'failed' ? 'close-circle' : 'time';
+    const isPending = st === 'pending';
+    return (
+      <TouchableOpacity
+        disabled={!canEdit}
+        onPress={onPress}
+        style={[qv.statusChip, { borderColor: bg, backgroundColor: isPending ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.9)' }]}
+        testID={`qc-${label.toLowerCase()}-${block.sub_wo_number}`}
+      >
+        <Ionicons name={icon} size={14} color={bg} />
+        <View style={{ marginLeft: 6 }}>
+          <Text style={[qv.chipLabel, { color }]}>{label}</Text>
+          <Text style={[qv.chipStatus, { color: bg }]}>{isPending ? 'PENDING' : st.toUpperCase()}</Text>
+          {!isPending && (
+            <Text style={qv.chipMeta}>✓{block.pass_count} / ✗{block.fail_count}</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <View style={{ flex: 1, padding: 16 }}>
+      {/* Summary header */}
+      <View style={qv.summary}>
+        <View style={[qv.summaryCard, { borderLeftColor: '#8B5CF6' }]}>
+          <Text style={qv.summaryLabel}>Pipe QC</Text>
+          <Text style={qv.summaryNumbers}>
+            <Text style={{ color: '#F59E0B' }}>{counts.pipePending}</Text>
+            <Text style={qv.summaryDim}> pending · </Text>
+            <Text style={{ color: '#10B981' }}>{counts.pipeDone}</Text>
+            <Text style={qv.summaryDim}> done</Text>
+          </Text>
+        </View>
+        <View style={[qv.summaryCard, { borderLeftColor: '#0891B2' }]}>
+          <Text style={qv.summaryLabel}>Shaft QC</Text>
+          <Text style={qv.summaryNumbers}>
+            <Text style={{ color: '#F59E0B' }}>{counts.shaftPending}</Text>
+            <Text style={qv.summaryDim}> pending · </Text>
+            <Text style={{ color: '#10B981' }}>{counts.shaftDone}</Text>
+            <Text style={qv.summaryDim}> done</Text>
+          </Text>
+        </View>
+      </View>
+
+      {/* Filters */}
+      <View style={qv.filterRow}>
+        {(['all', 'pending', 'completed'] as const).map((f) => (
+          <Pressable key={f} onPress={() => setStatusFilter(f)} style={[qv.filterChip, statusFilter === f && qv.filterChipActive]} testID={`qc-filter-${f}`}>
+            <Text style={[qv.filterText, statusFilter === f && qv.filterTextActive]}>{f.toUpperCase()}</Text>
+          </Pressable>
+        ))}
+        <View style={{ width: 16 }} />
+        {(['both', 'pipe', 'shaft'] as const).map((f) => (
+          <Pressable key={f} onPress={() => setTypeFilter(f)} style={[qv.filterChip, typeFilter === f && qv.filterChipActive]} testID={`qc-type-${f}`}>
+            <Text style={[qv.filterText, typeFilter === f && qv.filterTextActive]}>{f === 'both' ? 'P+S' : f.toUpperCase()}</Text>
+          </Pressable>
+        ))}
+        <TouchableOpacity onPress={fetchRows} style={{ marginLeft: 'auto' }}>
+          <Ionicons name="refresh" size={20} color="#C5964A" />
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <View style={{ padding: 32, alignItems: 'center' }}><ActivityIndicator size="large" color="#C5964A" /></View>
+      ) : filtered.length === 0 ? (
+        <View style={qv.empty}>
+          <Ionicons name="clipboard-outline" size={48} color="#94A3B8" />
+          <Text style={qv.emptyText}>No {statusFilter !== 'all' ? statusFilter : ''} QC items</Text>
+        </View>
+      ) : (
+        <ScrollView>
+          {filtered.map((r: any) => (
+            <View key={r.wo_id} style={qv.row} testID={`qc-row-${r.wo_number}`}>
+              <View style={{ flex: 1 }}>
+                <Text style={qv.woNumber}>{r.wo_number}</Text>
+                <Text style={qv.woSub}>{r.customer_name} · SO: {r.so_number}</Text>
+                <Text style={qv.woMeta}>{r.item_count} item(s)  ·  Stage: <Text style={{ color: '#0F172A', fontWeight: '700' }}>{(r.stage || 'created').toUpperCase()}</Text></Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {(typeFilter === 'both' || typeFilter === 'pipe') && (
+                  <StatusChip
+                    block={r.pipe}
+                    label="Pipe"
+                    color="#8B5CF6"
+                    onPress={() => r.pipe && openPipeQC(r.pipe.sub_wo_id, r.pipe.sub_wo_number)}
+                  />
+                )}
+                {(typeFilter === 'both' || typeFilter === 'shaft') && (
+                  <StatusChip
+                    block={r.shaft}
+                    label="Shaft"
+                    color="#0891B2"
+                    onPress={() => r.shaft && openShaftQC(r.shaft.sub_wo_id, r.shaft.sub_wo_number)}
+                  />
+                )}
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+
+      {renderPipeModal()}
+      {renderShaftModal()}
+    </View>
+  );
+}
+
+const qv = StyleSheet.create({
+  summary: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  summaryCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderWidth: 1, borderColor: 'rgba(226,232,240,0.7)' },
+  summaryLabel: { fontSize: 11, color: '#64748B', fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
+  summaryNumbers: { fontSize: 16, fontWeight: '700', marginTop: 4 },
+  summaryDim: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
+  filterRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, flexWrap: 'wrap' },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#fff' },
+  filterChipActive: { borderColor: '#C5964A', backgroundColor: 'rgba(197,150,74,0.12)' },
+  filterText: { fontSize: 11, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.3 },
+  filterTextActive: { color: '#C5964A' },
+  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(226,232,240,0.7)' },
+  woNumber: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  woSub: { fontSize: 11, color: '#64748B', marginTop: 2 },
+  woMeta: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
+  statusChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, borderWidth: 1, minWidth: 95 },
+  chipLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.4 },
+  chipStatus: { fontSize: 10, fontWeight: '700', marginTop: 1 },
+  chipMeta: { fontSize: 9, color: '#94A3B8', marginTop: 1 },
+  noChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: '#F1F5F9', minWidth: 95, alignItems: 'center' },
+  noChipText: { fontSize: 12, color: '#CBD5E1' },
+  empty: { padding: 48, alignItems: 'center' },
+  emptyText: { fontSize: 14, color: '#94A3B8', marginTop: 8 },
+});
 
 function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: { workOrders: any[]; loading: boolean; onRefresh: () => void; isAdmin: boolean; userRole?: string }) {
   const [selectedWO, setSelectedWO] = useState<any>(null);
@@ -1688,7 +1873,7 @@ export default function QuotesScreen() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [viewMode, setViewMode] = useState<'quotes' | 'orders' | 'workorders'>(initialViewMode);
+  const [viewMode, setViewMode] = useState<'quotes' | 'orders' | 'qc' | 'workorders'>(initialViewMode);
 
   // Ensure ops-only roles (who may have loaded after initial render) land on Orders
   useEffect(() => {
@@ -3530,12 +3715,22 @@ export default function QuotesScreen() {
             <Ionicons name="cube-outline" size={14} color={viewMode === 'orders' ? '#C5964A' : '#94A3B8'} />
             <Text style={[styles.modeBtnText, viewMode === 'orders' && styles.modeBtnTextActive]}>Orders</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeBtn, viewMode === 'qc' && styles.modeBtnActive]}
+            onPress={() => setViewMode('qc')}
+            testID="sales-qc-tab"
+          >
+            <Ionicons name="clipboard-outline" size={14} color={viewMode === 'qc' ? '#C5964A' : '#94A3B8'} />
+            <Text style={[styles.modeBtnText, viewMode === 'qc' && styles.modeBtnTextActive]}>QC</Text>
+          </TouchableOpacity>
         </View>
       </View>
       )}
 
-      {/* ORDERS VIEW with SO/WO sub-toggle */}
-      {viewMode === 'orders' ? (
+      {/* QC VIEW — WIP Pipe & Shaft QC overview */}
+      {viewMode === 'qc' ? (
+        <QCView isAdmin={isAdmin} userRole={user?.role || ''} />
+      ) : viewMode === 'orders' ? (
         <OrdersAndWOView
           orders={orders}
           ordersLoading={ordersLoading}
