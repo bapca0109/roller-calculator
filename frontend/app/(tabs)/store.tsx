@@ -107,6 +107,8 @@ export default function StoreScreen() {
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
+  const [issueRecent, setIssueRecent] = useState<any[]>([]);
+
   const openIssueModal = async () => {
     try {
       const res = await api.get('/work-orders');
@@ -114,16 +116,18 @@ export default function StoreScreen() {
       // Start empty; filled when user picks a WO
       setIssueItems([]);
       setIssueWOId('');
+      setIssueRecent([]);
       setShowIssue(true);
     } catch {}
   };
 
   const loadIssuePlan = async (woId: string) => {
     setIssueWOId(woId);
-    if (!woId) { setIssueItems([]); return; }
+    if (!woId) { setIssueItems([]); setIssueRecent([]); return; }
     try {
       const res = await api.get(`/work-orders/${woId}/issue-plan`);
       const plan = res.data.plan || [];
+      setIssueRecent(res.data.recent_issues || []);
       // Pre-fill qty = remaining_qty (what's still pending to issue). User can edit before submit.
       const rows = plan.map((p: any) => ({
         stock_item_id: p.stock_item_id,
@@ -424,6 +428,18 @@ export default function StoreScreen() {
           </ScrollView>
           {issueWOId ? (
             <>
+              {issueRecent.length > 0 && (
+                <View style={{ backgroundColor: 'rgba(15,118,110,0.06)', borderRadius: 10, padding: 10, marginBottom: 10, borderLeftWidth: 3, borderLeftColor: '#0F766E' }}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#0F766E', letterSpacing: 0.5, marginBottom: 6, textTransform: 'uppercase' }}>Recent Issues ({issueRecent.length})</Text>
+                  {issueRecent.map((r: any, idx: number) => (
+                    <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 }}>
+                      <Text style={{ flex: 2, fontSize: 11, color: '#0F172A' }} numberOfLines={1}>{r.stock_item_name}</Text>
+                      <Text style={{ flex: 1, fontSize: 11, color: '#8B5CF6', fontWeight: '700', textAlign: 'center' }}>-{r.qty} {r.unit}</Text>
+                      <Text style={{ flex: 1, fontSize: 10, color: '#64748B', textAlign: 'right' }} numberOfLines={1}>{r.by ? r.by.split('@')[0] : ''} • {r.timestamp ? String(r.timestamp).split('T')[0] : ''}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               <View style={{ backgroundColor: 'rgba(139,92,246,0.08)', borderRadius: 8, padding: 10, marginBottom: 8 }}>
                 <Text style={{ fontSize: 11, color: '#64748B' }}>BOM-based issue plan. Qty is pre-filled with remaining-to-issue — edit freely for urgent / partial issues.</Text>
               </View>

@@ -1366,11 +1366,30 @@ async def get_wo_issue_plan(wo_id: str, current_user: dict = Depends(require_rol
         })
 
     # Also list all extra stock_items the user may want to add manually (not in BOM) — skip for minimalism
+    # 4. Recent issues against this WO (last 5)
+    recent_cursor = db.stock_transactions.find(
+        {"wo_id": wo.get("id"), "type": "out"},
+        {"_id": 0},
+    ).sort("timestamp", -1).limit(5)
+    recent_issues = []
+    async for t in recent_cursor:
+        si = None
+        if t.get("stock_item_id"):
+            si = await db.stock_items.find_one({"id": t["stock_item_id"]}, {"_id": 0, "name": 1, "unit_purchase": 1})
+        recent_issues.append({
+            "timestamp": t.get("timestamp"),
+            "stock_item_name": si.get("name") if si else t.get("stock_item_name") or "Unknown",
+            "qty": t.get("qty"),
+            "unit": si.get("unit_purchase", "nos") if si else "nos",
+            "by": t.get("by") or t.get("user_email"),
+        })
+
     return {
         "wo_number": wo.get("wo_number"),
         "stage": wo.get("stage"),
         "plan": plan,
         "total_lines": len(plan),
+        "recent_issues": recent_issues,
     }
 
 
