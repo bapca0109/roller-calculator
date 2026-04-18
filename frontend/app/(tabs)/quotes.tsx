@@ -3141,8 +3141,9 @@ export default function QuotesScreen() {
             {/* Approve Button */}
             <TouchableOpacity 
               style={styles.approveConfirmButton}
-              onPress={confirmApproveRfq}
+              onPress={() => confirmApproveRfq()}
               disabled={approvingId === approveModalQuote.id}
+              testID="approve-rfq-confirm-btn"
             >
               {approvingId === approveModalQuote.id ? (
                 <ActivityIndicator color="#fff" />

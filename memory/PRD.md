@@ -36,17 +36,22 @@
 - **Partial / Multi-WO per Sales Order [2026-02-18]**: `BulkCreateWorkOrder` accepts `selected_item_indexes[]`. Previously only one WO per SO was allowed; now an SO can have N WOs, each covering a subset of items. Each product records its owning `wo_number`; SO tracks `work_orders[]`. Server blocks re-creating a WO for items already assigned. Frontend Create-WO modal adds per-item checkboxes (locked for items already in a WO), submit button label is dynamic ("Create WO for N Item(s)"), and the SO card's Create-WO action shows remaining-items count.
 - **BOM Weights populated — Bearings + Rubber Rings [2026-02-18]**: Added `BEARING_WEIGHT_KG` master map in `roller_standards.py` (6204–6310, 420204–420206) sourced from SKF/FAG datasheets — used as `weight_per_unit_kg` in auto-generated BOM for rollers. Rubber ring weight now **looked up from the user-provided `RUBBER_RING_WEIGHTS` master sheet** (via `get_rubber_ring_weight(pipe_dia, rubber_dia)`) — no formula/density calc. Verified: 88.9mm pipe × 127mm rubber → 0.245 kg/ring → 13.72 kg total for 2 rollers × 28 rings.
 - **Global Confirmation Dialogs [2026-02-18]**: Added a cross-platform `confirmAction(title, message)` helper at `/app/frontend/components/shared/confirm.ts` (uses `window.confirm` on web, `Alert.alert` on native). Every mutating / process-advancing button now shows a "Yes, Proceed / Cancel" confirmation with a one-line summary of what will happen. Applied to: Convert-to-SO, Create WO (partial + full), QC stamp Pass/Fail, WO stage update, Order stage update, Record Payment, Create Delivery Challan, Generate Proforma/Tax Invoice, Approve/Reject Quote, Save-and-Mail Quote, Update Quote Status, Admin → Pulley price save/bulk save, Change User Role, Create User, Save Numbering Templates, Update Price, Update Standards, Create Stock/Supplier/PO, Stock QC Accept/Reject, Issue Stock to WO, Create Lead, Move Lead Stage, Schedule/Complete Follow-up, Create/Update Customer, Submit RFQ (cart / calculator / search / RfqSubmissionModal). Pure reads, filters, navigation and PDF downloads are unaffected.
+- **Sub-Work Orders for Pipe & Shaft [2026-02-18]**: Auto-generation of Pipe Job Cards (`/P`) and Shaft Job Cards (`/S`) for Rollers (skipped for Pulleys). Added PDF endpoints and UI buttons per WO card.
+- **Pipe WIP QC Module [2026-02-18]**: Tolerance engine + dynamic sample modal capturing Pipe Dia (Yes/No), Pipe Length (±1mm), Pipe Thickness (±10%). Auto-evaluates Pass/Fail per sample with running pass/fail counts. Endpoints: `GET/POST /api/sub-work-orders/{id}/wip-qc`.
+- **RFQ Approve Fix [2026-02-18]**: Fixed Approve RFQ button silently failing. Root cause: `onPress={confirmApproveRfq}` passed the synthetic press event as the `quoteOverride` argument, triggering the "Invalid quote - missing ID" early-exit. Wrapped in arrow function `() => confirmApproveRfq()`. Added `data-testid="approve-rfq-confirm-btn"`. Verified end-to-end: RFQ/2026/00028 → Q/26-27/0032 success dialog.
 
 ## P0 — Next
-- [x] User Roles (Sales, Production, Accounts, Dispatch) — done 2026-02-17
+- [ ] Shaft WIP QC (mirror of Pipe QC): Shaft Dia (Yes/No), Shaft Length (±1mm), End Slot WxD type (Yes/No)
 
 ## P1
-- [ ] Inventory auto-deduct on WO processing/completion
-- [ ] Dispatch/Delivery Challan
 - [ ] Tax Invoice auto-gen on dispatch
-- [ ] Accounts Receivable
-- [ ] GST Reports
+- [ ] Pulley Sub-WOs / Job Cards (unique params, different from rollers)
+- [ ] Accounts Receivable / Aging
+- [ ] GST Reports (GSTR-1, GSTR-3B)
+- [ ] WhatsApp integration (quotes/invoices)
+- [ ] E-way bill generation
 - [ ] KLA pricing (BLOCKED: waiting user data)
+- [ ] ~~Inventory auto-deduct~~ — REJECTED by user; manual Issue Stock flow retained
 
 ## Credentials
 - Admin: test@test.com / test123

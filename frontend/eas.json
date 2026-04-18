@@ -21,7 +21,7 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_BACKEND_URL": "https://inventory-qc-hub-1.preview.emergentagent.com",
+        "EXPO_PUBLIC_BACKEND_URL": "https://belt-system-mfg.preview.emergentagent.com",
         "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
       }
     },
@@ -34,7 +34,7 @@
         "autoIncrement": true
       },
       "env": {
-        "EXPO_PUBLIC_BACKEND_URL": "https://inventory-qc-hub-1.preview.emergentagent.com",
+        "EXPO_PUBLIC_BACKEND_URL": "https://belt-system-mfg.preview.emergentagent.com",
         "EXPO_PUBLIC_PINCODE_API_URL": "https://api.postalpincode.in"
       }
     }
