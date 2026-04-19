@@ -44,6 +44,19 @@
 
 ## P0 — Next
 - [ ] **Final Inspection Report** — consolidated PDF combining Pipe WIP QC, Shaft WIP QC, and remaining testing parameters (runout, water, dust, friction, painting) into a single printable sheet per WO for customer/audit sign-off.
+- [ ] **Production Dashboard redesign** (reminder noted 2026-02-18) — shortlist below, to be prioritised later:
+  * 🟢 Production Kanban (swimlanes per WO stage, drag-to-advance, delivery-urgency dot)
+  * 🟢 Delivery timeline / Gantt strip for next 30 days
+  * 🟢 WIP QC Health strip (Pipe/Shaft pending+failed tiles → click to QC tab)
+  * 🟢 Daily Output Tracker (rollers/day last 14 days with target line)
+  * 🟡 Stage Aging / Bottleneck Radar (median & max days per stage)
+  * 🟡 Shop-Floor big-screen mode (TV view, auto-refresh, progress rings)
+  * 🟡 Material Shortage Dashboard (required vs available per in-progress WO)
+  * 🟡 QC Pass-Rate trend (30-day line chart)
+  * 🔵 Operator/Machine performance grouping (uses `inspected_by`)
+  * 🔵 On-Time Delivery % (last 90 days)
+  * 🔵 Revenue-vs-Plan mini chart
+  * 🔵 Predictive ETA from historical stage durations
 
 ## P1
 - [ ] Tax Invoice auto-gen on dispatch
