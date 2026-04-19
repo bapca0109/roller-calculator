@@ -74,6 +74,13 @@
 - [ ] KLA pricing (BLOCKED: waiting user data)
 - [ ] ~~Inventory auto-deduct~~ — REJECTED by user; manual Issue Stock flow retained
 
+## P2 — Quality-of-life
+- [ ] **Supplier memory on Raise PO** — when user selects a supplier for a stock item, remember & auto-prefill the same supplier the next time that item is ordered (reduces 4–5 clicks for repeat POs).
+- [ ] **Final Inspection Report** PDF (Pipe WIP QC + Shaft WIP QC + runout / water / dust / friction / painting tests) for customer & audit sign-off.
+- [ ] **Deep-link** 🔴 / 🟡 Material-Status chip on a WO card → Store → Shortages (By Work Order) filtered to that WO.
+- [ ] **Production Dashboard** (12 shortlisted ideas — Kanban, Gantt, QC Health strip, Stage Aging, Shop-Floor TV view, Material Shortage dashboard, QC pass-rate trend, Operator performance, On-Time-Delivery KPI, Revenue-vs-Plan, Predictive ETA).
+- [ ] **Unresolved BOM Rows → one-click Add to Stock Register** button (auto-fills derived key + sensible name).
+
 ## Credentials
 - Admin: test@test.com / test123
 - Customer: customer@test.com / test123
