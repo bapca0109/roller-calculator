@@ -65,24 +65,26 @@ function OrdersAndWOView({ orders, ordersLoading, fetchOrders, workOrders, woLoa
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Floating SO / WO toggle - hidden for locked roles */}
+      {/* SO / WO top toggle - same style as Quotes / Orders / QC top tabs */}
       {!locked && (
-        <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 100, alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', backgroundColor: '#0F172A', borderRadius: 28, padding: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 10 }}>
-            <Pressable
-              style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24 }, subTab === 'so' && { backgroundColor: '#C5964A' }]}
+        <View style={[styles.modeToggleContainer, { paddingTop: 8 }]}>
+          <View style={styles.modeToggle}>
+            <TouchableOpacity
+              style={[styles.modeBtn, subTab === 'so' && styles.modeBtnActive]}
               onPress={() => { setSubTab('so'); if (orders.length === 0) fetchOrders(); }}
+              testID="orders-so-tab"
             >
-              <Ionicons name="cube-outline" size={16} color={subTab === 'so' ? '#fff' : '#94A3B8'} />
-              <Text style={{ fontSize: 13, fontWeight: '700', color: subTab === 'so' ? '#fff' : '#94A3B8' }}>Sales Orders</Text>
-            </Pressable>
-            <Pressable
-              style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24 }, subTab === 'wo' && { backgroundColor: '#C5964A' }]}
+              <Ionicons name="cube-outline" size={14} color={subTab === 'so' ? '#C5964A' : '#94A3B8'} />
+              <Text style={[styles.modeBtnText, subTab === 'so' && styles.modeBtnTextActive]}>Sales Orders</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeBtn, subTab === 'wo' && styles.modeBtnActive]}
               onPress={() => { setSubTab('wo'); if (workOrders.length === 0) fetchWorkOrders(); }}
+              testID="orders-wo-tab"
             >
-              <Ionicons name="construct-outline" size={16} color={subTab === 'wo' ? '#fff' : '#94A3B8'} />
-              <Text style={{ fontSize: 13, fontWeight: '700', color: subTab === 'wo' ? '#fff' : '#94A3B8' }}>Work Orders</Text>
-            </Pressable>
+              <Ionicons name="construct-outline" size={14} color={subTab === 'wo' ? '#C5964A' : '#94A3B8'} />
+              <Text style={[styles.modeBtnText, subTab === 'wo' && styles.modeBtnTextActive]}>Work Orders</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
