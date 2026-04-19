@@ -1462,6 +1462,50 @@ async def get_wo_shortages_by_wo(current_user: dict = Depends(require_role([User
     return {"rows": rows, "total": len(rows)}
 
 
+async def _wo_material_status(wo: dict) -> dict:
+    """Compute material-status snapshot for a single WO.
+    Status:
+      - 'all_in_stock' if no shortages exist
+      - 'po_received'  if shortages exist but sum of po_wo_receipts for this WO covers it
+      - 'po_pending'   if at least one open PO (status != received) is linked to this WO
+      - 'not_procured' otherwise
+    """
+    shortages = await _check_bom_shortages(wo)
+    if not shortages:
+        return {"status": "all_in_stock", "shortage_count": 0, "linked_pos": 0}
+
+    wo_id = wo.get("id")
+    pos = await db.purchase_orders.find({"linked_wo_ids": wo_id}, {"_id": 0, "po_number": 1, "status": 1}).to_list(100)
+    open_pos = [p for p in pos if p.get("status") not in ("received", "cancelled")]
+    if open_pos:
+        return {
+            "status": "po_pending",
+            "shortage_count": len(shortages),
+            "linked_pos": len(pos),
+            "open_pos": [p.get("po_number") for p in open_pos][:5],
+        }
+    # Check if everything has been received already via po_wo_receipts
+    received_ids = set()
+    async for r in db.po_wo_receipts.find({"wo_id": wo_id}, {"_id": 0, "stock_item_id": 1}):
+        received_ids.add(r.get("stock_item_id"))
+    if shortages and all(s.get("stock_item_id") in received_ids for s in shortages if s.get("stock_item_id")):
+        return {"status": "po_received", "shortage_count": len(shortages), "linked_pos": len(pos)}
+
+    return {"status": "not_procured", "shortage_count": len(shortages), "linked_pos": len(pos)}
+
+
+@router.get("/work-orders/material-status/overview")
+async def wo_material_status_overview(
+    current_user: dict = Depends(require_role([UserRole.ADMIN, UserRole.PRODUCTION_HEAD]))
+):
+    """Batch material-status for every non-completed WO. Used by WorkOrders list to show a chip per row."""
+    wos = await db.work_orders.find({"stage": {"$ne": "completed"}}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    result: dict = {}
+    for wo in wos:
+        result[wo.get("id")] = await _wo_material_status(wo)
+    return {"statuses": result}
+
+
 @router.get("/work-orders/{wo_id}/issue-plan")
 async def get_wo_issue_plan(wo_id: str, current_user: dict = Depends(require_role([UserRole.ADMIN]))):
     """For manual stock issue against a WO:

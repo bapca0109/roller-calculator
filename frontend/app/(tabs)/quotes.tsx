@@ -316,6 +316,16 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
   const [shaftQCRecords, setShaftQCRecords] = useState<any[]>([]);
   const [shaftQCSaving, setShaftQCSaving] = useState(false);
 
+  const [matStatus, setMatStatus] = useState<Record<string, any>>({});
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get('/work-orders/material-status/overview');
+        setMatStatus(res.data.statuses || {});
+      } catch { /* ignore */ }
+    })();
+  }, [workOrders.length]);
+
   const openPipeQC = async (pipeSub: any) => {
     try {
       const res = await api.get(`/sub-work-orders/${pipeSub.id}/wip-qc`);
@@ -587,6 +597,23 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                 <Text style={wos.woNumber}>{wo.wo_number}</Text>
                 <Text style={wos.customer}>{wo.customer_name} | SO: {wo.so_number}</Text>
               </View>
+              {/* Material Status chip (only for non-completed WOs) */}
+              {wo.stage !== 'completed' && (() => {
+                const ms = matStatus[wo.id];
+                if (!ms) return null;
+                const cfg: any = {
+                  all_in_stock: { bg: '#10B98118', fg: '#059669', icon: 'checkmark-circle', label: 'All in stock' },
+                  po_pending: { bg: '#F59E0B18', fg: '#D97706', icon: 'time-outline', label: `PO pending${ms.open_pos && ms.open_pos.length ? ` (${ms.open_pos.length})` : ''}` },
+                  po_received: { bg: '#06B6D418', fg: '#0891B2', icon: 'cube-outline', label: 'Stock received' },
+                  not_procured: { bg: '#EF444418', fg: '#DC2626', icon: 'alert-circle', label: `Not procured (${ms.shortage_count})` },
+                }[ms.status] || { bg: '#94A3B818', fg: '#64748B', icon: 'help-circle', label: ms.status };
+                return (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginRight: 6, backgroundColor: cfg.bg }} testID={`mat-chip-${wo.wo_number}`}>
+                    <Ionicons name={cfg.icon as any} size={11} color={cfg.fg} />
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: cfg.fg, letterSpacing: 0.3 }}>{cfg.label}</Text>
+                  </View>
+                );
+              })()}
               {/* QC badge on completed WOs */}
               {wo.stage === 'completed' && (
                 <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginRight: 6, backgroundColor: wo.qc_status === 'passed' ? '#05966918' : wo.qc_status === 'failed' ? '#DC262618' : '#F59E0B18' }}>

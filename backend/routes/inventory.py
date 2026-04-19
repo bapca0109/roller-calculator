@@ -234,7 +234,7 @@ async def process_qc(qc: QCEntry, current_user: dict = Depends(require_role([Use
             new_stock = stock_item.get("current_stock", 0) + qc.accepted_qty
             await db.stock_items.update_one({"id": item["stock_item_id"]}, {"$set": {"current_stock": round(new_stock, 3)}})
 
-            # Log transaction
+            # Log transaction with WO attribution from the originating PO
             await db.stock_transactions.insert_one({
                 "id": str(ObjectId()),
                 "stock_item_id": item["stock_item_id"],
@@ -243,9 +243,32 @@ async def process_qc(qc: QCEntry, current_user: dict = Depends(require_role([Use
                 "qty": qc.accepted_qty,
                 "reference": f"PO: {po.get('po_number')} (QC {qc.status})",
                 "po_id": qc.po_id,
+                "po_number": po.get("po_number"),
+                "linked_wo_ids": po.get("linked_wo_ids") or [],
+                "linked_wo_numbers": po.get("linked_wo_numbers") or [],
                 "by": current_user.get("email"),
                 "at": now.isoformat(),
             })
+
+            # Pro-rata distribute receipt across linked WOs (if any) into a
+            # lightweight `po_wo_receipts` ledger. This lets WorkOrder and the
+            # Material-Status chip reflect that stock is now reserved for that WO.
+            linked = po.get("linked_wo_ids") or []
+            if linked:
+                # Equal split across WOs (caller can manually issue as needed).
+                share = round(qc.accepted_qty / len(linked), 3)
+                for wo_id in linked:
+                    await db.po_wo_receipts.insert_one({
+                        "id": str(ObjectId()),
+                        "po_id": qc.po_id,
+                        "po_number": po.get("po_number"),
+                        "wo_id": wo_id,
+                        "stock_item_id": item["stock_item_id"],
+                        "stock_item_name": item.get("stock_item_name"),
+                        "qty_received": share,
+                        "at": now.isoformat(),
+                        "by": current_user.get("email"),
+                    })
 
     # Update PO status
     all_qc = all(i.get("qc_status") in ["passed", "failed"] for i in items)
