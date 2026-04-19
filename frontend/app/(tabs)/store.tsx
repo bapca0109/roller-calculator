@@ -554,8 +554,7 @@ export default function StoreScreen() {
                       </Pressable>
                     )}
                   </View>
-                  {/* Item picker — locked to the prefilled item by default. CHANGE to pick another.
-                      Items not yet in stock register show as amber warning. */}
+                  {/* Item picker — locked to the prefilled item. No manual change allowed. */}
                   {line.stock_item_id || line.prefill_name ? (
                     (() => {
                       const itm = line.stock_item_id ? stockItems.find((x: any) => x.id === line.stock_item_id) : null;
@@ -566,12 +565,8 @@ export default function StoreScreen() {
                           <Ionicons name={inRegister ? 'checkmark-circle' : 'alert-circle'} size={16} color={inRegister ? '#10B981' : '#F59E0B'} />
                           <View style={{ flex: 1 }}>
                             <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{displayName}</Text>
-                            {!inRegister ? <Text style={{ fontSize: 10, color: '#D97706', fontWeight: '700' }}>NOT IN STOCK REGISTER — tap CHANGE to select a matching item</Text> : (itm?.category ? <Text style={{ fontSize: 10, color: '#64748B' }}>{itm.category}</Text> : null)}
+                            {!inRegister ? <Text style={{ fontSize: 10, color: '#D97706', fontWeight: '700' }}>NOT IN STOCK REGISTER</Text> : (itm?.category ? <Text style={{ fontSize: 10, color: '#64748B' }}>{itm.category}</Text> : null)}
                           </View>
-                          <Pressable onPress={() => { updatePOLine(idx, 'stock_item_id', ''); updatePOLine(idx, 'prefill_name', ''); }} testID={`po-change-item-${idx}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                            <Ionicons name="swap-horizontal" size={12} color="#64748B" />
-                            <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '700' }}>CHANGE</Text>
-                          </Pressable>
                         </View>
                       );
                     })()
