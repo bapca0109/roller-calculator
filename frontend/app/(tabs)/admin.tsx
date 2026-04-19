@@ -69,6 +69,9 @@ export default function AdminScreen() {
   const { user } = useAuth();
   const [mainTab, setMainTab] = useState<MainTab>('prices');
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
+  const [showUnresolved, setShowUnresolved] = useState(false);
+  const [unresolved, setUnresolved] = useState<any[]>([]);
+  const [unresolvedLoading, setUnresolvedLoading] = useState(false);
   const [productType, setProductType] = useState<'roller' | 'pulley'>('roller');
   
   // Prices state
@@ -1456,7 +1459,80 @@ export default function AdminScreen() {
           <Ionicons name="git-network-outline" size={14} color="#C5964A" />
           <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff', letterSpacing: 0.3 }}>Backfill BOM match keys</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={async () => {
+            setShowUnresolved(true);
+            setUnresolvedLoading(true);
+            try {
+              const res = await api.get('/admin/unresolved-bom-rows');
+              setUnresolved(res.data.rows || []);
+            } catch (e: any) {
+              Alert.alert('Error', e.response?.data?.detail || 'Failed to load unresolved rows');
+            } finally { setUnresolvedLoading(false); }
+          }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#7C2D12', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }}
+          testID="admin-unresolved-bom"
+        >
+          <Ionicons name="warning-outline" size={14} color="#FED7AA" />
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff', letterSpacing: 0.3 }}>Unresolved BOM Rows</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Unresolved BOM Rows Modal */}
+      <Modal visible={showUnresolved} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '92%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <View>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A' }}>Unresolved BOM Rows</Text>
+                <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>BOM rows that don't map to any item in the Stock Register. Add the stock item, or edit the WO.</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowUnresolved(false)} testID="unresolved-bom-close">
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            {unresolvedLoading ? (
+              <View style={{ padding: 32, alignItems: 'center' }}><ActivityIndicator size="large" color="#C5964A" /></View>
+            ) : unresolved.length === 0 ? (
+              <View style={{ padding: 32, alignItems: 'center' }}>
+                <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+                <Text style={{ fontSize: 14, color: '#10B981', fontWeight: '700', marginTop: 8 }}>All BOM rows resolve to a stock item</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '700', marginBottom: 8 }}>{unresolved.length} row(s) unresolved</Text>
+                <ScrollView style={{ maxHeight: 580 }}>
+                  {(() => {
+                    // Group by component type
+                    const grouped: Record<string, any[]> = {};
+                    unresolved.forEach(r => { const k = r.component || 'Unknown'; grouped[k] = grouped[k] || []; grouped[k].push(r); });
+                    return Object.entries(grouped).map(([comp, rows]) => (
+                      <View key={comp} style={{ marginBottom: 14 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#C5964A', letterSpacing: 0.5, marginBottom: 6 }}>{comp.toUpperCase()} · {rows.length}</Text>
+                        {rows.map((r, i) => (
+                          <View key={i} style={{ backgroundColor: '#FEF3F2', borderRadius: 10, padding: 10, marginBottom: 6, borderLeftWidth: 3, borderLeftColor: '#DC2626' }} testID={`unresolved-row-${r.wo_number}-${i}`}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                              <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A' }}>{r.description}</Text>
+                              <Text style={{ fontSize: 10, color: '#64748B' }}>× {r.total_qty}</Text>
+                            </View>
+                            <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>WO: <Text style={{ color: '#0F172A', fontWeight: '700' }}>{r.wo_number}</Text> · {r.customer_name} · Item: {r.item_name}</Text>
+                            {r.derived_key ? (
+                              <Text style={{ fontSize: 10, color: '#7C2D12', marginTop: 2 }}>Derived key: <Text style={{ fontWeight: '700' }}>{r.derived_key}</Text> — <Text style={{ fontStyle: 'italic' }}>no match in stock register</Text></Text>
+                            ) : (
+                              <Text style={{ fontSize: 10, color: '#7C2D12', marginTop: 2 }}>⚠ No key could be derived from this description</Text>
+                            )}
+                          </View>
+                        ))}
+                      </View>
+                    ));
+                  })()}
+                </ScrollView>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
 
 
       {mainTab === 'prices' ? (

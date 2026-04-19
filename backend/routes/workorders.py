@@ -1558,7 +1558,41 @@ async def wo_material_status_overview(
     return {"statuses": result}
 
 
-@router.post("/admin/backfill-bom-match-key")
+@router.get("/admin/unresolved-bom-rows")
+async def list_unresolved_bom_rows(
+    current_user: dict = Depends(require_role([UserRole.ADMIN]))
+):
+    """Diagnostic: every BOM row (across all WOs) whose `bom_match_key` is still
+    null or whose derived key does not map to any stock item in the register.
+    Admin can use this to either edit the WO, or add a matching stock item.
+    """
+    rows = []
+    wos = await db.work_orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(5000)
+    for wo in wos:
+        for it_idx, it in enumerate(wo.get("items") or []):
+            for b_idx, b in enumerate(it.get("bom") or []):
+                key = b.get("bom_match_key") or _derive_bom_match_key(b.get("component") or "", b.get("description") or "")
+                resolved = False
+                if key:
+                    stock = await db.stock_items.find_one({"bom_match_key": key}, {"_id": 0, "name": 1})
+                    resolved = bool(stock)
+                if not resolved:
+                    rows.append({
+                        "wo_number": wo.get("wo_number"),
+                        "wo_id": wo.get("id"),
+                        "so_number": wo.get("so_number"),
+                        "customer_name": wo.get("customer_name"),
+                        "stage": wo.get("stage"),
+                        "item_name": it.get("product_name"),
+                        "component": b.get("component"),
+                        "description": b.get("description"),
+                        "material": b.get("material"),
+                        "total_qty": b.get("total_qty"),
+                        "stored_key": b.get("bom_match_key"),
+                        "derived_key": key,
+                        "reason": "no stock item matches key" if key else "no key could be derived",
+                    })
+    return {"rows": rows, "total": len(rows)}
 async def backfill_bom_match_keys(
     current_user: dict = Depends(require_role([UserRole.ADMIN]))
 ):
