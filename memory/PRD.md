@@ -1,5 +1,11 @@
 # Belt Conveyor ERP - PRD
 
+## Standing UX Rules (apply to EVERY new module / list screen going forward)
+1. **Top Search Bar** — use `<SearchBar>` from `/app/frontend/components/shared/SearchBar.tsx` with a `testID` of `<screen>-search`. Filter the main list client-side on relevant fields (name, code, customer, status, dates, etc.).
+2. **Export to Excel + PDF** — use `<ExportButtons ... showExcel showPdf pdfEndpoint="..." />` in the header. Always ship BOTH formats. Backend endpoints: add `/...export/excel` and `/...export/pdf` (use `_build_table_excel` / `_build_table_pdf` helpers in `/app/backend/routes/exports.py`).
+3. **Confirmations** — every mutating action wrapped in `confirmAction()` from `/app/frontend/components/shared/confirm.ts`.
+4. **Test IDs** — every interactive element and every critical data element gets a `data-testid` / `testID`.
+
 ## Architecture
 - Backend: FastAPI with 13 route modules (690 line server.py)
 - Frontend: Expo React Native (iOS + Android + Web)
