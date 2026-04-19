@@ -32,7 +32,7 @@ export default function StoreScreen() {
   // Form state
   const [newItem, setNewItem] = useState({ name: '', category: 'pipe', unit_purchase: 'meters', unit_bom: 'kg', reorder_level: '' });
   const [newSupplier, setNewSupplier] = useState({ name: '', contact_person: '', phone: '', gst_number: '', city: '', payment_terms: '' });
-  const [newPO, setNewPO] = useState<{ supplier_id: string; expected_delivery: string; notes: string; interstate: boolean; linked_wo_ids: string[]; items: { stock_item_id: string; qty: string; rate: string; gst_rate: string }[] }>({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] });
+  const [newPO, setNewPO] = useState<{ supplier_id: string; expected_delivery: string; notes: string; interstate: boolean; linked_wo_ids: string[]; items: { stock_item_id: string; qty: string; rate: string; gst_rate: string; prefill_name?: string }[] }>({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] });
   const [woShortageRows, setWoShortageRows] = useState<any[]>([]);
   const [shortageView, setShortageView] = useState<'consolidated' | 'by_wo'>('consolidated');
   const [qcData, setQcData] = useState({ accepted_qty: '', rejected_qty: '', reason: '' });
@@ -120,15 +120,17 @@ export default function StoreScreen() {
   };
 
   const openPOFromShortage = (short: any) => {
-    // Prefill one line with this shortage
+    // Prefill one line with this shortage. Lock the display even if the shortage
+    // is not in the stock register yet (so the modal never shows the long picker by default).
     const shortQty = Math.max(short.shortage || 0, 0);
+    const displayName = short.stock_item_name || short.component || 'Shortage item';
     setNewPO({
       supplier_id: '',
       expected_delivery: '',
       notes: `Raised to cover shortage on ${Array.isArray(short.wo_numbers) ? short.wo_numbers.join(', ') : short.wo_number || ''}`,
       interstate: false,
       linked_wo_ids: [],
-      items: [{ stock_item_id: short.stock_item_id || '', qty: String(shortQty), rate: '', gst_rate: '18' }],
+      items: [{ stock_item_id: short.stock_item_id || '', qty: String(shortQty), rate: '', gst_rate: '18', prefill_name: displayName }],
     });
     setShowAddPO(true);
   };
@@ -140,6 +142,7 @@ export default function StoreScreen() {
       qty: String(Math.max(s.shortage || 0, 0)),
       rate: '',
       gst_rate: '18',
+      prefill_name: s.stock_item_name || s.component || 'Shortage item',
     }));
     setNewPO({
       supplier_id: '',
@@ -551,9 +554,36 @@ export default function StoreScreen() {
                       </Pressable>
                     )}
                   </View>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
-                    {stockItems.map(item => (<Pressable key={item.id} style={[s.chip, line.stock_item_id === item.id && s.chipActive]} onPress={() => updatePOLine(idx, 'stock_item_id', item.id)}><Text style={[s.chipText, line.stock_item_id === item.id && s.chipTextActive]}>{item.name}</Text></Pressable>))}
-                  </ScrollView>
+                  {/* Item picker — locked to the prefilled item by default. CHANGE to pick another.
+                      Items not yet in stock register show as amber warning. */}
+                  {line.stock_item_id || line.prefill_name ? (
+                    (() => {
+                      const itm = line.stock_item_id ? stockItems.find((x: any) => x.id === line.stock_item_id) : null;
+                      const displayName = itm?.name || line.prefill_name || 'Selected item';
+                      const inRegister = !!line.stock_item_id;
+                      return (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: inRegister ? '#ECFDF5' : '#FFFBEB', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: inRegister ? '#10B981' : '#F59E0B', marginBottom: 6 }}>
+                          <Ionicons name={inRegister ? 'checkmark-circle' : 'alert-circle'} size={16} color={inRegister ? '#10B981' : '#F59E0B'} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{displayName}</Text>
+                            {!inRegister ? <Text style={{ fontSize: 10, color: '#D97706', fontWeight: '700' }}>NOT IN STOCK REGISTER — tap CHANGE to select a matching item</Text> : (itm?.category ? <Text style={{ fontSize: 10, color: '#64748B' }}>{itm.category}</Text> : null)}
+                          </View>
+                          <Pressable onPress={() => { updatePOLine(idx, 'stock_item_id', ''); updatePOLine(idx, 'prefill_name', ''); }} testID={`po-change-item-${idx}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                            <Ionicons name="swap-horizontal" size={12} color="#64748B" />
+                            <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '700' }}>CHANGE</Text>
+                          </Pressable>
+                        </View>
+                      );
+                    })()
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
+                      {stockItems.map(item => (
+                        <Pressable key={item.id} style={[s.chip, line.stock_item_id === item.id && s.chipActive]} onPress={() => updatePOLine(idx, 'stock_item_id', item.id)}>
+                          <Text style={[s.chipText, line.stock_item_id === item.id && s.chipTextActive]}>{item.name}</Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  )}
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     <View style={{ flex: 1 }}><Text style={s.label}>Qty</Text><TextInput style={s.input} value={line.qty} onChangeText={v => updatePOLine(idx, 'qty', v)} placeholder="100" keyboardType="numeric" testID={`po-qty-${idx}`} /></View>
                     <View style={{ flex: 1 }}><Text style={s.label}>Rate (Rs.)</Text><TextInput style={s.input} value={line.rate} onChangeText={v => updatePOLine(idx, 'rate', v)} placeholder="75" keyboardType="numeric" testID={`po-rate-${idx}`} /></View>
