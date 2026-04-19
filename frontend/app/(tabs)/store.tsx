@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import { confirmAction } from '../../components/shared/confirm';
 import { ExportButtons } from '../../components/shared/ExportButtons';
+import { SearchBar } from '../../components/shared/SearchBar';
 
 type Tab = 'dashboard' | 'stock' | 'po' | 'suppliers' | 'alerts' | 'shortages';
 
@@ -13,6 +14,7 @@ export default function StoreScreen() {
   const isAdmin = user?.role === 'admin';
   const [tab, setTab] = useState<Tab>('dashboard');
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState<any>(null);
   const [stockItems, setStockItems] = useState<any[]>([]);
@@ -169,12 +171,28 @@ export default function StoreScreen() {
   if (!isAdmin) return <View style={s.center}><Ionicons name="lock-closed" size={48} color="#94A3B8" /><Text style={s.centerText}>Admin access required</Text></View>;
   if (loading) return <View style={s.center}><ActivityIndicator size="large" color="#C5964A" /></View>;
 
+  // Filter helpers
+  const q = searchQuery.trim().toLowerCase();
+  const matches = (...fields: any[]) => !q || fields.some((v) => String(v ?? '').toLowerCase().includes(q));
+  const filteredStock = stockItems.filter((it: any) => matches(it.name, it.category, it.bom_match_key, it.unit_purchase));
+  const filteredPos = pos.filter((p: any) => matches(p.po_number, p.supplier_name, p.status));
+  const filteredSuppliers = suppliers.filter((sup: any) => matches(sup.name, sup.gstin, sup.contact_phone, sup.contact_email));
+  const filteredShortages = woShortages.filter((sh: any) => matches(sh.wo_number, sh.item_name, sh.bom_match_key));
+  const filteredAlerts = alerts.filter((a: any) => matches(a.stock_item_name, a.type, a.message));
+
   return (
     <View style={s.container}>
       <View style={s.header}>
         <View><Text style={s.headerTitle}>Store</Text><Text style={s.headerSub}>Inventory & Purchase Management</Text></View>
         <TouchableOpacity onPress={onRefresh}><Ionicons name="refresh" size={22} color="#C5964A" /></TouchableOpacity>
       </View>
+
+      <SearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Search items, POs, suppliers by name, SKU, category..."
+        testID="store-search"
+      />
 
       {/* Tab Bar */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44, marginHorizontal: 14, marginTop: 12 }}>
@@ -215,14 +233,14 @@ export default function StoreScreen() {
         {tab === 'stock' && (
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={s.sectionTitle}>Stock Items ({stockItems.length})</Text>
+              <Text style={s.sectionTitle}>Stock Items ({filteredStock.length}{q ? `/${stockItems.length}` : ''})</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <ExportButtons endpoint="/store/export/stock" filenamePrefix="Stock" compact showExcel showPdf={false} />
                 <Pressable style={s.actionBtn} onPress={() => setShowAddItem(true)}><Ionicons name="add" size={16} color="#C5964A" /><Text style={s.actionText}>Add Item</Text></Pressable>
                 <Pressable style={s.actionBtn} onPress={openIssueModal} data-testid="issue-stock-btn"><Ionicons name="arrow-up-circle-outline" size={16} color="#8B5CF6" /><Text style={[s.actionText, { color: '#8B5CF6' }]}>Issue</Text></Pressable>
               </View>
             </View>
-            {stockItems.map((item: any) => (
+            {filteredStock.map((item: any) => (
               <View key={item.id} style={s.card}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <View style={{ flex: 1 }}><Text style={s.cardTitle}>{item.name}</Text><Text style={s.cardMeta}>{item.category} | {item.unit_purchase}{item.bom_match_key ? ` | Key: ${item.bom_match_key}` : ''}</Text></View>
@@ -246,7 +264,7 @@ export default function StoreScreen() {
                 <Pressable style={s.actionBtn} onPress={() => setShowAddPO(true)}><Ionicons name="add" size={16} color="#C5964A" /><Text style={s.actionText}>New PO</Text></Pressable>
               </View>
             </View>
-            {pos.map((po: any) => (
+            {filteredPos.map((po: any) => (
               <TouchableOpacity key={po.id} style={s.card} onPress={() => { setSelectedPO(po); setQcItemIndex(0); setShowQC(true); }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <View><Text style={s.cardTitle}>{po.po_number}</Text><Text style={s.cardMeta}>{po.supplier_name} | {po.created_at?.split('T')[0]?.replace(/(\d{4})-(\d{2})-(\d{2})/, '$3-$2-$1')}</Text></View>
@@ -275,7 +293,7 @@ export default function StoreScreen() {
                 <Pressable style={s.actionBtn} onPress={() => setShowAddSupplier(true)}><Ionicons name="add" size={16} color="#C5964A" /><Text style={s.actionText}>Add</Text></Pressable>
               </View>
             </View>
-            {suppliers.map((sup: any) => (
+            {filteredSuppliers.map((sup: any) => (
               <View key={sup.id} style={s.card}>
                 <Text style={s.cardTitle}>{sup.name}</Text>
                 <Text style={s.cardMeta}>{sup.contact_person} | {sup.phone} | {sup.city}</Text>
@@ -291,7 +309,7 @@ export default function StoreScreen() {
           <>
             <Text style={s.sectionTitle}>WO Material Shortages ({woShortages.length})</Text>
             {woShortages.length === 0 ? <View style={s.emptyState}><Ionicons name="checkmark-circle" size={48} color="#10B981" /><Text style={s.emptyText}>No shortages — all WO materials available</Text></View> :
-            woShortages.map((sh: any, i: number) => (
+            filteredShortages.map((sh: any, i: number) => (
               <View key={i} style={[s.card, { borderLeftWidth: 3, borderLeftColor: sh.stock_item_id ? '#F59E0B' : '#EF4444' }]}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <View style={{ flex: 1 }}>
@@ -317,7 +335,7 @@ export default function StoreScreen() {
           <>
             <Text style={s.sectionTitle}>Low Stock Alerts ({alerts.length})</Text>
             {alerts.length === 0 ? <View style={s.emptyState}><Ionicons name="checkmark-circle" size={48} color="#10B981" /><Text style={s.emptyText}>All stock levels OK</Text></View> :
-            alerts.map((a: any) => (
+            filteredAlerts.map((a: any) => (
               <View key={a.id} style={[s.card, { borderLeftWidth: 3, borderLeftColor: '#EF4444' }]}>
                 <Text style={s.cardTitle}>{a.name}</Text>
                 <View style={{ flexDirection: 'row', gap: 16, marginTop: 4 }}>

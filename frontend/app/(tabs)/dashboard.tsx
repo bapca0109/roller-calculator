@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import { confirmAction } from '../../components/shared/confirm';
 import { ExportButtons } from '../../components/shared/ExportButtons';
+import { SearchBar } from '../../components/shared/SearchBar';
 
 const STAGES = ['new', 'contacted', 'quoted', 'negotiation', 'won', 'lost'];
 const STAGE_LABELS: Record<string, string> = { new: 'New', contacted: 'Contacted', quoted: 'Quoted', negotiation: 'Negotiation', won: 'Won', lost: 'Lost' };
@@ -36,6 +37,7 @@ export default function CRMScreen() {
   const [showAddFollowup, setShowAddFollowup] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [stageFilter, setStageFilter] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   // Add lead form
   const [newLead, setNewLead] = useState({ name: '', company: '', email: '', phone: '', source: 'phone', product_interest: 'roller', estimated_value: '', notes: '' });
   // Add followup form
@@ -109,7 +111,21 @@ export default function CRMScreen() {
     catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
-  const filteredLeads = stageFilter ? leads.filter(l => l.stage === stageFilter) : leads;
+  const filteredLeads = (() => {
+    let arr = stageFilter ? leads.filter(l => l.stage === stageFilter) : leads;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      arr = arr.filter(l =>
+        (l.name || '').toLowerCase().includes(q) ||
+        (l.company || '').toLowerCase().includes(q) ||
+        (l.email || '').toLowerCase().includes(q) ||
+        (l.phone || '').includes(searchQuery.trim()) ||
+        (l.product_interest || '').toLowerCase().includes(q) ||
+        (l.source || '').toLowerCase().includes(q)
+      );
+    }
+    return arr;
+  })();
 
   if (!isAdmin) return <View style={s.center}><Ionicons name="lock-closed" size={48} color="#94A3B8" /><Text style={s.centerText}>Admin access required</Text></View>;
   if (loading) return <View style={s.center}><ActivityIndicator size="large" color="#C5964A" /><Text style={s.centerText}>Loading CRM...</Text></View>;
@@ -137,6 +153,13 @@ export default function CRMScreen() {
       </View>
 
       <ScrollView style={s.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#C5964A']} />}>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search leads by name, company, phone, email, product..."
+          resultCount={searchQuery ? filteredLeads.length : null}
+          testID="dashboard-search"
+        />
         {/* Summary Cards */}
         {summary && (
           <View style={s.summaryRow}>

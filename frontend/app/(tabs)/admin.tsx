@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { cacheEvents } from '../../utils/api';
 import { confirmAction } from '../../components/shared/confirm';
+import { SearchBar } from '../../components/shared/SearchBar';
 
 type MainTab = 'prices' | 'standards' | 'history' | 'users' | 'numbering';
 type PriceCategory = 'basic' | 'bearing' | 'housing' | 'seal' | 'circlip' | 'rubber' | 'locking';
@@ -67,6 +68,7 @@ const COLLECTION_LABELS: Record<string, string> = {
 export default function AdminScreen() {
   const { user } = useAuth();
   const [mainTab, setMainTab] = useState<MainTab>('prices');
+  const [adminSearchQuery, setAdminSearchQuery] = useState('');
   const [productType, setProductType] = useState<'roller' | 'pulley'>('roller');
   
   // Prices state
@@ -1428,6 +1430,14 @@ export default function AdminScreen() {
         </View>
       </View>
 
+      <SearchBar
+        value={adminSearchQuery}
+        onChangeText={setAdminSearchQuery}
+        placeholder="Search users, price keys, history..."
+        testID="admin-search"
+      />
+
+
       {mainTab === 'prices' ? (
         <View style={{flex: 1}}>
           {/* Roller / Pulley Toggle */}
@@ -1805,7 +1815,7 @@ export default function AdminScreen() {
             </View>
           ) : (
             <ScrollView style={{ flex: 1, padding: 16 }}>
-              {historyItems.map((h: any) => {
+              {historyItems.filter((h: any) => !adminSearchQuery.trim() || [h.field_key, h.product_name, h.changed_by, h.entity_type].some((v: any) => String(v ?? '').toLowerCase().includes(adminSearchQuery.trim().toLowerCase()))).map((h: any) => {
                 const when = new Date(h.timestamp);
                 const dd = String(when.getDate()).padStart(2,'0');
                 const mm = String(when.getMonth()+1).padStart(2,'0');
@@ -1876,7 +1886,7 @@ export default function AdminScreen() {
             </View>
           ) : (
             <ScrollView style={{ flex: 1, padding: 16 }}>
-              {users.map((u: any) => {
+              {users.filter((u: any) => !adminSearchQuery.trim() || [u.email, u.full_name, u.role, u.designation, u.customer_code].some((v: any) => String(v ?? '').toLowerCase().includes(adminSearchQuery.trim().toLowerCase()))).map((u: any) => {
                 const roleColor: Record<string, string> = {
                   admin: '#DC2626',
                   sales_manager: '#C5964A',
