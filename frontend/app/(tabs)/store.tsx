@@ -119,7 +119,7 @@ export default function StoreScreen() {
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
-  const openPOFromShortage = (short: any) => {
+  const openPOFromShortage = (short: any, woId?: string) => {
     // Prefill one line with this shortage. Lock the display even if the shortage
     // is not in the stock register yet (so the modal never shows the long picker by default).
     const shortQty = Math.max(short.shortage || 0, 0);
@@ -129,7 +129,7 @@ export default function StoreScreen() {
       expected_delivery: '',
       notes: `Raised to cover shortage on ${Array.isArray(short.wo_numbers) ? short.wo_numbers.join(', ') : short.wo_number || ''}`,
       interstate: false,
-      linked_wo_ids: [],
+      linked_wo_ids: woId ? [woId] : [],
       items: [{ stock_item_id: short.stock_item_id || '', qty: String(shortQty), rate: '', gst_rate: '18', prefill_name: displayName }],
     });
     setShowAddPO(true);
@@ -413,19 +413,27 @@ export default function StoreScreen() {
                       <Text style={s.cardMeta}>{row.customer_name} · SO {row.so_number} · {row.shortage_count} item(s) short</Text>
                       {row.delivery_date && <Text style={{ fontSize: 10, color: '#EF4444', marginTop: 2 }}>Delivery: {row.delivery_date}</Text>}
                     </View>
-                    <TouchableOpacity onPress={() => openPOFromWO(row)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#0F172A', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }} testID={`create-po-wo-${row.wo_number}`}>
-                      <Ionicons name="cart" size={14} color="#fff" />
-                      <Text style={{ fontSize: 11, color: '#fff', fontWeight: '700' }}>Create PO ({row.shortage_count})</Text>
-                    </TouchableOpacity>
                   </View>
-                  <View style={{ marginTop: 10, paddingLeft: 6, borderLeftWidth: 2, borderLeftColor: '#E2E8F0' }}>
-                    {(row.shortages || []).slice(0, 8).map((sh: any, i: number) => (
-                      <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
-                        <Text style={{ fontSize: 11, color: '#334155', flex: 2 }}>{sh.stock_item_name || sh.component} {sh.description ? `(${sh.description})` : ''}</Text>
-                        <Text style={{ fontSize: 11, color: '#EF4444', fontWeight: '700', flex: 1, textAlign: 'right' }}>{sh.shortage} {sh.unit}</Text>
+                  <View style={{ marginTop: 10 }}>
+                    {(row.shortages || []).map((sh: any, i: number) => (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: i === (row.shortages || []).length - 1 ? 0 : 1, borderBottomColor: '#F1F5F9' }} testID={`shortage-wo-line-${row.wo_number}-${i}`}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '600' }}>{sh.stock_item_name || sh.component}</Text>
+                          {sh.description ? <Text style={{ fontSize: 10, color: '#64748B' }} numberOfLines={1}>{sh.description}</Text> : null}
+                          {!sh.stock_item_id && <Text style={{ fontSize: 9, color: '#EF4444', fontWeight: '700' }}>NOT IN STOCK REGISTER</Text>}
+                        </View>
+                        <Text style={{ fontSize: 11, color: '#EF4444', fontWeight: '700', marginHorizontal: 10 }}>{sh.shortage} {sh.unit}</Text>
+                        <TouchableOpacity
+                          onPress={() => openPOFromShortage({ ...sh, wo_numbers: [row.wo_number] }, row.wo_id)}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: sh.stock_item_id ? '#C5964A' : '#94A3B8', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}
+                          testID={`create-po-wo-line-${row.wo_number}-${i}`}
+                          disabled={!sh.stock_item_id}
+                        >
+                          <Ionicons name="cart" size={12} color="#fff" />
+                          <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>Raise PO</Text>
+                        </TouchableOpacity>
                       </View>
                     ))}
-                    {(row.shortages || []).length > 8 && (<Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 4 }}>+{row.shortages.length - 8} more</Text>)}
                   </View>
                 </View>
               ))
