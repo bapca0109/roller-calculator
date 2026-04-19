@@ -1558,6 +1558,43 @@ async def wo_material_status_overview(
     return {"statuses": result}
 
 
+@router.post("/admin/backfill-bom-match-key")
+async def backfill_bom_match_keys(
+    current_user: dict = Depends(require_role([UserRole.ADMIN]))
+):
+    """One-time data tool — walk every Work Order and persist a `bom_match_key` on
+    each BOM row that's currently null/missing by deriving it from the description.
+    Safe to re-run (skips already-populated keys)."""
+    wos = await db.work_orders.find({}).to_list(5000)
+    wos_updated = 0
+    rows_updated = 0
+    rows_unresolved = 0
+    for wo in wos:
+        changed = False
+        items = wo.get("items") or []
+        for it in items:
+            for b in it.get("bom") or []:
+                if b.get("bom_match_key"):
+                    continue
+                derived = _derive_bom_match_key(b.get("component") or "", b.get("description") or "")
+                if derived:
+                    b["bom_match_key"] = derived
+                    rows_updated += 1
+                    changed = True
+                else:
+                    rows_unresolved += 1
+        if changed:
+            await db.work_orders.update_one({"_id": wo["_id"]}, {"$set": {"items": items}})
+            wos_updated += 1
+    return {
+        "message": f"Backfill complete — {rows_updated} BOM rows updated across {wos_updated} WOs ({rows_unresolved} rows could not be derived).",
+        "wos_updated": wos_updated,
+        "rows_updated": rows_updated,
+        "rows_unresolved": rows_unresolved,
+        "total_wos_scanned": len(wos),
+    }
+
+
 @router.get("/work-orders/{wo_id}/issue-plan")
 async def get_wo_issue_plan(wo_id: str, current_user: dict = Depends(require_role([UserRole.ADMIN]))):
     """For manual stock issue against a WO:

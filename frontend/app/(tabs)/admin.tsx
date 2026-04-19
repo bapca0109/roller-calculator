@@ -1437,6 +1437,27 @@ export default function AdminScreen() {
         testID="admin-search"
       />
 
+      {/* Data Tools strip */}
+      <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 4, marginBottom: 4, flexWrap: 'wrap' }}>
+        <TouchableOpacity
+          onPress={async () => {
+            if (!(await confirmAction('Backfill bom_match_key?', 'Rescans every Work Order and writes a derived match key on each legacy BOM row. Safe to re-run.'))) return;
+            try {
+              const res = await api.post('/admin/backfill-bom-match-key');
+              const d = res.data;
+              Alert.alert('Backfill complete', `${d.rows_updated} BOM rows updated across ${d.wos_updated} Work Orders\n${d.rows_unresolved} rows could not be derived (legacy fallback descriptions).`);
+            } catch (e: any) {
+              Alert.alert('Error', e.response?.data?.detail || 'Backfill failed');
+            }
+          }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#0F172A', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }}
+          testID="admin-backfill-bom-key"
+        >
+          <Ionicons name="git-network-outline" size={14} color="#C5964A" />
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff', letterSpacing: 0.3 }}>Backfill BOM match keys</Text>
+        </TouchableOpacity>
+      </View>
+
 
       {mainTab === 'prices' ? (
         <View style={{flex: 1}}>
