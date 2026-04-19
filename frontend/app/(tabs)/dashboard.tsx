@@ -141,9 +141,10 @@ export default function CRMScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <ExportButtons
             endpoint="/crm/leads/export/excel"
+            pdfEndpoint="/crm/leads/export/pdf"
             filenamePrefix="CRM_Leads"
             compact={true}
-            showPdf={false}
+            showPdf={true}
             showExcel={true}
           />
           <TouchableOpacity style={s.addBtn} onPress={() => setShowAddLead(true)} data-testid="add-lead-btn">

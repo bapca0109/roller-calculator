@@ -85,6 +85,15 @@ function OrdersAndWOView({ orders, ordersLoading, fetchOrders, workOrders, woLoa
               <Ionicons name="construct-outline" size={14} color={subTab === 'wo' ? '#C5964A' : '#94A3B8'} />
               <Text style={[styles.modeBtnText, subTab === 'wo' && styles.modeBtnTextActive]}>Work Orders</Text>
             </TouchableOpacity>
+            <View style={{ flex: 1 }} />
+            <ExportButtons
+              endpoint={subTab === 'so' ? '/orders/export/excel' : '/work-orders/export/excel'}
+              pdfEndpoint={subTab === 'so' ? '/orders/export/pdf' : '/work-orders/export/pdf'}
+              filenamePrefix={subTab === 'so' ? 'Sales_Orders' : 'Work_Orders'}
+              compact
+              showExcel
+              showPdf
+            />
           </View>
         </View>
       )}
@@ -213,6 +222,14 @@ function QCView({ isAdmin, userRole }: { isAdmin: boolean; userRole: string }) {
         <TouchableOpacity onPress={fetchRows} style={{ marginLeft: 'auto' }}>
           <Ionicons name="refresh" size={20} color="#C5964A" />
         </TouchableOpacity>
+        <ExportButtons
+          endpoint="/wip-qc/export/excel"
+          pdfEndpoint="/wip-qc/export/pdf"
+          filenamePrefix="WIP_QC_Overview"
+          compact
+          showExcel
+          showPdf
+        />
       </View>
 
       {loading ? (

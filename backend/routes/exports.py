@@ -912,3 +912,246 @@ async def export_invoices_excel(
             headers={"Content-Disposition": "attachment; filename=Invoices.xlsx"})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==============================================================================
+# Generic PDF builder + missing PDF/Excel endpoints (Leads, Followups, Invoices,
+# Store Stock/POs/Suppliers, Work Orders, WIP QC)
+# ==============================================================================
+
+def _build_table_pdf(title: str, headers: list, rows: list, col_widths: list = None, orientation: str = "L") -> bytes:
+    """Create a generic table PDF using fpdf2. Returns bytes."""
+    from fpdf import FPDF
+    pdf = FPDF(orientation=orientation, unit="mm", format="A4")
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.cell(0, 8, title, ln=1, align="L")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.cell(0, 5, f"Generated: {datetime.now().strftime('%d-%m-%Y %H:%M')}", ln=1)
+    pdf.ln(2)
+
+    usable_w = (pdf.w - 20) if orientation == "P" else (pdf.w - 20)  # 297-20 for landscape A4
+    if not col_widths:
+        col_widths = [usable_w / max(1, len(headers))] * len(headers)
+
+    # Header row
+    pdf.set_fill_color(15, 23, 42)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Helvetica", "B", 9)
+    for h, w in zip(headers, col_widths):
+        pdf.cell(w, 7, str(h)[:40], border=1, align="C", fill=True)
+    pdf.ln()
+
+    # Data rows
+    pdf.set_text_color(15, 23, 42)
+    pdf.set_font("Helvetica", "", 8)
+    fill = False
+    for row in rows:
+        if pdf.get_y() > pdf.h - 20:
+            pdf.add_page()
+            pdf.set_fill_color(15, 23, 42)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font("Helvetica", "B", 9)
+            for h, w in zip(headers, col_widths):
+                pdf.cell(w, 7, str(h)[:40], border=1, align="C", fill=True)
+            pdf.ln()
+            pdf.set_text_color(15, 23, 42)
+            pdf.set_font("Helvetica", "", 8)
+        if fill:
+            pdf.set_fill_color(248, 250, 252)
+        else:
+            pdf.set_fill_color(255, 255, 255)
+        for v, w in zip(row, col_widths):
+            s = "" if v is None else str(v)
+            # Strip characters outside latin-1 range (Helvetica core font limitation)
+            s = s.replace("—", "-").replace("–", "-").replace("×", "x").replace("₹", "Rs.")
+            try:
+                s.encode("latin-1")
+            except UnicodeEncodeError:
+                s = s.encode("latin-1", "replace").decode("latin-1")
+            pdf.cell(w, 6, s[:60], border=1, align="L", fill=True)
+        pdf.ln()
+        fill = not fill
+
+    out = pdf.output(dest="S")
+    return bytes(out) if isinstance(out, (bytes, bytearray)) else out.encode("latin-1") if isinstance(out, str) else bytes(out)
+
+
+def _build_table_excel(sheet_title: str, headers: list, rows: list) -> bytes:
+    """Generic Excel builder with navy header."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = sheet_title[:30]
+    header_fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+    for r_idx, row in enumerate(rows, 2):
+        for c_idx, v in enumerate(row, 1):
+            ws.cell(row=r_idx, column=c_idx, value=v)
+    for col in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(col)].width = 18
+    out = io.BytesIO()
+    wb.save(out)
+    out.seek(0)
+    return out.getvalue()
+
+
+def _pdf_response(data: bytes, filename: str):
+    return Response(content=data, media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+def _xlsx_response(data: bytes, filename: str):
+    return Response(content=data, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+# ---------- CRM Leads PDF ----------
+@router.get("/crm/leads/export/pdf")
+async def export_leads_pdf(current_user: dict = Depends(get_current_user)):
+    leads = await db.leads.find({}, {"_id": 0}).sort("updated_at", -1).to_list(500)
+    headers = ["Name", "Company", "Phone", "Stage", "Source", "Product", "Est. Value", "Updated"]
+    rows = [[l.get("name"), l.get("company"), l.get("phone"), l.get("stage"),
+             l.get("source"), l.get("product_interest"), l.get("estimated_value"),
+             str(l.get("updated_at", ""))[:10]] for l in leads]
+    return _pdf_response(_build_table_pdf("CRM Leads", headers, rows), "CRM_Leads.pdf")
+
+
+# ---------- CRM Followups PDF ----------
+@router.get("/crm/followups/export/pdf")
+async def export_followups_pdf(current_user: dict = Depends(get_current_user)):
+    followups = await db.followups.find({}, {"_id": 0}).sort("due_date", 1).to_list(500)
+    rows = []
+    for fu in followups:
+        lead = await db.leads.find_one({"id": fu.get("lead_id")}, {"_id": 0, "name": 1})
+        rows.append([lead.get("name") if lead else fu.get("lead_id"),
+                     fu.get("follow_up_type"), str(fu.get("due_date", ""))[:10],
+                     (fu.get("note") or "")[:50], "Yes" if fu.get("completed") else "No",
+                     fu.get("created_by")])
+    return _pdf_response(
+        _build_table_pdf("Follow-ups", ["Lead", "Type", "Due Date", "Note", "Done", "Created By"], rows),
+        "CRM_Followups.pdf")
+
+
+# ---------- Invoices PDF ----------
+@router.get("/invoices/export/pdf")
+async def export_invoices_pdf(
+    invoice_type: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    q = {}
+    if invoice_type: q["invoice_type"] = invoice_type
+    invs = await db.invoices.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    headers = ["Invoice #", "Type", "SO #", "Customer", "GSTIN", "Subtotal", "GST", "Total", "Date"]
+    rows = [[i.get("invoice_number"), i.get("invoice_type"), i.get("so_number"),
+             i.get("customer_name"), i.get("customer_gstin"),
+             round(i.get("subtotal", 0), 2), round(i.get("gst_amount", 0), 2),
+             round(i.get("total_with_gst", i.get("total_price", 0)), 2),
+             str(i.get("created_at", ""))[:10]] for i in invs]
+    return _pdf_response(_build_table_pdf("Invoices", headers, rows), "Invoices.pdf")
+
+
+# ---------- Store: Stock PDF ----------
+@router.get("/store/export/stock/pdf")
+async def export_stock_pdf(current_user: dict = Depends(get_current_user)):
+    items = await db.stock_items.find({}, {"_id": 0}).sort("name", 1).to_list(2000)
+    headers = ["Name", "Category", "Unit", "On Hand", "Reserved", "Available", "Reorder At", "Avg Rate"]
+    rows = [[i.get("name"), i.get("category"), i.get("unit_purchase"),
+             i.get("on_hand", 0), i.get("reserved", 0),
+             (i.get("on_hand", 0) - i.get("reserved", 0)),
+             i.get("reorder_level"), i.get("avg_rate")] for i in items]
+    return _pdf_response(_build_table_pdf("Stock Items", headers, rows), "Stock.pdf")
+
+
+# ---------- Store: POs PDF ----------
+@router.get("/store/export/purchase-orders/pdf")
+async def export_pos_pdf(current_user: dict = Depends(get_current_user)):
+    pos = await db.purchase_orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    headers = ["PO #", "Supplier", "Status", "Total", "PO Date", "Expected", "Items"]
+    rows = [[p.get("po_number"), p.get("supplier_name"), p.get("status"),
+             round(p.get("total_amount", 0), 2), str(p.get("po_date", ""))[:10],
+             str(p.get("expected_date", ""))[:10], len(p.get("items") or [])] for p in pos]
+    return _pdf_response(_build_table_pdf("Purchase Orders", headers, rows), "POs.pdf")
+
+
+# ---------- Store: Suppliers PDF ----------
+@router.get("/store/export/suppliers/pdf")
+async def export_suppliers_pdf(current_user: dict = Depends(get_current_user)):
+    sups = await db.suppliers.find({}, {"_id": 0}).sort("name", 1).to_list(500)
+    headers = ["Name", "GSTIN", "Phone", "Email", "Address", "Payment Terms"]
+    rows = [[s.get("name"), s.get("gstin"), s.get("contact_phone"),
+             s.get("contact_email"), (s.get("address") or "")[:40],
+             s.get("payment_terms")] for s in sups]
+    return _pdf_response(_build_table_pdf("Suppliers", headers, rows), "Suppliers.pdf")
+
+
+# ---------- Work Orders EXCEL + PDF ----------
+@router.get("/work-orders/export/excel")
+async def export_work_orders_excel(current_user: dict = Depends(get_current_user)):
+    wos = await db.work_orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    headers = ["WO #", "SO #", "Customer", "Stage", "Items", "Delivery Date", "Created"]
+    rows = [[w.get("wo_number"), w.get("so_number"), w.get("customer_name"),
+             w.get("stage"), len(w.get("items") or []),
+             str(w.get("delivery_date", ""))[:10],
+             str(w.get("created_at", ""))[:10]] for w in wos]
+    return _xlsx_response(_build_table_excel("Work Orders", headers, rows), "Work_Orders.xlsx")
+
+
+@router.get("/work-orders/export/pdf")
+async def export_work_orders_pdf(current_user: dict = Depends(get_current_user)):
+    wos = await db.work_orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    headers = ["WO #", "SO #", "Customer", "Stage", "Items", "Delivery", "Created"]
+    rows = [[w.get("wo_number"), w.get("so_number"), w.get("customer_name"),
+             w.get("stage"), len(w.get("items") or []),
+             str(w.get("delivery_date", ""))[:10],
+             str(w.get("created_at", ""))[:10]] for w in wos]
+    return _pdf_response(_build_table_pdf("Work Orders", headers, rows), "Work_Orders.pdf")
+
+
+# ---------- WIP QC Overview EXCEL + PDF ----------
+async def _wip_qc_rows():
+    wos = await db.work_orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    subs = await db.sub_work_orders.find({}, {"_id": 0}).to_list(3000)
+    sub_by = {}
+    for s in subs:
+        sub_by.setdefault(s.get("parent_wo_id"), []).append(s)
+    rows = []
+    for w in wos:
+        items = w.get("items") or []
+        if not any("pulley" not in (it.get("product_name") or "").lower() for it in items):
+            continue
+        ss = sub_by.get(w.get("id")) or []
+        pipe = next((x for x in ss if x.get("type") == "pipe"), None)
+        shaft = next((x for x in ss if x.get("type") == "shaft"), None)
+        def _st(sub):
+            if not sub: return ("—", "—", "—")
+            wip = sub.get("wip_qc") or {}
+            pc = sum(int(i.get("pass_count") or 0) for i in wip.get("items") or [])
+            fc = sum(int(i.get("fail_count") or 0) for i in wip.get("items") or [])
+            return (wip.get("status") or "pending", f"{pc}/{fc}", wip.get("inspected_by") or "—")
+        ps, pcnt, pby = _st(pipe)
+        ss2, scnt, sby = _st(shaft)
+        rows.append([w.get("wo_number"), w.get("so_number"), w.get("customer_name"),
+                     w.get("stage"), ps, pcnt, pby, ss2, scnt, sby])
+    return rows
+
+@router.get("/wip-qc/export/excel")
+async def export_wip_qc_excel(current_user: dict = Depends(get_current_user)):
+    headers = ["WO #", "SO #", "Customer", "Stage",
+               "Pipe Status", "Pipe P/F", "Pipe Inspector",
+               "Shaft Status", "Shaft P/F", "Shaft Inspector"]
+    rows = await _wip_qc_rows()
+    return _xlsx_response(_build_table_excel("WIP QC Overview", headers, rows), "WIP_QC_Overview.xlsx")
+
+
+@router.get("/wip-qc/export/pdf")
+async def export_wip_qc_pdf(current_user: dict = Depends(get_current_user)):
+    headers = ["WO #", "SO #", "Customer", "Stage",
+               "Pipe", "P/F", "Inspector",
+               "Shaft", "P/F", "Inspector"]
+    rows = await _wip_qc_rows()
+    return _pdf_response(_build_table_pdf("WIP QC Overview", headers, rows), "WIP_QC_Overview.pdf")
+

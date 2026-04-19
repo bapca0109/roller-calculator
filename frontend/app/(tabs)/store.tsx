@@ -235,7 +235,7 @@ export default function StoreScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={s.sectionTitle}>Stock Items ({filteredStock.length}{q ? `/${stockItems.length}` : ''})</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <ExportButtons endpoint="/store/export/stock" filenamePrefix="Stock" compact showExcel showPdf={false} />
+                <ExportButtons endpoint="/store/export/stock" pdfEndpoint="/store/export/stock/pdf" filenamePrefix="Stock" compact showExcel showPdf />
                 <Pressable style={s.actionBtn} onPress={() => setShowAddItem(true)}><Ionicons name="add" size={16} color="#C5964A" /><Text style={s.actionText}>Add Item</Text></Pressable>
                 <Pressable style={s.actionBtn} onPress={openIssueModal} data-testid="issue-stock-btn"><Ionicons name="arrow-up-circle-outline" size={16} color="#8B5CF6" /><Text style={[s.actionText, { color: '#8B5CF6' }]}>Issue</Text></Pressable>
               </View>
@@ -260,7 +260,7 @@ export default function StoreScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={s.sectionTitle}>Purchase Orders ({pos.length})</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <ExportButtons endpoint="/store/export/purchase-orders" filenamePrefix="POs" compact showExcel showPdf={false} />
+                <ExportButtons endpoint="/store/export/purchase-orders" pdfEndpoint="/store/export/purchase-orders/pdf" filenamePrefix="POs" compact showExcel showPdf />
                 <Pressable style={s.actionBtn} onPress={() => setShowAddPO(true)}><Ionicons name="add" size={16} color="#C5964A" /><Text style={s.actionText}>New PO</Text></Pressable>
               </View>
             </View>
@@ -289,7 +289,7 @@ export default function StoreScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={s.sectionTitle}>Suppliers ({suppliers.length})</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <ExportButtons endpoint="/store/export/suppliers" filenamePrefix="Suppliers" compact showExcel showPdf={false} />
+                <ExportButtons endpoint="/store/export/suppliers" pdfEndpoint="/store/export/suppliers/pdf" filenamePrefix="Suppliers" compact showExcel showPdf />
                 <Pressable style={s.actionBtn} onPress={() => setShowAddSupplier(true)}><Ionicons name="add" size={16} color="#C5964A" /><Text style={s.actionText}>Add</Text></Pressable>
               </View>
             </View>
