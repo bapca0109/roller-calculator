@@ -1344,9 +1344,61 @@ def _generate_bom(product: dict, production_details: dict, specs: dict, qty: int
 
 # ============= BOM-STOCK MATCHING & SHORTAGE CHECK =============
 
+def _derive_bom_match_key(component: str, description: str) -> Optional[str]:
+    """Legacy-BOM fallback: reconstruct a stock-register match key from the
+    component + description when `bom_match_key` was never saved.
+    Handles: Pipe, Shaft, Bearing, Housing, Seal, Circlip, Grease, End Plate, KLA.
+    """
+    import re as _re
+    comp = (component or "").lower().strip()
+    desc = description or ""
+    if comp == "pipe":
+        # "88.9mm OD × 3.2mm thk × 1000mm L" → pipe:88.9:3.2
+        m = _re.search(r"([\d.]+)\s*mm\s*OD\s*[x×*]\s*([\d.]+)\s*mm\s*thk", desc, _re.I)
+        if m: return f"pipe:{float(m.group(1))}:{float(m.group(2))}"
+    if comp == "shaft":
+        # "25mm dia x 400mm L EN-8" or "25mm dia × 750.0mm L" (material default EN-8)
+        m = _re.search(r"([\d.]+)\s*mm\s*dia", desc, _re.I)
+        if m:
+            try: dia = int(float(m.group(1)))
+            except Exception: dia = m.group(1)
+            mat_m = _re.search(r"(EN-?\d+|SS-?\d+|AISI-?\d+|MS)", desc, _re.I)
+            mat = mat_m.group(1).upper().replace(" ", "") if mat_m else "EN-8"
+            if mat and mat[:2] == "EN" and "-" not in mat:
+                mat = mat[:2] + "-" + mat[2:]
+            return f"shaft:{dia}:{mat}"
+    if comp == "bearing":
+        # Description like "6204 ZZ china" or "6204 NBC"
+        m = _re.search(r"(\d{3,5})\s*(?:ZZ|2RS|RS)?\s*([A-Za-z]+)?", desc)
+        if m:
+            make = (m.group(2) or "china").lower()
+            return f"bearing:{m.group(1)}:{make}"
+    if comp == "housing":
+        # "Housing 84/52 for 88.9mm pipe" → housing:84/52
+        m = _re.search(r"(\d+\s*/\s*\d+)", desc)
+        if m: return f"housing:{m.group(1).replace(' ','')}"
+    if comp == "seal":
+        m = _re.search(r"(\d{3,5})", desc)
+        if m: return f"seal:{m.group(1)}"
+    if comp == "circlip":
+        m = _re.search(r"([\d.]+)\s*mm", desc)
+        if m: return f"circlip:{float(m.group(1))}"
+    if comp == "grease":
+        return "grease:EP2"
+    if comp == "end plate":
+        m = _re.search(r"(\d+)\s*mm\s*pipe.*?([\d.]+)\s*mm", desc)
+        if m: return f"end_plate:{m.group(1)}:{m.group(2)}"
+    if "kla" in comp:
+        m = _re.search(r"(KLA-?[A-Z0-9/-]+)", desc, _re.I)
+        if m: return f"kla:{m.group(1)}"
+    return None
+
+
 async def _match_bom_to_stock(bom_component: str, bom_description: str, bom_material: str, bom_match_key: str = None) -> dict:
-    """Find matching stock item for a BOM component using bom_match_key (exact match only)"""
-    # Exact match on bom_match_key — no fuzzy fallback to prevent wrong matches
+    """Find matching stock item for a BOM component using bom_match_key (exact match only).
+    Fallback: derive the key from description for legacy WOs missing the field."""
+    if not bom_match_key:
+        bom_match_key = _derive_bom_match_key(bom_component, bom_description)
     if bom_match_key:
         stock_item = await db.stock_items.find_one({"bom_match_key": bom_match_key}, {"_id": 0})
         if stock_item:
