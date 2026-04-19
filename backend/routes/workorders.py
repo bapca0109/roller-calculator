@@ -1440,6 +1440,28 @@ async def get_wo_shortages(current_user: dict = Depends(require_role([UserRole.A
     }
 
 
+@router.get("/wo-shortages/by-wo")
+async def get_wo_shortages_by_wo(current_user: dict = Depends(require_role([UserRole.ADMIN]))):
+    """Per-WO view of material shortages — one row per WO with the full shortage list."""
+    wos = await db.work_orders.find({"stage": {"$ne": "completed"}}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    rows = []
+    for wo in wos:
+        shortages = await _check_bom_shortages(wo)
+        if not shortages:
+            continue
+        rows.append({
+            "wo_id": wo.get("id"),
+            "wo_number": wo.get("wo_number"),
+            "so_number": wo.get("so_number"),
+            "customer_name": wo.get("customer_name"),
+            "delivery_date": wo.get("delivery_date"),
+            "stage": wo.get("stage"),
+            "shortage_count": len(shortages),
+            "shortages": shortages,
+        })
+    return {"rows": rows, "total": len(rows)}
+
+
 @router.get("/work-orders/{wo_id}/issue-plan")
 async def get_wo_issue_plan(wo_id: str, current_user: dict = Depends(require_role([UserRole.ADMIN]))):
     """For manual stock issue against a WO:

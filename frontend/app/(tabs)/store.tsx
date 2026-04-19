@@ -32,7 +32,9 @@ export default function StoreScreen() {
   // Form state
   const [newItem, setNewItem] = useState({ name: '', category: 'pipe', unit_purchase: 'meters', unit_bom: 'kg', reorder_level: '' });
   const [newSupplier, setNewSupplier] = useState({ name: '', contact_person: '', phone: '', gst_number: '', city: '', payment_terms: '' });
-  const [newPO, setNewPO] = useState({ supplier_id: '', items: [{ stock_item_id: '', qty: '', rate: '' }] });
+  const [newPO, setNewPO] = useState<{ supplier_id: string; expected_delivery: string; notes: string; interstate: boolean; linked_wo_ids: string[]; items: { stock_item_id: string; qty: string; rate: string; gst_rate: string }[] }>({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] });
+  const [woShortageRows, setWoShortageRows] = useState<any[]>([]);
+  const [shortageView, setShortageView] = useState<'consolidated' | 'by_wo'>('consolidated');
   const [qcData, setQcData] = useState({ accepted_qty: '', rejected_qty: '', reason: '' });
   const [qcItemIndex, setQcItemIndex] = useState(0);
   const [issueItems, setIssueItems] = useState<any[]>([]);
@@ -43,16 +45,18 @@ export default function StoreScreen() {
 
   const fetchAll = async () => {
     try {
-      const [dashRes, itemsRes, posRes, suppRes, alertRes, shortRes] = await Promise.all([
+      const [dashRes, itemsRes, posRes, suppRes, alertRes, shortRes, byWoRes] = await Promise.all([
         api.get('/store/dashboard'), api.get('/store/items'),
         api.get('/store/purchase-orders'), api.get('/suppliers'),
         api.get('/store/alerts'), api.get('/wo-shortages'),
+        api.get('/wo-shortages/by-wo'),
       ]);
       setDashboard(dashRes.data);
       setStockItems(itemsRes.data.items || []);
       setPos(posRes.data.purchase_orders || []);
       setSuppliers(suppRes.data.suppliers || []);
       setAlerts(alertRes.data.alerts || []);
+      setWoShortageRows(byWoRes.data.rows || []);
       setWoShortages(shortRes.data.shortages || []);
     } catch (e) { console.log('Store fetch error', e); }
     finally { setLoading(false); }
@@ -88,16 +92,69 @@ export default function StoreScreen() {
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
+  const resetNewPO = () => setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] });
+
   const createPO = async () => {
-    if (!newPO.supplier_id || !newPO.items[0]?.stock_item_id) { Alert.alert('Error', 'Select supplier and item'); return; }
+    const validItems = newPO.items.filter(i => i.stock_item_id && parseFloat(i.qty) > 0);
+    if (!newPO.supplier_id) { Alert.alert('Error', 'Select a supplier'); return; }
+    if (validItems.length === 0) { Alert.alert('Error', 'Add at least one item with qty > 0'); return; }
     try {
-      const items = newPO.items.map(i => ({ stock_item_id: i.stock_item_id, qty: parseFloat(i.qty) || 0, rate: parseFloat(i.rate) || 0 }));
+      const items = validItems.map(i => ({
+        stock_item_id: i.stock_item_id,
+        qty: parseFloat(i.qty) || 0,
+        rate: parseFloat(i.rate) || 0,
+        gst_rate: parseFloat(i.gst_rate) || 0,
+      }));
       if (!(await confirmAction('Create Purchase Order?', `A new PO will be raised with ${items.length} line(s).`))) return;
-      await api.post('/store/purchase-orders', { supplier_id: newPO.supplier_id, items });
-      setShowAddPO(false); setNewPO({ supplier_id: '', items: [{ stock_item_id: '', qty: '', rate: '' }] });
+      await api.post('/store/purchase-orders', {
+        supplier_id: newPO.supplier_id,
+        items,
+        notes: newPO.notes || null,
+        expected_delivery: newPO.expected_delivery || null,
+        interstate: newPO.interstate,
+        linked_wo_ids: newPO.linked_wo_ids,
+      });
+      setShowAddPO(false); resetNewPO();
       fetchAll(); Alert.alert('Success', 'Purchase Order created');
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
+
+  const openPOFromShortage = (short: any) => {
+    // Prefill one line with this shortage
+    const shortQty = Math.max(short.shortage || 0, 0);
+    setNewPO({
+      supplier_id: '',
+      expected_delivery: '',
+      notes: `Raised to cover shortage on ${Array.isArray(short.wo_numbers) ? short.wo_numbers.join(', ') : short.wo_number || ''}`,
+      interstate: false,
+      linked_wo_ids: [],
+      items: [{ stock_item_id: short.stock_item_id || '', qty: String(shortQty), rate: '', gst_rate: '18' }],
+    });
+    setShowAddPO(true);
+  };
+
+  const openPOFromWO = (row: any) => {
+    // Prefill every shortage item of this WO
+    const lines = (row.shortages || []).map((s: any) => ({
+      stock_item_id: s.stock_item_id || '',
+      qty: String(Math.max(s.shortage || 0, 0)),
+      rate: '',
+      gst_rate: '18',
+    }));
+    setNewPO({
+      supplier_id: '',
+      expected_delivery: '',
+      notes: `Raised to cover shortages on ${row.wo_number}`,
+      interstate: false,
+      linked_wo_ids: row.wo_id ? [row.wo_id] : [],
+      items: lines.length > 0 ? lines : [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }],
+    });
+    setShowAddPO(true);
+  };
+
+  const addPOLine = () => setNewPO(p => ({ ...p, items: [...p.items, { stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] }));
+  const removePOLine = (idx: number) => setNewPO(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }));
+  const updatePOLine = (idx: number, field: string, value: string) => setNewPO(p => ({ ...p, items: p.items.map((it, i) => i === idx ? { ...it, [field]: value } : it) }));
 
   const processQC = async (status: string) => {
     if (!selectedPO) return;
@@ -307,26 +364,69 @@ export default function StoreScreen() {
         {/* SHORTAGES — WO BOM vs Stock */}
         {tab === 'shortages' && (
           <>
-            <Text style={s.sectionTitle}>WO Material Shortages ({woShortages.length})</Text>
-            {woShortages.length === 0 ? <View style={s.emptyState}><Ionicons name="checkmark-circle" size={48} color="#10B981" /><Text style={s.emptyText}>No shortages — all WO materials available</Text></View> :
-            filteredShortages.map((sh: any, i: number) => (
-              <View key={i} style={[s.card, { borderLeftWidth: 3, borderLeftColor: sh.stock_item_id ? '#F59E0B' : '#EF4444' }]}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.cardTitle}>{sh.component}</Text>
-                    <Text style={s.cardMeta}>{sh.description}</Text>
-                    {!sh.stock_item_id && <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '700', marginTop: 2 }}>NOT IN STOCK REGISTER</Text>}
-                    {sh.stock_item_id && <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>Stock: {sh.stock_item_name}</Text>}
+            {/* Sub-toggle: Consolidated vs By-WO */}
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+              <Pressable onPress={() => setShortageView('consolidated')} style={[s.chip, shortageView === 'consolidated' && s.chipActive]} testID="shortage-consolidated-tab">
+                <Text style={[s.chipText, shortageView === 'consolidated' && s.chipTextActive]}>Consolidated ({woShortages.length})</Text>
+              </Pressable>
+              <Pressable onPress={() => setShortageView('by_wo')} style={[s.chip, shortageView === 'by_wo' && s.chipActive]} testID="shortage-by-wo-tab">
+                <Text style={[s.chipText, shortageView === 'by_wo' && s.chipTextActive]}>By Work Order ({woShortageRows.length})</Text>
+              </Pressable>
+            </View>
+
+            {shortageView === 'consolidated' ? (
+              woShortages.length === 0 ? <View style={s.emptyState}><Ionicons name="checkmark-circle" size={48} color="#10B981" /><Text style={s.emptyText}>No shortages — all WO materials available</Text></View> :
+              filteredShortages.map((sh: any, i: number) => (
+                <View key={i} style={[s.card, { borderLeftWidth: 3, borderLeftColor: sh.stock_item_id ? '#F59E0B' : '#EF4444' }]} testID={`shortage-row-${i}`}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.cardTitle}>{sh.component}</Text>
+                      <Text style={s.cardMeta}>{sh.description}</Text>
+                      {!sh.stock_item_id && <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '700', marginTop: 2 }}>NOT IN STOCK REGISTER</Text>}
+                      {sh.stock_item_id && <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>Stock: {sh.stock_item_name}</Text>}
+                    </View>
+                    {sh.stock_item_id && (
+                      <TouchableOpacity onPress={() => openPOFromShortage(sh)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#C5964A', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }} testID={`create-po-shortage-${i}`}>
+                        <Ionicons name="cart" size={14} color="#fff" />
+                        <Text style={{ fontSize: 11, color: '#fff', fontWeight: '700' }}>Raise PO</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
+                    <View><Text style={s.alertLabel}>Required</Text><Text style={s.alertValue}>{sh.required} {sh.unit}</Text></View>
+                    <View><Text style={s.alertLabel}>Available</Text><Text style={[s.alertValue, { color: '#10B981' }]}>{sh.available} {sh.unit}</Text></View>
+                    <View><Text style={s.alertLabel}>Shortage</Text><Text style={[s.alertValue, { color: '#EF4444', fontWeight: '800' }]}>{sh.shortage} {sh.unit}</Text></View>
+                  </View>
+                  <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 6 }}>WOs: {(sh.wo_numbers || []).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(', ')}</Text>
+                </View>
+              ))
+            ) : (
+              woShortageRows.length === 0 ? <View style={s.emptyState}><Ionicons name="checkmark-circle" size={48} color="#10B981" /><Text style={s.emptyText}>No pending WOs with shortages</Text></View> :
+              woShortageRows.filter((r: any) => matches(r.wo_number, r.customer_name, r.so_number)).map((row: any) => (
+                <View key={row.wo_id} style={[s.card, { borderLeftWidth: 3, borderLeftColor: '#F59E0B' }]} testID={`shortage-wo-row-${row.wo_number}`}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.cardTitle}>{row.wo_number}</Text>
+                      <Text style={s.cardMeta}>{row.customer_name} · SO {row.so_number} · {row.shortage_count} item(s) short</Text>
+                      {row.delivery_date && <Text style={{ fontSize: 10, color: '#EF4444', marginTop: 2 }}>Delivery: {row.delivery_date}</Text>}
+                    </View>
+                    <TouchableOpacity onPress={() => openPOFromWO(row)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#0F172A', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }} testID={`create-po-wo-${row.wo_number}`}>
+                      <Ionicons name="cart" size={14} color="#fff" />
+                      <Text style={{ fontSize: 11, color: '#fff', fontWeight: '700' }}>Create PO ({row.shortage_count})</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ marginTop: 10, paddingLeft: 6, borderLeftWidth: 2, borderLeftColor: '#E2E8F0' }}>
+                    {(row.shortages || []).slice(0, 8).map((sh: any, i: number) => (
+                      <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                        <Text style={{ fontSize: 11, color: '#334155', flex: 2 }}>{sh.stock_item_name || sh.component} {sh.description ? `(${sh.description})` : ''}</Text>
+                        <Text style={{ fontSize: 11, color: '#EF4444', fontWeight: '700', flex: 1, textAlign: 'right' }}>{sh.shortage} {sh.unit}</Text>
+                      </View>
+                    ))}
+                    {(row.shortages || []).length > 8 && (<Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 4 }}>+{row.shortages.length - 8} more</Text>)}
                   </View>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
-                  <View><Text style={s.alertLabel}>Required</Text><Text style={s.alertValue}>{sh.required} {sh.unit}</Text></View>
-                  <View><Text style={s.alertLabel}>Available</Text><Text style={[s.alertValue, { color: '#10B981' }]}>{sh.available} {sh.unit}</Text></View>
-                  <View><Text style={s.alertLabel}>Shortage</Text><Text style={[s.alertValue, { color: '#EF4444', fontWeight: '800' }]}>{sh.shortage} {sh.unit}</Text></View>
-                </View>
-                <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 6 }}>WOs: {(sh.wo_numbers || []).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(', ')}</Text>
-              </View>
-            ))}
+              ))
+            )}
           </>
         )}
 
@@ -394,21 +494,115 @@ export default function StoreScreen() {
 
       {/* Create PO Modal */}
       <Modal visible={showAddPO} animationType="slide" transparent>
-        <View style={s.modalOverlay}><View style={s.modal}>
+        <View style={s.modalOverlay}><View style={[s.modal, { maxHeight: '92%' }]}>
           <View style={s.modalHead}><Text style={s.modalTitle}>New Purchase Order</Text><TouchableOpacity onPress={() => setShowAddPO(false)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity></View>
-          <Text style={s.label}>Supplier *</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-            {suppliers.map(sup => (<Pressable key={sup.id} style={[s.chip, newPO.supplier_id === sup.id && s.chipActive]} onPress={() => setNewPO({ ...newPO, supplier_id: sup.id })}><Text style={[s.chipText, newPO.supplier_id === sup.id && s.chipTextActive]}>{sup.name}</Text></Pressable>))}
+          <ScrollView style={{ maxHeight: 620 }} showsVerticalScrollIndicator={false}>
+            <Text style={s.label}>Supplier *</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+              {suppliers.map(sup => (<Pressable key={sup.id} style={[s.chip, newPO.supplier_id === sup.id && s.chipActive]} onPress={() => setNewPO({ ...newPO, supplier_id: sup.id })}><Text style={[s.chipText, newPO.supplier_id === sup.id && s.chipTextActive]}>{sup.name}</Text></Pressable>))}
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.label}>Expected Delivery</Text>
+                <TextInput style={s.input} value={newPO.expected_delivery} onChangeText={v => setNewPO({ ...newPO, expected_delivery: v })} placeholder="YYYY-MM-DD" testID="po-expected-delivery" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.label}>GST Scheme</Text>
+                <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
+                  <Pressable style={[s.chip, !newPO.interstate && s.chipActive]} onPress={() => setNewPO({ ...newPO, interstate: false })} testID="po-cgst-sgst">
+                    <Text style={[s.chipText, !newPO.interstate && s.chipTextActive]}>CGST+SGST</Text>
+                  </Pressable>
+                  <Pressable style={[s.chip, newPO.interstate && s.chipActive]} onPress={() => setNewPO({ ...newPO, interstate: true })} testID="po-igst">
+                    <Text style={[s.chipText, newPO.interstate && s.chipTextActive]}>IGST</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+
+            {newPO.linked_wo_ids && newPO.linked_wo_ids.length > 0 && (
+              <View style={{ backgroundColor: '#EEF2FF', borderRadius: 8, padding: 8, marginTop: 8 }}>
+                <Text style={{ fontSize: 11, color: '#4338CA', fontWeight: '700' }}>🔗 Linked to WO(s): {newPO.linked_wo_ids.length}</Text>
+              </View>
+            )}
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 4 }}>
+              <Text style={[s.label, { marginBottom: 0 }]}>Line Items *</Text>
+              <Pressable onPress={addPOLine} style={{ flexDirection: 'row', gap: 4, alignItems: 'center', backgroundColor: '#C5964A', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }} testID="po-add-line">
+                <Ionicons name="add" size={14} color="#fff" />
+                <Text style={{ fontSize: 11, color: '#fff', fontWeight: '700' }}>Add Line</Text>
+              </Pressable>
+            </View>
+
+            {newPO.items.map((line, idx) => {
+              const qty = parseFloat(line.qty) || 0;
+              const rate = parseFloat(line.rate) || 0;
+              const gst = parseFloat(line.gst_rate) || 0;
+              const amount = qty * rate;
+              const gstAmt = amount * gst / 100;
+              const lineTotal = amount + gstAmt;
+              return (
+                <View key={idx} style={{ backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0' }} testID={`po-line-${idx}`}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748B' }}>Line {idx + 1}</Text>
+                    {newPO.items.length > 1 && (
+                      <Pressable onPress={() => removePOLine(idx)} testID={`po-remove-line-${idx}`}>
+                        <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                      </Pressable>
+                    )}
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
+                    {stockItems.map(item => (<Pressable key={item.id} style={[s.chip, line.stock_item_id === item.id && s.chipActive]} onPress={() => updatePOLine(idx, 'stock_item_id', item.id)}><Text style={[s.chipText, line.stock_item_id === item.id && s.chipTextActive]}>{item.name}</Text></Pressable>))}
+                  </ScrollView>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <View style={{ flex: 1 }}><Text style={s.label}>Qty</Text><TextInput style={s.input} value={line.qty} onChangeText={v => updatePOLine(idx, 'qty', v)} placeholder="100" keyboardType="numeric" testID={`po-qty-${idx}`} /></View>
+                    <View style={{ flex: 1 }}><Text style={s.label}>Rate (Rs.)</Text><TextInput style={s.input} value={line.rate} onChangeText={v => updatePOLine(idx, 'rate', v)} placeholder="75" keyboardType="numeric" testID={`po-rate-${idx}`} /></View>
+                    <View style={{ width: 80 }}><Text style={s.label}>GST %</Text><TextInput style={s.input} value={line.gst_rate} onChangeText={v => updatePOLine(idx, 'gst_rate', v)} placeholder="18" keyboardType="numeric" testID={`po-gst-${idx}`} /></View>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 4, marginTop: 4 }}>
+                    {['5', '12', '18', '28'].map(g => (
+                      <Pressable key={g} style={[s.chip, line.gst_rate === g && s.chipActive, { paddingHorizontal: 8, paddingVertical: 3 }]} onPress={() => updatePOLine(idx, 'gst_rate', g)}>
+                        <Text style={[s.chipText, line.gst_rate === g && s.chipTextActive, { fontSize: 10 }]}>{g}%</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  {amount > 0 && (
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
+                      <Text style={{ fontSize: 10, color: '#64748B' }}>Base: <Text style={{ color: '#0F172A', fontWeight: '700' }}>Rs.{amount.toFixed(2)}</Text></Text>
+                      <Text style={{ fontSize: 10, color: '#64748B' }}>GST: <Text style={{ color: '#0F172A', fontWeight: '700' }}>Rs.{gstAmt.toFixed(2)}</Text></Text>
+                      <Text style={{ fontSize: 11, color: '#C5964A', fontWeight: '800' }}>Rs.{lineTotal.toFixed(2)}</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+
+            {/* Totals */}
+            {(() => {
+              const sub = newPO.items.reduce((t, i) => t + (parseFloat(i.qty) || 0) * (parseFloat(i.rate) || 0), 0);
+              const gstT = newPO.items.reduce((t, i) => t + ((parseFloat(i.qty) || 0) * (parseFloat(i.rate) || 0) * (parseFloat(i.gst_rate) || 0) / 100), 0);
+              return (
+                <View style={{ backgroundColor: '#0F172A', borderRadius: 10, padding: 12, marginTop: 4 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 11, color: '#94A3B8' }}>Subtotal</Text>
+                    <Text style={{ fontSize: 12, color: '#fff', fontWeight: '700' }}>Rs.{sub.toFixed(2)}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 11, color: '#94A3B8' }}>{newPO.interstate ? 'IGST' : 'CGST + SGST'}</Text>
+                    <Text style={{ fontSize: 12, color: '#fff', fontWeight: '700' }}>Rs.{gstT.toFixed(2)}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' }}>
+                    <Text style={{ fontSize: 13, color: '#C5964A', fontWeight: '700' }}>GRAND TOTAL</Text>
+                    <Text style={{ fontSize: 15, color: '#C5964A', fontWeight: '800' }}>Rs.{(sub + gstT).toFixed(2)}</Text>
+                  </View>
+                </View>
+              );
+            })()}
+
+            <Text style={[s.label, { marginTop: 10 }]}>Notes</Text>
+            <TextInput style={[s.input, { minHeight: 60 }]} value={newPO.notes} onChangeText={v => setNewPO({ ...newPO, notes: v })} placeholder="Any terms, delivery instructions, references..." multiline testID="po-notes" />
           </ScrollView>
-          <Text style={s.label}>Item *</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-            {stockItems.map(item => (<Pressable key={item.id} style={[s.chip, newPO.items[0]?.stock_item_id === item.id && s.chipActive]} onPress={() => { const items = [...newPO.items]; items[0].stock_item_id = item.id; setNewPO({ ...newPO, items }); }}><Text style={[s.chipText, newPO.items[0]?.stock_item_id === item.id && s.chipTextActive]}>{item.name}</Text></Pressable>))}
-          </ScrollView>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1 }}><Text style={s.label}>Qty</Text><TextInput style={s.input} value={newPO.items[0]?.qty} onChangeText={v => { const items = [...newPO.items]; items[0].qty = v; setNewPO({ ...newPO, items }); }} placeholder="100" keyboardType="numeric" /></View>
-            <View style={{ flex: 1 }}><Text style={s.label}>Rate (Rs.)</Text><TextInput style={s.input} value={newPO.items[0]?.rate} onChangeText={v => { const items = [...newPO.items]; items[0].rate = v; setNewPO({ ...newPO, items }); }} placeholder="75" keyboardType="numeric" /></View>
-          </View>
-          <Pressable style={s.saveBtn} onPress={createPO}><Ionicons name="cart" size={18} color="#fff" /><Text style={s.saveBtnText}>Create PO</Text></Pressable>
+          <Pressable style={s.saveBtn} onPress={createPO} testID="po-submit"><Ionicons name="cart" size={18} color="#fff" /><Text style={s.saveBtnText}>Create Purchase Order</Text></Pressable>
         </View></View>
       </Modal>
 

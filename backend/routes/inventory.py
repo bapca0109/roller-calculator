@@ -36,9 +36,11 @@ class StockItemCreate(BaseModel):
 
 class PurchaseOrderCreate(BaseModel):
     supplier_id: str
-    items: List[Dict[str, Any]]  # [{stock_item_id, qty, rate, unit}]
+    items: List[Dict[str, Any]]  # [{stock_item_id, qty, rate, unit?, gst_rate?}]
     notes: Optional[str] = None
     expected_delivery: Optional[str] = None
+    interstate: Optional[bool] = False   # IGST vs CGST+SGST split
+    linked_wo_ids: Optional[List[str]] = None   # optional trace-back to the WO(s) this PO was raised for
 
 
 class QCEntry(BaseModel):
@@ -122,15 +124,35 @@ async def create_purchase_order(po: PurchaseOrderCreate, current_user: dict = De
     now = get_ist_now()
     po_number = await generate_po_number()
 
-    # Enrich items with stock item names
+    # Enrich items with stock item names + GST breakdown
     items = []
-    total_amount = 0
+    subtotal = 0.0
+    gst_total = 0.0
+    cgst_total = 0.0
+    sgst_total = 0.0
+    igst_total = 0.0
+    interstate = bool(po.interstate)
     for item in po.items:
         stock_item = await db.stock_items.find_one({"id": item.get("stock_item_id")}, {"_id": 0})
-        qty = item.get("qty", 0)
-        rate = item.get("rate", 0)
-        amount = qty * rate
-        total_amount += amount
+        qty = float(item.get("qty", 0) or 0)
+        rate = float(item.get("rate", 0) or 0)
+        gst_rate = float(item.get("gst_rate", 18) or 0)   # default 18% (standard capital-goods bracket)
+        amount = round(qty * rate, 2)
+        gst_amount = round(amount * gst_rate / 100, 2)
+        cgst = 0.0
+        sgst = 0.0
+        igst = 0.0
+        if interstate:
+            igst = gst_amount
+        else:
+            cgst = round(gst_amount / 2, 2)
+            sgst = round(gst_amount - cgst, 2)
+        total_line = round(amount + gst_amount, 2)
+        subtotal += amount
+        gst_total += gst_amount
+        cgst_total += cgst
+        sgst_total += sgst
+        igst_total += igst
         items.append({
             "stock_item_id": item.get("stock_item_id"),
             "stock_item_name": stock_item.get("name") if stock_item else "Unknown",
@@ -138,22 +160,43 @@ async def create_purchase_order(po: PurchaseOrderCreate, current_user: dict = De
             "qty_ordered": qty,
             "rate": rate,
             "unit": item.get("unit", stock_item.get("unit_purchase", "nos") if stock_item else "nos"),
-            "amount": round(amount, 2),
+            "amount": amount,
+            "gst_rate": gst_rate,
+            "cgst": cgst,
+            "sgst": sgst,
+            "igst": igst,
+            "gst_amount": gst_amount,
+            "total_line": total_line,
             "qty_received": 0,
             "qty_accepted": 0,
             "qty_rejected": 0,
             "qc_status": "pending",
         })
 
+    # Resolve linked WOs → numbers (nice for display)
+    linked_wo_numbers: List[str] = []
+    if po.linked_wo_ids:
+        async for w in db.work_orders.find({"id": {"$in": po.linked_wo_ids}}, {"_id": 0, "wo_number": 1}):
+            if w.get("wo_number"):
+                linked_wo_numbers.append(w["wo_number"])
+
     doc = {
         "id": str(ObjectId()),
         "po_number": po_number,
         "supplier_id": po.supplier_id,
         "items": items,
-        "total_amount": round(total_amount, 2),
+        "subtotal": round(subtotal, 2),
+        "cgst_total": round(cgst_total, 2),
+        "sgst_total": round(sgst_total, 2),
+        "igst_total": round(igst_total, 2),
+        "gst_total": round(gst_total, 2),
+        "interstate": interstate,
+        "total_amount": round(subtotal + gst_total, 2),
         "status": "ordered",
         "notes": po.notes,
         "expected_delivery": po.expected_delivery,
+        "linked_wo_ids": po.linked_wo_ids or [],
+        "linked_wo_numbers": linked_wo_numbers,
         "created_by": current_user.get("email"),
         "created_at": now.isoformat(),
     }
