@@ -381,6 +381,361 @@ export function useShaftQC(onSaved?: () => void): UseShaftQCResult {
   return { open, render };
 }
 
+// ─────────────────────── Final Inspection ────────────────────────
+
+export function useFinalInspection(params?: { onSaved?: () => void }) {
+  const { onSaved } = params || {};
+  const [show, setShow] = useState(false);
+  const [wo, setWo] = useState<any>(null);
+  const [ctx, setCtx] = useState<any>(null);
+  const [items, setItems] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const open = useCallback(async (workOrder: any) => {
+    setShow(true);
+    setWo(workOrder);
+    setCtx(null);
+    setItems([]);
+    setLoading(true);
+    try {
+      const api = await makeApi();
+      const { data } = await api.get(`/work-orders/${workOrder.id}/final-inspection`);
+      setCtx(data.context);
+      const rec = data.record;
+      const initItems = (data.context?.items || []).map((c: any) => {
+        const existing = (rec?.items || []).find((x: any) => x.item_index === c.item_index);
+        const sampleCount = Math.max(c.sample_qty || 0, existing?.sample_qty || 0);
+        const prevSamples = existing?.samples || [];
+        const samples = Array.from({ length: sampleCount }, (_, i) => {
+          const p = prevSamples[i] || {};
+          return {
+            sample_no: i + 1,
+            runout_mm: p.runout_mm ?? '',
+            water_ok: p.water_ok ?? null,
+            dust_ok: p.dust_ok ?? null,
+            friction_coeff: p.friction_coeff ?? '',
+            painting_visual_ok: p.painting_visual_ok ?? null,
+            dft_microns: p.dft_microns ?? '',
+            bearing_match: p.bearing_match ?? null,
+            bearing_reason: p.bearing_reason ?? '',
+            rust_preventive: p.rust_preventive ?? null,
+            rust_reason: p.rust_reason ?? '',
+            welding_ok: p.welding_ok ?? null,
+            remarks: p.remarks ?? '',
+          };
+        });
+        return {
+          ...c,
+          expected_dft_microns: existing?.expected_dft_microns ?? '',
+          samples,
+        };
+      });
+      setItems(initItems);
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.detail || e?.message || 'Failed to load Final Inspection');
+      setShow(false);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const close = () => setShow(false);
+
+  const patchSample = (itemIdx: number, sampleIdx: number, field: string, value: any) => {
+    setItems(prev => prev.map((it, i) => {
+      if (i !== itemIdx) return it;
+      const samples = it.samples.map((s: any, si: number) => si === sampleIdx ? { ...s, [field]: value } : s);
+      return { ...it, samples };
+    }));
+  };
+
+  const patchItem = (itemIdx: number, field: string, value: any) => {
+    setItems(prev => prev.map((it, i) => (i === itemIdx ? { ...it, [field]: value } : it)));
+  };
+
+  // Inline pass/fail evaluator for UI preview
+  const evalSample = (item: any, s: any) => {
+    const tol = (item.pipe_length_mm || 0) <= 1350 ? 1.6 : 2.0;
+    const r = parseFloat(s.runout_mm);
+    const f = parseFloat(s.friction_coeff);
+    const dft = parseFloat(s.dft_microns);
+    const expDft = parseFloat(item.expected_dft_microns);
+    const runout_ok = !isNaN(r) && r < tol;
+    const friction_ok = !isNaN(f) && f < 0.02;
+    const dft_ok = !isNaN(dft) && !isNaN(expDft) && expDft > 0 && Math.abs(dft - expDft) <= expDft * 0.20;
+    const overall = runout_ok && friction_ok && dft_ok
+      && s.water_ok === true && s.dust_ok === true && s.painting_visual_ok === true
+      && s.bearing_match === true && s.rust_preventive === true && s.welding_ok === true;
+    return { runout_ok, friction_ok, dft_ok, overall };
+  };
+
+  const save = async () => {
+    if (!wo) return;
+    const payload = {
+      items: items.map(it => ({
+        item_index: it.item_index,
+        expected_dft_microns: it.expected_dft_microns === '' ? null : parseFloat(it.expected_dft_microns),
+        samples: it.samples.map((s: any) => ({
+          sample_no: s.sample_no,
+          runout_mm: s.runout_mm === '' ? null : parseFloat(s.runout_mm),
+          water_ok: s.water_ok,
+          dust_ok: s.dust_ok,
+          friction_coeff: s.friction_coeff === '' ? null : parseFloat(s.friction_coeff),
+          painting_visual_ok: s.painting_visual_ok,
+          dft_microns: s.dft_microns === '' ? null : parseFloat(s.dft_microns),
+          bearing_match: s.bearing_match,
+          bearing_reason: s.bearing_reason || '',
+          rust_preventive: s.rust_preventive,
+          rust_reason: s.rust_reason || '',
+          welding_ok: s.welding_ok,
+          remarks: s.remarks || '',
+        })),
+      })),
+    };
+    setSaving(true);
+    try {
+      const api = await makeApi();
+      const { data } = await api.post(`/work-orders/${wo.id}/final-inspection`, payload);
+      Alert.alert('Saved', data.message || 'Final Inspection saved');
+      setShow(false);
+      onSaved?.();
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.detail || e?.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const downloadReport = async (kind: 'pdf' | 'excel') => {
+    if (!wo) return;
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_BASE}/work-orders/${wo.id}/final-inspection/${kind}?token=${token}`;
+    if (typeof window !== 'undefined') window.open(url, '_blank');
+  };
+
+  const YN = ({ value, onChange, testID }: any) => (
+    <View style={{ flexDirection: 'row', gap: 6 }}>
+      <Pressable onPress={() => onChange(true)} testID={`${testID}-yes`}
+        style={[m.chip, value === true && m.chipOk]}>
+        <Text style={[m.chipText, value === true && m.chipOkText]}>Yes</Text>
+      </Pressable>
+      <Pressable onPress={() => onChange(false)} testID={`${testID}-no`}
+        style={[m.chip, value === false && m.chipBad]}>
+        <Text style={[m.chipText, value === false && m.chipBadText]}>No</Text>
+      </Pressable>
+    </View>
+  );
+
+  const PF = ({ value, onChange, testID, labels = ['Pass', 'Fail'] }: any) => (
+    <View style={{ flexDirection: 'row', gap: 6 }}>
+      <Pressable onPress={() => onChange(true)} testID={`${testID}-pass`}
+        style={[m.chip, value === true && m.chipOk]}>
+        <Text style={[m.chipText, value === true && m.chipOkText]}>{labels[0]}</Text>
+      </Pressable>
+      <Pressable onPress={() => onChange(false)} testID={`${testID}-fail`}
+        style={[m.chip, value === false && m.chipBad]}>
+        <Text style={[m.chipText, value === false && m.chipBadText]}>{labels[1]}</Text>
+      </Pressable>
+    </View>
+  );
+
+  const render = () => (
+    <Modal visible={show} transparent animationType="slide" onRequestClose={close}>
+      <View style={m.overlay}>
+        <View style={m.modal}>
+          <View style={m.head}>
+            <View>
+              <Text style={m.title}>Final Inspection · {ctx?.wo_number || wo?.wo_number || ''}</Text>
+              <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{ctx?.customer_name || ''}</Text>
+            </View>
+            <Pressable onPress={close} testID="final-inspection-close"><Ionicons name="close" size={22} color="#0F172A" /></Pressable>
+          </View>
+
+          {loading ? (
+            <ActivityIndicator size="large" color="#C5964A" style={{ marginVertical: 30 }} />
+          ) : (
+            <ScrollView>
+              {items.length === 0 && (
+                <Text style={{ padding: 16, color: '#94A3B8', textAlign: 'center' }}>No items on this WO.</Text>
+              )}
+              {items.map((item, ii) => {
+                const locked = item.sample_qty > 0;
+                return (
+                  <View key={item.item_index} style={m.itemBlock}>
+                    <Text style={m.itemTitle}>#{item.item_index + 1} · {item.product_name}</Text>
+                    <View style={m.metaRow}>
+                      <Text style={m.metaLabel}>Qty: <Text style={m.metaVal}>{item.quantity}</Text></Text>
+                      <Text style={m.metaLabel}>Pipe L: <Text style={m.metaVal}>{item.pipe_length_mm} mm</Text></Text>
+                      <Text style={m.metaLabel}>Runout Tol: <Text style={m.metaVal}>&lt; {item.runout_tolerance_mm} mm</Text></Text>
+                      <Text style={m.metaLabel}>Bearing (WO): <Text style={m.metaVal}>{item.bearing_spec}</Text></Text>
+                      <Text style={m.metaLabel}>Samples (locked from Pipe QC): <Text style={m.metaVal}>{item.sample_qty}</Text></Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                      <Text style={m.qtyLabel}>Expected DFT (µm):</Text>
+                      <TextInput
+                        style={m.qtyInput}
+                        keyboardType="numeric"
+                        value={String(item.expected_dft_microns ?? '')}
+                        onChangeText={v => patchItem(ii, 'expected_dft_microns', v)}
+                        placeholder="e.g. 60"
+                        testID={`fi-expected-dft-${ii}`}
+                      />
+                      <Text style={m.qtySub}>± 20% allowed</Text>
+                    </View>
+
+                    {!locked && (
+                      <Text style={{ fontSize: 11, color: '#B91C1C', marginBottom: 6 }}>Sample count is 0 — complete Pipe or Shaft WIP QC first to unlock inspection samples.</Text>
+                    )}
+
+                    {item.samples.map((s: any, si: number) => {
+                      const ev = evalSample(item, s);
+                      const tone = ev.overall ? '#10B981' : '#EF4444';
+                      return (
+                        <View key={si} style={[m.sampleCard, { borderLeftColor: tone }]}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <Text style={m.sampleTitle}>Sample #{s.sample_no}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: tone }}>{ev.overall ? 'PASS' : 'FAIL'}</Text>
+                          </View>
+
+                          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+                            <View style={{ minWidth: 120 }}>
+                              <Text style={m.fieldLabel}>Runout (mm)</Text>
+                              <TextInput
+                                style={[m.num, s.runout_mm !== '' && (ev.runout_ok ? m.numOk : m.numBad)]}
+                                keyboardType="numeric"
+                                value={String(s.runout_mm ?? '')}
+                                onChangeText={v => patchSample(ii, si, 'runout_mm', v)}
+                                placeholder={`< ${item.runout_tolerance_mm}`}
+                                testID={`fi-runout-${ii}-${si}`}
+                              />
+                            </View>
+                            <View style={{ minWidth: 110 }}>
+                              <Text style={m.fieldLabel}>Friction (COF)</Text>
+                              <TextInput
+                                style={[m.num, s.friction_coeff !== '' && (ev.friction_ok ? m.numOk : m.numBad)]}
+                                keyboardType="numeric"
+                                value={String(s.friction_coeff ?? '')}
+                                onChangeText={v => patchSample(ii, si, 'friction_coeff', v)}
+                                placeholder="< 0.02"
+                                testID={`fi-cof-${ii}-${si}`}
+                              />
+                            </View>
+                            <View style={{ minWidth: 110 }}>
+                              <Text style={m.fieldLabel}>DFT (µm)</Text>
+                              <TextInput
+                                style={[m.num, s.dft_microns !== '' && (ev.dft_ok ? m.numOk : m.numBad)]}
+                                keyboardType="numeric"
+                                value={String(s.dft_microns ?? '')}
+                                onChangeText={v => patchSample(ii, si, 'dft_microns', v)}
+                                placeholder={item.expected_dft_microns ? `≈ ${item.expected_dft_microns}` : '—'}
+                                testID={`fi-dft-${ii}-${si}`}
+                              />
+                            </View>
+                          </View>
+
+                          <View style={{ flexDirection: 'row', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
+                            <View>
+                              <Text style={m.fieldLabel}>Water Test</Text>
+                              <PF value={s.water_ok} onChange={(v: boolean) => patchSample(ii, si, 'water_ok', v)} testID={`fi-water-${ii}-${si}`} />
+                            </View>
+                            <View>
+                              <Text style={m.fieldLabel}>Dust Test</Text>
+                              <PF value={s.dust_ok} onChange={(v: boolean) => patchSample(ii, si, 'dust_ok', v)} testID={`fi-dust-${ii}-${si}`} />
+                            </View>
+                            <View>
+                              <Text style={m.fieldLabel}>Painting Visual</Text>
+                              <PF value={s.painting_visual_ok} onChange={(v: boolean) => patchSample(ii, si, 'painting_visual_ok', v)} testID={`fi-paint-${ii}-${si}`} labels={['Satisfactory', 'Not']} />
+                            </View>
+                            <View>
+                              <Text style={m.fieldLabel}>Welding</Text>
+                              <PF value={s.welding_ok} onChange={(v: boolean) => patchSample(ii, si, 'welding_ok', v)} testID={`fi-weld-${ii}-${si}`} labels={['Satisfactory', 'Not']} />
+                            </View>
+                          </View>
+
+                          <View style={{ flexDirection: 'row', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
+                            <View>
+                              <Text style={m.fieldLabel}>Bearing # &amp; Make match WO?</Text>
+                              <YN value={s.bearing_match} onChange={(v: boolean) => patchSample(ii, si, 'bearing_match', v)} testID={`fi-bearing-${ii}-${si}`} />
+                              {s.bearing_match === false && (
+                                <TextInput
+                                  style={m.remark}
+                                  value={s.bearing_reason}
+                                  onChangeText={v => patchSample(ii, si, 'bearing_reason', v)}
+                                  placeholder="Reason for mismatch..."
+                                  testID={`fi-bearing-reason-${ii}-${si}`}
+                                />
+                              )}
+                            </View>
+                            <View>
+                              <Text style={m.fieldLabel}>Rust Preventive applied?</Text>
+                              <YN value={s.rust_preventive} onChange={(v: boolean) => patchSample(ii, si, 'rust_preventive', v)} testID={`fi-rust-${ii}-${si}`} />
+                              {s.rust_preventive === false && (
+                                <TextInput
+                                  style={m.remark}
+                                  value={s.rust_reason}
+                                  onChangeText={v => patchSample(ii, si, 'rust_reason', v)}
+                                  placeholder="Reason..."
+                                  testID={`fi-rust-reason-${ii}-${si}`}
+                                />
+                              )}
+                            </View>
+                          </View>
+
+                          <TextInput
+                            style={[m.num, { marginTop: 10, fontWeight: '500' }]}
+                            value={s.remarks}
+                            onChangeText={v => patchSample(ii, si, 'remarks', v)}
+                            placeholder="Remarks (optional)"
+                            testID={`fi-remarks-${ii}-${si}`}
+                          />
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
+
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+            <TouchableOpacity
+              style={[m.saveBtn, { flex: 1, backgroundColor: '#475569' }]}
+              onPress={() => downloadReport('pdf')}
+              disabled={!items.length}
+              testID="final-inspection-pdf"
+            >
+              <Ionicons name="document-text" size={16} color="#fff" />
+              <Text style={m.saveText}>PDF</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[m.saveBtn, { flex: 1, backgroundColor: '#047857' }]}
+              onPress={() => downloadReport('excel')}
+              disabled={!items.length}
+              testID="final-inspection-excel"
+            >
+              <Ionicons name="grid" size={16} color="#fff" />
+              <Text style={m.saveText}>Excel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[m.saveBtn, { flex: 2, backgroundColor: '#C5964A', opacity: saving ? 0.6 : 1 }]}
+              onPress={save}
+              disabled={saving || !items.length}
+              testID="final-inspection-save"
+            >
+              {saving ? <ActivityIndicator color="#fff" /> : <Ionicons name="save" size={16} color="#fff" />}
+              <Text style={m.saveText}>{saving ? 'Saving...' : 'Save Inspection'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  return { open, render };
+}
+
+
 const m = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
   modal: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '92%' },

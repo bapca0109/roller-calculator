@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { cacheEvents } from '../../utils/api';
 import { confirmAction } from '../../components/shared/confirm';
-import { usePipeQC, useShaftQC } from '../../components/quotes/QCModals';
+import { usePipeQC, useShaftQC, useFinalInspection } from '../../components/quotes/QCModals';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -306,6 +306,7 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
   const [selectedWO, setSelectedWO] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const canStampQC = isAdmin || userRole === 'quality_inspector';
+  const { open: openFinalInspection, render: renderFinalInspectionModal } = useFinalInspection({ onSaved: onRefresh });
   const [showPipeQC, setShowPipeQC] = useState(false);
   const [pipeQCSub, setPipeQCSub] = useState<any>(null);
   const [pipeQCRecords, setPipeQCRecords] = useState<any[]>([]);
@@ -716,6 +717,16 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                   >
                     <Ionicons name="clipboard-outline" size={14} color="#0891B2" />
                     <Text style={[wos.actionText, { color: '#0891B2' }]}>Shaft QC</Text>
+                  </TouchableOpacity>
+                )}
+                {(isAdmin || userRole === 'production_head' || userRole === 'quality_inspector') && (
+                  <TouchableOpacity
+                    style={[wos.actionBtn, { borderColor: '#C5964A' }]}
+                    onPress={() => openFinalInspection && openFinalInspection(wo)}
+                    testID={`final-inspection-${wo.wo_number}`}
+                  >
+                    <Ionicons name="shield-checkmark-outline" size={14} color="#C5964A" />
+                    <Text style={[wos.actionText, { color: '#C5964A' }]}>Final Inspection</Text>
                   </TouchableOpacity>
                 )}
                 {isAdmin && wo.stage !== 'completed' && (() => {
@@ -1153,6 +1164,7 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
           </View>
         </View>
       </Modal>
+      {renderFinalInspectionModal()}
     </View>
   );
 }
