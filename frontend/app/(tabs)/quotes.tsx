@@ -318,11 +318,16 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
   const [shaftQCSaving, setShaftQCSaving] = useState(false);
 
   const [matStatus, setMatStatus] = useState<Record<string, any>>({});
+  const [fiGate, setFiGate] = useState<Record<string, any>>({});
   useEffect(() => {
     (async () => {
       try {
         const res = await api.get('/work-orders/material-status/overview');
         setMatStatus(res.data.statuses || {});
+      } catch { /* ignore */ }
+      try {
+        const g = await api.get('/final-inspection/gate-overview');
+        setFiGate(g.data.by_wo_id || {});
       } catch { /* ignore */ }
     })();
   }, [workOrders.length]);
@@ -719,16 +724,39 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                     <Text style={[wos.actionText, { color: '#0891B2' }]}>Shaft QC</Text>
                   </TouchableOpacity>
                 )}
-                {(isAdmin || userRole === 'production_head' || userRole === 'quality_inspector') && (
-                  <TouchableOpacity
-                    style={[wos.actionBtn, { borderColor: '#C5964A' }]}
-                    onPress={() => openFinalInspection && openFinalInspection(wo)}
-                    testID={`final-inspection-${wo.wo_number}`}
-                  >
-                    <Ionicons name="shield-checkmark-outline" size={14} color="#C5964A" />
-                    <Text style={[wos.actionText, { color: '#C5964A' }]}>Final Inspection</Text>
-                  </TouchableOpacity>
-                )}
+                {(isAdmin || userRole === 'production_head' || userRole === 'quality_inspector') && (() => {
+                  const gate = fiGate[wo.id] || {};
+                  const eligible = !!gate.fi_eligible;
+                  const fiStatus = gate.fi_status || 'none';
+                  const at = gate.applicable_tests || {};
+                  const labels: any = { runout: 'R', water: 'W', dust: 'D', friction: 'F', painting: 'P' };
+                  return (
+                    <>
+                      <TouchableOpacity
+                        style={[wos.actionBtn, { borderColor: eligible ? '#C5964A' : '#CBD5E1', opacity: eligible ? 1 : 0.55 }]}
+                        onPress={() => {
+                          if (!eligible) {
+                            Alert.alert('Final Inspection Locked', `Pipe WIP QC: ${gate.pipe_qc_status || 'none'}\nShaft WIP QC: ${gate.shaft_qc_status || 'none'}\nBoth must be PASSED to open Final Inspection.`);
+                            return;
+                          }
+                          openFinalInspection && openFinalInspection(wo);
+                        }}
+                        testID={`final-inspection-${wo.wo_number}`}
+                      >
+                        <Ionicons name={eligible ? 'shield-checkmark-outline' : 'lock-closed'} size={14} color={eligible ? '#C5964A' : '#94A3B8'} />
+                        <Text style={[wos.actionText, { color: eligible ? '#C5964A' : '#94A3B8' }]}>Final Inspection{fiStatus !== 'none' ? ` · ${fiStatus.toUpperCase()}` : ''}</Text>
+                      </TouchableOpacity>
+                      {/* Applicable-tests chips */}
+                      <View style={{ flexDirection: 'row', gap: 3, alignItems: 'center', marginLeft: 4 }}>
+                        {['runout', 'water', 'dust', 'friction', 'painting'].map(k => (
+                          <View key={k} style={{ width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: at[k] ? '#DCFCE7' : '#F1F5F9', borderWidth: 1, borderColor: at[k] ? '#22C55E' : '#CBD5E1' }}>
+                            <Text style={{ fontSize: 9, fontWeight: '800', color: at[k] ? '#047857' : '#94A3B8' }}>{labels[k]}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </>
+                  );
+                })()}
                 {isAdmin && wo.stage !== 'completed' && (() => {
                   const stages = ['created', 'completed'];
                   const next = stages[stages.indexOf(wo.stage) + 1];

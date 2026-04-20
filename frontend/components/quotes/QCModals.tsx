@@ -389,6 +389,8 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
   const [wo, setWo] = useState<any>(null);
   const [ctx, setCtx] = useState<any>(null);
   const [applicable, setApplicable] = useState<any>({ runout: true, water: true, dust: true, friction: true, painting: true });
+  const [pipeQcStatus, setPipeQcStatus] = useState<string>('none');
+  const [shaftQcStatus, setShaftQcStatus] = useState<string>('none');
   const [items, setItems] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -404,6 +406,8 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
       const { data } = await api.get(`/work-orders/${workOrder.id}/final-inspection`);
       setCtx(data.context);
       setApplicable(data.context?.applicable_tests || { runout: true, water: true, dust: true, friction: true, painting: true });
+      setPipeQcStatus(data.context?.pipe_qc_status || 'none');
+      setShaftQcStatus(data.context?.shaft_qc_status || 'none');
       const rec = data.record;
       const initItems = (data.context?.items || []).map((c: any) => {
         const existing = (rec?.items || []).find((x: any) => x.item_index === c.item_index);
@@ -565,6 +569,17 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
             <ActivityIndicator size="large" color="#C5964A" style={{ marginVertical: 30 }} />
           ) : (
             <ScrollView>
+              {/* QC Gate banner */}
+              {(pipeQcStatus !== 'passed' || shaftQcStatus !== 'passed') && (
+                <View style={{ backgroundColor: '#FEE2E2', borderLeftWidth: 3, borderLeftColor: '#DC2626', padding: 10, borderRadius: 6, marginBottom: 10 }}>
+                  <Text style={{ fontSize: 12, color: '#991B1B', fontWeight: '800' }}>Final Inspection Locked</Text>
+                  <Text style={{ fontSize: 11, color: '#7F1D1D', marginTop: 2 }}>Both Pipe &amp; Shaft WIP QC must be PASSED before Save is enabled.</Text>
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: pipeQcStatus === 'passed' ? '#059669' : '#B91C1C' }}>Pipe WIP QC: {pipeQcStatus.toUpperCase()}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: shaftQcStatus === 'passed' ? '#059669' : '#B91C1C' }}>Shaft WIP QC: {shaftQcStatus.toUpperCase()}</Text>
+                  </View>
+                </View>
+              )}
               {(() => {
                 const na = Object.entries(applicable).filter(([, v]) => !v).map(([k]) => k);
                 const labels: any = { runout: 'Runout', water: 'Water', dust: 'Dust', friction: 'Friction', painting: 'Painting' };
@@ -608,6 +623,54 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
 
                     {!locked && (
                       <Text style={{ fontSize: 11, color: '#B91C1C', marginBottom: 6 }}>Sample count is 0 — complete Pipe or Shaft WIP QC first to unlock inspection samples.</Text>
+                    )}
+
+                    {/* Pipe WIP QC reference (read-only) */}
+                    {item.pipe_wip_qc && (item.pipe_wip_qc.samples || []).length > 0 && (
+                      <View style={{ backgroundColor: '#F0F9FF', borderRadius: 6, padding: 8, marginBottom: 10 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#0369A1', marginBottom: 4 }}>Pipe WIP QC Results (Read-only)</Text>
+                        <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#BAE6FD', paddingBottom: 3 }}>
+                          <Text style={[wipCol, { flex: 0.5 }]}>#</Text>
+                          <Text style={wipCol}>Dia OK?</Text>
+                          <Text style={wipCol}>Length (mm)</Text>
+                          <Text style={wipCol}>Thickness (mm)</Text>
+                        </View>
+                        {(item.pipe_wip_qc.samples || []).map((ps: any, psi: number) => (
+                          <View key={psi} style={{ flexDirection: 'row', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: '#E0F2FE' }}>
+                            <Text style={[wipVal, { flex: 0.5, fontWeight: '700' }]}>{ps.sample_no}</Text>
+                            <Text style={[wipVal, { color: ps.pipe_dia_ok === true ? '#059669' : (ps.pipe_dia_ok === false ? '#DC2626' : '#94A3B8'), fontWeight: '700' }]}>{ps.pipe_dia_ok === true ? 'YES' : (ps.pipe_dia_ok === false ? 'NO' : '–')}</Text>
+                            <Text style={wipVal}>{ps.pipe_length_measured ?? '–'}</Text>
+                            <Text style={wipVal}>{ps.pipe_thickness_measured ?? '–'}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Shaft WIP QC reference (read-only) */}
+                    {item.shaft_wip_qc && (item.shaft_wip_qc.samples || []).length > 0 && (
+                      <View style={{ backgroundColor: '#ECFEFF', borderRadius: 6, padding: 8, marginBottom: 10 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#155E75', marginBottom: 4 }}>Shaft WIP QC Results (Read-only)</Text>
+                        <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#A5F3FC', paddingBottom: 3 }}>
+                          <Text style={[wipCol, { flex: 0.5 }]}>#</Text>
+                          <Text style={wipCol}>Length OK?</Text>
+                          <Text style={wipCol}>Width OK?</Text>
+                          <Text style={wipCol}>Dim OK?</Text>
+                          <Text style={wipCol}>3rd OK?</Text>
+                        </View>
+                        {(item.shaft_wip_qc.samples || []).map((ss: any, ssi: number) => (
+                          <View key={ssi} style={{ flexDirection: 'row', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: '#CFFAFE' }}>
+                            <Text style={[wipVal, { flex: 0.5, fontWeight: '700' }]}>{ss.sample_no}</Text>
+                            {['length_ok', 'width_ok', 'dim_ok', 'third_ok'].map((k: string) => {
+                              const v = ss[k];
+                              return (
+                                <Text key={k} style={[wipVal, { color: v === true ? '#059669' : (v === false ? '#DC2626' : '#94A3B8'), fontWeight: '700' }]}>
+                                  {v === true ? 'YES' : (v === false ? 'NO' : '–')}
+                                </Text>
+                              );
+                            })}
+                          </View>
+                        ))}
+                      </View>
                     )}
 
                     {item.samples.map((s: any, si: number) => {
@@ -752,13 +815,13 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
               <Text style={m.saveText}>Excel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[m.saveBtn, { flex: 2, backgroundColor: '#C5964A', opacity: saving ? 0.6 : 1 }]}
+              style={[m.saveBtn, { flex: 2, backgroundColor: '#C5964A', opacity: (saving || pipeQcStatus !== 'passed' || shaftQcStatus !== 'passed') ? 0.4 : 1 }]}
               onPress={save}
-              disabled={saving || !items.length}
+              disabled={saving || !items.length || pipeQcStatus !== 'passed' || shaftQcStatus !== 'passed'}
               testID="final-inspection-save"
             >
-              {saving ? <ActivityIndicator color="#fff" /> : <Ionicons name="save" size={16} color="#fff" />}
-              <Text style={m.saveText}>{saving ? 'Saving...' : 'Save Inspection'}</Text>
+              {saving ? <ActivityIndicator color="#fff" /> : <Ionicons name={pipeQcStatus === 'passed' && shaftQcStatus === 'passed' ? 'save' : 'lock-closed'} size={16} color="#fff" />}
+              <Text style={m.saveText}>{saving ? 'Saving...' : (pipeQcStatus === 'passed' && shaftQcStatus === 'passed' ? 'Save Inspection' : 'Locked — WIP QC Pending')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -769,6 +832,10 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
   return { open, render };
 }
 
+
+// Read-only WIP QC reference table column styles
+const wipCol = { flex: 1, fontSize: 10, fontWeight: '700' as const, color: '#0F172A' };
+const wipVal = { flex: 1, fontSize: 10, color: '#475569', textAlign: 'center' as const };
 
 const m = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },

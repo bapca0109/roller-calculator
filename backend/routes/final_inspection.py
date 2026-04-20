@@ -147,12 +147,21 @@ async def _build_wo_context(wo: dict) -> dict:
 
     pipe_qty_by_idx: dict = {}
     shaft_qty_by_idx: dict = {}
+    pipe_items_by_idx: dict = {}
+    shaft_items_by_idx: dict = {}
     if pipe_sub:
         for rec in (pipe_sub.get("wip_qc") or {}).get("items", []) or []:
-            pipe_qty_by_idx[int(rec.get("item_index"))] = int(rec.get("sample_qty") or 0)
+            idx = int(rec.get("item_index"))
+            pipe_qty_by_idx[idx] = int(rec.get("sample_qty") or 0)
+            pipe_items_by_idx[idx] = rec
     if shaft_sub:
         for rec in (shaft_sub.get("wip_qc") or {}).get("items", []) or []:
-            shaft_qty_by_idx[int(rec.get("item_index"))] = int(rec.get("sample_qty") or 0)
+            idx = int(rec.get("item_index"))
+            shaft_qty_by_idx[idx] = int(rec.get("sample_qty") or 0)
+            shaft_items_by_idx[idx] = rec
+
+    pipe_status = ((pipe_sub or {}).get("wip_qc") or {}).get("status") or "none"
+    shaft_status = ((shaft_sub or {}).get("wip_qc") or {}).get("status") or "none"
 
     items_ctx = []
     wo_items = wo.get("items") or wo.get("products") or []
@@ -176,6 +185,8 @@ async def _build_wo_context(wo: dict) -> dict:
             "bearing_spec": f"{bearing_number} {bearing_make}".strip(),
             "sample_qty": int(sample_qty),
             "sample_source": "pipe" if idx in pipe_qty_by_idx else ("shaft" if idx in shaft_qty_by_idx else None),
+            "pipe_wip_qc": pipe_items_by_idx.get(idx),
+            "shaft_wip_qc": shaft_items_by_idx.get(idx),
         })
     return {
         "wo_number": wo.get("wo_number"),
@@ -184,6 +195,8 @@ async def _build_wo_context(wo: dict) -> dict:
         "customer_company": wo.get("customer_company"),
         "delivery_date": wo.get("delivery_date"),
         "applicable_tests": applicable,
+        "pipe_qc_status": pipe_status,
+        "shaft_qc_status": shaft_status,
         "items": items_ctx,
     }
 
@@ -203,6 +216,58 @@ async def get_final_inspection(
     return {"context": ctx, "record": existing}
 
 
+@router.get("/final-inspection/gate-overview")
+async def final_inspection_gate_overview(
+    current_user: dict = Depends(require_role(UserRole.all_staff())),
+):
+    """Lightweight aggregation used by WO cards: for every WO, returns its
+    applicable_tests (from parent SO), pipe/shaft WIP QC status, and FIP status.
+    """
+    wos = await db.work_orders.find({}, {"_id": 0, "id": 1, "so_id": 1, "so_number": 1}).to_list(2000)
+    subs = await db.sub_work_orders.find({}, {"_id": 0}).to_list(5000)
+    sub_by_parent: dict = {}
+    for s in subs:
+        sub_by_parent.setdefault(s.get("parent_wo_id"), []).append(s)
+    fis = await db.final_inspection_records.find({}, {"_id": 0, "wo_id": 1, "status": 1}).to_list(3000)
+    fi_by_wo = {f.get("wo_id"): f.get("status") for f in fis}
+
+    # Build SO → test_requirements cache (only fetch once)
+    so_ids = {w.get("so_id") for w in wos if w.get("so_id")}
+    so_numbers = {w.get("so_number") for w in wos if not w.get("so_id") and w.get("so_number")}
+    so_cache: dict = {}
+    if so_ids:
+        async for so in db.sales_orders.find({"id": {"$in": list(so_ids)}}, {"_id": 0, "id": 1, "test_requirements": 1}):
+            so_cache[so.get("id")] = so.get("test_requirements") or {}
+    if so_numbers:
+        async for so in db.sales_orders.find({"so_number": {"$in": list(so_numbers)}}, {"_id": 0, "so_number": 1, "test_requirements": 1}):
+            so_cache[so.get("so_number")] = so.get("test_requirements") or {}
+
+    out = {}
+    for w in wos:
+        wo_id = w.get("id")
+        tr = so_cache.get(w.get("so_id")) or so_cache.get(w.get("so_number")) or {}
+        applicable = {
+            "runout": bool(tr.get("runout", True)),
+            "water": bool(tr.get("water", True)),
+            "dust": bool(tr.get("dust", True)),
+            "friction": bool(tr.get("friction_factor", True)),
+            "painting": bool(tr.get("painting", True)),
+        }
+        wo_subs = sub_by_parent.get(wo_id) or []
+        pipe_sub = next((s for s in wo_subs if s.get("type") == "pipe"), None)
+        shaft_sub = next((s for s in wo_subs if s.get("type") == "shaft"), None)
+        pipe_status = ((pipe_sub or {}).get("wip_qc") or {}).get("status") or "none"
+        shaft_status = ((shaft_sub or {}).get("wip_qc") or {}).get("status") or "none"
+        out[wo_id] = {
+            "applicable_tests": applicable,
+            "pipe_qc_status": pipe_status,
+            "shaft_qc_status": shaft_status,
+            "fi_status": fi_by_wo.get(wo_id) or "none",
+            "fi_eligible": pipe_status == "passed" and shaft_status == "passed",
+        }
+    return {"by_wo_id": out}
+
+
 @router.post("/work-orders/{wo_id}/final-inspection")
 async def save_final_inspection(
     wo_id: str,
@@ -213,6 +278,12 @@ async def save_final_inspection(
     if not wo:
         raise HTTPException(status_code=404, detail="Work Order not found")
     ctx = await _build_wo_context(wo)
+    # Gate: both Pipe and Shaft WIP QC must be PASSED before final inspection
+    if ctx.get("pipe_qc_status") != "passed" or ctx.get("shaft_qc_status") != "passed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Final Inspection blocked — Pipe WIP QC: {ctx.get('pipe_qc_status')} · Shaft WIP QC: {ctx.get('shaft_qc_status')}. Both must be PASSED."
+        )
     ctx_by_idx = {c["item_index"]: c for c in ctx["items"]}
     applicable = ctx.get("applicable_tests") or {}
 
