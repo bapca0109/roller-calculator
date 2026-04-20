@@ -6,6 +6,7 @@ import api from '../../utils/api';
 import { confirmAction } from '../../components/shared/confirm';
 import { ExportButtons } from '../../components/shared/ExportButtons';
 import { SearchBar } from '../../components/shared/SearchBar';
+import { SearchPicker } from '../../components/shared/SearchPicker';
 
 type Tab = 'dashboard' | 'stock' | 'po' | 'suppliers' | 'alerts' | 'shortages';
 
@@ -33,8 +34,6 @@ export default function StoreScreen() {
   const [newItem, setNewItem] = useState({ name: '', category: 'pipe', unit_purchase: 'meters', unit_bom: 'kg', reorder_level: '' });
   const [newSupplier, setNewSupplier] = useState({ name: '', contact_person: '', phone: '', gst_number: '', city: '', payment_terms: '' });
   const [newPO, setNewPO] = useState<{ supplier_id: string; expected_delivery: string; notes: string; interstate: boolean; linked_wo_ids: string[]; items: { stock_item_id: string; qty: string; rate: string; gst_rate: string; prefill_name?: string }[] }>({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] });
-  const [poLineSearch, setPoLineSearch] = useState<Record<number, string>>({});
-  const [poLineHighlight, setPoLineHighlight] = useState<Record<number, number>>({});
   const [woShortageRows, setWoShortageRows] = useState<any[]>([]);
   const [shortageView, setShortageView] = useState<'consolidated' | 'by_wo'>('consolidated');
   const [qcData, setQcData] = useState({ accepted_qty: '', rejected_qty: '', reason: '' });
@@ -94,7 +93,7 @@ export default function StoreScreen() {
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
-  const resetNewPO = () => { setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] }); setPoLineSearch({}); setPoLineHighlight({}); };
+  const resetNewPO = () => { setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] }); };
 
   const createPO = async () => {
     const validItems = newPO.items.filter(i => i.stock_item_id && parseFloat(i.qty) > 0);
@@ -158,7 +157,7 @@ export default function StoreScreen() {
   };
 
   const addPOLine = () => setNewPO(p => ({ ...p, items: [...p.items, { stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] }));
-  const removePOLine = (idx: number) => { setNewPO(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) })); setPoLineSearch(prev => { const next: Record<number, string> = {}; Object.keys(prev).forEach(k => { const n = parseInt(k, 10); if (n < idx) next[n] = prev[n]; else if (n > idx) next[n - 1] = prev[n]; }); return next; }); };
+  const removePOLine = (idx: number) => setNewPO(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }));
   const updatePOLine = (idx: number, field: string, value: string) => setNewPO(p => ({ ...p, items: p.items.map((it, i) => i === idx ? { ...it, [field]: value } : it) }));
 
   const processQC = async (status: string) => {
@@ -514,9 +513,14 @@ export default function StoreScreen() {
           <View style={s.modalHead}><Text style={s.modalTitle}>New Purchase Order</Text><TouchableOpacity onPress={() => setShowAddPO(false)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity></View>
           <ScrollView style={{ maxHeight: 620 }} showsVerticalScrollIndicator={false}>
             <Text style={s.label}>Supplier *</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-              {suppliers.map(sup => (<Pressable key={sup.id} style={[s.chip, newPO.supplier_id === sup.id && s.chipActive]} onPress={() => setNewPO({ ...newPO, supplier_id: sup.id })}><Text style={[s.chipText, newPO.supplier_id === sup.id && s.chipTextActive]}>{sup.name}</Text></Pressable>))}
-            </ScrollView>
+            <SearchPicker
+              value={newPO.supplier_id}
+              items={suppliers.map((sup: any) => ({ id: sup.id, label: sup.name, sublabel: [sup.city, sup.contact_person].filter(Boolean).join(' · ') }))}
+              onSelect={id => setNewPO({ ...newPO, supplier_id: id })}
+              placeholder="Search supplier by name or city..."
+              emptyText="No matching suppliers"
+              testID="po-supplier-search"
+            />
 
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1 }}>
@@ -567,11 +571,11 @@ export default function StoreScreen() {
                       </Pressable>
                     )}
                   </View>
-                  {/* Item picker — locked to the prefilled item. No manual change allowed. */}
-                  {line.stock_item_id || line.prefill_name ? (
+                  {/* Item picker — locked to prefilled item from Shortage, otherwise search-driven */}
+                  {line.prefill_name ? (
                     (() => {
                       const itm = line.stock_item_id ? stockItems.find((x: any) => x.id === line.stock_item_id) : null;
-                      const displayName = itm?.name || line.prefill_name || 'Selected item';
+                      const displayName = itm?.name || line.prefill_name;
                       const inRegister = !!line.stock_item_id;
                       return (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: inRegister ? '#ECFDF5' : '#FFFBEB', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: inRegister ? '#10B981' : '#F59E0B', marginBottom: 6 }}>
@@ -584,84 +588,14 @@ export default function StoreScreen() {
                       );
                     })()
                   ) : (
-                    (() => {
-                      const q = (poLineSearch[idx] || '').trim().toLowerCase();
-                      const matched = q.length === 0 ? [] : stockItems.filter((it: any) => {
-                        const name = (it.name || '').toLowerCase();
-                        const cat = (it.category || '').toLowerCase();
-                        return name.includes(q) || cat.includes(q);
-                      }).slice(0, 8);
-                      const hl = Math.min(poLineHighlight[idx] ?? 0, Math.max(0, matched.length - 1));
-                      const selectAt = (i: number) => {
-                        const it = matched[i];
-                        if (!it) return;
-                        updatePOLine(idx, 'stock_item_id', it.id);
-                        setPoLineSearch(prev => ({ ...prev, [idx]: '' }));
-                        setPoLineHighlight(prev => ({ ...prev, [idx]: 0 }));
-                      };
-                      const onKey = (e: any) => {
-                        const key = e?.nativeEvent?.key || e?.key;
-                        if (!key) return;
-                        if (key === 'ArrowDown') { e.preventDefault?.(); setPoLineHighlight(prev => ({ ...prev, [idx]: Math.min((prev[idx] ?? 0) + 1, Math.max(0, matched.length - 1)) })); }
-                        else if (key === 'ArrowUp') { e.preventDefault?.(); setPoLineHighlight(prev => ({ ...prev, [idx]: Math.max((prev[idx] ?? 0) - 1, 0) })); }
-                        else if (key === 'Enter') { e.preventDefault?.(); if (matched.length > 0) selectAt(hl); }
-                        else if (key === 'Escape') { setPoLineSearch(prev => ({ ...prev, [idx]: '' })); setPoLineHighlight(prev => ({ ...prev, [idx]: 0 })); }
-                      };
-                      return (
-                        <View style={{ marginBottom: 6 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 10 }}>
-                            <Ionicons name="search" size={14} color="#94A3B8" />
-                            <TextInput
-                              style={{ flex: 1, paddingVertical: 8, paddingHorizontal: 6, fontSize: 13, color: '#0F172A', outlineWidth: 0 } as any}
-                              value={poLineSearch[idx] || ''}
-                              onChangeText={v => { setPoLineSearch(prev => ({ ...prev, [idx]: v })); setPoLineHighlight(prev => ({ ...prev, [idx]: 0 })); }}
-                              onKeyPress={onKey}
-                              {...({ onKeyDown: onKey } as any)}
-                              placeholder="Search stock items (↑↓ to navigate, Enter to select)"
-                              placeholderTextColor="#94A3B8"
-                              testID={`po-item-search-${idx}`}
-                              autoCapitalize="none"
-                            />
-                            {!!poLineSearch[idx] && (
-                              <Pressable onPress={() => { setPoLineSearch(prev => ({ ...prev, [idx]: '' })); setPoLineHighlight(prev => ({ ...prev, [idx]: 0 })); }} testID={`po-item-search-clear-${idx}`}>
-                                <Ionicons name="close-circle" size={16} color="#94A3B8" />
-                              </Pressable>
-                            )}
-                          </View>
-                          {q.length > 0 && (
-                            matched.length === 0 ? (
-                              <View style={{ padding: 10, backgroundColor: '#FEF3C7', borderRadius: 8, marginTop: 4 }}>
-                                <Text style={{ fontSize: 11, color: '#92400E', fontWeight: '600' }}>No matching items in stock register</Text>
-                              </View>
-                            ) : (
-                              <View style={{ backgroundColor: '#FFFFFF', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', marginTop: 4, overflow: 'hidden' }}>
-                                {matched.map((item: any, mi: number) => {
-                                  const isHl = mi === hl;
-                                  return (
-                                    <Pressable
-                                      key={item.id}
-                                      onPress={() => selectAt(mi)}
-                                      onHoverIn={() => setPoLineHighlight(prev => ({ ...prev, [idx]: mi }))}
-                                      style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, borderTopWidth: mi === 0 ? 0 : 1, borderTopColor: '#F1F5F9', backgroundColor: isHl ? '#FEF3C7' : 'transparent' }}
-                                      testID={`po-item-option-${idx}-${item.id}`}
-                                    >
-                                      <View style={{ flex: 1 }}>
-                                        <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: isHl ? '800' : '600' }} numberOfLines={1}>{item.name}</Text>
-                                        {item.category ? <Text style={{ fontSize: 10, color: '#64748B' }}>{item.category}</Text> : null}
-                                      </View>
-                                      <Text style={{ fontSize: 10, color: '#10B981', fontWeight: '700' }}>{item.current_stock ?? 0} {item.unit_purchase || ''}</Text>
-                                    </Pressable>
-                                  );
-                                })}
-                              </View>
-                            )
-                          )}
-                          {q.length === 0 && (
-                            <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 4 }}>Start typing to find an item...</Text>
-                          )}
-                        </View>
-                      );
-                    })()
+                    <SearchPicker
+                      value={line.stock_item_id}
+                      items={stockItems.map((it: any) => ({ id: it.id, label: it.name, sublabel: it.category, right: `${it.current_stock ?? 0} ${it.unit_purchase || ''}` }))}
+                      onSelect={id => updatePOLine(idx, 'stock_item_id', id)}
+                      placeholder="Search stock items by name or category..."
+                      emptyText="No matching items in stock register"
+                      testID={`po-item-search-${idx}`}
+                    />
                   )}
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     <View style={{ flex: 1 }}><Text style={s.label}>Qty</Text><TextInput style={s.input} value={line.qty} onChangeText={v => updatePOLine(idx, 'qty', v)} placeholder="100" keyboardType="numeric" testID={`po-qty-${idx}`} /></View>
@@ -744,9 +678,14 @@ export default function StoreScreen() {
         <View style={s.modalOverlay}><View style={[s.modal, { maxHeight: '88%' }]}>
           <View style={s.modalHead}><Text style={s.modalTitle}>Issue Stock to Work Order</Text><TouchableOpacity onPress={() => setShowIssue(false)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity></View>
           <Text style={s.label}>Select Work Order</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-            {workOrders.map(wo => (<Pressable key={wo.id} style={[s.chip, issueWOId === wo.id && s.chipActive]} onPress={() => loadIssuePlan(wo.id)} data-testid={`issue-wo-chip-${wo.wo_number}`}><Text style={[s.chipText, issueWOId === wo.id && s.chipTextActive]}>{wo.wo_number}</Text></Pressable>))}
-          </ScrollView>
+          <SearchPicker
+            value={issueWOId}
+            items={workOrders.map((wo: any) => ({ id: wo.id, label: wo.wo_number, sublabel: [wo.customer_name, wo.status].filter(Boolean).join(' · ') }))}
+            onSelect={id => loadIssuePlan(id)}
+            placeholder="Search WO by number or customer..."
+            emptyText="No matching work orders"
+            testID="issue-wo-search"
+          />
           {issueWOId ? (
             <>
               {issueRecent.length > 0 && (
