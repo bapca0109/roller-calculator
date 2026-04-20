@@ -114,7 +114,7 @@ function QCView({ isAdmin, userRole }: { isAdmin: boolean; userRole: string }) {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
-  const [typeFilter, setTypeFilter] = useState<'both' | 'pipe' | 'shaft'>('both');
+  const [typeFilter, setTypeFilter] = useState<'both' | 'pipe' | 'shaft' | 'final'>('both');
 
   const { open: openPipeQC, render: renderPipeModal } = usePipeQC(() => fetchRows());
   const { open: openShaftQC, render: renderShaftModal } = useShaftQC(() => fetchRows());
@@ -142,6 +142,13 @@ function QCView({ isAdmin, userRole }: { isAdmin: boolean; userRole: string }) {
   const filtered = rows.filter((r: any) => {
     const p = r.pipe?.status;
     const s = r.shaft?.status;
+    const g = fiGate[r.wo_id] || {};
+    const fi = g.fi_status || 'none';
+    if (typeFilter === 'final') {
+      if (statusFilter === 'pending') return g.fi_eligible && fi === 'none';
+      if (statusFilter === 'completed') return fi === 'passed' || fi === 'failed';
+      return g.fi_eligible || fi !== 'none';
+    }
     if (statusFilter === 'pending') {
       if (typeFilter === 'pipe') return p === 'pending';
       if (typeFilter === 'shaft') return s === 'pending';
@@ -241,7 +248,7 @@ function QCView({ isAdmin, userRole }: { isAdmin: boolean; userRole: string }) {
           </Pressable>
         ))}
         <View style={{ width: 16 }} />
-        {(['both', 'pipe', 'shaft'] as const).map((f) => (
+        {(['both', 'pipe', 'shaft', 'final'] as const).map((f) => (
           <Pressable key={f} onPress={() => setTypeFilter(f)} style={[qv.filterChip, typeFilter === f && qv.filterChipActive]} testID={`qc-type-${f}`}>
             <Text style={[qv.filterText, typeFilter === f && qv.filterTextActive]}>{f === 'both' ? 'P+S' : f.toUpperCase()}</Text>
           </Pressable>
