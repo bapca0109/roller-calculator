@@ -33,6 +33,7 @@ export default function StoreScreen() {
   const [newItem, setNewItem] = useState({ name: '', category: 'pipe', unit_purchase: 'meters', unit_bom: 'kg', reorder_level: '' });
   const [newSupplier, setNewSupplier] = useState({ name: '', contact_person: '', phone: '', gst_number: '', city: '', payment_terms: '' });
   const [newPO, setNewPO] = useState<{ supplier_id: string; expected_delivery: string; notes: string; interstate: boolean; linked_wo_ids: string[]; items: { stock_item_id: string; qty: string; rate: string; gst_rate: string; prefill_name?: string }[] }>({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] });
+  const [poLineSearch, setPoLineSearch] = useState<Record<number, string>>({});
   const [woShortageRows, setWoShortageRows] = useState<any[]>([]);
   const [shortageView, setShortageView] = useState<'consolidated' | 'by_wo'>('consolidated');
   const [qcData, setQcData] = useState({ accepted_qty: '', rejected_qty: '', reason: '' });
@@ -92,7 +93,7 @@ export default function StoreScreen() {
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
-  const resetNewPO = () => setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] });
+  const resetNewPO = () => { setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] }); setPoLineSearch({}); };
 
   const createPO = async () => {
     const validItems = newPO.items.filter(i => i.stock_item_id && parseFloat(i.qty) > 0);
@@ -156,7 +157,7 @@ export default function StoreScreen() {
   };
 
   const addPOLine = () => setNewPO(p => ({ ...p, items: [...p.items, { stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] }));
-  const removePOLine = (idx: number) => setNewPO(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }));
+  const removePOLine = (idx: number) => { setNewPO(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) })); setPoLineSearch(prev => { const next: Record<number, string> = {}; Object.keys(prev).forEach(k => { const n = parseInt(k, 10); if (n < idx) next[n] = prev[n]; else if (n > idx) next[n - 1] = prev[n]; }); return next; }); };
   const updatePOLine = (idx: number, field: string, value: string) => setNewPO(p => ({ ...p, items: p.items.map((it, i) => i === idx ? { ...it, [field]: value } : it) }));
 
   const processQC = async (status: string) => {
@@ -582,13 +583,62 @@ export default function StoreScreen() {
                       );
                     })()
                   ) : (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
-                      {stockItems.map(item => (
-                        <Pressable key={item.id} style={[s.chip, line.stock_item_id === item.id && s.chipActive]} onPress={() => updatePOLine(idx, 'stock_item_id', item.id)}>
-                          <Text style={[s.chipText, line.stock_item_id === item.id && s.chipTextActive]}>{item.name}</Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
+                    (() => {
+                      const q = (poLineSearch[idx] || '').trim().toLowerCase();
+                      const matched = q.length === 0 ? [] : stockItems.filter((it: any) => {
+                        const name = (it.name || '').toLowerCase();
+                        const cat = (it.category || '').toLowerCase();
+                        return name.includes(q) || cat.includes(q);
+                      }).slice(0, 8);
+                      return (
+                        <View style={{ marginBottom: 6 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 10 }}>
+                            <Ionicons name="search" size={14} color="#94A3B8" />
+                            <TextInput
+                              style={{ flex: 1, paddingVertical: 8, paddingHorizontal: 6, fontSize: 13, color: '#0F172A', outlineWidth: 0 } as any}
+                              value={poLineSearch[idx] || ''}
+                              onChangeText={v => setPoLineSearch(prev => ({ ...prev, [idx]: v }))}
+                              placeholder="Search stock items by name or category..."
+                              placeholderTextColor="#94A3B8"
+                              testID={`po-item-search-${idx}`}
+                              autoCapitalize="none"
+                            />
+                            {!!poLineSearch[idx] && (
+                              <Pressable onPress={() => setPoLineSearch(prev => ({ ...prev, [idx]: '' }))} testID={`po-item-search-clear-${idx}`}>
+                                <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                              </Pressable>
+                            )}
+                          </View>
+                          {q.length > 0 && (
+                            matched.length === 0 ? (
+                              <View style={{ padding: 10, backgroundColor: '#FEF3C7', borderRadius: 8, marginTop: 4 }}>
+                                <Text style={{ fontSize: 11, color: '#92400E', fontWeight: '600' }}>No matching items in stock register</Text>
+                              </View>
+                            ) : (
+                              <View style={{ backgroundColor: '#FFFFFF', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', marginTop: 4, overflow: 'hidden' }}>
+                                {matched.map((item: any, mi: number) => (
+                                  <Pressable
+                                    key={item.id}
+                                    onPress={() => { updatePOLine(idx, 'stock_item_id', item.id); setPoLineSearch(prev => ({ ...prev, [idx]: '' })); }}
+                                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, borderTopWidth: mi === 0 ? 0 : 1, borderTopColor: '#F1F5F9' }}
+                                    testID={`po-item-option-${idx}-${item.id}`}
+                                  >
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '600' }} numberOfLines={1}>{item.name}</Text>
+                                      {item.category ? <Text style={{ fontSize: 10, color: '#64748B' }}>{item.category}</Text> : null}
+                                    </View>
+                                    <Text style={{ fontSize: 10, color: '#10B981', fontWeight: '700' }}>{item.current_stock ?? 0} {item.unit_purchase || ''}</Text>
+                                  </Pressable>
+                                ))}
+                              </View>
+                            )
+                          )}
+                          {q.length === 0 && (
+                            <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 4 }}>Start typing to find an item...</Text>
+                          )}
+                        </View>
+                      );
+                    })()
                   )}
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     <View style={{ flex: 1 }}><Text style={s.label}>Qty</Text><TextInput style={s.input} value={line.qty} onChangeText={v => updatePOLine(idx, 'qty', v)} placeholder="100" keyboardType="numeric" testID={`po-qty-${idx}`} /></View>
