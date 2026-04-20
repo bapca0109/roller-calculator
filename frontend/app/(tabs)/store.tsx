@@ -395,10 +395,10 @@ export default function StoreScreen() {
                       </TouchableOpacity>
                     )}
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
-                    <View><Text style={s.alertLabel}>Required</Text><Text style={s.alertValue}>{sh.required} {sh.unit}</Text></View>
-                    <View><Text style={s.alertLabel}>Available</Text><Text style={[s.alertValue, { color: '#10B981' }]}>{sh.available} {sh.unit}</Text></View>
-                    <View><Text style={s.alertLabel}>Shortage</Text><Text style={[s.alertValue, { color: '#EF4444', fontWeight: '800' }]}>{sh.shortage} {sh.unit}</Text></View>
+                  <View style={{ flexDirection: 'row', gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
+                    <View><Text style={s.alertLabel}>Required</Text><Text style={s.alertValue}>{sh.required} {sh.unit}</Text>{sh.required_kg != null && <Text style={{ fontSize: 10, color: '#64748B' }}>≈ {sh.required_kg} kg</Text>}</View>
+                    <View><Text style={s.alertLabel}>Available</Text><Text style={[s.alertValue, { color: '#10B981' }]}>{sh.available} {sh.unit}</Text>{sh.available_kg != null && <Text style={{ fontSize: 10, color: '#10B981' }}>≈ {sh.available_kg} kg</Text>}</View>
+                    <View><Text style={s.alertLabel}>Shortage</Text><Text style={[s.alertValue, { color: '#EF4444', fontWeight: '800' }]}>{sh.shortage} {sh.unit}</Text>{sh.shortage_kg != null && <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '700' }}>≈ {sh.shortage_kg} kg</Text>}</View>
                   </View>
                   <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 6 }}>WOs: {(sh.wo_numbers || []).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(', ')}</Text>
                 </View>
@@ -422,7 +422,10 @@ export default function StoreScreen() {
                           {sh.description ? <Text style={{ fontSize: 10, color: '#64748B' }} numberOfLines={1}>{sh.description}</Text> : null}
                           {!sh.stock_item_id && <Text style={{ fontSize: 9, color: '#EF4444', fontWeight: '700' }}>NOT IN STOCK REGISTER</Text>}
                         </View>
-                        <Text style={{ fontSize: 11, color: '#EF4444', fontWeight: '700', marginHorizontal: 10 }}>{sh.shortage} {sh.unit}</Text>
+                        <Text style={{ fontSize: 11, color: '#EF4444', fontWeight: '700', marginHorizontal: 10, textAlign: 'right' }}>
+                          {sh.shortage} {sh.unit}
+                          {sh.shortage_kg != null ? `\n≈ ${sh.shortage_kg} kg` : ''}
+                        </Text>
                         <TouchableOpacity
                           onPress={() => openPOFromShortage({ ...sh, wo_numbers: [row.wo_number] }, row.wo_id)}
                           style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: sh.stock_item_id ? '#C5964A' : '#94A3B8', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}

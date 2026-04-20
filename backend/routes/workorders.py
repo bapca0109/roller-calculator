@@ -1408,37 +1408,67 @@ async def _match_bom_to_stock(bom_component: str, bom_description: str, bom_mate
 
 async def _check_bom_shortages(work_order: dict) -> list:
     """Check all BOM items against stock and return shortage list"""
+    import re as _re
     shortages = []
-    
+
+    def _kg_from_meters(component: str, description: str, meters: float) -> Optional[float]:
+        """Steel-weight conversion — Pipe: W=0.0246615·t·(D-t) kg/m, Shaft: W=0.006165·d² kg/m."""
+        if meters <= 0:
+            return None
+        c = (component or "").lower()
+        if c == "pipe":
+            m = _re.search(r"([\d.]+)\s*mm\s*OD\s*[x×*]\s*([\d.]+)\s*mm\s*thk", description or "", _re.I)
+            if m:
+                try:
+                    D = float(m.group(1)); t = float(m.group(2))
+                    return round(meters * 0.0246615 * t * (D - t), 2)
+                except Exception: return None
+        if c == "shaft":
+            m = _re.search(r"([\d.]+)\s*mm\s*dia", description or "", _re.I)
+            if m:
+                try:
+                    d = float(m.group(1))
+                    return round(meters * 0.006165 * d * d, 2)
+                except Exception: return None
+        return None
+
     for item in work_order.get("items", []):
         for bom in item.get("bom", []):
             component = bom.get("component", "")
             description = bom.get("description", "")
             material = bom.get("material", "")
             required_qty = bom.get("total_qty", 0)
-            
+
             if required_qty <= 0:
                 continue
-            
+
             stock_item = await _match_bom_to_stock(component, description, material, bom.get("bom_match_key"))
-            
+
             if stock_item:
                 available = stock_item.get("current_stock", 0)
                 if available < required_qty:
-                    shortages.append({
+                    short_qty = round(required_qty - available, 3)
+                    row = {
                         "component": component,
                         "description": description,
                         "stock_item_id": stock_item.get("id"),
                         "stock_item_name": stock_item.get("name"),
                         "required": required_qty,
                         "available": available,
-                        "shortage": round(required_qty - available, 3),
+                        "shortage": short_qty,
                         "unit": stock_item.get("unit_purchase", "nos"),
                         "wo_number": work_order.get("wo_number"),
-                    })
+                    }
+                    # Add kg weight for Pipe / Shaft so procurement sees both meters & kg
+                    kg = _kg_from_meters(component, description, short_qty)
+                    if kg is not None:
+                        row["shortage_kg"] = kg
+                        row["required_kg"] = _kg_from_meters(component, description, required_qty)
+                        row["available_kg"] = _kg_from_meters(component, description, available)
+                    shortages.append(row)
             else:
                 # No matching stock item found — report as unknown
-                shortages.append({
+                row = {
                     "component": component,
                     "description": description,
                     "stock_item_id": None,
@@ -1448,8 +1478,15 @@ async def _check_bom_shortages(work_order: dict) -> list:
                     "shortage": required_qty,
                     "unit": "nos",
                     "wo_number": work_order.get("wo_number"),
-                })
-    
+                }
+                kg = _kg_from_meters(component, description, required_qty)
+                if kg is not None:
+                    row["shortage_kg"] = kg
+                    row["required_kg"] = kg
+                    row["available_kg"] = 0
+                    row["unit"] = "meters"
+                shortages.append(row)
+
     return shortages
 
 
@@ -1471,6 +1508,10 @@ async def get_wo_shortages(current_user: dict = Depends(require_role([UserRole.A
         if key in consolidated:
             consolidated[key]["required"] += s["required"]
             consolidated[key]["shortage"] += s["shortage"]
+            if s.get("shortage_kg") is not None:
+                consolidated[key]["shortage_kg"] = round((consolidated[key].get("shortage_kg") or 0) + s["shortage_kg"], 2)
+                consolidated[key]["required_kg"] = round((consolidated[key].get("required_kg") or 0) + (s.get("required_kg") or 0), 2)
+                consolidated[key]["available_kg"] = round((consolidated[key].get("available_kg") or 0) + (s.get("available_kg") or 0), 2)
             consolidated[key]["wo_numbers"].append(s["wo_number"])
         else:
             consolidated[key] = {
@@ -1481,6 +1522,9 @@ async def get_wo_shortages(current_user: dict = Depends(require_role([UserRole.A
                 "required": s["required"],
                 "available": s["available"],
                 "shortage": s["shortage"],
+                "shortage_kg": s.get("shortage_kg"),
+                "required_kg": s.get("required_kg"),
+                "available_kg": s.get("available_kg"),
                 "unit": s["unit"],
                 "wo_numbers": [s["wo_number"]],
             }
