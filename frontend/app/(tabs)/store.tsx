@@ -34,6 +34,7 @@ export default function StoreScreen() {
   const [newSupplier, setNewSupplier] = useState({ name: '', contact_person: '', phone: '', gst_number: '', city: '', payment_terms: '' });
   const [newPO, setNewPO] = useState<{ supplier_id: string; expected_delivery: string; notes: string; interstate: boolean; linked_wo_ids: string[]; items: { stock_item_id: string; qty: string; rate: string; gst_rate: string; prefill_name?: string }[] }>({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] });
   const [poLineSearch, setPoLineSearch] = useState<Record<number, string>>({});
+  const [poLineHighlight, setPoLineHighlight] = useState<Record<number, number>>({});
   const [woShortageRows, setWoShortageRows] = useState<any[]>([]);
   const [shortageView, setShortageView] = useState<'consolidated' | 'by_wo'>('consolidated');
   const [qcData, setQcData] = useState({ accepted_qty: '', rejected_qty: '', reason: '' });
@@ -93,7 +94,7 @@ export default function StoreScreen() {
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
-  const resetNewPO = () => { setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] }); setPoLineSearch({}); };
+  const resetNewPO = () => { setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] }); setPoLineSearch({}); setPoLineHighlight({}); };
 
   const createPO = async () => {
     const validItems = newPO.items.filter(i => i.stock_item_id && parseFloat(i.qty) > 0);
@@ -590,6 +591,22 @@ export default function StoreScreen() {
                         const cat = (it.category || '').toLowerCase();
                         return name.includes(q) || cat.includes(q);
                       }).slice(0, 8);
+                      const hl = Math.min(poLineHighlight[idx] ?? 0, Math.max(0, matched.length - 1));
+                      const selectAt = (i: number) => {
+                        const it = matched[i];
+                        if (!it) return;
+                        updatePOLine(idx, 'stock_item_id', it.id);
+                        setPoLineSearch(prev => ({ ...prev, [idx]: '' }));
+                        setPoLineHighlight(prev => ({ ...prev, [idx]: 0 }));
+                      };
+                      const onKey = (e: any) => {
+                        const key = e?.nativeEvent?.key || e?.key;
+                        if (!key) return;
+                        if (key === 'ArrowDown') { e.preventDefault?.(); setPoLineHighlight(prev => ({ ...prev, [idx]: Math.min((prev[idx] ?? 0) + 1, Math.max(0, matched.length - 1)) })); }
+                        else if (key === 'ArrowUp') { e.preventDefault?.(); setPoLineHighlight(prev => ({ ...prev, [idx]: Math.max((prev[idx] ?? 0) - 1, 0) })); }
+                        else if (key === 'Enter') { e.preventDefault?.(); if (matched.length > 0) selectAt(hl); }
+                        else if (key === 'Escape') { setPoLineSearch(prev => ({ ...prev, [idx]: '' })); setPoLineHighlight(prev => ({ ...prev, [idx]: 0 })); }
+                      };
                       return (
                         <View style={{ marginBottom: 6 }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 10 }}>
@@ -597,14 +614,16 @@ export default function StoreScreen() {
                             <TextInput
                               style={{ flex: 1, paddingVertical: 8, paddingHorizontal: 6, fontSize: 13, color: '#0F172A', outlineWidth: 0 } as any}
                               value={poLineSearch[idx] || ''}
-                              onChangeText={v => setPoLineSearch(prev => ({ ...prev, [idx]: v }))}
-                              placeholder="Search stock items by name or category..."
+                              onChangeText={v => { setPoLineSearch(prev => ({ ...prev, [idx]: v })); setPoLineHighlight(prev => ({ ...prev, [idx]: 0 })); }}
+                              onKeyPress={onKey}
+                              {...({ onKeyDown: onKey } as any)}
+                              placeholder="Search stock items (↑↓ to navigate, Enter to select)"
                               placeholderTextColor="#94A3B8"
                               testID={`po-item-search-${idx}`}
                               autoCapitalize="none"
                             />
                             {!!poLineSearch[idx] && (
-                              <Pressable onPress={() => setPoLineSearch(prev => ({ ...prev, [idx]: '' }))} testID={`po-item-search-clear-${idx}`}>
+                              <Pressable onPress={() => { setPoLineSearch(prev => ({ ...prev, [idx]: '' })); setPoLineHighlight(prev => ({ ...prev, [idx]: 0 })); }} testID={`po-item-search-clear-${idx}`}>
                                 <Ionicons name="close-circle" size={16} color="#94A3B8" />
                               </Pressable>
                             )}
@@ -616,20 +635,24 @@ export default function StoreScreen() {
                               </View>
                             ) : (
                               <View style={{ backgroundColor: '#FFFFFF', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', marginTop: 4, overflow: 'hidden' }}>
-                                {matched.map((item: any, mi: number) => (
-                                  <Pressable
-                                    key={item.id}
-                                    onPress={() => { updatePOLine(idx, 'stock_item_id', item.id); setPoLineSearch(prev => ({ ...prev, [idx]: '' })); }}
-                                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, borderTopWidth: mi === 0 ? 0 : 1, borderTopColor: '#F1F5F9' }}
-                                    testID={`po-item-option-${idx}-${item.id}`}
-                                  >
-                                    <View style={{ flex: 1 }}>
-                                      <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '600' }} numberOfLines={1}>{item.name}</Text>
-                                      {item.category ? <Text style={{ fontSize: 10, color: '#64748B' }}>{item.category}</Text> : null}
-                                    </View>
-                                    <Text style={{ fontSize: 10, color: '#10B981', fontWeight: '700' }}>{item.current_stock ?? 0} {item.unit_purchase || ''}</Text>
-                                  </Pressable>
-                                ))}
+                                {matched.map((item: any, mi: number) => {
+                                  const isHl = mi === hl;
+                                  return (
+                                    <Pressable
+                                      key={item.id}
+                                      onPress={() => selectAt(mi)}
+                                      onHoverIn={() => setPoLineHighlight(prev => ({ ...prev, [idx]: mi }))}
+                                      style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, borderTopWidth: mi === 0 ? 0 : 1, borderTopColor: '#F1F5F9', backgroundColor: isHl ? '#FEF3C7' : 'transparent' }}
+                                      testID={`po-item-option-${idx}-${item.id}`}
+                                    >
+                                      <View style={{ flex: 1 }}>
+                                        <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: isHl ? '800' : '600' }} numberOfLines={1}>{item.name}</Text>
+                                        {item.category ? <Text style={{ fontSize: 10, color: '#64748B' }}>{item.category}</Text> : null}
+                                      </View>
+                                      <Text style={{ fontSize: 10, color: '#10B981', fontWeight: '700' }}>{item.current_stock ?? 0} {item.unit_purchase || ''}</Text>
+                                    </Pressable>
+                                  );
+                                })}
                               </View>
                             )
                           )}
