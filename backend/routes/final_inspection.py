@@ -375,7 +375,7 @@ def _fmt(v, suffix=""):
         return str(v)
 
 
-def _render_final_inspection_html(record: dict, wo: dict) -> str:
+def _render_final_inspection_html(record: dict, wo: dict, ctx: Optional[dict] = None) -> str:
     status = (record.get("status") or "pending").upper()
     stamp_color = "#059669" if status == "PASSED" else ("#DC2626" if status == "FAILED" else "#6B7280")
 
@@ -396,9 +396,59 @@ def _render_final_inspection_html(record: dict, wo: dict) -> str:
     head_cols += ["Bearing<br>Match", "Rust<br>Prev.", "Welding", "Overall"]
     head_html = "".join(f"<th>{c}</th>" for c in head_cols)
 
+    # Build lookup of pipe/shaft WIP QC from context if available
+    ctx_items_by_idx: dict = {}
+    if ctx and ctx.get("items"):
+        for c in ctx["items"]:
+            ctx_items_by_idx[int(c.get("item_index"))] = c
+
     # Per-item section
     items_html = ""
     for item in record.get("items") or []:
+        ctx_item = ctx_items_by_idx.get(int(item.get("item_index", 0))) or {}
+        pipe_wip = ctx_item.get("pipe_wip_qc")
+        shaft_wip = ctx_item.get("shaft_wip_qc")
+
+        # WIP QC table HTML
+        wip_html = ""
+        if pipe_wip and pipe_wip.get("samples"):
+            pipe_rows = ""
+            for ps in pipe_wip["samples"]:
+                dia_text = "PASS" if ps.get("pipe_dia_ok") is True else ("FAIL" if ps.get("pipe_dia_ok") is False else "–")
+                dia_c = "#059669" if ps.get("pipe_dia_ok") is True else ("#DC2626" if ps.get("pipe_dia_ok") is False else "#94A3B8")
+                pipe_rows += f"""<tr>
+                    <td style="text-align:center;font-weight:700">{ps.get('sample_no','-')}</td>
+                    <td style="text-align:center;color:{dia_c};font-weight:700">{dia_text}</td>
+                    <td style="text-align:center">{ps.get('pipe_length_measured','–')}</td>
+                    <td style="text-align:center">{ps.get('pipe_thickness_measured','–')}</td>
+                </tr>"""
+            wip_html += f"""<div class="wip-block" style="background:#F0F9FF;border-left:3px solid #0369A1">
+              <div class="wip-title" style="color:#0369A1">Pipe WIP QC Results</div>
+              <table class="wip-tbl"><thead><tr>
+                <th>#</th><th>Dia OK?</th><th>Length (mm)</th><th>Thickness (mm)</th>
+              </tr></thead><tbody>{pipe_rows}</tbody></table>
+            </div>"""
+        if shaft_wip and shaft_wip.get("samples"):
+            shaft_rows = ""
+            for ss in shaft_wip["samples"]:
+                def fmt(v):
+                    if v is True: return '<span style="color:#059669;font-weight:700">YES</span>'
+                    if v is False: return '<span style="color:#DC2626;font-weight:700">NO</span>'
+                    return "–"
+                shaft_rows += f"""<tr>
+                    <td style="text-align:center;font-weight:700">{ss.get('sample_no','-')}</td>
+                    <td style="text-align:center">{fmt(ss.get('length_ok'))}</td>
+                    <td style="text-align:center">{fmt(ss.get('width_ok'))}</td>
+                    <td style="text-align:center">{fmt(ss.get('dim_ok'))}</td>
+                    <td style="text-align:center">{fmt(ss.get('third_ok'))}</td>
+                </tr>"""
+            wip_html += f"""<div class="wip-block" style="background:#ECFEFF;border-left:3px solid #155E75">
+              <div class="wip-title" style="color:#155E75">Shaft WIP QC Results</div>
+              <table class="wip-tbl"><thead><tr>
+                <th>#</th><th>Length OK?</th><th>Width OK?</th><th>Dim OK?</th><th>3rd OK?</th>
+              </tr></thead><tbody>{shaft_rows}</tbody></table>
+            </div>"""
+
         samples = item.get("samples") or []
         rows = ""
         for s in samples:
@@ -444,6 +494,8 @@ def _render_final_inspection_html(record: dict, wo: dict) -> str:
               Bearing (WO): <b>{item.get('bearing_spec','-')}</b>
             </div>
           </div>
+          {wip_html}
+          <div class="fi-title">Final Inspection Samples</div>
           <table>
             <thead><tr>{head_html}</tr></thead>
             <tbody>{rows if rows else '<tr><td colspan="' + str(len(head_cols)) + '" style="text-align:center;color:#94A3B8;padding:16px">No samples captured</td></tr>'}</tbody>
@@ -478,6 +530,12 @@ body {{ font-family: 'Helvetica', sans-serif; margin:0; padding:0; color:#0F172A
 .meta .v {{ font-size: 12px; font-weight: 700; color: #0F172A; margin-top: 2px; }}
 .item-block {{ margin-top: 12px; border:1px solid #E2E8F0; border-radius:6px; padding:10px; background:#FFFFFF; page-break-inside: avoid; }}
 .item-head {{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #CBD5E1; font-size:12px; }}
+.wip-block {{ border-radius: 4px; padding: 6px 8px; margin: 8px 0; }}
+.wip-title {{ font-size: 10px; font-weight: 800; margin-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase; }}
+.wip-tbl {{ width: 100%; border-collapse: collapse; font-size: 9px; }}
+.wip-tbl th {{ background: #E0F2FE; color: #0F172A; padding: 3px 4px; border: 1px solid #BAE6FD; font-weight: 700; }}
+.wip-tbl td {{ padding: 3px 4px; border: 1px solid #E0F2FE; background: #FFFFFF; }}
+.fi-title {{ font-size: 10px; font-weight: 800; color: #C5964A; margin: 10px 0 4px; letter-spacing: 0.5px; text-transform: uppercase; }}
 table {{ width:100%; border-collapse: collapse; font-size: 10px; }}
 th {{ padding:5px 4px; background:#0F172A; color:#fff; font-weight:700; border:1px solid #fff; }}
 td {{ padding:5px 4px; border:1px solid #CBD5E1; vertical-align: middle; }}
@@ -540,7 +598,8 @@ async def final_inspection_pdf(
     record = await db.final_inspection_records.find_one({"wo_id": wo_id}, {"_id": 0})
     if not record:
         raise HTTPException(status_code=404, detail="No Final Inspection record for this WO")
-    html = _render_final_inspection_html(record, wo)
+    ctx = await _build_wo_context(wo)
+    html = _render_final_inspection_html(record, wo, ctx)
     buf = io.BytesIO(html.encode("utf-8"))
     buf.seek(0)
     filename = f"{record.get('wo_number','wo').replace('/', '-')}-FinalInspection.html"
