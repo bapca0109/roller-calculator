@@ -118,12 +118,18 @@ function QCView({ isAdmin, userRole }: { isAdmin: boolean; userRole: string }) {
 
   const { open: openPipeQC, render: renderPipeModal } = usePipeQC(() => fetchRows());
   const { open: openShaftQC, render: renderShaftModal } = useShaftQC(() => fetchRows());
+  const { open: openFinalInspection, render: renderFinalInspectionModal } = useFinalInspection({ onSaved: () => fetchRows() });
+  const [fiGate, setFiGate] = useState<Record<string, any>>({});
 
   const fetchRows = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/wip-qc/overview');
-      setRows(res.data.rows || []);
+      const [ov, gate] = await Promise.all([
+        api.get('/wip-qc/overview'),
+        api.get('/final-inspection/gate-overview').catch(() => ({ data: { by_wo_id: {} } })),
+      ]);
+      setRows(ov.data.rows || []);
+      setFiGate(gate.data.by_wo_id || {});
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.detail || 'Failed to load QC overview');
     } finally { setLoading(false); }
@@ -154,8 +160,16 @@ function QCView({ isAdmin, userRole }: { isAdmin: boolean; userRole: string }) {
     if (r.pipe?.status && r.pipe.status !== 'pending') acc.pipeDone++;
     if (r.shaft?.status === 'pending') acc.shaftPending++;
     if (r.shaft?.status && r.shaft.status !== 'pending') acc.shaftDone++;
+    const g = fiGate[r.wo_id];
+    if (g) {
+      const s = g.fi_status || 'none';
+      if (s === 'passed') acc.fiPassed++;
+      else if (s === 'failed') acc.fiFailed++;
+      else if (g.fi_eligible) acc.fiReady++;
+      else acc.fiLocked++;
+    }
     return acc;
-  }, { pipePending: 0, pipeDone: 0, shaftPending: 0, shaftDone: 0 });
+  }, { pipePending: 0, pipeDone: 0, shaftPending: 0, shaftDone: 0, fiPassed: 0, fiFailed: 0, fiReady: 0, fiLocked: 0 });
 
   const StatusChip = ({ block, label, onPress, color }: any) => {
     if (!block) return <View style={qv.noChip}><Text style={qv.noChipText}>—</Text></View>;
@@ -202,6 +216,19 @@ function QCView({ isAdmin, userRole }: { isAdmin: boolean; userRole: string }) {
             <Text style={qv.summaryDim}> pending · </Text>
             <Text style={{ color: '#10B981' }}>{counts.shaftDone}</Text>
             <Text style={qv.summaryDim}> done</Text>
+          </Text>
+        </View>
+        <View style={[qv.summaryCard, { borderLeftColor: '#C5964A' }]}>
+          <Text style={qv.summaryLabel}>Final Inspection</Text>
+          <Text style={qv.summaryNumbers}>
+            <Text style={{ color: '#10B981' }}>{counts.fiPassed}</Text>
+            <Text style={qv.summaryDim}> pass · </Text>
+            <Text style={{ color: '#EF4444' }}>{counts.fiFailed}</Text>
+            <Text style={qv.summaryDim}> fail · </Text>
+            <Text style={{ color: '#C5964A' }}>{counts.fiReady}</Text>
+            <Text style={qv.summaryDim}> ready · </Text>
+            <Text style={{ color: '#94A3B8' }}>{counts.fiLocked}</Text>
+            <Text style={qv.summaryDim}> locked</Text>
           </Text>
         </View>
       </View>
@@ -265,6 +292,36 @@ function QCView({ isAdmin, userRole }: { isAdmin: boolean; userRole: string }) {
                     onPress={() => r.shaft && openShaftQC(r.shaft.sub_wo_id, r.shaft.sub_wo_number)}
                   />
                 )}
+                {(() => {
+                  const gate = fiGate[r.wo_id] || {};
+                  const eligible = !!gate.fi_eligible;
+                  const fiStatus: string = gate.fi_status || 'none';
+                  const hasFi = fiStatus !== 'none';
+                  const fiColor = hasFi ? (fiStatus === 'passed' ? '#10B981' : (fiStatus === 'failed' ? '#EF4444' : '#F59E0B')) : (eligible ? '#C5964A' : '#94A3B8');
+                  const fiIcon: any = hasFi ? (fiStatus === 'passed' ? 'checkmark-circle' : (fiStatus === 'failed' ? 'close-circle' : 'time')) : (eligible ? 'shield-checkmark' : 'lock-closed');
+                  const fiLabelText = hasFi ? fiStatus.toUpperCase() : (eligible ? 'READY' : 'LOCKED');
+                  return (
+                    <TouchableOpacity
+                      disabled={!canEdit}
+                      onPress={() => {
+                        if (!eligible && !hasFi) {
+                          Alert.alert('Final Inspection Locked', `Pipe WIP QC: ${gate.pipe_qc_status || 'none'}\nShaft WIP QC: ${gate.shaft_qc_status || 'none'}\nBoth must be PASSED.`);
+                          return;
+                        }
+                        const wo = { id: r.wo_id, wo_number: r.wo_number };
+                        openFinalInspection(wo);
+                      }}
+                      style={[qv.statusChip, { borderColor: fiColor, backgroundColor: hasFi ? 'rgba(255,255,255,0.9)' : 'rgba(197,150,74,0.06)' }]}
+                      testID={`qc-final-${r.wo_number}`}
+                    >
+                      <Ionicons name={fiIcon} size={14} color={fiColor} />
+                      <View style={{ marginLeft: 6 }}>
+                        <Text style={[qv.chipLabel, { color: '#C5964A' }]}>Final</Text>
+                        <Text style={[qv.chipStatus, { color: fiColor }]}>{fiLabelText}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })()}
               </View>
             </View>
           ))}
@@ -273,6 +330,7 @@ function QCView({ isAdmin, userRole }: { isAdmin: boolean; userRole: string }) {
 
       {renderPipeModal()}
       {renderShaftModal()}
+      {renderFinalInspectionModal()}
     </View>
   );
 }
