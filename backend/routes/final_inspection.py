@@ -64,8 +64,18 @@ def _dft_in_tolerance(measured: float, expected: float) -> bool:
     return abs(float(measured) - float(expected)) <= tol
 
 
-def _evaluate_sample(s: dict, expected_dft: Optional[float], pipe_length_mm: float) -> dict:
-    """Return sample dict enriched with *_ok flags and overall_pass."""
+def _evaluate_sample(s: dict, expected_dft: Optional[float], pipe_length_mm: float, applicable: Optional[dict] = None) -> dict:
+    """Return sample dict enriched with *_ok flags and overall_pass.
+    Tests marked non-applicable via *applicable* dict are ignored in overall_pass.
+    Applicable keys: runout, water, dust, friction, painting (default True each).
+    Bearing match, Rust preventive, Welding are always applicable."""
+    ap = applicable or {}
+    app_runout = ap.get("runout", True) if ap else True
+    app_water = ap.get("water", True) if ap else True
+    app_dust = ap.get("dust", True) if ap else True
+    app_friction = ap.get("friction", True) if ap else True
+    app_painting = ap.get("painting", True) if ap else True
+
     out = dict(s)
 
     # Runout
@@ -91,18 +101,20 @@ def _evaluate_sample(s: dict, expected_dft: Optional[float], pipe_length_mm: flo
     rust_ok = _b("rust_preventive")
     weld_ok = _b("welding_ok")
 
-    overall = (
-        out["runout_ok"]
-        and water_ok
-        and dust_ok
-        and out["friction_ok"]
-        and paint_ok
-        and out["dft_ok"]
-        and bearing_ok
-        and rust_ok
-        and weld_ok
-    )
-    out["overall_pass"] = overall
+    # Overall = AND of ticked tests + always-on tests (bearing, rust, weld)
+    checks = []
+    if app_runout: checks.append(out["runout_ok"])
+    if app_water: checks.append(water_ok)
+    if app_dust: checks.append(dust_ok)
+    if app_friction: checks.append(out["friction_ok"])
+    if app_painting:
+        checks.append(paint_ok)
+        checks.append(out["dft_ok"])
+    checks.append(bearing_ok)
+    checks.append(rust_ok)
+    checks.append(weld_ok)
+
+    out["overall_pass"] = all(checks) if checks else False
     return out
 
 
@@ -110,8 +122,25 @@ def _evaluate_sample(s: dict, expected_dft: Optional[float], pipe_length_mm: flo
 
 async def _build_wo_context(wo: dict) -> dict:
     """Derive per-item context: pipe length, roller length tolerance, bearing spec,
-    sample quantity (from Pipe WIP QC, fall back to Shaft WIP QC)."""
+    sample quantity (from Pipe WIP QC, fall back to Shaft WIP QC). Also resolve
+    the test_requirements from the parent SO (5 optional post-assembly tests)."""
     wo_id = wo.get("id")
+
+    # Resolve applicable tests from parent SO (fall back: all 5 applicable)
+    so = None
+    if wo.get("so_id"):
+        so = await db.sales_orders.find_one({"id": wo["so_id"]}, {"_id": 0, "test_requirements": 1})
+    if not so and wo.get("so_number"):
+        so = await db.sales_orders.find_one({"so_number": wo["so_number"]}, {"_id": 0, "test_requirements": 1})
+    so_tests = (so or {}).get("test_requirements") or {}
+    applicable = {
+        "runout": bool(so_tests.get("runout", True)) if so_tests else True,
+        "water": bool(so_tests.get("water", True)) if so_tests else True,
+        "dust": bool(so_tests.get("dust", True)) if so_tests else True,
+        "friction": bool(so_tests.get("friction_factor", True)) if so_tests else True,
+        "painting": bool(so_tests.get("painting", True)) if so_tests else True,
+    }
+
     sub_wos = await db.sub_work_orders.find({"parent_wo_id": wo_id}, {"_id": 0}).to_list(None)
     pipe_sub = next((s for s in sub_wos if s.get("type") == "pipe"), None)
     shaft_sub = next((s for s in sub_wos if s.get("type") == "shaft"), None)
@@ -154,6 +183,7 @@ async def _build_wo_context(wo: dict) -> dict:
         "customer_name": wo.get("customer_name"),
         "customer_company": wo.get("customer_company"),
         "delivery_date": wo.get("delivery_date"),
+        "applicable_tests": applicable,
         "items": items_ctx,
     }
 
@@ -184,6 +214,7 @@ async def save_final_inspection(
         raise HTTPException(status_code=404, detail="Work Order not found")
     ctx = await _build_wo_context(wo)
     ctx_by_idx = {c["item_index"]: c for c in ctx["items"]}
+    applicable = ctx.get("applicable_tests") or {}
 
     records_in = (data or {}).get("items") or []
     enriched_items = []
@@ -200,7 +231,7 @@ async def save_final_inspection(
         samples_out = []
         pass_count = 0
         for s in (rec.get("samples") or [])[:locked_qty] if locked_qty else (rec.get("samples") or []):
-            sd = _evaluate_sample(s, expected_dft, item_ctx["pipe_length_mm"])
+            sd = _evaluate_sample(s, expected_dft, item_ctx["pipe_length_mm"], applicable)
             samples_out.append(sd)
             if sd["overall_pass"]:
                 pass_count += 1
@@ -228,6 +259,7 @@ async def save_final_inspection(
         "wo_id": wo_id,
         "wo_number": wo.get("wo_number"),
         "items": enriched_items,
+        "applicable_tests": applicable,
         "status": status,
         "inspected_by": current_user.get("email"),
         "inspector_name": current_user.get("full_name") or current_user.get("email"),
@@ -276,6 +308,23 @@ def _render_final_inspection_html(record: dict, wo: dict) -> str:
     status = (record.get("status") or "pending").upper()
     stamp_color = "#059669" if status == "PASSED" else ("#DC2626" if status == "FAILED" else "#6B7280")
 
+    applicable = record.get("applicable_tests") or {"runout": True, "water": True, "dust": True, "friction": True, "painting": True}
+    show_runout = bool(applicable.get("runout", True))
+    show_water = bool(applicable.get("water", True))
+    show_dust = bool(applicable.get("dust", True))
+    show_friction = bool(applicable.get("friction", True))
+    show_painting = bool(applicable.get("painting", True))
+
+    # Build dynamic header row
+    head_cols = ["#"]
+    if show_runout: head_cols.append("Runout")
+    if show_water: head_cols.append("Water")
+    if show_dust: head_cols.append("Dust")
+    if show_friction: head_cols.append("Friction<br>(COF &lt; 0.02)")
+    if show_painting: head_cols += ["Paint<br>Visual", "DFT<br>(±20%)"]
+    head_cols += ["Bearing<br>Match", "Rust<br>Prev.", "Welding", "Overall"]
+    head_html = "".join(f"<th>{c}</th>" for c in head_cols)
+
     # Per-item section
     items_html = ""
     for item in record.get("items") or []:
@@ -292,20 +341,26 @@ def _render_final_inspection_html(record: dict, wo: dict) -> str:
                 f"<br><span style=\"font-size:9px;color:#B91C1C\">{s.get('rust_reason') or ''}</span>"
                 if s.get("rust_preventive") is False else ""
             )
-            rows += f"""<tr>
-                <td style="text-align:center;font-weight:700">{s.get('sample_no','-')}</td>
-                <td style="text-align:center">{_fmt(s.get('runout_mm'),' mm')}<br>{_pf(s.get('runout_ok'))}</td>
-                <td style="text-align:center">{_pf(s.get('water_ok'))}</td>
-                <td style="text-align:center">{_pf(s.get('dust_ok'))}</td>
-                <td style="text-align:center">{_fmt(s.get('friction_coeff'))}<br>{_pf(s.get('friction_ok'))}</td>
-                <td style="text-align:center">{_pf(s.get('painting_visual_ok'))}</td>
-                <td style="text-align:center">{_fmt(s.get('dft_microns'),' µm')}<br>{_pf(s.get('dft_ok'))}</td>
-                <td style="text-align:center">{_yn(s.get('bearing_match'))}{bearing_reason_html}</td>
-                <td style="text-align:center">{_yn(s.get('rust_preventive'))}{rust_reason_html}</td>
-                <td style="text-align:center">{_pf(s.get('welding_ok'))}</td>
-                <td style="text-align:center;color:{overall_c};font-weight:700">{overall}</td>
-            </tr>"""
+            cells = [f'<td style="text-align:center;font-weight:700">{s.get("sample_no","-")}</td>']
+            if show_runout:
+                cells.append(f'<td style="text-align:center">{_fmt(s.get("runout_mm")," mm")}<br>{_pf(s.get("runout_ok"))}</td>')
+            if show_water:
+                cells.append(f'<td style="text-align:center">{_pf(s.get("water_ok"))}</td>')
+            if show_dust:
+                cells.append(f'<td style="text-align:center">{_pf(s.get("dust_ok"))}</td>')
+            if show_friction:
+                cells.append(f'<td style="text-align:center">{_fmt(s.get("friction_coeff"))}<br>{_pf(s.get("friction_ok"))}</td>')
+            if show_painting:
+                cells.append(f'<td style="text-align:center">{_pf(s.get("painting_visual_ok"))}</td>')
+                cells.append(f'<td style="text-align:center">{_fmt(s.get("dft_microns")," µm")}<br>{_pf(s.get("dft_ok"))}</td>')
+            cells.append(f'<td style="text-align:center">{_yn(s.get("bearing_match"))}{bearing_reason_html}</td>')
+            cells.append(f'<td style="text-align:center">{_yn(s.get("rust_preventive"))}{rust_reason_html}</td>')
+            cells.append(f'<td style="text-align:center">{_pf(s.get("welding_ok"))}</td>')
+            cells.append(f'<td style="text-align:center;color:{overall_c};font-weight:700">{overall}</td>')
+            rows += f"<tr>{''.join(cells)}</tr>"
 
+        tol_html = f'Runout Tol: <b>&lt; {item.get("runout_tolerance_mm","-")} mm</b> &nbsp;·&nbsp; ' if show_runout else ''
+        dft_html = f'Expected DFT: <b>{item.get("expected_dft_microns") or "-"} µm</b> (±20%) &nbsp;·&nbsp; ' if show_painting else ''
         items_html += f"""
         <div class="item-block">
           <div class="item-head">
@@ -313,22 +368,25 @@ def _render_final_inspection_html(record: dict, wo: dict) -> str:
             <div style="font-size:10px;color:#64748B">
               Qty: <b>{item.get('quantity','-')}</b> &nbsp;·&nbsp;
               Pipe L: <b>{item.get('pipe_length_mm','-')} mm</b> &nbsp;·&nbsp;
-              Runout Tol: <b>&lt; {item.get('runout_tolerance_mm','-')} mm</b> &nbsp;·&nbsp;
-              Expected DFT: <b>{item.get('expected_dft_microns') or '-'} µm</b> (±20%) &nbsp;·&nbsp;
+              {tol_html}
+              {dft_html}
               Bearing (WO): <b>{item.get('bearing_spec','-')}</b>
             </div>
           </div>
           <table>
-            <thead><tr>
-              <th>#</th><th>Runout</th><th>Water</th><th>Dust</th><th>Friction<br>(COF &lt; 0.02)</th>
-              <th>Paint<br>Visual</th><th>DFT<br>(±20%)</th><th>Bearing<br>Match</th><th>Rust<br>Prev.</th><th>Welding</th><th>Overall</th>
-            </tr></thead>
-            <tbody>{rows if rows else '<tr><td colspan="11" style="text-align:center;color:#94A3B8;padding:16px">No samples captured</td></tr>'}</tbody>
+            <thead><tr>{head_html}</tr></thead>
+            <tbody>{rows if rows else '<tr><td colspan="' + str(len(head_cols)) + '" style="text-align:center;color:#94A3B8;padding:16px">No samples captured</td></tr>'}</tbody>
           </table>
           <div style="font-size:10px;color:#64748B;margin-top:4px">
             Samples: {len(samples)} &nbsp;·&nbsp; Pass: <b style="color:#059669">{item.get('pass_count',0)}</b> &nbsp;·&nbsp; Fail: <b style="color:#DC2626">{item.get('fail_count',0)}</b>
           </div>
         </div>"""
+
+    na_tests = [k for k, v in applicable.items() if not v]
+    na_strip = ""
+    if na_tests:
+        labels = {"runout": "Runout", "water": "Water", "dust": "Dust", "friction": "Friction", "painting": "Painting"}
+        na_strip = f'<div style="font-size:10px;color:#92400E;background:#FEF3C7;padding:6px 10px;border-radius:6px;margin:8px 0"><b>Not Applicable per SO:</b> {", ".join(labels[k] for k in na_tests)}</div>'
 
     inspector = record.get("inspector_name") or record.get("inspected_by") or "-"
     inspected_at = record.get("inspected_at") or ""
@@ -371,6 +429,7 @@ td {{ padding:5px 4px; border:1px solid #CBD5E1; vertical-align: middle; }}
     <div class="meta"><div class="k">Customer</div><div class="v">{wo.get('customer_name','-')}</div></div>
     <div class="meta"><div class="k">Delivery Date</div><div class="v">{format_date_dmy(str(wo.get('delivery_date','')).split('T')[0]) if wo.get('delivery_date') else '-'}</div></div>
   </div>
+  {na_strip}
   {items_html if items_html else '<div style="padding:20px;text-align:center;color:#94A3B8;border:1px dashed #E2E8F0;border-radius:6px;margin-top:12px">No items recorded yet.</div>'}
   <div class="sig-row">
     <div class="sig">Quality Inspector<div class="sub">{inspector} · {inspected_date}</div></div>
@@ -455,13 +514,21 @@ async def final_inspection_excel(
     ws.append([f"Customer: {wo.get('customer_name','-')}", f"SO: {wo.get('so_number','-')}", f"Status: {(record.get('status') or '').upper()}", f"Inspector: {record.get('inspector_name') or record.get('inspected_by','-')}"])
     ws.append([])
 
-    headers = [
-        "Item #", "Product", "Code", "Sample #", "Runout (mm)", "Runout Tol (mm)", "Runout OK?",
-        "Water", "Dust", "Friction COF", "Friction OK?",
-        "Paint Visual", "DFT (µm)", "Expected DFT (µm)", "DFT OK?",
-        "Bearing Match", "Bearing Reason", "Rust Preventive", "Rust Reason", "Welding",
-        "Overall", "Remarks",
-    ]
+    applicable = record.get("applicable_tests") or {"runout": True, "water": True, "dust": True, "friction": True, "painting": True}
+    show_runout = bool(applicable.get("runout", True))
+    show_water = bool(applicable.get("water", True))
+    show_dust = bool(applicable.get("dust", True))
+    show_friction = bool(applicable.get("friction", True))
+    show_painting = bool(applicable.get("painting", True))
+
+    headers = ["Item #", "Product", "Code", "Sample #"]
+    if show_runout: headers += ["Runout (mm)", "Runout Tol (mm)", "Runout OK?"]
+    if show_water: headers += ["Water"]
+    if show_dust: headers += ["Dust"]
+    if show_friction: headers += ["Friction COF", "Friction OK?"]
+    if show_painting: headers += ["Paint Visual", "DFT (µm)", "Expected DFT (µm)", "DFT OK?"]
+    headers += ["Bearing Match", "Bearing Reason", "Rust Preventive", "Rust Reason", "Welding", "Overall", "Remarks"]
+
     ws.append(headers)
     hdr_row = ws.max_row
     for col_i, _ in enumerate(headers, 1):
@@ -472,22 +539,28 @@ async def final_inspection_excel(
 
     for item in record.get("items") or []:
         for s in item.get("samples") or []:
-            ws.append([
+            row: list = [
                 item.get("item_index", 0) + 1,
                 item.get("product_name", ""),
                 item.get("product_code", ""),
                 s.get("sample_no", ""),
-                s.get("runout_mm"),
-                item.get("runout_tolerance_mm"),
-                "PASS" if s.get("runout_ok") else "FAIL",
-                "PASS" if s.get("water_ok") else "FAIL",
-                "PASS" if s.get("dust_ok") else "FAIL",
-                s.get("friction_coeff"),
-                "PASS" if s.get("friction_ok") else "FAIL",
-                "OK" if s.get("painting_visual_ok") else "NOT OK",
-                s.get("dft_microns"),
-                item.get("expected_dft_microns"),
-                "PASS" if s.get("dft_ok") else "FAIL",
+            ]
+            if show_runout:
+                row += [s.get("runout_mm"), item.get("runout_tolerance_mm"), ("PASS" if s.get("runout_ok") else "FAIL")]
+            if show_water:
+                row += [("PASS" if s.get("water_ok") else "FAIL")]
+            if show_dust:
+                row += [("PASS" if s.get("dust_ok") else "FAIL")]
+            if show_friction:
+                row += [s.get("friction_coeff"), ("PASS" if s.get("friction_ok") else "FAIL")]
+            if show_painting:
+                row += [
+                    ("OK" if s.get("painting_visual_ok") else "NOT OK"),
+                    s.get("dft_microns"),
+                    item.get("expected_dft_microns"),
+                    ("PASS" if s.get("dft_ok") else "FAIL"),
+                ]
+            row += [
                 "Yes" if s.get("bearing_match") else "No",
                 s.get("bearing_reason", "") or "",
                 "Yes" if s.get("rust_preventive") else "No",
@@ -495,7 +568,8 @@ async def final_inspection_excel(
                 "OK" if s.get("welding_ok") else "NOT OK",
                 "PASS" if s.get("overall_pass") else "FAIL",
                 s.get("remarks", "") or "",
-            ])
+            ]
+            ws.append(row)
 
     for col_letter in "ABCDEFGHIJKLMNOPQRSTUV":
         ws.column_dimensions[col_letter].width = 15

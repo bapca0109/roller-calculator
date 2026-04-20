@@ -388,6 +388,7 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
   const [show, setShow] = useState(false);
   const [wo, setWo] = useState<any>(null);
   const [ctx, setCtx] = useState<any>(null);
+  const [applicable, setApplicable] = useState<any>({ runout: true, water: true, dust: true, friction: true, painting: true });
   const [items, setItems] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -402,6 +403,7 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
       const api = await makeApi();
       const { data } = await api.get(`/work-orders/${workOrder.id}/final-inspection`);
       setCtx(data.context);
+      setApplicable(data.context?.applicable_tests || { runout: true, water: true, dust: true, friction: true, painting: true });
       const rec = data.record;
       const initItems = (data.context?.items || []).map((c: any) => {
         const existing = (rec?.items || []).find((x: any) => x.item_index === c.item_index);
@@ -454,7 +456,7 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
     setItems(prev => prev.map((it, i) => (i === itemIdx ? { ...it, [field]: value } : it)));
   };
 
-  // Inline pass/fail evaluator for UI preview
+  // Inline pass/fail evaluator for UI preview (honours applicable flags)
   const evalSample = (item: any, s: any) => {
     const tol = (item.pipe_length_mm || 0) <= 1350 ? 1.6 : 2.0;
     const r = parseFloat(s.runout_mm);
@@ -464,9 +466,16 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
     const runout_ok = !isNaN(r) && r < tol;
     const friction_ok = !isNaN(f) && f < 0.02;
     const dft_ok = !isNaN(dft) && !isNaN(expDft) && expDft > 0 && Math.abs(dft - expDft) <= expDft * 0.20;
-    const overall = runout_ok && friction_ok && dft_ok
-      && s.water_ok === true && s.dust_ok === true && s.painting_visual_ok === true
-      && s.bearing_match === true && s.rust_preventive === true && s.welding_ok === true;
+    const checks: boolean[] = [];
+    if (applicable.runout) checks.push(runout_ok);
+    if (applicable.water) checks.push(s.water_ok === true);
+    if (applicable.dust) checks.push(s.dust_ok === true);
+    if (applicable.friction) checks.push(friction_ok);
+    if (applicable.painting) { checks.push(s.painting_visual_ok === true); checks.push(dft_ok); }
+    checks.push(s.bearing_match === true);
+    checks.push(s.rust_preventive === true);
+    checks.push(s.welding_ok === true);
+    const overall = checks.every(Boolean);
     return { runout_ok, friction_ok, dft_ok, overall };
   };
 
@@ -556,6 +565,15 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
             <ActivityIndicator size="large" color="#C5964A" style={{ marginVertical: 30 }} />
           ) : (
             <ScrollView>
+              {(() => {
+                const na = Object.entries(applicable).filter(([, v]) => !v).map(([k]) => k);
+                const labels: any = { runout: 'Runout', water: 'Water', dust: 'Dust', friction: 'Friction', painting: 'Painting' };
+                return na.length > 0 ? (
+                  <View style={{ backgroundColor: '#FEF3C7', borderLeftWidth: 3, borderLeftColor: '#F59E0B', padding: 8, borderRadius: 6, marginBottom: 10 }}>
+                    <Text style={{ fontSize: 11, color: '#92400E', fontWeight: '700' }}>Not Applicable per SO: {na.map((k: string) => labels[k]).join(', ')}</Text>
+                  </View>
+                ) : null;
+              })()}
               {items.length === 0 && (
                 <Text style={{ padding: 16, color: '#94A3B8', textAlign: 'center' }}>No items on this WO.</Text>
               )}
@@ -567,22 +585,26 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
                     <View style={m.metaRow}>
                       <Text style={m.metaLabel}>Qty: <Text style={m.metaVal}>{item.quantity}</Text></Text>
                       <Text style={m.metaLabel}>Pipe L: <Text style={m.metaVal}>{item.pipe_length_mm} mm</Text></Text>
-                      <Text style={m.metaLabel}>Runout Tol: <Text style={m.metaVal}>&lt; {item.runout_tolerance_mm} mm</Text></Text>
+                      {applicable.runout && (
+                        <Text style={m.metaLabel}>Runout Tol: <Text style={m.metaVal}>&lt; {item.runout_tolerance_mm} mm</Text></Text>
+                      )}
                       <Text style={m.metaLabel}>Bearing (WO): <Text style={m.metaVal}>{item.bearing_spec}</Text></Text>
                       <Text style={m.metaLabel}>Samples (locked from Pipe QC): <Text style={m.metaVal}>{item.sample_qty}</Text></Text>
                     </View>
-                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-                      <Text style={m.qtyLabel}>Expected DFT (µm):</Text>
-                      <TextInput
-                        style={m.qtyInput}
-                        keyboardType="numeric"
-                        value={String(item.expected_dft_microns ?? '')}
-                        onChangeText={v => patchItem(ii, 'expected_dft_microns', v)}
-                        placeholder="e.g. 60"
-                        testID={`fi-expected-dft-${ii}`}
-                      />
-                      <Text style={m.qtySub}>± 20% allowed</Text>
-                    </View>
+                    {applicable.painting && (
+                      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                        <Text style={m.qtyLabel}>Expected DFT (µm):</Text>
+                        <TextInput
+                          style={m.qtyInput}
+                          keyboardType="numeric"
+                          value={String(item.expected_dft_microns ?? '')}
+                          onChangeText={v => patchItem(ii, 'expected_dft_microns', v)}
+                          placeholder="e.g. 60"
+                          testID={`fi-expected-dft-${ii}`}
+                        />
+                        <Text style={m.qtySub}>± 20% allowed</Text>
+                      </View>
+                    )}
 
                     {!locked && (
                       <Text style={{ fontSize: 11, color: '#B91C1C', marginBottom: 6 }}>Sample count is 0 — complete Pipe or Shaft WIP QC first to unlock inspection samples.</Text>
@@ -599,54 +621,66 @@ export function useFinalInspection(params?: { onSaved?: () => void }) {
                           </View>
 
                           <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-                            <View style={{ minWidth: 120 }}>
-                              <Text style={m.fieldLabel}>Runout (mm)</Text>
-                              <TextInput
-                                style={[m.num, s.runout_mm !== '' && (ev.runout_ok ? m.numOk : m.numBad)]}
-                                keyboardType="numeric"
-                                value={String(s.runout_mm ?? '')}
-                                onChangeText={v => patchSample(ii, si, 'runout_mm', v)}
-                                placeholder={`< ${item.runout_tolerance_mm}`}
-                                testID={`fi-runout-${ii}-${si}`}
-                              />
-                            </View>
-                            <View style={{ minWidth: 110 }}>
-                              <Text style={m.fieldLabel}>Friction (COF)</Text>
-                              <TextInput
-                                style={[m.num, s.friction_coeff !== '' && (ev.friction_ok ? m.numOk : m.numBad)]}
-                                keyboardType="numeric"
-                                value={String(s.friction_coeff ?? '')}
-                                onChangeText={v => patchSample(ii, si, 'friction_coeff', v)}
-                                placeholder="< 0.02"
-                                testID={`fi-cof-${ii}-${si}`}
-                              />
-                            </View>
-                            <View style={{ minWidth: 110 }}>
-                              <Text style={m.fieldLabel}>DFT (µm)</Text>
-                              <TextInput
-                                style={[m.num, s.dft_microns !== '' && (ev.dft_ok ? m.numOk : m.numBad)]}
-                                keyboardType="numeric"
-                                value={String(s.dft_microns ?? '')}
-                                onChangeText={v => patchSample(ii, si, 'dft_microns', v)}
-                                placeholder={item.expected_dft_microns ? `≈ ${item.expected_dft_microns}` : '—'}
-                                testID={`fi-dft-${ii}-${si}`}
-                              />
-                            </View>
+                            {applicable.runout && (
+                              <View style={{ minWidth: 120 }}>
+                                <Text style={m.fieldLabel}>Runout (mm)</Text>
+                                <TextInput
+                                  style={[m.num, s.runout_mm !== '' && (ev.runout_ok ? m.numOk : m.numBad)]}
+                                  keyboardType="numeric"
+                                  value={String(s.runout_mm ?? '')}
+                                  onChangeText={v => patchSample(ii, si, 'runout_mm', v)}
+                                  placeholder={`< ${item.runout_tolerance_mm}`}
+                                  testID={`fi-runout-${ii}-${si}`}
+                                />
+                              </View>
+                            )}
+                            {applicable.friction && (
+                              <View style={{ minWidth: 110 }}>
+                                <Text style={m.fieldLabel}>Friction (COF)</Text>
+                                <TextInput
+                                  style={[m.num, s.friction_coeff !== '' && (ev.friction_ok ? m.numOk : m.numBad)]}
+                                  keyboardType="numeric"
+                                  value={String(s.friction_coeff ?? '')}
+                                  onChangeText={v => patchSample(ii, si, 'friction_coeff', v)}
+                                  placeholder="< 0.02"
+                                  testID={`fi-cof-${ii}-${si}`}
+                                />
+                              </View>
+                            )}
+                            {applicable.painting && (
+                              <View style={{ minWidth: 110 }}>
+                                <Text style={m.fieldLabel}>DFT (µm)</Text>
+                                <TextInput
+                                  style={[m.num, s.dft_microns !== '' && (ev.dft_ok ? m.numOk : m.numBad)]}
+                                  keyboardType="numeric"
+                                  value={String(s.dft_microns ?? '')}
+                                  onChangeText={v => patchSample(ii, si, 'dft_microns', v)}
+                                  placeholder={item.expected_dft_microns ? `≈ ${item.expected_dft_microns}` : '—'}
+                                  testID={`fi-dft-${ii}-${si}`}
+                                />
+                              </View>
+                            )}
                           </View>
 
                           <View style={{ flexDirection: 'row', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
-                            <View>
-                              <Text style={m.fieldLabel}>Water Test</Text>
-                              <PF value={s.water_ok} onChange={(v: boolean) => patchSample(ii, si, 'water_ok', v)} testID={`fi-water-${ii}-${si}`} />
-                            </View>
-                            <View>
-                              <Text style={m.fieldLabel}>Dust Test</Text>
-                              <PF value={s.dust_ok} onChange={(v: boolean) => patchSample(ii, si, 'dust_ok', v)} testID={`fi-dust-${ii}-${si}`} />
-                            </View>
-                            <View>
-                              <Text style={m.fieldLabel}>Painting Visual</Text>
-                              <PF value={s.painting_visual_ok} onChange={(v: boolean) => patchSample(ii, si, 'painting_visual_ok', v)} testID={`fi-paint-${ii}-${si}`} labels={['Satisfactory', 'Not']} />
-                            </View>
+                            {applicable.water && (
+                              <View>
+                                <Text style={m.fieldLabel}>Water Test</Text>
+                                <PF value={s.water_ok} onChange={(v: boolean) => patchSample(ii, si, 'water_ok', v)} testID={`fi-water-${ii}-${si}`} />
+                              </View>
+                            )}
+                            {applicable.dust && (
+                              <View>
+                                <Text style={m.fieldLabel}>Dust Test</Text>
+                                <PF value={s.dust_ok} onChange={(v: boolean) => patchSample(ii, si, 'dust_ok', v)} testID={`fi-dust-${ii}-${si}`} />
+                              </View>
+                            )}
+                            {applicable.painting && (
+                              <View>
+                                <Text style={m.fieldLabel}>Painting Visual</Text>
+                                <PF value={s.painting_visual_ok} onChange={(v: boolean) => patchSample(ii, si, 'painting_visual_ok', v)} testID={`fi-paint-${ii}-${si}`} labels={['Satisfactory', 'Not']} />
+                              </View>
+                            )}
                             <View>
                               <Text style={m.fieldLabel}>Welding</Text>
                               <PF value={s.welding_ok} onChange={(v: boolean) => patchSample(ii, si, 'welding_ok', v)} testID={`fi-weld-${ii}-${si}`} labels={['Satisfactory', 'Not']} />
