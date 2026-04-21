@@ -601,9 +601,27 @@ export default function StoreScreen() {
                     />
                   )}
                   <View style={{ flexDirection: 'row', gap: 6 }}>
-                    <View style={{ flex: 1 }}><Text style={s.label}>Qty</Text><TextInput style={s.input} value={line.qty} onChangeText={v => updatePOLine(idx, 'qty', v)} placeholder="100" keyboardType="numeric" testID={`po-qty-${idx}`} /></View>
-                    <View style={{ flex: 1 }}><Text style={s.label}>Rate (Rs.)</Text><TextInput style={s.input} value={line.rate} onChangeText={v => updatePOLine(idx, 'rate', v)} placeholder="75" keyboardType="numeric" testID={`po-rate-${idx}`} /></View>
-                    <View style={{ width: 80 }}><Text style={s.label}>GST %</Text><TextInput style={s.input} value={line.gst_rate} onChangeText={v => updatePOLine(idx, 'gst_rate', v)} placeholder="18" keyboardType="numeric" testID={`po-gst-${idx}`} /></View>
+                    {(() => {
+                      const picked = stockItems.find((x: any) => x.id === line.stock_item_id);
+                      const unit = picked?.unit_purchase || 'nos';
+                      const hint = picked?.category === 'pipe' && picked?.weight_per_meter_kg ? ` · 1 nos = 6 m × ${picked.weight_per_meter_kg} kg/m = ${(6 * picked.weight_per_meter_kg).toFixed(1)} kg` : '';
+                      return (
+                        <>
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.label}>Qty ({unit}){hint}</Text>
+                            <TextInput style={s.input} value={line.qty} onChangeText={v => updatePOLine(idx, 'qty', v)} placeholder="100" keyboardType="numeric" testID={`po-qty-${idx}`} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.label}>Rate (Rs./{unit})</Text>
+                            <TextInput style={s.input} value={line.rate} onChangeText={v => updatePOLine(idx, 'rate', v)} placeholder="75" keyboardType="numeric" testID={`po-rate-${idx}`} />
+                          </View>
+                          <View style={{ width: 80 }}>
+                            <Text style={s.label}>GST %</Text>
+                            <TextInput style={s.input} value={line.gst_rate} onChangeText={v => updatePOLine(idx, 'gst_rate', v)} placeholder="18" keyboardType="numeric" testID={`po-gst-${idx}`} />
+                          </View>
+                        </>
+                      );
+                    })()}
                   </View>
                   <View style={{ flexDirection: 'row', gap: 4, marginTop: 4 }}>
                     {['5', '12', '18', '28'].map(g => (

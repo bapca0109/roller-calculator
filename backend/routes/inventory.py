@@ -10,8 +10,38 @@ import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
+import roller_standards as rs
 
 router = APIRouter(prefix="/store")
+
+PIPE_NOS_PER_METER = 1 / 6  # 1 nos = 6 m; conversely 1 m = 1/6 nos
+
+def _pipe_weight_per_meter(stock_item: dict) -> Optional[float]:
+    """Given a pipe stock item, return kg/meter (or None). Looks up
+    PIPE_WEIGHT_PER_METER by diameter (from bom_match_key) and class (from name)."""
+    if (stock_item or {}).get("category") != "pipe":
+        return None
+    name = stock_item.get("name", "") or ""
+    cls = "B"
+    if "(Class A)" in name: cls = "A"
+    elif "(Class C)" in name: cls = "C"
+    key = stock_item.get("bom_match_key", "") or ""
+    try:
+        dia = float(key.split(":")[1])
+    except Exception:
+        return None
+    return rs.PIPE_WEIGHT_PER_METER.get(dia, {}).get(cls)
+
+
+def _shaft_weight_per_meter(stock_item: dict) -> Optional[float]:
+    if (stock_item or {}).get("category") != "shaft":
+        return None
+    key = stock_item.get("bom_match_key", "") or ""
+    try:
+        dia = int(float(key.split(":")[1]))
+    except Exception:
+        return None
+    return rs.SHAFT_WEIGHT_PER_METER.get(dia)
 
 STOCK_CATEGORIES = ["pipe", "shaft", "bearing", "housing", "seal", "circlip", "end_plate", "hub", "rubber_ring", "rubber_lagging", "grease", "paint", "other"]
 PO_STATUSES = ["draft", "ordered", "partial_received", "received", "cancelled"]
@@ -99,6 +129,18 @@ async def get_stock_items(category: Optional[str] = None, current_user: dict = D
         it["last_purchase_po"] = lr.get("po_number") if lr else None
         it["last_purchase_date"] = lr.get("date") if lr else None
         it["last_purchase_unit"] = lr.get("unit") if lr else None
+        # Pipe: purchase unit overridden to kg; stock internally in meters but displayed as nos (1 nos = 6 m)
+        if it.get("category") == "pipe":
+            wpm = _pipe_weight_per_meter(it)
+            it["weight_per_meter_kg"] = wpm
+            it["unit_purchase"] = "kg"
+            it["stock_unit"] = "nos"
+            cur_m = float(it.get("current_stock") or 0)
+            it["current_stock_m"] = round(cur_m, 3)
+            it["current_stock_nos"] = round(cur_m / 6, 3)
+        elif it.get("category") == "shaft":
+            wpm = _shaft_weight_per_meter(it)
+            it["weight_per_meter_kg"] = wpm
     return {"items": items, "total": len(items)}
 
 
@@ -177,13 +219,17 @@ async def create_purchase_order(po: PurchaseOrderCreate, current_user: dict = De
         cgst_total += cgst
         sgst_total += sgst
         igst_total += igst
+        # Pipe purchase unit is always kg (auto-converts to nos in stock)
+        line_unit = item.get("unit") or (stock_item.get("unit_purchase") if stock_item else "nos")
+        if stock_item and stock_item.get("category") == "pipe":
+            line_unit = "kg"
         items.append({
             "stock_item_id": item.get("stock_item_id"),
             "stock_item_name": stock_item.get("name") if stock_item else "Unknown",
             "category": stock_item.get("category") if stock_item else "",
             "qty_ordered": qty,
             "rate": rate,
-            "unit": item.get("unit", stock_item.get("unit_purchase", "nos") if stock_item else "nos"),
+            "unit": line_unit,
             "amount": amount,
             "gst_rate": gst_rate,
             "cgst": cgst,
@@ -255,7 +301,15 @@ async def process_qc(qc: QCEntry, current_user: dict = Depends(require_role([Use
     if qc.accepted_qty > 0:
         stock_item = await db.stock_items.find_one({"id": item.get("stock_item_id")})
         if stock_item:
-            new_stock = stock_item.get("current_stock", 0) + qc.accepted_qty
+            # Pipe purchased in kg — convert to meters (internal stock unit) before adding
+            accepted_stock_qty = qc.accepted_qty
+            receipt_note = ""
+            if stock_item.get("category") == "pipe":
+                wpm = _pipe_weight_per_meter(stock_item)
+                if wpm and wpm > 0:
+                    accepted_stock_qty = round(qc.accepted_qty / wpm, 3)
+                    receipt_note = f" · {qc.accepted_qty} kg → {accepted_stock_qty} m ({round(accepted_stock_qty/6, 3)} nos)"
+            new_stock = stock_item.get("current_stock", 0) + accepted_stock_qty
             await db.stock_items.update_one({"id": item["stock_item_id"]}, {"$set": {"current_stock": round(new_stock, 3)}})
 
             # Log transaction with WO attribution from the originating PO
@@ -264,8 +318,10 @@ async def process_qc(qc: QCEntry, current_user: dict = Depends(require_role([Use
                 "stock_item_id": item["stock_item_id"],
                 "stock_item_name": item.get("stock_item_name"),
                 "type": "in",
-                "qty": qc.accepted_qty,
-                "reference": f"PO: {po.get('po_number')} (QC {qc.status})",
+                "qty": accepted_stock_qty,
+                "qty_purchased": qc.accepted_qty,
+                "qty_purchased_unit": item.get("unit") or stock_item.get("unit_purchase") or "",
+                "reference": f"PO: {po.get('po_number')} (QC {qc.status}){receipt_note}",
                 "po_id": qc.po_id,
                 "po_number": po.get("po_number"),
                 "linked_wo_ids": po.get("linked_wo_ids") or [],
@@ -280,7 +336,7 @@ async def process_qc(qc: QCEntry, current_user: dict = Depends(require_role([Use
             linked = po.get("linked_wo_ids") or []
             if linked:
                 # Equal split across WOs (caller can manually issue as needed).
-                share = round(qc.accepted_qty / len(linked), 3)
+                share = round(accepted_stock_qty / len(linked), 3)
                 for wo_id in linked:
                     await db.po_wo_receipts.insert_one({
                         "id": str(ObjectId()),
