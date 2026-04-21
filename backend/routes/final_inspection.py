@@ -623,6 +623,8 @@ async def final_inspection_excel(
     record = await db.final_inspection_records.find_one({"wo_id": wo_id}, {"_id": 0})
     if not record:
         raise HTTPException(status_code=404, detail="No Final Inspection record for this WO")
+    ctx = await _build_wo_context(wo)
+    ctx_items_by_idx: dict = {int(c.get("item_index")): c for c in (ctx.get("items") or [])}
 
     try:
         from openpyxl import Workbook
@@ -631,8 +633,75 @@ async def final_inspection_excel(
         raise HTTPException(status_code=500, detail="openpyxl not installed")
 
     wb = Workbook()
-    ws = wb.active
-    ws.title = "Final Inspection"
+
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill("solid", fgColor="0F172A")
+    pipe_fill = PatternFill("solid", fgColor="0369A1")
+    shaft_fill = PatternFill("solid", fgColor="155E75")
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    # Sheet 1 — Pipe WIP QC
+    ws_pipe = wb.active
+    ws_pipe.title = "Pipe WIP QC"
+    ws_pipe.append([f"PIPE WIP QC — {record.get('wo_number','')}"])
+    ws_pipe["A1"].font = Font(bold=True, size=14, color="0369A1")
+    ws_pipe.append([])
+    pipe_headers = ["Item #", "Product", "Code", "Sample #", "Dia OK?", "Length (mm)", "Thickness (mm)"]
+    ws_pipe.append(pipe_headers)
+    hdr_row = ws_pipe.max_row
+    for col_i in range(1, len(pipe_headers) + 1):
+        c = ws_pipe.cell(row=hdr_row, column=col_i)
+        c.font = header_font; c.fill = pipe_fill; c.alignment = center
+    for item in record.get("items") or []:
+        ctx_item = ctx_items_by_idx.get(int(item.get("item_index", 0))) or {}
+        pipe_wip = ctx_item.get("pipe_wip_qc")
+        if pipe_wip and pipe_wip.get("samples"):
+            for ps in pipe_wip["samples"]:
+                ws_pipe.append([
+                    item.get("item_index", 0) + 1,
+                    item.get("product_name", ""),
+                    item.get("product_code", ""),
+                    ps.get("sample_no", ""),
+                    "PASS" if ps.get("pipe_dia_ok") is True else ("FAIL" if ps.get("pipe_dia_ok") is False else "–"),
+                    ps.get("pipe_length_measured", ""),
+                    ps.get("pipe_thickness_measured", ""),
+                ])
+    for col_letter in "ABCDEFG":
+        ws_pipe.column_dimensions[col_letter].width = 18
+
+    # Sheet 2 — Shaft WIP QC
+    ws_shaft = wb.create_sheet("Shaft WIP QC")
+    ws_shaft.append([f"SHAFT WIP QC — {record.get('wo_number','')}"])
+    ws_shaft["A1"].font = Font(bold=True, size=14, color="155E75")
+    ws_shaft.append([])
+    shaft_headers = ["Item #", "Product", "Code", "Sample #", "Length OK?", "Width OK?", "Dim OK?", "3rd OK?"]
+    ws_shaft.append(shaft_headers)
+    hdr_row = ws_shaft.max_row
+    for col_i in range(1, len(shaft_headers) + 1):
+        c = ws_shaft.cell(row=hdr_row, column=col_i)
+        c.font = header_font; c.fill = shaft_fill; c.alignment = center
+    def _yn_cell(v):
+        return "YES" if v is True else ("NO" if v is False else "–")
+    for item in record.get("items") or []:
+        ctx_item = ctx_items_by_idx.get(int(item.get("item_index", 0))) or {}
+        shaft_wip = ctx_item.get("shaft_wip_qc")
+        if shaft_wip and shaft_wip.get("samples"):
+            for ss in shaft_wip["samples"]:
+                ws_shaft.append([
+                    item.get("item_index", 0) + 1,
+                    item.get("product_name", ""),
+                    item.get("product_code", ""),
+                    ss.get("sample_no", ""),
+                    _yn_cell(ss.get("length_ok")),
+                    _yn_cell(ss.get("width_ok")),
+                    _yn_cell(ss.get("dim_ok")),
+                    _yn_cell(ss.get("third_ok")),
+                ])
+    for col_letter in "ABCDEFGH":
+        ws_shaft.column_dimensions[col_letter].width = 18
+
+    # Sheet 3 — Final Inspection (existing layout)
+    ws = wb.create_sheet("Final Inspection")
 
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill("solid", fgColor="0F172A")
