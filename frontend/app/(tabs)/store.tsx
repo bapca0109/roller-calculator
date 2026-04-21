@@ -590,8 +590,11 @@ export default function StoreScreen() {
                   ) : (
                     <SearchPicker
                       value={line.stock_item_id}
-                      items={stockItems.map((it: any) => ({ id: it.id, label: it.name, sublabel: it.category, right: `${it.current_stock ?? 0} ${it.unit_purchase || ''}` }))}
-                      onSelect={id => updatePOLine(idx, 'stock_item_id', id)}
+                      items={stockItems.map((it: any) => ({ id: it.id, label: it.name, sublabel: [it.category, it.last_purchase_rate ? `Last PO: ₹${it.last_purchase_rate}${it.last_purchase_unit ? '/' + it.last_purchase_unit : ''}` : null].filter(Boolean).join(' · '), right: `${it.current_stock ?? 0} ${it.unit_purchase || ''}` }))}
+                      onSelect={(id) => {
+                        const picked = stockItems.find((x: any) => x.id === id);
+                        setNewPO(p => ({ ...p, items: p.items.map((li, i) => i === idx ? { ...li, stock_item_id: id, rate: (li.rate && li.rate !== '') ? li.rate : (picked?.last_purchase_rate != null ? String(picked.last_purchase_rate) : li.rate) } : li) }));
+                      }}
                       placeholder="Search stock items by name or category..."
                       emptyText="No matching items in stock register"
                       testID={`po-item-search-${idx}`}

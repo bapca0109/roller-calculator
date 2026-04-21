@@ -75,6 +75,30 @@ async def get_stock_items(category: Optional[str] = None, current_user: dict = D
     if category:
         query["category"] = category
     items = await db.stock_items.find(query, {"_id": 0}).sort("category", 1).to_list(1000)
+    # Enrich with last purchase rate (from the most recent PO that includes this stock item)
+    last_rate_map: dict = {}
+    cursor = db.purchase_orders.find(
+        {},
+        {"_id": 0, "po_number": 1, "created_at": 1, "items": 1},
+    ).sort("created_at", -1)
+    async for po in cursor:
+        created_at = po.get("created_at")
+        po_number = po.get("po_number")
+        for line in po.get("items") or []:
+            sid = line.get("stock_item_id")
+            if sid and sid not in last_rate_map and line.get("rate"):
+                last_rate_map[sid] = {
+                    "rate": line.get("rate"),
+                    "po_number": po_number,
+                    "date": created_at,
+                    "unit": line.get("unit") or "",
+                }
+    for it in items:
+        lr = last_rate_map.get(it.get("id"))
+        it["last_purchase_rate"] = lr.get("rate") if lr else None
+        it["last_purchase_po"] = lr.get("po_number") if lr else None
+        it["last_purchase_date"] = lr.get("date") if lr else None
+        it["last_purchase_unit"] = lr.get("unit") if lr else None
     return {"items": items, "total": len(items)}
 
 
