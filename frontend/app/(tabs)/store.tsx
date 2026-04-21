@@ -604,7 +604,11 @@ export default function StoreScreen() {
                     {(() => {
                       const picked = stockItems.find((x: any) => x.id === line.stock_item_id);
                       const unit = picked?.unit_purchase || 'nos';
-                      const hint = picked?.category === 'pipe' && picked?.weight_per_meter_kg ? ` · 1 nos = 6 m × ${picked.weight_per_meter_kg} kg/m = ${(6 * picked.weight_per_meter_kg).toFixed(1)} kg` : '';
+                      const hint = picked?.category === 'pipe' && picked?.weight_per_meter_kg
+                        ? ` · 1 nos = 6 m × ${picked.weight_per_meter_kg} kg/m = ${(6 * picked.weight_per_meter_kg).toFixed(1)} kg`
+                        : (picked?.category === 'shaft' && picked?.weight_per_meter_kg
+                          ? ` · 1 m = ${picked.weight_per_meter_kg} kg`
+                          : '');
                       return (
                         <>
                           <View style={{ flex: 1 }}>

@@ -129,7 +129,7 @@ async def get_stock_items(category: Optional[str] = None, current_user: dict = D
         it["last_purchase_po"] = lr.get("po_number") if lr else None
         it["last_purchase_date"] = lr.get("date") if lr else None
         it["last_purchase_unit"] = lr.get("unit") if lr else None
-        # Pipe: purchase unit overridden to kg; stock internally in meters but displayed as nos (1 nos = 6 m)
+        # Pipe & Shaft: purchased by weight (kg). Pipe stock shown as nos (1 nos = 6 m).
         if it.get("category") == "pipe":
             wpm = _pipe_weight_per_meter(it)
             it["weight_per_meter_kg"] = wpm
@@ -141,6 +141,10 @@ async def get_stock_items(category: Optional[str] = None, current_user: dict = D
         elif it.get("category") == "shaft":
             wpm = _shaft_weight_per_meter(it)
             it["weight_per_meter_kg"] = wpm
+            it["unit_purchase"] = "kg"
+            it["stock_unit"] = "meters"
+            cur_m = float(it.get("current_stock") or 0)
+            it["current_stock_m"] = round(cur_m, 3)
     return {"items": items, "total": len(items)}
 
 
@@ -219,9 +223,9 @@ async def create_purchase_order(po: PurchaseOrderCreate, current_user: dict = De
         cgst_total += cgst
         sgst_total += sgst
         igst_total += igst
-        # Pipe purchase unit is always kg (auto-converts to nos in stock)
+        # Pipe & Shaft: purchase unit is always kg (auto-converts on receipt)
         line_unit = item.get("unit") or (stock_item.get("unit_purchase") if stock_item else "nos")
-        if stock_item and stock_item.get("category") == "pipe":
+        if stock_item and stock_item.get("category") in ("pipe", "shaft"):
             line_unit = "kg"
         items.append({
             "stock_item_id": item.get("stock_item_id"),
@@ -301,7 +305,7 @@ async def process_qc(qc: QCEntry, current_user: dict = Depends(require_role([Use
     if qc.accepted_qty > 0:
         stock_item = await db.stock_items.find_one({"id": item.get("stock_item_id")})
         if stock_item:
-            # Pipe purchased in kg — convert to meters (internal stock unit) before adding
+            # Pipe / Shaft purchased in kg — convert to meters (internal stock unit) before adding
             accepted_stock_qty = qc.accepted_qty
             receipt_note = ""
             if stock_item.get("category") == "pipe":
@@ -309,6 +313,11 @@ async def process_qc(qc: QCEntry, current_user: dict = Depends(require_role([Use
                 if wpm and wpm > 0:
                     accepted_stock_qty = round(qc.accepted_qty / wpm, 3)
                     receipt_note = f" · {qc.accepted_qty} kg → {accepted_stock_qty} m ({round(accepted_stock_qty/6, 3)} nos)"
+            elif stock_item.get("category") == "shaft":
+                wpm = _shaft_weight_per_meter(stock_item)
+                if wpm and wpm > 0:
+                    accepted_stock_qty = round(qc.accepted_qty / wpm, 3)
+                    receipt_note = f" · {qc.accepted_qty} kg → {accepted_stock_qty} m"
             new_stock = stock_item.get("current_stock", 0) + accepted_stock_qty
             await db.stock_items.update_one({"id": item["stock_item_id"]}, {"$set": {"current_stock": round(new_stock, 3)}})
 
