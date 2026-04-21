@@ -735,24 +735,6 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                 )}
                 {isAdmin && (wo.items || []).some((it: any) => !(it.product_name || '').toLowerCase().includes('pulley')) && (
                   <TouchableOpacity
-                    style={[wos.actionBtn, { borderColor: '#8B5CF6' }]}
-                    onPress={async () => {
-                      try {
-                        const res = await api.get(`/work-orders/${wo.id}/sub-wos`);
-                        const subs = res.data.sub_work_orders || [];
-                        const pipe = subs.find((s: any) => s.type === 'pipe');
-                        if (!pipe) { Alert.alert('Not available', 'No pipe details found for this WO'); return; }
-                        openPipeQC && openPipeQC(pipe);
-                      } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed to load pipe QC'); }
-                    }}
-                    testID={`pipe-qc-${wo.wo_number}`}
-                  >
-                    <Ionicons name="clipboard-outline" size={14} color="#8B5CF6" />
-                    <Text style={[wos.actionText, { color: '#8B5CF6' }]}>Pipe QC</Text>
-                  </TouchableOpacity>
-                )}
-                {isAdmin && (wo.items || []).some((it: any) => !(it.product_name || '').toLowerCase().includes('pulley')) && (
-                  <TouchableOpacity
                     style={[wos.actionBtn, { borderColor: '#0F766E' }]}
                     onPress={async () => {
                       try {
@@ -769,24 +751,6 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                   >
                     <Ionicons name="cog-outline" size={14} color="#0F766E" />
                     <Text style={[wos.actionText, { color: '#0F766E' }]}>Shaft Card</Text>
-                  </TouchableOpacity>
-                )}
-                {isAdmin && (wo.items || []).some((it: any) => !(it.product_name || '').toLowerCase().includes('pulley')) && (
-                  <TouchableOpacity
-                    style={[wos.actionBtn, { borderColor: '#0891B2' }]}
-                    onPress={async () => {
-                      try {
-                        const res = await api.get(`/work-orders/${wo.id}/sub-wos`);
-                        const subs = res.data.sub_work_orders || [];
-                        const shaft = subs.find((s: any) => s.type === 'shaft');
-                        if (!shaft) { Alert.alert('Not available', 'No shaft details found for this WO'); return; }
-                        openShaftQC && openShaftQC(shaft);
-                      } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed to load shaft QC'); }
-                    }}
-                    testID={`shaft-qc-${wo.wo_number}`}
-                  >
-                    <Ionicons name="clipboard-outline" size={14} color="#0891B2" />
-                    <Text style={[wos.actionText, { color: '#0891B2' }]}>Shaft QC</Text>
                   </TouchableOpacity>
                 )}
                 {(isAdmin || userRole === 'production_head' || userRole === 'quality_inspector') && (() => {
