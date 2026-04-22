@@ -635,15 +635,35 @@ export default function StoreScreen() {
                     {(() => {
                       const picked = stockItems.find((x: any) => x.id === line.stock_item_id);
                       const unit = picked?.unit_purchase || 'nos';
-                      const hint = picked?.category === 'pipe' && picked?.weight_per_meter_kg
-                        ? ` · 1 nos = 6 m × ${picked.weight_per_meter_kg} kg/m = ${(6 * picked.weight_per_meter_kg).toFixed(1)} kg`
+                      const isPipe = picked?.category === 'pipe' && !!picked?.weight_per_meter_kg;
+                      const kgPerNos = isPipe ? 6 * picked.weight_per_meter_kg : 0;  // 1 nos = 6 m
+                      const hint = isPipe
+                        ? ` · 1 nos = 6 m × ${picked.weight_per_meter_kg} kg/m = ${kgPerNos.toFixed(1)} kg`
                         : (picked?.category === 'shaft' && picked?.weight_per_meter_kg
                           ? ` · 1 m = ${picked.weight_per_meter_kg} kg`
                           : '');
                       const hsn = picked?.hsn_code || '';
                       const hasHsn = !!hsn;
+                      const qtyKg = parseFloat(line.qty) || 0;
+                      const qtyNos = isPipe && kgPerNos > 0 ? qtyKg / kgPerNos : 0;
                       return (
                         <>
+                          {isPipe && (
+                            <View style={{ width: 80 }}>
+                              <Text style={s.label}>Qty (nos)</Text>
+                              <TextInput
+                                style={s.input}
+                                value={qtyNos > 0 ? (Number.isInteger(qtyNos) ? String(qtyNos) : qtyNos.toFixed(2)) : ''}
+                                onChangeText={(v) => {
+                                  const n = parseFloat(v) || 0;
+                                  updatePOLine(idx, 'qty', n > 0 ? (n * kgPerNos).toFixed(2) : '');
+                                }}
+                                placeholder="10"
+                                keyboardType="numeric"
+                                testID={`po-qty-nos-${idx}`}
+                              />
+                            </View>
+                          )}
                           <View style={{ flex: 1 }}>
                             <Text style={s.label}>Qty ({unit}){hint}</Text>
                             <TextInput style={s.input} value={line.qty} onChangeText={v => updatePOLine(idx, 'qty', v)} placeholder="100" keyboardType="numeric" testID={`po-qty-${idx}`} />
@@ -652,7 +672,7 @@ export default function StoreScreen() {
                             <Text style={s.label}>Rate (Rs./{unit})</Text>
                             <TextInput style={s.input} value={line.rate} onChangeText={v => updatePOLine(idx, 'rate', v)} placeholder="75" keyboardType="numeric" testID={`po-rate-${idx}`} />
                           </View>
-                          <View style={{ width: 100 }}>
+                          <View style={{ width: 90 }}>
                             <Text style={s.label}>GST % {hasHsn ? `(HSN ${hsn})` : ''}</Text>
                             <TextInput
                               style={[s.input, { backgroundColor: '#F1F5F9', color: '#0F172A', fontWeight: '700' }]}
