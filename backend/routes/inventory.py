@@ -721,18 +721,42 @@ async def get_po_pdf(po_id: str, token: Optional[str] = None, authorization: Opt
     }
 
     item_rows = ""
-    total = 0
     for i, item in enumerate(po.get("items", []), 1):
         amt = item.get("amount", 0)
-        total += amt
+        hsn = item.get("hsn_code", "") or "-"
+        gst_r = item.get("gst_rate", 0)
+        remark = (item.get("remark") or "").strip()
+        remark_html = f'<div style="font-size:9px;color:#475569;font-style:italic;margin-top:3px">📝 {remark}</div>' if remark else ""
         item_rows += f"""<tr>
             <td style="text-align:center">{i}</td>
-            <td>{item.get('stock_item_name','')}</td>
+            <td>{item.get('stock_item_name','')}{remark_html}</td>
+            <td style="text-align:center">{hsn}</td>
             <td style="text-align:center">{item.get('qty_ordered','')}</td>
             <td style="text-align:center">{item.get('unit','')}</td>
             <td style="text-align:right">Rs.{item.get('rate',0):,.2f}</td>
+            <td style="text-align:center">{gst_r}%</td>
             <td style="text-align:right"><b>Rs.{amt:,.2f}</b></td>
         </tr>"""
+
+    # Totals (new Freight + Other layout)
+    subtotal = po.get("subtotal", 0) or 0
+    freight = po.get("freight", 0) or 0
+    freight_gst_rate = po.get("freight_gst_rate", 0) or 0
+    freight_gst_amount = po.get("freight_gst_amount", 0) or 0
+    other_charges = po.get("other_charges", 0) or 0
+    other_gst_rate = po.get("other_gst_rate", 0) or 0
+    other_gst_amount = po.get("other_gst_amount", 0) or 0
+    pre_tax_total = po.get("pre_tax_total", subtotal + freight + other_charges) or 0
+    gst_total = po.get("gst_total", 0) or 0
+    grand_total = po.get("total_amount", 0) or 0
+    interstate = po.get("interstate", False)
+
+    totals_rows = f"""
+    <tr><td colspan="7" style="text-align:right;padding:6px 10px;font-size:11px">Subtotal (items):</td><td style="text-align:right;padding:6px 10px;font-size:11px">Rs.{subtotal:,.2f}</td></tr>
+    {f'<tr><td colspan="7" style="text-align:right;padding:6px 10px;font-size:11px">Freight (GST {freight_gst_rate}%):</td><td style="text-align:right;padding:6px 10px;font-size:11px">Rs.{freight:,.2f}</td></tr>' if freight else ''}
+    {f'<tr><td colspan="7" style="text-align:right;padding:6px 10px;font-size:11px">Other Charges (GST {other_gst_rate}%):</td><td style="text-align:right;padding:6px 10px;font-size:11px">Rs.{other_charges:,.2f}</td></tr>' if other_charges else ''}
+    <tr style="background:#F1F5F9"><td colspan="7" style="text-align:right;padding:6px 10px;font-size:11px;font-weight:700">Taxable Total:</td><td style="text-align:right;padding:6px 10px;font-size:11px;font-weight:700">Rs.{pre_tax_total:,.2f}</td></tr>
+    <tr><td colspan="7" style="text-align:right;padding:6px 10px;font-size:11px">{'IGST' if interstate else 'CGST + SGST'}:</td><td style="text-align:right;padding:6px 10px;font-size:11px">Rs.{gst_total:,.2f}</td></tr>"""
 
     html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <style>
@@ -766,8 +790,8 @@ async def get_po_pdf(po_id: str, token: Optional[str] = None, authorization: Opt
         <div class="info-box"><div class="info-label">Supplier</div><div class="info-value"><b>{sup_name}</b><br>{sup_contact}<br>{sup_phone}<br>{sup_city} {sup_address}<br>{'GSTIN: ' + sup_gst if sup_gst else ''}</div></div>
         <div class="info-box"><div class="info-label">PO Details</div><div class="info-value">Status: {po.get('status','')}<br>{'Expected: ' + po.get('expected_delivery','') if po.get('expected_delivery') else ''}<br>{'Notes: ' + po.get('notes','') if po.get('notes') else ''}</div></div>
     </div>
-    <table class="items"><tr><th>Sr.</th><th>Item</th><th>Qty</th><th>Unit</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th></tr>{item_rows}</table>
-    <div class="total-row">Total: Rs.{total:,.2f}</div>
+    <table class="items"><tr><th>Sr.</th><th>Item / Remark</th><th>HSN</th><th>Qty</th><th>Unit</th><th style="text-align:right">Rate</th><th>GST%</th><th style="text-align:right">Amount</th></tr>{item_rows}{totals_rows}</table>
+    <div class="total-row">Grand Total: Rs.{grand_total:,.2f}</div>
     <div class="terms"><b>Terms:</b><br>1. Material must conform to IS standards.<br>2. Delivery as per schedule mentioned.<br>3. Payment as per agreed terms.<br>4. Subject to Ahmedabad jurisdiction.</div>
     <div class="stamp-area"><div><div class="stamp-line">Supplier's Acceptance</div></div><div><div class="stamp-line">For {COMPANY['name']}<br>Authorized Signatory</div></div></div>
     <div class="footer">{COMPANY['name']} | GSTIN: {COMPANY['gstin']} | {COMPANY['email']}</div>
