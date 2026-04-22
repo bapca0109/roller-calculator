@@ -1395,14 +1395,28 @@ def _derive_bom_match_key(component: str, description: str) -> Optional[str]:
 
 
 async def _match_bom_to_stock(bom_component: str, bom_description: str, bom_material: str, bom_match_key: str = None) -> dict:
-    """Find matching stock item for a BOM component using bom_match_key (exact match only).
+    """Find matching stock item for a BOM component using bom_match_key.
+    Tries exact match first. If none, falls back to a prefix match so brand-
+    qualified stock items (e.g. `bearing:6205:china`) still resolve a brand-
+    agnostic BOM key (`bearing:6205`). Picks the variant with highest
+    current_stock for stability.
     Fallback: derive the key from description for legacy WOs missing the field."""
     if not bom_match_key:
         bom_match_key = _derive_bom_match_key(bom_component, bom_description)
     if bom_match_key:
+        # 1) Exact match
         stock_item = await db.stock_items.find_one({"bom_match_key": bom_match_key}, {"_id": 0})
         if stock_item:
             return stock_item
+        # 2) Prefix-tolerant match (e.g. bearing:6205 → bearing:6205:china/skf/fag)
+        import re as _re
+        pattern = "^" + _re.escape(bom_match_key) + ":"
+        candidates = await db.stock_items.find(
+            {"bom_match_key": {"$regex": pattern}}, {"_id": 0}
+        ).to_list(20)
+        if candidates:
+            candidates.sort(key=lambda x: (-(x.get("current_stock") or 0), (x.get("name") or "")))
+            return candidates[0]
     return None
 
 
@@ -1619,6 +1633,13 @@ async def list_unresolved_bom_rows(
                 resolved = False
                 if key:
                     stock = await db.stock_items.find_one({"bom_match_key": key}, {"_id": 0, "name": 1})
+                    if not stock:
+                        # Prefix-tolerant: "bearing:6205" matches "bearing:6205:china"
+                        import re as _re2
+                        stock = await db.stock_items.find_one(
+                            {"bom_match_key": {"$regex": "^" + _re2.escape(key) + ":"}},
+                            {"_id": 0, "name": 1},
+                        )
                     resolved = bool(stock)
                 if not resolved:
                     rows.append({
