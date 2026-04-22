@@ -73,6 +73,10 @@ class PurchaseOrderCreate(BaseModel):
     expected_delivery: Optional[str] = None
     interstate: Optional[bool] = False   # IGST vs CGST+SGST split
     linked_wo_ids: Optional[List[str]] = None   # optional trace-back to the WO(s) this PO was raised for
+    freight: Optional[float] = 0            # flat freight charge (pre-tax)
+    freight_gst_rate: Optional[float] = 18  # GST% applied on freight
+    other_charges: Optional[float] = 0      # flat other charges (pre-tax)
+    other_gst_rate: Optional[float] = 18    # GST% applied on other charges
 
 
 class QCEntry(BaseModel):
@@ -260,6 +264,27 @@ async def create_purchase_order(po: PurchaseOrderCreate, current_user: dict = De
             "qc_status": "pending",
         })
 
+    # Freight + other charges (pre-tax). Each carries its own GST rate (default 18%).
+    freight = round(float(po.freight or 0), 2)
+    freight_gst_rate = float(po.freight_gst_rate or 0)
+    freight_gst_amount = round(freight * freight_gst_rate / 100, 2)
+    other_charges = round(float(po.other_charges or 0), 2)
+    other_gst_rate = float(po.other_gst_rate or 0)
+    other_gst_amount = round(other_charges * other_gst_rate / 100, 2)
+
+    # Roll freight + other GST into CGST/SGST/IGST buckets for invoice consistency
+    extra_gst = freight_gst_amount + other_gst_amount
+    if interstate:
+        igst_total += extra_gst
+    else:
+        extra_cgst = round(extra_gst / 2, 2)
+        cgst_total += extra_cgst
+        sgst_total += extra_gst - extra_cgst
+    gst_total += extra_gst
+
+    pre_tax_total = round(subtotal + freight + other_charges, 2)
+    grand_total = round(pre_tax_total + gst_total, 2)
+
     # Resolve linked WOs → numbers (nice for display)
     linked_wo_numbers: List[str] = []
     if po.linked_wo_ids:
@@ -273,12 +298,19 @@ async def create_purchase_order(po: PurchaseOrderCreate, current_user: dict = De
         "supplier_id": po.supplier_id,
         "items": items,
         "subtotal": round(subtotal, 2),
+        "freight": freight,
+        "freight_gst_rate": freight_gst_rate,
+        "freight_gst_amount": freight_gst_amount,
+        "other_charges": other_charges,
+        "other_gst_rate": other_gst_rate,
+        "other_gst_amount": other_gst_amount,
+        "pre_tax_total": pre_tax_total,
         "cgst_total": round(cgst_total, 2),
         "sgst_total": round(sgst_total, 2),
         "igst_total": round(igst_total, 2),
         "gst_total": round(gst_total, 2),
         "interstate": interstate,
-        "total_amount": round(subtotal + gst_total, 2),
+        "total_amount": grand_total,
         "status": "ordered",
         "notes": po.notes,
         "expected_delivery": po.expected_delivery,

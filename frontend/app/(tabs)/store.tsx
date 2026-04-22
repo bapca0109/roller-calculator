@@ -33,7 +33,7 @@ export default function StoreScreen() {
   // Form state
   const [newItem, setNewItem] = useState({ name: '', category: 'pipe', unit_purchase: 'meters', unit_bom: 'kg', reorder_level: '' });
   const [newSupplier, setNewSupplier] = useState({ name: '', contact_person: '', phone: '', gst_number: '', city: '', payment_terms: '' });
-  const [newPO, setNewPO] = useState<{ supplier_id: string; expected_delivery: string; notes: string; interstate: boolean; linked_wo_ids: string[]; items: { stock_item_id: string; qty: string; rate: string; gst_rate: string; prefill_name?: string }[] }>({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '' }] });
+  const [newPO, setNewPO] = useState<{ supplier_id: string; expected_delivery: string; notes: string; interstate: boolean; linked_wo_ids: string[]; freight: string; freight_gst_rate: string; other_charges: string; other_gst_rate: string; items: { stock_item_id: string; qty: string; rate: string; gst_rate: string; prefill_name?: string }[] }>({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], freight: '', freight_gst_rate: '18', other_charges: '', other_gst_rate: '18', items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '' }] });
   const [woShortageRows, setWoShortageRows] = useState<any[]>([]);
   const [shortageView, setShortageView] = useState<'consolidated' | 'by_wo'>('consolidated');
   const [qcData, setQcData] = useState({ accepted_qty: '', rejected_qty: '', reason: '' });
@@ -93,7 +93,7 @@ export default function StoreScreen() {
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
-  const resetNewPO = () => { setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '' }] }); };
+  const resetNewPO = () => { setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], freight: '', freight_gst_rate: '18', other_charges: '', other_gst_rate: '18', items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '' }] }); };
 
   const createPO = async () => {
     const validItems = newPO.items.filter(i => i.stock_item_id && parseFloat(i.qty) > 0);
@@ -114,6 +114,10 @@ export default function StoreScreen() {
         expected_delivery: newPO.expected_delivery || null,
         interstate: newPO.interstate,
         linked_wo_ids: newPO.linked_wo_ids,
+        freight: parseFloat(newPO.freight) || 0,
+        freight_gst_rate: parseFloat(newPO.freight_gst_rate) || 0,
+        other_charges: parseFloat(newPO.other_charges) || 0,
+        other_gst_rate: parseFloat(newPO.other_gst_rate) || 0,
       });
       setShowAddPO(false); resetNewPO();
       fetchAll(); Alert.alert('Success', 'Purchase Order created');
@@ -692,20 +696,76 @@ export default function StoreScreen() {
             {/* Totals */}
             {(() => {
               const sub = newPO.items.reduce((t, i) => t + (parseFloat(i.qty) || 0) * (parseFloat(i.rate) || 0), 0);
-              const gstT = newPO.items.reduce((t, i) => t + ((parseFloat(i.qty) || 0) * (parseFloat(i.rate) || 0) * (parseFloat(i.gst_rate) || 0) / 100), 0);
+              const itemGst = newPO.items.reduce((t, i) => t + ((parseFloat(i.qty) || 0) * (parseFloat(i.rate) || 0) * (parseFloat(i.gst_rate) || 0) / 100), 0);
+              const fr = parseFloat(newPO.freight) || 0;
+              const frGstRate = parseFloat(newPO.freight_gst_rate) || 0;
+              const frGst = fr * frGstRate / 100;
+              const oc = parseFloat(newPO.other_charges) || 0;
+              const ocGstRate = parseFloat(newPO.other_gst_rate) || 0;
+              const ocGst = oc * ocGstRate / 100;
+              const preTax = sub + fr + oc;
+              const gstTotal = itemGst + frGst + ocGst;
+              const grand = preTax + gstTotal;
               return (
                 <View style={{ backgroundColor: '#0F172A', borderRadius: 10, padding: 12, marginTop: 4 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <Text style={{ fontSize: 11, color: '#94A3B8' }}>Subtotal</Text>
+                    <Text style={{ fontSize: 11, color: '#94A3B8' }}>Subtotal (items)</Text>
                     <Text style={{ fontSize: 12, color: '#fff', fontWeight: '700' }}>Rs.{sub.toFixed(2)}</Text>
+                  </View>
+                  {/* Freight row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6 }}>
+                    <Text style={{ fontSize: 11, color: '#94A3B8', width: 54 }}>Freight</Text>
+                    <TextInput
+                      style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, fontSize: 12, color: '#fff' }}
+                      value={newPO.freight}
+                      onChangeText={v => setNewPO({ ...newPO, freight: v.replace(/[^\d.]/g, '') })}
+                      keyboardType="numeric"
+                      placeholder="0"
+                      placeholderTextColor="#475569"
+                      testID="po-freight"
+                    />
+                    <Text style={{ fontSize: 10, color: '#94A3B8' }}>GST%</Text>
+                    <TextInput
+                      style={{ width: 46, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 4, fontSize: 12, color: '#fff', textAlign: 'center' }}
+                      value={newPO.freight_gst_rate}
+                      onChangeText={v => setNewPO({ ...newPO, freight_gst_rate: v.replace(/[^\d.]/g, '') })}
+                      keyboardType="numeric"
+                      testID="po-freight-gst"
+                    />
+                  </View>
+                  {/* Other charges row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6 }}>
+                    <Text style={{ fontSize: 11, color: '#94A3B8', width: 54 }}>Other</Text>
+                    <TextInput
+                      style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, fontSize: 12, color: '#fff' }}
+                      value={newPO.other_charges}
+                      onChangeText={v => setNewPO({ ...newPO, other_charges: v.replace(/[^\d.]/g, '') })}
+                      keyboardType="numeric"
+                      placeholder="0"
+                      placeholderTextColor="#475569"
+                      testID="po-other"
+                    />
+                    <Text style={{ fontSize: 10, color: '#94A3B8' }}>GST%</Text>
+                    <TextInput
+                      style={{ width: 46, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 4, fontSize: 12, color: '#fff', textAlign: 'center' }}
+                      value={newPO.other_gst_rate}
+                      onChangeText={v => setNewPO({ ...newPO, other_gst_rate: v.replace(/[^\d.]/g, '') })}
+                      keyboardType="numeric"
+                      testID="po-other-gst"
+                    />
+                  </View>
+                  {/* Pre-tax total */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
+                    <Text style={{ fontSize: 11, color: '#E2E8F0', fontWeight: '700' }}>Total (Sub + Freight + Other)</Text>
+                    <Text style={{ fontSize: 12, color: '#fff', fontWeight: '700' }} testID="po-pretax-total">Rs.{preTax.toFixed(2)}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                     <Text style={{ fontSize: 11, color: '#94A3B8' }}>{newPO.interstate ? 'IGST' : 'CGST + SGST'}</Text>
-                    <Text style={{ fontSize: 12, color: '#fff', fontWeight: '700' }}>Rs.{gstT.toFixed(2)}</Text>
+                    <Text style={{ fontSize: 12, color: '#fff', fontWeight: '700' }} testID="po-gst-total">Rs.{gstTotal.toFixed(2)}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' }}>
                     <Text style={{ fontSize: 13, color: '#C5964A', fontWeight: '700' }}>GRAND TOTAL</Text>
-                    <Text style={{ fontSize: 15, color: '#C5964A', fontWeight: '800' }}>Rs.{(sub + gstT).toFixed(2)}</Text>
+                    <Text style={{ fontSize: 15, color: '#C5964A', fontWeight: '800' }} testID="po-grand-total">Rs.{grand.toFixed(2)}</Text>
                   </View>
                 </View>
               );
