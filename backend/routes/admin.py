@@ -1541,21 +1541,33 @@ async def bulk_update_stock_item_hsn(
 
 @router.get("/admin/stock-items/hsn/csv")
 async def download_hsn_csv(current_user: dict = Depends(get_current_user)):
-    """Download a CSV of every stock item with its current HSN code, ready for
-    bulk editing in Excel. Re-upload via POST /admin/stock-items/hsn/csv."""
+    """Download a 2-sheet XLSX workbook:
+      Sheet 1 'Stock Items HSN' — every stock item with its current HSN (bulk-editable in Excel)
+      Sheet 2 'HSN Reference'   — the HSN->GST lookup table for at-a-glance reference
+    Re-upload the edited file via POST /admin/stock-items/hsn/csv (accepts .xlsx or .csv).
+    """
     if current_user.get("role") != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
-    import csv as _csv
     items = await db.stock_items.find(
         {},
         {"_id": 0, "id": 1, "name": 1, "category": 1, "bom_match_key": 1, "hsn_code": 1},
     ).sort([("category", 1), ("name", 1)]).to_list(5000)
-    buf = io.StringIO()
-    writer = _csv.writer(buf)
-    writer.writerow(["id", "name", "category", "bom_match_key", "hsn_code", "gst_rate"])
+
+    wb = Workbook()
+    # Sheet 1 — editable stock items
+    ws = wb.active
+    ws.title = "Stock Items HSN"
+    headers = ["id", "name", "category", "bom_match_key", "hsn_code", "gst_rate"]
+    ws.append(headers)
+    header_fill = PatternFill("solid", fgColor="960018")
+    for col_idx, _ in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.font = Font(bold=True, color="FFFFFF", size=11)
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="left", vertical="center")
     for it in items:
         hsn = (it.get("hsn_code") or "").strip()
-        writer.writerow([
+        ws.append([
             it.get("id") or "",
             it.get("name") or "",
             it.get("category") or "",
@@ -1563,11 +1575,59 @@ async def download_hsn_csv(current_user: dict = Depends(get_current_user)):
             hsn,
             gst_for_hsn(hsn) if hsn else "",
         ])
-    data = buf.getvalue().encode("utf-8")
+    widths = [28, 40, 14, 26, 14, 10]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "A2"
+
+    # Sheet 2 — HSN reference table
+    ref = wb.create_sheet("HSN Reference")
+    ref.append(["HSN Code", "GST %", "Typical Use"])
+    for col_idx in range(1, 4):
+        cell = ref.cell(row=1, column=col_idx)
+        cell.font = Font(bold=True, color="FFFFFF", size=11)
+        cell.fill = PatternFill("solid", fgColor="0891B2")
+    hsn_notes = {
+        "7214": "Hot-rolled bars & rods (shafts — EN-1A/EN-8/EN-9)",
+        "7228": "Alloy steel bars (EN-8/EN-24 etc.)",
+        "7304": "Seamless steel tubes",
+        "7305": "Large-dia welded steel tubes",
+        "7306": "ERW / welded steel tubes (pipes)",
+        "7307": "Pipe fittings",
+        "7308": "Structural steel (housings, brackets)",
+        "7318": "Fasteners (bolts, screws, nuts, washers, rivets)",
+        "7320": "Springs",
+        "7324": "Sanitary ware (uncommon)",
+        "7326": "Other iron/steel articles (housings, misc)",
+        "8482": "Ball / roller bearings",
+        "8483": "Transmission shafts, couplings, pulleys",
+        "8484": "Gaskets, seals, mechanical sealing",
+        "4016": "Vulcanised rubber articles (rubber rings, covers)",
+        "3916": "Plastic profiles / rods (MC-Nylon, HDPE)",
+        "3926": "Misc plastic articles (end plates, inserts)",
+        "2710": "Petroleum / lubricating oils",
+        "3403": "Lubricating preparations",
+        "3404": "Waxes / greases (EP-2 etc.)",
+        "3208": "Paints (synthetic / oil-based)",
+        "3209": "Paints (water-based)",
+        "3814": "Thinners / solvents",
+        "8544": "Wires & cables",
+        "8536": "Switches, connectors",
+    }
+    for hsn, gst in sorted(HSN_GST_MAP.items()):
+        ref.append([hsn, gst, hsn_notes.get(hsn, "")])
+    ref.column_dimensions["A"].width = 12
+    ref.column_dimensions["B"].width = 10
+    ref.column_dimensions["C"].width = 55
+    ref.freeze_panes = "A2"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
     return StreamingResponse(
-        io.BytesIO(data),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=stock_items_hsn.csv"},
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=stock_items_hsn.xlsx"},
     )
 
 
@@ -1576,30 +1636,53 @@ async def upload_hsn_csv(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
 ):
-    """Upload an HSN CSV (must include columns 'id' and 'hsn_code'). Updates
-    hsn_code on matching stock items and returns a per-row summary."""
+    """Upload an HSN spreadsheet. Accepts .xlsx (sheet 'Stock Items HSN' or first sheet)
+    or .csv. Must include columns 'id' and 'hsn_code'. Updates matching stock items."""
     if current_user.get("role") != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
-    import csv as _csv
     raw = await file.read()
-    try:
-        text = raw.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        text = raw.decode("latin-1")
-    reader = _csv.DictReader(io.StringIO(text))
-    headers = [h.strip().lower() for h in (reader.fieldnames or [])]
-    if "id" not in headers or "hsn_code" not in headers:
-        raise HTTPException(status_code=400, detail="CSV must include 'id' and 'hsn_code' columns")
+    filename = (file.filename or "").lower()
+
+    rows: List[Dict[str, str]] = []
+    if filename.endswith(".xlsx") or filename.endswith(".xlsm"):
+        try:
+            wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid Excel file: {e}")
+        ws = wb["Stock Items HSN"] if "Stock Items HSN" in wb.sheetnames else wb.worksheets[0]
+        header_row = None
+        for r in ws.iter_rows(values_only=True):
+            if header_row is None:
+                header_row = [str(c or "").strip().lower() for c in r]
+                if "id" not in header_row or "hsn_code" not in header_row:
+                    raise HTTPException(status_code=400, detail="Sheet must include 'id' and 'hsn_code' columns")
+                continue
+            row = {header_row[i]: ("" if v is None else str(v)) for i, v in enumerate(r) if i < len(header_row)}
+            rows.append(row)
+    else:
+        import csv as _csv
+        try:
+            text = raw.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = raw.decode("latin-1")
+        reader = _csv.DictReader(io.StringIO(text))
+        headers = [h.strip().lower() for h in (reader.fieldnames or [])]
+        if "id" not in headers or "hsn_code" not in headers:
+            raise HTTPException(status_code=400, detail="CSV must include 'id' and 'hsn_code' columns")
+        for row in reader:
+            rows.append({(k or "").strip().lower(): (v or "") for k, v in row.items()})
+
     now = datetime.now(timezone.utc).isoformat()
     updated = 0
     skipped: List[str] = []
     total_rows = 0
-    for row in reader:
+    for r in rows:
         total_rows += 1
-        # Case-insensitive column access
-        lower = {(k or "").strip().lower(): (v or "") for k, v in row.items()}
-        item_id = (lower.get("id") or "").strip()
-        hsn = (lower.get("hsn_code") or "").strip()
+        item_id = (r.get("id") or "").strip()
+        hsn = (r.get("hsn_code") or "").strip()
+        # Strip trailing .0 which openpyxl may produce for pure-numeric HSNs
+        if hsn.endswith(".0"):
+            hsn = hsn[:-2]
         if not item_id:
             skipped.append(f"Row {total_rows}: missing id")
             continue
@@ -1615,7 +1698,7 @@ async def upload_hsn_csv(
         "message": f"HSN updated on {updated} items ({total_rows} rows processed)",
         "updated": updated,
         "rows_processed": total_rows,
-        "skipped": skipped[:50],  # cap for response size
+        "skipped": skipped[:50],
         "skipped_count": len(skipped),
     }
 

@@ -538,36 +538,35 @@ export default function AdminScreen() {
       const res = await api.get('/admin/stock-items/hsn/csv', { responseType: 'blob' });
       // Web: trigger browser download
       if (Platform.OS === 'web') {
-        const blob = new Blob([res.data], { type: 'text/csv' });
+        const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'stock_items_hsn.csv';
+        a.download = 'stock_items_hsn.xlsx';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       } else {
-        Alert.alert('Download', 'CSV download is supported on web only in this build.');
+        Alert.alert('Download', 'Excel download is supported on web only in this build.');
       }
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.detail || 'Failed to download CSV');
+      Alert.alert('Error', e.response?.data?.detail || 'Failed to download HSN workbook');
     }
   };
 
   const uploadHsnCsv = async () => {
     if (Platform.OS !== 'web') {
-      Alert.alert('Upload', 'CSV upload is supported on web only in this build.');
+      Alert.alert('Upload', 'HSN upload is supported on web only in this build.');
       return;
     }
-    // Trigger a hidden file picker
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.csv,text/csv';
+    input.accept = '.xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv';
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      if (!(await confirmAction('Upload HSN CSV?', `Apply HSN codes from "${file.name}" to matching stock items. Non-matching rows will be skipped.`))) return;
+      if (!(await confirmAction('Upload HSN workbook?', `Apply HSN codes from "${file.name}" to matching stock items. Non-matching rows will be skipped.`))) return;
       try {
         setHsnSaving(true);
         const fd = new FormData();
@@ -578,7 +577,7 @@ export default function AdminScreen() {
         const skippedSuffix = d.skipped_count > 0 ? `\n\nSkipped ${d.skipped_count} row(s):\n${(d.skipped || []).slice(0, 5).join('\n')}${d.skipped_count > 5 ? '\n…' : ''}` : '';
         Alert.alert('Upload complete', `Updated HSN on ${d.updated} of ${d.rows_processed} row(s).${skippedSuffix}`);
       } catch (e: any) {
-        Alert.alert('Error', e.response?.data?.detail || 'Failed to upload CSV');
+        Alert.alert('Error', e.response?.data?.detail || 'Failed to upload HSN workbook');
       } finally {
         setHsnSaving(false);
       }
