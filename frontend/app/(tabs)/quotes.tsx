@@ -838,29 +838,29 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                   <TouchableOpacity
                     style={[wos.actionBtn, { borderColor: '#DC2626' }]}
                     onPress={async () => {
-                      // Attempt a safe delete first; backend will 409 with a reason if blocked
-                      const doDelete = async (force: boolean) => {
-                        try {
-                          const res = await api.delete(`/work-orders/${wo.id}${force ? '?force=true' : ''}`);
-                          Alert.alert('Deleted', res.data?.message || `${wo.wo_number} removed`);
-                          onRefresh && onRefresh();
-                        } catch (e: any) {
-                          if (e.response?.status === 409 && !force) {
-                            const reason = e.response?.data?.detail || 'Has downstream activity';
-                            if (Platform.OS === 'web'
-                              ? window.confirm(`${reason}\n\nForce delete anyway? All Sub-WOs, stock-issue records and Final Inspection will also be removed. This cannot be undone.`)
-                              : await new Promise<boolean>((r) => Alert.alert('Force delete?', reason, [{ text: 'Cancel', onPress: () => r(false) }, { text: 'Force Delete', style: 'destructive', onPress: () => r(true) }]))) {
-                              await doDelete(true);
-                            }
-                          } else {
-                            Alert.alert('Error', e.response?.data?.detail || 'Delete failed');
+                      const webConfirm = (msg: string) => Platform.OS === 'web' ? window.confirm(msg) : true;
+                      if (!webConfirm(`Delete ${wo.wo_number}? This cannot be undone.`)) return;
+                      try {
+                        await api.delete(`/work-orders/${wo.id}`);
+                        Alert.alert('Deleted', `${wo.wo_number} removed`);
+                        onRefresh && onRefresh();
+                      } catch (e: any) {
+                        if (e.response?.status === 409) {
+                          const reason = e.response?.data?.detail || 'Has downstream activity';
+                          if (!webConfirm(`${reason}\n\nForce delete? All Sub-WOs, Final Inspection will be removed and issued stock restored.`)) return;
+                          try {
+                            const res = await api.delete(`/work-orders/${wo.id}?force=true`);
+                            const rev = res.data?.stock_reverted || [];
+                            const revMsg = rev.length ? `\n\nStock restored:\n${rev.map((r: any) => `  • ${r.item}: +${r.qty}`).join('\n')}` : '';
+                            Alert.alert('Deleted', `${wo.wo_number} removed${revMsg}`);
+                            onRefresh && onRefresh();
+                          } catch (err: any) {
+                            Alert.alert('Error', err.response?.data?.detail || 'Force delete failed');
                           }
+                        } else {
+                          Alert.alert('Error', e.response?.data?.detail || 'Delete failed');
                         }
-                      };
-                      const ok = Platform.OS === 'web'
-                        ? window.confirm(`Delete ${wo.wo_number}? This cannot be undone.`)
-                        : await new Promise<boolean>((r) => Alert.alert('Delete WO?', `${wo.wo_number} will be removed permanently.`, [{ text: 'Cancel', onPress: () => r(false) }, { text: 'Delete', style: 'destructive', onPress: () => r(true) }]));
-                      if (ok) await doDelete(false);
+                      }
                     }}
                     testID={`delete-wo-${wo.wo_number}`}
                   >
