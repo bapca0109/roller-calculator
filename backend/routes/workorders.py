@@ -1616,6 +1616,72 @@ async def wo_material_status_overview(
     return {"statuses": result}
 
 
+@router.post("/admin/backfill-pipe-thickness")
+async def backfill_pipe_thickness(
+    current_user: dict = Depends(require_role([UserRole.ADMIN]))
+):
+    """One-shot fix: re-derive the Pipe BOM row's thickness on every WO from
+    the parent item's `pipe_type` (A/B/C) + `pipe_diameter` specs, replacing
+    the legacy 3.2mm fallback with the correct IS-9295 value.
+
+    Updates pipe row's `description` and `bom_match_key`. Leaves other BOM
+    rows untouched. Returns a per-WO summary.
+    """
+    import re as _re
+    PIPE_WALL_THK = {
+        60.8:  {"A": 2.9, "B": 3.6, "C": 4.5},
+        76.1:  {"A": 3.2, "B": 3.6, "C": 4.5},
+        88.9:  {"A": 3.2, "B": 4.0, "C": 4.8},
+        114.3: {"A": 3.6, "B": 4.5, "C": 5.4},
+        127.0: {"A": 4.0, "B": 4.8, "C": 5.4},
+        139.7: {"A": 4.0, "B": 4.8, "C": 5.4},
+        152.4: {"A": 4.0, "B": 4.8, "C": 5.4},
+        159.0: {"A": 4.0, "B": 4.8, "C": 5.4},
+        165.0: {"A": 4.0, "B": 4.8, "C": 5.4},
+    }
+    fixed = []
+    wos = await db.work_orders.find({}, {"_id": 0}).to_list(5000)
+    for wo in wos:
+        wo_changes = []
+        for it in (wo.get("items") or []):
+            specs = it.get("specifications") or it.get("specs") or {}
+            pt = specs.get("pipe_type")
+            pd_raw = specs.get("pipe_diameter")
+            if not pt or pd_raw is None or len(str(pt).strip()) != 1:
+                continue
+            try:
+                pd = float(pd_raw)
+            except (TypeError, ValueError):
+                continue
+            correct_thk = PIPE_WALL_THK.get(pd, {}).get(str(pt).strip().upper())
+            if not correct_thk:
+                continue
+            for b in (it.get("bom") or []):
+                if (b.get("component") or "").lower() != "pipe":
+                    continue
+                old_desc = b.get("description") or ""
+                m = _re.search(r"([\d.]+)\s*mm\s*OD\s*[x×*]\s*([\d.]+)\s*mm\s*thk", old_desc, _re.I)
+                if not m:
+                    continue
+                old_thk = float(m.group(2))
+                if abs(old_thk - correct_thk) < 0.01:
+                    continue  # already correct
+                # Patch description + match key (preserve original length suffix)
+                length_m = _re.search(r"([\d.]+)\s*mm\s*L", old_desc, _re.I)
+                length_str = f" x {length_m.group(1)}mm L" if length_m else ""
+                b["description"] = f"{pd}mm OD x {correct_thk}mm thk{length_str}"
+                b["bom_match_key"] = f"pipe:{pd}:{correct_thk}"
+                wo_changes.append({
+                    "item": it.get("product_name"),
+                    "was": f"{pd}x{old_thk}",
+                    "now": f"{pd}x{correct_thk}",
+                })
+        if wo_changes:
+            await db.work_orders.update_one({"id": wo.get("id")}, {"$set": {"items": wo.get("items")}})
+            fixed.append({"wo_number": wo.get("wo_number"), "changes": wo_changes})
+    return {"fixed_wos": fixed, "total_fixed": len(fixed)}
+
+
 @router.get("/admin/unresolved-bom-rows")
 async def list_unresolved_bom_rows(
     current_user: dict = Depends(require_role([UserRole.ADMIN]))
