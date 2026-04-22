@@ -542,12 +542,40 @@ export default function StoreScreen() {
             <Text style={s.label}>Supplier *</Text>
             <SearchPicker
               value={newPO.supplier_id}
-              items={suppliers.map((sup: any) => ({ id: sup.id, label: sup.name, sublabel: [sup.city, sup.contact_person].filter(Boolean).join(' · ') }))}
-              onSelect={id => setNewPO({ ...newPO, supplier_id: id })}
-              placeholder="Search supplier by name or city..."
+              items={suppliers.map((sup: any) => ({ id: sup.id, label: sup.name, sublabel: [sup.state || sup.city, sup.gst_number ? `GSTIN ${sup.gst_number}` : null, sup.contact_person].filter(Boolean).join(' · ') }))}
+              onSelect={id => {
+                const sup = suppliers.find((s: any) => s.id === id);
+                // Auto-derive interstate: compare supplier GSTIN state-code (first 2 digits) to company's.
+                // Company GSTIN from env starts with 24 (Gujarat). Fallback to state-string match.
+                const COMPANY_STATE_CODE = '24';
+                const COMPANY_STATE_NAME = 'gujarat';
+                let interstate = newPO.interstate;
+                if (sup) {
+                  const supGstin = (sup.gst_number || '').trim();
+                  const supStateCode = supGstin.substring(0, 2);
+                  if (/^\d{2}$/.test(supStateCode)) {
+                    interstate = supStateCode !== COMPANY_STATE_CODE;
+                  } else if (sup.state) {
+                    interstate = String(sup.state).trim().toLowerCase() !== COMPANY_STATE_NAME;
+                  }
+                }
+                setNewPO({ ...newPO, supplier_id: id, interstate });
+              }}
+              placeholder="Search supplier by name, state or city..."
               emptyText="No matching suppliers"
               testID="po-supplier-search"
             />
+            {(() => {
+              const sup = suppliers.find((s: any) => s.id === newPO.supplier_id);
+              if (!sup) return null;
+              const supState = sup.state || sup.city || '—';
+              const derived = newPO.interstate ? 'IGST (interstate)' : 'CGST + SGST (intrastate)';
+              return (
+                <Text style={{ fontSize: 10, color: '#059669', marginTop: 4, fontWeight: '600' }} testID="po-gst-scheme-info">
+                  Supplier state: {supState} → GST auto-set to {derived}
+                </Text>
+              );
+            })()}
 
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1 }}>
@@ -555,12 +583,12 @@ export default function StoreScreen() {
                 <TextInput style={s.input} value={newPO.expected_delivery} onChangeText={v => setNewPO({ ...newPO, expected_delivery: v })} placeholder="YYYY-MM-DD" testID="po-expected-delivery" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.label}>GST Scheme</Text>
+                <Text style={s.label}>GST Scheme (auto)</Text>
                 <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
-                  <Pressable style={[s.chip, !newPO.interstate && s.chipActive]} onPress={() => setNewPO({ ...newPO, interstate: false })} testID="po-cgst-sgst">
+                  <Pressable style={[s.chip, !newPO.interstate && s.chipActive, { opacity: 0.85 }]} disabled testID="po-cgst-sgst">
                     <Text style={[s.chipText, !newPO.interstate && s.chipTextActive]}>CGST+SGST</Text>
                   </Pressable>
-                  <Pressable style={[s.chip, newPO.interstate && s.chipActive]} onPress={() => setNewPO({ ...newPO, interstate: true })} testID="po-igst">
+                  <Pressable style={[s.chip, newPO.interstate && s.chipActive, { opacity: 0.85 }]} disabled testID="po-igst">
                     <Text style={[s.chipText, newPO.interstate && s.chipTextActive]}>IGST</Text>
                   </Pressable>
                 </View>
