@@ -1,138 +1,169 @@
-<analysis>**original_problem_statement**: Create a mobile application to calculate the price of belt conveyor rollers and pulleys, serving as an engineering and quoting tool. The scope has vastly expanded into a full ERP system including a product catalog search, customer database, CRM (leads/follow-ups), complete quote/RFQ approval workflow, Sales Orders with invoicing (Proforma/Tax), Work Orders with auto-generated BOMs, and a Store/Inventory management system. 
-**PRODUCT REQUIREMENTS**: Build a full-fledged ERP. Current phase involves migrating configurations to MongoDB, building a Pulley Pricing Admin UI, setting up User Roles (Sales Manager, Production Head, Accounts, Dispatch, Quality Inspector), Automating Inventory deductions, generating dispatch challans, and implementing Quality Control workflows.
+<analysis>**original_problem_statement**: Create a full-fledged ERP system for belt conveyor rollers and pulleys. The scope includes product catalog search, customer CRM, quote/RFQ workflows, Sales Orders with invoicing, Work Orders with auto-generated BOMs, Sub-WOs (job cards), WIP QC, Store/Inventory management, and Final Inspection. 
+**PRODUCT REQUIREMENTS**: Manufacturing workflows, partial conversions, advanced Purchase Orders (with kg-based purchasing for Pipe/Shaft and last-purchase auto-prefill), Final Inspection Reports (with SO-linked conditional tests, WIP QC gating, and multi-sheet Excel/PDF exports), and HSN-based auto-GST calculation.
 
 **User's preferred language**: English (INSTRUCT next agent to respond in English only)
 
 **what currently exists?** 
-A heavily refactored full-stack Expo (React Native Web) + FastAPI application. Features include a modularized backend, glass-morphism UI, strict  inventory linking, dynamic pricing configuration, atomic document numbering, role-based access control, QC gate workflows, and comprehensive PDF/Excel exports across all modules.
+A mature full-stack Expo (React Native Web) + FastAPI application. Features include atomic document numbering, role-based access control, modularized backend, strict  inventory linking, global search, PDF/Excel exports, and comprehensive Purchase Order workflows. Recently added: a fully functional Final Inspection Report (FIP) with SO-linked test constraints, WIP QC gating (FIP only allowed after Pipe & Shaft pass), kg-based unit conversion for Pipe/Shaft purchasing, rate auto-prefilling on POs, and a reusable  with keyboard navigation.
 
 **Last working item**: 
-    - Last item agent was working: **Finished-Goods QC Report PDF**. The agent added a downloadable QC Inspection Report PDF for Work Orders stamped as passed by the Quality Inspector. 
-    - Status: NONE (Task was successfully completed, tested via screenshot tool, and verified. Ready for next items).
-    - Agent Testing Done: Y
-    - Which testing method agent to use? Screenshot tool / curl.
+    - Last item agent was working: Implementing HSN to GST mapping logic for stock items. The user requested that HSN codes be assigned to all master stock items so GST automatically calculates on POs. The agent gathered requirements (store HSN per item, use a hardcoded backend lookup for GST percentages, create a Bulk edit HSN Admin UI, and make GST read-only on POs) and just created  before the context window ended.
+    - Status: IN PROGRESS
+    - Agent Testing Done: N
+    - Which testing method agent to use? Both (Frontend/Backend) testing agent or manual curl + screenshots.
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:  
-  Issue 1: KLA pricing for Pulleys is missing data.
-     - Attempted fixes: Hidden from UI per user request until data is provided.
-     - Next debug checklist: Wait for user to provide KLA pricing data (Model names, shaft ranges, prices), then unhide and implement.
-     - Why fix this issue and what will be achieved with the fix? Complete the Pulley calculator functionality.
+  Issue 1: Implement HSN to GST mapping and Admin Bulk Edit UI (P0)
+     - Attempted fixes: Created  but no code written yet.
+     - Next debug checklist: 
+       1. Write the lookup dictionary in  (e.g., 7306=18%, 8482=18%, etc.). 
+       2. Update  MongoDB schema to include . 
+       3. Create a Bulk Edit HSN Admin UI component in  and matching backend route. 
+       4. Modify  to return HSN and mapped GST. 
+       5. Update  (Raise PO modal) to auto-fill GST based on the selected item and make the GST input field read-only.
+     - Why fix this issue and what will be achieved with the fix? Satisfies immediate user requirement for tax compliance and prevents manual GST entry errors during PO creation.
+     - Status: IN PROGRESS
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Both
+     - Blocked on other issue: None
+
+  Issue 2: KLA pricing for Pulleys missing data (P3)
+     - Attempted fixes: Hidden from UI per previous user request until data is provided.
+     - Next debug checklist: Wait for user to provide KLA pricing data.
+     - Why fix this issue and what will be achieved with the fix? Complete Pulley calculator.
      - Status: BLOCKED (Waiting on user data)
      - Is recurring issue? N
      - Should Test frontend/backend/both after fix? Both
      - Blocked on other issue: User action required.
 
 **In progress Task List**: 
-  None. All tasks initiated in the previous session were successfully completed.
+  None
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
-    - **Inventory tracking (P1)**: Auto-deduct raw materials from Store stock when a Work Order is processed/completed.
-    - **Tax Invoice Auto-generation (P2)**: Trigger final tax invoice generation on dispatch.
+    - **Supplier Memory on Raise PO (P2)**: Auto-prefill the last used supplier when clicking Raise PO for a specific stock item.
+    - **Production Dashboard Enhancements (P2)**: Kanban board for WOs, Delivery Gantt strip, Stage Aging radar, etc.
+    - **Add missing items to Stock Register (P2)**: Admin needs to add items found in the Unresolved BOM Rows diagnostic to the stock register.
     
     Future Tasks:
-    - **Accounts Receivable / Aging Report (P3)**: Finance dashboard for pending payments.
-    - **GST Reports (P3)**: GSTR-1, GSTR-3B generation.
-    - **WhatsApp integration (P4)**: For sending quotes/invoices.
-    - **E-way bill generation (P4)**.
+    - **Tax Invoice Auto-generation (P3)**: Trigger final tax invoice generation on dispatch.
+    - **Pulley Sub-WOs (P3)**: Create dedicated Job Cards for Pulley manufacturing.
+    - **Accounts Receivable / Aging Report (P4)**.
+    - **GST Reports (P4)**.
+    - **Attach FIP PDF to Dispatch Flow (P4)**: (Agent proposed) Auto-attach the signed FIP PDF to the customer dispatch confirmation email.
 
 **Completed work in this session**
-- Pulley Admin Editable Prices Frontend () (DONE)
-- Price Change History + Bulk Edit UI () (DONE)
-- User Roles implementation + UI to create users (, , , , ) (DONE)
-- Dispatch/Delivery Challan generation from Sales Orders () (DONE)
-- Atomic Numbering Counters Refactoring (Replaced regex lookups with  counter in DB to fix duplicate sequence bugs) (DONE)
-- Configurable Numbering Templates Admin UI () (DONE)
-- Finished-Goods QC Gate (Requires QI to stamp Work Order before Dispatch is allowed) (DONE)
-- QC Inspection Report PDF generation () (DONE)
+-  component implemented: Replaced floating chips with a search dropdown (featuring ↑/↓/Enter/Esc keyboard nav) for PO Line Items, Issue Stock Work Orders, and Supplier Selection. (DONE)
+- Final Inspection Report (P1) full stack module:  with auto-computed pass/fail thresholds (Runout <1.6/2.0mm, COF <0.02, DFT ±20%). (DONE)
+- FIP conditional testing: Reads  from parent Sales Order to dynamically hide/ignore N/A tests in UI, PDF, and Excel. (DONE)
+- WIP QC Gating for FIP: FIP button is locked until both Pipe and Shaft WIP QC are PASSED. (DONE)
+- FIP UI Context: Integrated Pipe & Shaft WIP QC read-only results into the FIP modal and FIP PDF/Excel exports (Excel is now a 3-sheet workbook). (DONE)
+- Added 'FINAL' filter chip and Final Inspection status chips to the QC tab. (DONE)
+- Cleaned up WO cards: Removed redundant Pipe/Shaft QC buttons, leaving only action icons and Final Inspection button. (DONE)
+- Inventory Purchasing Unit Conversion: Pipe and Shaft purchase units forced to  with UI inline calculation hints (). Backend auto-converts kg to meters on PO receipt based on IS-9295 weight tables. (DONE)
+- Raise PO Auto-fills: Rate auto-prefills from . When clicking Raise PO from a shortage row, Quantity () and Rate are instantly pre-filled. (DONE)
 
 **Earlier issues found/mentioned but not fixed**
-   - None.
+  - None
 
 **Known issue recurrence from previous fork**
-  - Issue recurrence in previous fork: React Native Web touch event propagation issues ( vs ).
+  - Issue recurrence in previous fork: Expo Ngrok tunnel timeouts (502 errors and tunnel took too long to connect).
   - Recurrence count: High
-  - Status: RESOLVED
-  Note: Always use  for critical action buttons on the web interface to avoid event propagation issues.
+  - Status: RESOLVED (Agent successfully utilized bash retries/restarts yarn run v1.22.22
+$ /app/frontend/node_modules/.bin/expo start --tunnel --port 3000
+env: load .env
+env: export EXPO_TUNNEL_SUBDOMAIN EXPO_PACKAGER_HOSTNAME EXPO_PUBLIC_BACKEND_URL EXPO_PACKAGER_PROXY_URL EXPO_USE_FAST_RESOLVER METRO_CACHE_ROOT EXPO_PUBLIC_PINCODE_API_URL
+Starting project at /app/frontend
+› Port 3000 is being used by another process
+› Skipping dev server
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command. when Metro bundler threw errors).
+  Note: Be prepared to restart the expo supervisor or retry page loads using bash if screenshot testing encounters 502s.
 
 **Code Architecture**
-_next_seq
+
 
 **Key Technical Concepts**
-- **Frontend**: Expo React Native (Web), Glass Morphism UI.
+- **Frontend**: Expo React Native (Web).
 - **Backend**: FastAPI, Modular Routers.
-- **Database**: MongoDB using atomic  updates for counters.
-- **File Gen**: FPDF2/HTML-to-PDF workflows for PDFs.
+- **Database**: MongoDB using Pydantic models.
+- **Unit Conversions**: Strict separation between BOM units (meters/nos) and Purchase units (kg). Inventory route handles real-time conversion on receipt based on  tables.
 
 **key DB schema**
-  - counters:  (Used for atomic sequence generation)
-  - users: 
-  - price_history: 
-  - delivery_challans: 
+  - purchase_orders: 
+  - final_inspections (new): 
   - stock_items: 
-  - work_orders: 
 
 **changes in tech stack**
-  - Unified all sequence generators (RFQ, Q, SO, PO, WO, INV) to use an atomic MongoDB counter () to prevent race conditions during concurrent document creation.
+  - None.
 
 **All files of reference** 
--  (Contains Pulley UI, Price History, User Management, Numbering Templates)
--  (Contains Dispatch UI, QC UI, Tab-level Role access checks)
--  (Tab navigation visibility based on roles)
--  (Atomic numbering logic  and templates)
--  (QC endpoints and QC PDF generator)
--  (Newly created delivery challan logic)
+-  (Created, needs content)
+-  (Created this session)
+-  (Created this session)
+-  (Updated heavily for FIP)
+-  (Updated for kg conversions and rate prefill)
+-  & 
 
 **Areas that need refactoring**:
-- None. Sequence generators were refactored beautifully this session.
+-  is approaching 6,000 lines. It contains Quotes, Sales Orders, Work Orders, and QC views. Future work should aggressively consider extracting , , and  into separate components inside .
 
 **key api endpoints**
--  (Creates DC)
--  (Read/Write numbering templates)
--  (Admin-only create user)
--  (QI stamps QC pass/fail)
--  (Download QC PDF)
+- 
+-  (Now returns  and )
+-  (Checks if FIP is eligible based on Pipe/Shaft WIP QC)
+-  
+- 
 
 **Critical Info for New Agent** 
-- **Atomic Counters**: Use the  and  functions in  whenever a new formatted sequence document (like Invoice or RFQ) is created.
-- **Role Validation**: Multiple distinct roles exist (, , , , , ). When building new features, accurately apply the  dependency in the backend and conditional rendering in the frontend.
-- **QC Gate rule**: Delivery Challans cannot be created unless the associated Work Order is stamped  by the Quality Inspector.
+- **HSN Flow strict requirement**: The user explicitly requested: store the HSN code per item, maintain the GST % mapping hardcoded in backend (e.g. 7306=18%), provide a Bulk Edit UI for Admin to assign HSNs to existing items, and make the GST rate *read-only* in the Raise PO modal.
+- **PO Rate Pre-fill**: PO rate auto-prefilling relies on  added to the stock items payload.
+- **WIP QC Gating**: Final Inspection cannot be created unless the WO's  endpoint returns .
+- **Testing**: Expo tunnel can be unstable. If a screenshot returns 502 or times out, run expo: ERROR (not running)
+expo: started or start the tunnel manually via bash.
 
 **documents and test reports created in this job** 
-  - 
-  -  (Updated with all the new role accounts)
+  -  (Updated with FIP completion details)
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - User: Send me safari link
- - Agent: Provided link and listed credentials.
- - User: When we create new rfq the number of rfq coming is old number.
- - Agent: Fixed regex max-value bug causing RFQ sequence resets after converting RFQs to Quotes. Proposed atomic counters.
- - User: Yes [Proceed with atomic counters]
- - Agent: Built unified atomic counters. Proposed customizable numbering templates.
- - User: Yes [Proceed with customizable templates]
- - Agent: Built numbering template Admin UI. Proposed QC inspector role.
- - User: What is role of qc currently
- - Agent: Explained inbound QC vs finished-goods QC. Proposed finished-goods QC gate.
- - User: Yes [Build QC gate]
- - Agent: Built Quality Inspector role, QC stamp UI, and QC Report PDF.
+ - User: when clicking on raise po, rates shown should be last purchase price... for pipe and shaft our purchase unit is in kg or nos.
+ - Agent: Implemented last purchase price prefill and pipe kg-conversion logic.
+ - User: for shaft purchase unit will be in kg only.
+ - Agent: Added shaft kg-conversion.
+ - User: Agrees to auto-fill PO qty from shortage kg.
+ - Agent: Implemented shortage -> PO qty auto-fill.
+ - User: Agrees to auto-fill PO rate from shortage row flow.
+ - Agent: Implemented rate auto-fill on shortage.
+ - User: we need to add HSN code to all our stock items in master file so it will auto calculate tax applied on it.
+ - Agent: Clarifies requirements using ask_human. User confirms lookup table, Admin Bulk edit tool, and read-only PO GST. Agent creates  and stops. (Pending implementation of HSN logic).
 
 **Project Health Check:**
-Broken: None.
-Mocked: KLA Pulley Pricing.
+Broken: None known.
+Mocked: KLA Pulley Pricing, HSN Codes module (just an empty file so far).
 
 **3rd Party Integrations**
-- GMAIL SMTP (Requires User-provided App Password, used for notifications/PDF sending).
+- GMAIL SMTP (Requires User-provided App Password).
 
 **Testing status**
-  - Testing agent used after significant changes: NO (Agent performed rigorous manual end-to-end tests using  and  curl scripts successfully).
+  - Testing agent used after significant changes: NO (Agent performed manual testing using extensive  and  curl scripts).
   - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: None new this session.
-  - Known regressions: None
+  - Test files created: None.
+  - Known regressions: None active.
 
 **Credentials to test flow:**
 Check  for full list. All use password .
-Admin: , Sales: , Production: , Accounts: , Dispatch: , Quality Inspector: .
+Admin: , Sales: , Production: , Quality Inspector: .
 
 **What agent forgot to execute**
-- Nothing. All tasks proposed and agreed upon were implemented flawlessly.</analysis>
+- The agent properly gathered requirements for the HSN implementation, created the file, but ran out of context before writing any code. Next agent must pick up the HSN/GST feature as Priority 0. 
+
+**Debugging checklist for current issue**
+    Issue: HSN to GST Mapping and Admin Bulk Edit UI
+    Frontend files to check: 
+      -  (Add new Bulk Edit HSN section)
+      -  (Raise PO modal: make GST read-only, auto-update based on selected item's HSN lookup)
+    Backend files to check: 
+      -  (Write the lookup dict)
+      -  (Update stock fetching to include HSN and mapped GST)
+      -  (Add bulk update route for HSN)
+    Database to check:  (requires  field).</analysis>
