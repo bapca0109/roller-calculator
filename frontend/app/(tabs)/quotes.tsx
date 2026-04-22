@@ -1567,6 +1567,12 @@ function OrdersView({ orders, loading, onRefresh, isAdmin, userRole }: { orders:
                   <Ionicons name="download-outline" size={15} color="#0F172A" />
                   <Text style={[os.actionText, { color: '#0F172A' }]}>SO PDF</Text>
                 </Pressable>
+                {!order.proforma_invoice && (
+                  <TouchableOpacity style={[os.actionBtn, { backgroundColor: 'rgba(139,92,246,0.1)', borderColor: '#8B5CF6' }]} onPress={() => generateInvoice(order.id, 'proforma')} testID={`generate-pi-${order.so_number}`}>
+                    <Ionicons name="document-text-outline" size={15} color="#8B5CF6" />
+                    <Text style={[os.actionText, { color: '#8B5CF6' }]}>Generate PI</Text>
+                  </TouchableOpacity>
+                )}
                 {order.proforma_invoice && (
                   <TouchableOpacity style={[os.actionBtn, { backgroundColor: 'rgba(139,92,246,0.1)', borderColor: '#8B5CF6' }]} onPress={async () => {
                     try {
