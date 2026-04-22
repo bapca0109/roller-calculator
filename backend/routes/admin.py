@@ -1579,7 +1579,6 @@ async def download_hsn_csv(current_user: dict = Depends(get_current_user)):
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.freeze_panes = "A2"
-
     # Sheet 2 — HSN reference table
     ref = wb.create_sheet("HSN Reference")
     ref.append(["HSN Code", "GST %", "Typical Use"])
@@ -1620,6 +1619,22 @@ async def download_hsn_csv(current_user: dict = Depends(get_current_user)):
     ref.column_dimensions["B"].width = 10
     ref.column_dimensions["C"].width = 55
     ref.freeze_panes = "A2"
+
+    # Add an Excel data-validation dropdown on the hsn_code column (col E) of Sheet 1,
+    # pulling from Sheet 2's HSN Code column. User can pick instead of typing.
+    from openpyxl.worksheet.datavalidation import DataValidation
+    ref_rows = ref.max_row  # 1 header + 25 codes = 26
+    dv_formula = f"='HSN Reference'!$A$2:$A${ref_rows}"
+    dv = DataValidation(type="list", formula1=dv_formula, allow_blank=True)
+    dv.error = "Pick an HSN from the dropdown (see 'HSN Reference' sheet) or leave blank."
+    dv.errorTitle = "Invalid HSN"
+    dv.prompt = "Pick an HSN from the dropdown, or type your own."
+    dv.promptTitle = "HSN Code"
+    dv.showErrorMessage = False  # soft-enforce so users can still paste bulk values
+    dv.showInputMessage = True
+    last_row = ws.max_row
+    dv.add(f"E2:E{last_row}")
+    ws.add_data_validation(dv)
 
     buf = io.BytesIO()
     wb.save(buf)
