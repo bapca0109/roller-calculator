@@ -72,6 +72,7 @@ export default function AdminScreen() {
   const [showUnresolved, setShowUnresolved] = useState(false);
   const [unresolved, setUnresolved] = useState<any[]>([]);
   const [unresolvedLoading, setUnresolvedLoading] = useState(false);
+  const [addingUnresolvedKey, setAddingUnresolvedKey] = useState<string | null>(null);
   const [productType, setProductType] = useState<'roller' | 'pulley'>('roller');
   
   // Prices state
@@ -583,6 +584,61 @@ export default function AdminScreen() {
       }
     };
     input.click();
+  };
+
+  // Suggest a human-friendly stock item name based on a derived BOM match key + description
+  const suggestNameForBomRow = (row: any): string => {
+    const key = (row?.derived_key || '').trim();
+    const desc = (row?.description || '').trim();
+    if (!key) return desc;
+    const [cat, ...parts] = key.split(':');
+    const p1 = parts[0] || '';
+    const p2 = parts[1] || '';
+    switch (cat) {
+      case 'pipe':        return `Pipe ${p1}mm OD × ${p2}mm thk`;
+      case 'shaft':       return `Shaft ${p1}mm dia ${p2 ? '· ' + p2 : ''}`.trim();
+      case 'bearing':     return `Bearing ${p1}${p2 ? ' ' + p2.toUpperCase() : ''}`.trim();
+      case 'housing':     return `Housing ${p1}`;
+      case 'seal':        return `Seal ${p1}`;
+      case 'circlip':     return `Circlip A${p1}`;
+      case 'end_plate':   return `End Plate ${p1}mm × ${p2}mm`;
+      case 'hub':         return `Hub ${p1}${p2 ? ' × ' + p2 : ''}`;
+      case 'rubber_ring': return `Rubber Ring ${p1}${p2 ? ' × ' + p2 : ''}`;
+      case 'grease':      return `Grease ${p1 || 'EP2'}`;
+      case 'kla':         return `KLA ${p1}`;
+      default:            return desc || key;
+    }
+  };
+
+  const addUnresolvedToStock = async (row: any) => {
+    const key = (row?.derived_key || '').trim();
+    if (!key) {
+      Alert.alert('Cannot add', 'No derived key available — please edit the WO or add this item manually in Store.');
+      return;
+    }
+    const cat = (key.split(':')[0] || 'other').toLowerCase();
+    const suggestedName = suggestNameForBomRow(row);
+    if (!(await confirmAction(
+      'Add to Stock Register?',
+      `Create "${suggestedName}" (category: ${cat}) with match key "${key}". All BOM rows using this key will be auto-resolved. You can edit units/reorder level later in Store → Stock.`,
+    ))) return;
+    try {
+      setAddingUnresolvedKey(key);
+      const res = await api.post('/admin/unresolved-bom/add-to-stock', {
+        bom_match_key: key,
+        name: suggestedName,
+        category: cat,
+      });
+      const d = res.data || {};
+      // Refresh unresolved list
+      const rs = await api.get('/admin/unresolved-bom-rows');
+      setUnresolved(rs.data.rows || []);
+      Alert.alert(d.created ? 'Added' : 'Already exists', d.message || 'Stock item created');
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'Failed to add stock item');
+    } finally {
+      setAddingUnresolvedKey(null);
+    }
   };
 
   useEffect(() => {
@@ -1648,7 +1704,7 @@ export default function AdminScreen() {
                         {rows.map((r, i) => (
                           <View key={i} style={{ backgroundColor: '#FEF3F2', borderRadius: 10, padding: 10, marginBottom: 6, borderLeftWidth: 3, borderLeftColor: '#DC2626' }} testID={`unresolved-row-${r.wo_number}-${i}`}>
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                              <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A' }}>{r.description}</Text>
+                              <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A', flex: 1, marginRight: 8 }}>{r.description}</Text>
                               <Text style={{ fontSize: 10, color: '#64748B' }}>× {r.total_qty}</Text>
                             </View>
                             <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>WO: <Text style={{ color: '#0F172A', fontWeight: '700' }}>{r.wo_number}</Text> · {r.customer_name} · Item: {r.item_name}</Text>
@@ -1656,6 +1712,21 @@ export default function AdminScreen() {
                               <Text style={{ fontSize: 10, color: '#7C2D12', marginTop: 2 }}>Derived key: <Text style={{ fontWeight: '700' }}>{r.derived_key}</Text> — <Text style={{ fontStyle: 'italic' }}>no match in stock register</Text></Text>
                             ) : (
                               <Text style={{ fontSize: 10, color: '#7C2D12', marginTop: 2 }}>⚠ No key could be derived from this description</Text>
+                            )}
+                            {r.derived_key && (
+                              <TouchableOpacity
+                                onPress={() => addUnresolvedToStock(r)}
+                                disabled={!!addingUnresolvedKey}
+                                testID={`unresolved-add-${r.derived_key}`}
+                                style={{ marginTop: 8, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: addingUnresolvedKey === r.derived_key ? '#94A3B8' : '#059669', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}
+                              >
+                                {addingUnresolvedKey === r.derived_key ? (
+                                  <ActivityIndicator color="#fff" size="small" />
+                                ) : (
+                                  <Ionicons name="add-circle" size={14} color="#fff" />
+                                )}
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>Add to Stock Register</Text>
+                              </TouchableOpacity>
                             )}
                           </View>
                         ))}

@@ -1637,6 +1637,78 @@ async def list_unresolved_bom_rows(
                         "reason": "no stock item matches key" if key else "no key could be derived",
                     })
     return {"rows": rows, "total": len(rows)}
+
+
+class AddBomRowToStock(BaseModel):
+    bom_match_key: str
+    name: str
+    category: str
+    unit_purchase: Optional[str] = None
+    unit_bom: Optional[str] = None
+    reorder_level: Optional[float] = 0
+    hsn_code: Optional[str] = None
+
+
+@router.post("/admin/unresolved-bom/add-to-stock")
+async def add_unresolved_bom_row_to_stock(
+    req: AddBomRowToStock,
+    current_user: dict = Depends(require_role([UserRole.ADMIN])),
+):
+    """Create a stock item with the given bom_match_key so this unresolved BOM
+    row (and any other WOs using the same derived key) resolve in one shot.
+
+    Idempotent — if a stock item with the same bom_match_key already exists,
+    returns that item instead of creating a duplicate.
+    """
+    key = (req.bom_match_key or "").strip()
+    if not key or ":" not in key:
+        raise HTTPException(status_code=400, detail="A valid bom_match_key (e.g. 'pipe:88.9:3.2') is required")
+    existing = await db.stock_items.find_one({"bom_match_key": key}, {"_id": 0})
+    if existing:
+        return {"message": "Already in stock register", "item": existing, "created": False}
+
+    # Default units by category (mirrors the app's other create flows)
+    cat = (req.category or key.split(":", 1)[0] or "other").strip().lower()
+    default_units = {
+        "pipe":        ("kg", "meters"),
+        "shaft":       ("kg", "meters"),
+        "bearing":     ("nos", "nos"),
+        "housing":     ("nos", "nos"),
+        "seal":        ("nos", "nos"),
+        "circlip":     ("nos", "nos"),
+        "end_plate":   ("nos", "nos"),
+        "hub":         ("nos", "nos"),
+        "rubber_ring": ("nos", "nos"),
+        "rubber_lagging": ("sqm", "sqm"),
+        "grease":      ("kg", "kg"),
+        "paint":       ("litres", "litres"),
+        "kla":         ("nos", "nos"),
+    }
+    up, ub = default_units.get(cat, ("nos", "nos"))
+    unit_purchase = (req.unit_purchase or up).strip()
+    unit_bom = (req.unit_bom or ub).strip()
+
+    now = get_ist_now().isoformat()
+    doc = {
+        "id": str(ObjectId()),
+        "name": req.name.strip(),
+        "category": cat,
+        "unit_purchase": unit_purchase,
+        "unit_bom": unit_bom,
+        "conversion_factor": 1.0,
+        "current_stock": 0,
+        "reorder_level": float(req.reorder_level or 0),
+        "bom_match_key": key,
+        "hsn_code": (req.hsn_code or "").strip(),
+        "specifications": {},
+        "created_by": current_user.get("email"),
+        "created_at": now,
+        "source": "unresolved_bom_autocreate",
+    }
+    await db.stock_items.insert_one(doc)
+    doc.pop("_id", None)
+    return {"message": "Added to stock register", "item": doc, "created": True}
+
 async def backfill_bom_match_keys(
     current_user: dict = Depends(require_role([UserRole.ADMIN]))
 ):
