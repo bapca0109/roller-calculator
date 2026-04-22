@@ -128,13 +128,16 @@ export default function StoreScreen() {
     const shortQty = short.shortage_kg != null && short.shortage_kg > 0
       ? Math.round(short.shortage_kg * 100) / 100
       : Math.max(short.shortage || 0, 0);
+    const lastRate = short.stock_item_id
+      ? (stockItems.find((x: any) => x.id === short.stock_item_id)?.last_purchase_rate ?? '')
+      : '';
     setNewPO({
       supplier_id: '',
       expected_delivery: '',
       notes: `Raised to cover shortage on ${Array.isArray(short.wo_numbers) ? short.wo_numbers.join(', ') : short.wo_number || ''}`,
       interstate: false,
       linked_wo_ids: woId ? [woId] : [],
-      items: [{ stock_item_id: short.stock_item_id || '', qty: String(shortQty), rate: '', gst_rate: '18', prefill_name: displayName }],
+      items: [{ stock_item_id: short.stock_item_id || '', qty: String(shortQty), rate: lastRate !== '' && lastRate != null ? String(lastRate) : '', gst_rate: '18', prefill_name: displayName }],
     });
     setShowAddPO(true);
   };
@@ -145,10 +148,13 @@ export default function StoreScreen() {
       const q = s.shortage_kg != null && s.shortage_kg > 0
         ? Math.round(s.shortage_kg * 100) / 100
         : Math.max(s.shortage || 0, 0);
+      const lastRate = s.stock_item_id
+        ? (stockItems.find((x: any) => x.id === s.stock_item_id)?.last_purchase_rate ?? '')
+        : '';
       return {
         stock_item_id: s.stock_item_id || '',
         qty: String(q),
-        rate: '',
+        rate: lastRate !== '' && lastRate != null ? String(lastRate) : '',
         gst_rate: '18',
         prefill_name: s.stock_item_name || s.component || 'Shortage item',
       };
