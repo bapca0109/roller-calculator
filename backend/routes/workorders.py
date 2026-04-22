@@ -1353,7 +1353,7 @@ def _derive_bom_match_key(component: str, description: str) -> Optional[str]:
     comp = (component or "").lower().strip()
     desc = description or ""
     if comp == "pipe":
-        # "88.9mm OD × 3.2mm thk × 1000mm L" → pipe:88.9:3.2
+        # "88.9mm OD × 3.2mm thk × 1000mm L" → pipe:88.9:3.2 (float to match stock convention)
         m = _re.search(r"([\d.]+)\s*mm\s*OD\s*[x×*]\s*([\d.]+)\s*mm\s*thk", desc, _re.I)
         if m: return f"pipe:{float(m.group(1))}:{float(m.group(2))}"
     if comp == "shaft":
@@ -1382,7 +1382,38 @@ def _derive_bom_match_key(component: str, description: str) -> Optional[str]:
         if m: return f"seal:{m.group(1)}"
     if comp == "circlip":
         m = _re.search(r"([\d.]+)\s*mm", desc)
-        if m: return f"circlip:{float(m.group(1))}"
+        if m:
+            v = float(m.group(1))
+            # Use int form ("circlip:25") when whole number to match stock register convention
+            return f"circlip:{int(v)}" if v == int(v) else f"circlip:{v}"
+    if comp == "rubber ring" or comp == "rubber_ring":
+        # "114mm ID x 139mm OD x 35mm thk" → rubber_ring:114:139
+        m = _re.search(r"([\d.]+)\s*mm\s*ID\s*[x×*]\s*([\d.]+)\s*mm\s*OD", desc, _re.I)
+        if m:
+            try:
+                id_v = int(float(m.group(1)))
+                od_v = int(float(m.group(2)))
+                return f"rubber_ring:{id_v}:{od_v}"
+            except Exception:
+                pass
+        # Fallback "88.9mm dia × 35mm wide" → rubber_ring:89 (prefix-match picks any OD in stock)
+        m2 = _re.search(r"([\d.]+)\s*mm\s*dia", desc, _re.I)
+        if m2:
+            try:
+                id_v = int(round(float(m2.group(1))))
+                return f"rubber_ring:{id_v}"
+            except Exception:
+                pass
+    if comp == "housing":
+        # Primary: "Housing 84/52 for 88.9mm pipe" → housing:84/52
+        m = _re.search(r"(\d+\s*/\s*\d+)", desc)
+        if m: return f"housing:{m.group(1).replace(' ','')}"
+        # Fallback: "Bearing housing for 88.9mm pipe" → housing_for:88.9 (prefix for later resolve)
+        m2 = _re.search(r"([\d.]+)\s*mm\s*pipe", desc, _re.I)
+        if m2:
+            pd = float(m2.group(1))
+            pd_s = str(int(pd)) if pd == int(pd) else str(pd)
+            return f"housing_for_pipe:{pd_s}"
     if comp == "grease":
         return "grease:EP2"
     if comp == "end plate":
@@ -1680,6 +1711,30 @@ async def backfill_pipe_thickness(
             await db.work_orders.update_one({"id": wo.get("id")}, {"$set": {"items": wo.get("items")}})
             fixed.append({"wo_number": wo.get("wo_number"), "changes": wo_changes})
     return {"fixed_wos": fixed, "total_fixed": len(fixed)}
+
+
+@router.post("/admin/backfill-bom-keys")
+async def backfill_bom_keys(
+    current_user: dict = Depends(require_role([UserRole.ADMIN]))
+):
+    """One-shot: re-run `_derive_bom_match_key` on every BOM row of every WO
+    and overwrite the stored key whenever the newly-derived key differs.
+    Useful after derivation-rule fixes (circlip float, rubber ring, etc.).
+    """
+    updated = 0
+    wos = await db.work_orders.find({}, {"_id": 0}).to_list(5000)
+    for wo in wos:
+        changed = False
+        for it in (wo.get("items") or []):
+            for b in (it.get("bom") or []):
+                new_key = _derive_bom_match_key(b.get("component") or "", b.get("description") or "")
+                if new_key and new_key != b.get("bom_match_key"):
+                    b["bom_match_key"] = new_key
+                    changed = True
+                    updated += 1
+        if changed:
+            await db.work_orders.update_one({"id": wo.get("id")}, {"$set": {"items": wo.get("items")}})
+    return {"updated_rows": updated, "message": f"Rewrote {updated} BOM match keys using latest derivation rules"}
 
 
 @router.get("/admin/unresolved-bom-rows")
