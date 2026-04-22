@@ -33,7 +33,7 @@ export default function StoreScreen() {
   // Form state
   const [newItem, setNewItem] = useState({ name: '', category: 'pipe', unit_purchase: 'meters', unit_bom: 'kg', reorder_level: '' });
   const [newSupplier, setNewSupplier] = useState({ name: '', contact_person: '', phone: '', gst_number: '', city: '', payment_terms: '' });
-  const [newPO, setNewPO] = useState<{ supplier_id: string; expected_delivery: string; notes: string; interstate: boolean; linked_wo_ids: string[]; freight: string; freight_gst_rate: string; other_charges: string; other_gst_rate: string; items: { stock_item_id: string; qty: string; rate: string; gst_rate: string; prefill_name?: string }[] }>({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], freight: '', freight_gst_rate: '18', other_charges: '', other_gst_rate: '18', items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '' }] });
+  const [newPO, setNewPO] = useState<{ supplier_id: string; expected_delivery: string; notes: string; interstate: boolean; linked_wo_ids: string[]; freight: string; freight_gst_rate: string; other_charges: string; other_gst_rate: string; items: { stock_item_id: string; qty: string; rate: string; gst_rate: string; remark: string; prefill_name?: string }[] }>({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], freight: '', freight_gst_rate: '18', other_charges: '', other_gst_rate: '18', items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '', remark: '' }] });
   const [woShortageRows, setWoShortageRows] = useState<any[]>([]);
   const [shortageView, setShortageView] = useState<'consolidated' | 'by_wo'>('consolidated');
   const [qcData, setQcData] = useState({ accepted_qty: '', rejected_qty: '', reason: '' });
@@ -93,7 +93,7 @@ export default function StoreScreen() {
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
-  const resetNewPO = () => { setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], freight: '', freight_gst_rate: '18', other_charges: '', other_gst_rate: '18', items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '' }] }); };
+  const resetNewPO = () => { setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], freight: '', freight_gst_rate: '18', other_charges: '', other_gst_rate: '18', items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '', remark: '' }] }); };
 
   const createPO = async () => {
     const validItems = newPO.items.filter(i => i.stock_item_id && parseFloat(i.qty) > 0);
@@ -105,6 +105,7 @@ export default function StoreScreen() {
         qty: parseFloat(i.qty) || 0,
         rate: parseFloat(i.rate) || 0,
         gst_rate: parseFloat(i.gst_rate) || 0,
+        remark: (i.remark || '').trim() || null,
       }));
       if (!(await confirmAction('Create Purchase Order?', `A new PO will be raised with ${items.length} line(s).`))) return;
       await api.post('/store/purchase-orders', {
@@ -177,7 +178,7 @@ export default function StoreScreen() {
     setShowAddPO(true);
   };
 
-  const addPOLine = () => setNewPO(p => ({ ...p, items: [...p.items, { stock_item_id: '', qty: '', rate: '', gst_rate: '' }] }));
+  const addPOLine = () => setNewPO(p => ({ ...p, items: [...p.items, { stock_item_id: '', qty: '', rate: '', gst_rate: '', remark: '' }] }));
   const removePOLine = (idx: number) => setNewPO(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }));
   const updatePOLine = (idx: number, field: string, value: string) => setNewPO(p => ({ ...p, items: p.items.map((it, i) => i === idx ? { ...it, [field]: value } : it) }));
 
@@ -716,6 +717,17 @@ export default function StoreScreen() {
                       </Text>
                     );
                   })()}
+                  {/* Per-line remark */}
+                  <View style={{ marginTop: 6 }}>
+                    <Text style={[s.label, { fontSize: 10 }]}>Remark (optional)</Text>
+                    <TextInput
+                      style={[s.input, { minHeight: 34, fontSize: 12 }]}
+                      value={line.remark || ''}
+                      onChangeText={(v) => updatePOLine(idx, 'remark', v)}
+                      placeholder="e.g. make: CRC only, urgent, test sample, etc."
+                      testID={`po-remark-${idx}`}
+                    />
+                  </View>
                   {amount > 0 && (
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
                       <Text style={{ fontSize: 10, color: '#64748B' }}>Base: <Text style={{ color: '#0F172A', fontWeight: '700' }}>Rs.{amount.toFixed(2)}</Text></Text>

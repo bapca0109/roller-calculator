@@ -253,6 +253,7 @@ async def create_purchase_order(po: PurchaseOrderCreate, current_user: dict = De
             "unit": line_unit,
             "amount": amount,
             "gst_rate": gst_rate,
+            "remark": (item.get("remark") or "").strip() or None,
             "cgst": cgst,
             "sgst": sgst,
             "igst": igst,
