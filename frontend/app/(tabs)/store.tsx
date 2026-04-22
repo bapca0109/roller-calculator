@@ -253,7 +253,12 @@ export default function StoreScreen() {
   const q = searchQuery.trim().toLowerCase();
   const matches = (...fields: any[]) => !q || fields.some((v) => String(v ?? '').toLowerCase().includes(q));
   const filteredStock = stockItems.filter((it: any) => matches(it.name, it.category, it.bom_match_key, it.unit_purchase));
-  const filteredPos = pos.filter((p: any) => matches(p.po_number, p.supplier_name, p.status));
+  const filteredPos = pos.filter((p: any) => {
+    if (matches(p.po_number, p.supplier_name, p.status)) return true;
+    // Also match by any line item name / category / HSN
+    const lines = Array.isArray(p.items) ? p.items : [];
+    return lines.some((it: any) => matches(it.stock_item_name, it.category, it.hsn_code));
+  });
   const filteredSuppliers = suppliers.filter((sup: any) => matches(sup.name, sup.gstin, sup.contact_phone, sup.contact_email));
   const filteredShortages = woShortages.filter((sh: any) => matches(sh.wo_number, sh.item_name, sh.bom_match_key));
   const filteredAlerts = alerts.filter((a: any) => matches(a.stock_item_name, a.type, a.message));
