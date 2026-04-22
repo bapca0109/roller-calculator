@@ -834,6 +834,40 @@ function WorkOrdersView({ workOrders, loading, onRefresh, isAdmin, userRole }: {
                     <Text style={[wos.actionText, { color: '#0F766E' }]}>QC Report</Text>
                   </TouchableOpacity>
                 )}
+                {isAdmin && (
+                  <TouchableOpacity
+                    style={[wos.actionBtn, { borderColor: '#DC2626' }]}
+                    onPress={async () => {
+                      // Attempt a safe delete first; backend will 409 with a reason if blocked
+                      const doDelete = async (force: boolean) => {
+                        try {
+                          const res = await api.delete(`/work-orders/${wo.id}${force ? '?force=true' : ''}`);
+                          Alert.alert('Deleted', res.data?.message || `${wo.wo_number} removed`);
+                          onRefresh && onRefresh();
+                        } catch (e: any) {
+                          if (e.response?.status === 409 && !force) {
+                            const reason = e.response?.data?.detail || 'Has downstream activity';
+                            if (Platform.OS === 'web'
+                              ? window.confirm(`${reason}\n\nForce delete anyway? All Sub-WOs, stock-issue records and Final Inspection will also be removed. This cannot be undone.`)
+                              : await new Promise<boolean>((r) => Alert.alert('Force delete?', reason, [{ text: 'Cancel', onPress: () => r(false) }, { text: 'Force Delete', style: 'destructive', onPress: () => r(true) }]))) {
+                              await doDelete(true);
+                            }
+                          } else {
+                            Alert.alert('Error', e.response?.data?.detail || 'Delete failed');
+                          }
+                        }
+                      };
+                      const ok = Platform.OS === 'web'
+                        ? window.confirm(`Delete ${wo.wo_number}? This cannot be undone.`)
+                        : await new Promise<boolean>((r) => Alert.alert('Delete WO?', `${wo.wo_number} will be removed permanently.`, [{ text: 'Cancel', onPress: () => r(false) }, { text: 'Delete', style: 'destructive', onPress: () => r(true) }]));
+                      if (ok) await doDelete(false);
+                    }}
+                    testID={`delete-wo-${wo.wo_number}`}
+                  >
+                    <Ionicons name="trash-outline" size={14} color="#DC2626" />
+                    <Text style={[wos.actionText, { color: '#DC2626' }]}>Delete</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </TouchableOpacity>

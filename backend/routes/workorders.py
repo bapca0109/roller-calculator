@@ -423,6 +423,54 @@ async def update_wo_stage(
     return {"message": f"Work Order stage updated to {stage}"}
 
 
+@router.delete("/work-orders/{wo_id}")
+async def delete_work_order(
+    wo_id: str,
+    force: bool = False,
+    current_user: dict = Depends(require_role([UserRole.ADMIN]))
+):
+    """Admin-only hard delete. Guards: refuses if stage has moved beyond 'created',
+    QC has been stamped, stock has been issued, or a Final Inspection exists —
+    unless force=true is explicitly passed. Cascades by deleting related
+    sub-work-orders, final-inspection, stock-issue records for this WO."""
+    wo = await db.work_orders.find_one({"$or": [{"id": wo_id}, {"wo_number": wo_id}]})
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work Order not found")
+
+    blockers = []
+    if (wo.get("stage") or "created") != "created":
+        blockers.append(f"stage is '{wo.get('stage')}' (not 'created')")
+    if wo.get("qc_status") and wo.get("qc_status") != "pending":
+        blockers.append(f"QC already stamped ({wo.get('qc_status')})")
+    # Stock issued?
+    issued = await db.stock_issues.count_documents({"wo_id": wo.get("id")})
+    if issued:
+        blockers.append(f"{issued} stock-issue record(s) exist")
+    # Final inspection exists?
+    fi = await db.final_inspections.count_documents({"wo_id": wo.get("id")})
+    if fi:
+        blockers.append(f"final inspection exists ({fi} record)")
+
+    if blockers and not force:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot delete {wo.get('wo_number')}: {'; '.join(blockers)}. Pass ?force=true to override.",
+        )
+
+    # Cascade delete
+    await db.sub_work_orders.delete_many({"wo_id": wo.get("id")})
+    await db.final_inspections.delete_many({"wo_id": wo.get("id")})
+    await db.stock_issues.delete_many({"wo_id": wo.get("id")})
+    await db.work_orders.delete_one({"_id": wo["_id"]})
+
+    return {
+        "message": f"Work Order {wo.get('wo_number')} deleted",
+        "cascaded": True,
+        "forced": bool(force and blockers),
+        "blockers_overridden": blockers if force else [],
+    }
+
+
 @router.put("/work-orders/{wo_id}/item-status")
 async def update_wo_item_status(
     wo_id: str,
