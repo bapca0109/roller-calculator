@@ -123,8 +123,11 @@ export default function StoreScreen() {
   const openPOFromShortage = (short: any, woId?: string) => {
     // Prefill one line with this shortage. Lock the display even if the shortage
     // is not in the stock register yet (so the modal never shows the long picker by default).
-    const shortQty = Math.max(short.shortage || 0, 0);
     const displayName = short.stock_item_name || short.component || 'Shortage item';
+    // Pipe/Shaft are purchased in kg — backend populates shortage_kg only for those categories.
+    const shortQty = short.shortage_kg != null && short.shortage_kg > 0
+      ? Math.round(short.shortage_kg * 100) / 100
+      : Math.max(short.shortage || 0, 0);
     setNewPO({
       supplier_id: '',
       expected_delivery: '',
@@ -138,13 +141,18 @@ export default function StoreScreen() {
 
   const openPOFromWO = (row: any) => {
     // Prefill every shortage item of this WO
-    const lines = (row.shortages || []).map((s: any) => ({
-      stock_item_id: s.stock_item_id || '',
-      qty: String(Math.max(s.shortage || 0, 0)),
-      rate: '',
-      gst_rate: '18',
-      prefill_name: s.stock_item_name || s.component || 'Shortage item',
-    }));
+    const lines = (row.shortages || []).map((s: any) => {
+      const q = s.shortage_kg != null && s.shortage_kg > 0
+        ? Math.round(s.shortage_kg * 100) / 100
+        : Math.max(s.shortage || 0, 0);
+      return {
+        stock_item_id: s.stock_item_id || '',
+        qty: String(q),
+        rate: '',
+        gst_rate: '18',
+        prefill_name: s.stock_item_name || s.component || 'Shortage item',
+      };
+    });
     setNewPO({
       supplier_id: '',
       expected_delivery: '',
