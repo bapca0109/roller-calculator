@@ -1539,3 +1539,84 @@ async def bulk_update_stock_item_hsn(
     return {"message": f"HSN updated on {updated} items", "updated": updated, "total": len(request.items)}
 
 
+@router.get("/admin/stock-items/hsn/csv")
+async def download_hsn_csv(current_user: dict = Depends(get_current_user)):
+    """Download a CSV of every stock item with its current HSN code, ready for
+    bulk editing in Excel. Re-upload via POST /admin/stock-items/hsn/csv."""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    import csv as _csv
+    items = await db.stock_items.find(
+        {},
+        {"_id": 0, "id": 1, "name": 1, "category": 1, "bom_match_key": 1, "hsn_code": 1},
+    ).sort([("category", 1), ("name", 1)]).to_list(5000)
+    buf = io.StringIO()
+    writer = _csv.writer(buf)
+    writer.writerow(["id", "name", "category", "bom_match_key", "hsn_code", "gst_rate"])
+    for it in items:
+        hsn = (it.get("hsn_code") or "").strip()
+        writer.writerow([
+            it.get("id") or "",
+            it.get("name") or "",
+            it.get("category") or "",
+            it.get("bom_match_key") or "",
+            hsn,
+            gst_for_hsn(hsn) if hsn else "",
+        ])
+    data = buf.getvalue().encode("utf-8")
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=stock_items_hsn.csv"},
+    )
+
+
+@router.post("/admin/stock-items/hsn/csv")
+async def upload_hsn_csv(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Upload an HSN CSV (must include columns 'id' and 'hsn_code'). Updates
+    hsn_code on matching stock items and returns a per-row summary."""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    import csv as _csv
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+    reader = _csv.DictReader(io.StringIO(text))
+    headers = [h.strip().lower() for h in (reader.fieldnames or [])]
+    if "id" not in headers or "hsn_code" not in headers:
+        raise HTTPException(status_code=400, detail="CSV must include 'id' and 'hsn_code' columns")
+    now = datetime.now(timezone.utc).isoformat()
+    updated = 0
+    skipped: List[str] = []
+    total_rows = 0
+    for row in reader:
+        total_rows += 1
+        # Case-insensitive column access
+        lower = {(k or "").strip().lower(): (v or "") for k, v in row.items()}
+        item_id = (lower.get("id") or "").strip()
+        hsn = (lower.get("hsn_code") or "").strip()
+        if not item_id:
+            skipped.append(f"Row {total_rows}: missing id")
+            continue
+        res = await db.stock_items.update_one(
+            {"id": item_id},
+            {"$set": {"hsn_code": hsn, "hsn_updated_at": now, "hsn_updated_by": current_user.get("email")}},
+        )
+        if res.matched_count:
+            updated += 1
+        else:
+            skipped.append(f"Row {total_rows}: id '{item_id}' not found")
+    return {
+        "message": f"HSN updated on {updated} items ({total_rows} rows processed)",
+        "updated": updated,
+        "rows_processed": total_rows,
+        "skipped": skipped[:50],  # cap for response size
+        "skipped_count": len(skipped),
+    }
+
+

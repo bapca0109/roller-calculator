@@ -533,6 +533,59 @@ export default function AdminScreen() {
     });
   };
 
+  const downloadHsnCsv = async () => {
+    try {
+      const res = await api.get('/admin/stock-items/hsn/csv', { responseType: 'blob' });
+      // Web: trigger browser download
+      if (Platform.OS === 'web') {
+        const blob = new Blob([res.data], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'stock_items_hsn.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        Alert.alert('Download', 'CSV download is supported on web only in this build.');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'Failed to download CSV');
+    }
+  };
+
+  const uploadHsnCsv = async () => {
+    if (Platform.OS !== 'web') {
+      Alert.alert('Upload', 'CSV upload is supported on web only in this build.');
+      return;
+    }
+    // Trigger a hidden file picker
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,text/csv';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (!(await confirmAction('Upload HSN CSV?', `Apply HSN codes from "${file.name}" to matching stock items. Non-matching rows will be skipped.`))) return;
+      try {
+        setHsnSaving(true);
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await api.post('/admin/stock-items/hsn/csv', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        const d = res.data || {};
+        await fetchHsnItems();
+        const skippedSuffix = d.skipped_count > 0 ? `\n\nSkipped ${d.skipped_count} row(s):\n${(d.skipped || []).slice(0, 5).join('\n')}${d.skipped_count > 5 ? '\n…' : ''}` : '';
+        Alert.alert('Upload complete', `Updated HSN on ${d.updated} of ${d.rows_processed} row(s).${skippedSuffix}`);
+      } catch (e: any) {
+        Alert.alert('Error', e.response?.data?.detail || 'Failed to upload CSV');
+      } finally {
+        setHsnSaving(false);
+      }
+    };
+    input.click();
+  };
+
   useEffect(() => {
     if (mainTab === 'prices') {
       fetchPrices();
@@ -2285,6 +2338,22 @@ export default function AdminScreen() {
                   <Text style={{ fontSize: 16, color: '#92400E', fontWeight: '800' }}>{dirty}</Text>
                 </View>
                 <View style={{ flex: 1 }} />
+                <TouchableOpacity
+                  onPress={downloadHsnCsv}
+                  testID="hsn-download-csv"
+                  style={{ backgroundColor: '#0891B2', paddingHorizontal: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 6 }}
+                >
+                  <Ionicons name="download-outline" size={14} color="#fff" />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>Download CSV</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={uploadHsnCsv}
+                  testID="hsn-upload-csv"
+                  style={{ backgroundColor: '#7C3AED', paddingHorizontal: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 6 }}
+                >
+                  <Ionicons name="cloud-upload-outline" size={14} color="#fff" />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>Upload CSV</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={saveHsnDraft}
                   disabled={hsnSaving || dirty === 0}
