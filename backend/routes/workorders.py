@@ -442,10 +442,10 @@ async def delete_work_order(
         blockers.append(f"stage is '{wo.get('stage')}' (not 'created')")
     if wo.get("qc_status") and wo.get("qc_status") != "pending":
         blockers.append(f"QC already stamped ({wo.get('qc_status')})")
-    # Stock issued?
-    issued = await db.stock_issues.count_documents({"wo_id": wo.get("id")})
-    if issued:
-        blockers.append(f"{issued} stock-issue record(s) exist")
+    # Stock issued against this WO? Tracked as 'out' rows in stock_transactions.
+    issued_count = await db.stock_transactions.count_documents({"wo_id": wo.get("id"), "type": "out"})
+    if issued_count:
+        blockers.append(f"{issued_count} stock-issue transaction(s) exist")
     # Final inspection exists?
     fi = await db.final_inspections.count_documents({"wo_id": wo.get("id")})
     if fi:
@@ -457,10 +457,46 @@ async def delete_work_order(
             detail=f"Cannot delete {wo.get('wo_number')}: {'; '.join(blockers)}. Pass ?force=true to override.",
         )
 
-    # Cascade delete
+    # Revert any issued stock back to inventory BEFORE deleting the WO so we
+    # never leave the register drifted. Each 'out' transaction gets a matching
+    # 'in' reversal and the stock item's current_stock is bumped by the qty.
+    now = get_ist_now()
+    reverted = []
+    out_txns = await db.stock_transactions.find(
+        {"wo_id": wo.get("id"), "type": "out", "reversed_at": {"$exists": False}},
+        {"_id": 0},
+    ).to_list(2000)
+    for tx in out_txns:
+        qty = float(tx.get("qty") or 0)
+        if qty <= 0:
+            continue
+        await db.stock_items.update_one(
+            {"id": tx.get("stock_item_id")},
+            {"$inc": {"current_stock": qty}},
+        )
+        await db.stock_transactions.insert_one({
+            "id": str(ObjectId()),
+            "stock_item_id": tx.get("stock_item_id"),
+            "stock_item_name": tx.get("stock_item_name"),
+            "type": "in",
+            "qty": qty,
+            "reference": f"Reversal — WO {wo.get('wo_number')} deleted",
+            "wo_id": wo.get("id"),
+            "notes": f"Auto-reversal of txn {tx.get('id')} on WO force-delete",
+            "reversal_of": tx.get("id"),
+            "by": current_user.get("email"),
+            "at": now.isoformat(),
+        })
+        # Flag the original so double-reversal is impossible if re-run
+        await db.stock_transactions.update_one(
+            {"id": tx.get("id")},
+            {"$set": {"reversed_at": now.isoformat()}},
+        )
+        reverted.append({"item": tx.get("stock_item_name"), "qty": qty})
+
+    # Cascade delete dependent records
     await db.sub_work_orders.delete_many({"wo_id": wo.get("id")})
     await db.final_inspections.delete_many({"wo_id": wo.get("id")})
-    await db.stock_issues.delete_many({"wo_id": wo.get("id")})
     await db.work_orders.delete_one({"_id": wo["_id"]})
 
     return {
@@ -468,6 +504,7 @@ async def delete_work_order(
         "cascaded": True,
         "forced": bool(force and blockers),
         "blockers_overridden": blockers if force else [],
+        "stock_reverted": reverted,
     }
 
 
