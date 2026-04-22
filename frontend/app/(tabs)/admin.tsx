@@ -641,6 +641,42 @@ export default function AdminScreen() {
     }
   };
 
+  const addAllUnresolvedToStock = async (keys: string[]) => {
+    if (keys.length === 0) return;
+    if (!(await confirmAction(
+      `Add all ${keys.length} resolvable BOM row(s)?`,
+      `A new stock item will be created for each unique derived key. All BOM rows using those keys will resolve in one shot. Existing items are skipped (idempotent).`,
+    ))) return;
+    try {
+      setAddingUnresolvedKey('__BATCH__');
+      let created = 0;
+      let skipped = 0;
+      let failed = 0;
+      for (const key of keys) {
+        const row = unresolved.find((r: any) => r.derived_key === key);
+        if (!row) { failed += 1; continue; }
+        const cat = (key.split(':')[0] || 'other').toLowerCase();
+        const name = suggestNameForBomRow(row);
+        try {
+          const res = await api.post('/admin/unresolved-bom/add-to-stock', {
+            bom_match_key: key,
+            name,
+            category: cat,
+          });
+          if (res.data?.created) created += 1; else skipped += 1;
+        } catch {
+          failed += 1;
+        }
+      }
+      // Refresh
+      const rs = await api.get('/admin/unresolved-bom-rows');
+      setUnresolved(rs.data.rows || []);
+      Alert.alert('Batch complete', `Created ${created}, already existed ${skipped}, failed ${failed}.`);
+    } finally {
+      setAddingUnresolvedKey(null);
+    }
+  };
+
   useEffect(() => {
     if (mainTab === 'prices') {
       fetchPrices();
@@ -1692,7 +1728,30 @@ export default function AdminScreen() {
               </View>
             ) : (
               <>
-                <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '700', marginBottom: 8 }}>{unresolved.length} row(s) unresolved</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '700' }}>{unresolved.length} row(s) unresolved</Text>
+                  {(() => {
+                    const resolvableKeys = Array.from(new Set(unresolved.map((r: any) => r.derived_key).filter(Boolean)));
+                    if (resolvableKeys.length === 0) return null;
+                    return (
+                      <TouchableOpacity
+                        onPress={() => addAllUnresolvedToStock(resolvableKeys)}
+                        disabled={!!addingUnresolvedKey}
+                        testID="unresolved-add-all"
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: addingUnresolvedKey ? '#94A3B8' : '#059669', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 }}
+                      >
+                        {addingUnresolvedKey === '__BATCH__' ? (
+                          <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                          <Ionicons name="add-circle" size={14} color="#fff" />
+                        )}
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>
+                          Add All Resolvable ({resolvableKeys.length})
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
+                </View>
                 <ScrollView style={{ maxHeight: 580 }}>
                   {(() => {
                     // Group by component type
