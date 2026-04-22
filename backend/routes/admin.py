@@ -1485,3 +1485,57 @@ async def reset_numbering(current_user: dict = Depends(get_current_user)):
     await db.numbering_config.delete_one({"_id": "templates"})
     return {"message": "Numbering templates reset to defaults"}
 
+
+# ============= ADMIN API - HSN CODES (BULK EDIT) =============
+
+from hsn_codes import gst_for_hsn, HSN_GST_MAP
+
+
+class HSNBulkUpdateItem(BaseModel):
+    id: str
+    hsn_code: Optional[str] = ""
+
+
+class HSNBulkUpdateRequest(BaseModel):
+    items: List[HSNBulkUpdateItem]
+
+
+@router.get("/admin/stock-items/hsn")
+async def list_stock_items_with_hsn(current_user: dict = Depends(get_current_user)):
+    """Return every stock item with its hsn_code and derived gst_rate for bulk editing."""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    items = await db.stock_items.find(
+        {},
+        {"_id": 0, "id": 1, "name": 1, "category": 1, "bom_match_key": 1, "hsn_code": 1},
+    ).sort([("category", 1), ("name", 1)]).to_list(5000)
+    for it in items:
+        hsn = it.get("hsn_code") or ""
+        it["hsn_code"] = hsn
+        it["gst_rate"] = gst_for_hsn(hsn) if hsn else None
+    # Suggestions (sorted HSN prefixes)
+    suggestions = [{"hsn": k, "gst_rate": v} for k, v in sorted(HSN_GST_MAP.items())]
+    return {"items": items, "total": len(items), "suggestions": suggestions}
+
+
+@router.put("/admin/stock-items/hsn")
+async def bulk_update_stock_item_hsn(
+    request: HSNBulkUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Bulk update hsn_code on stock items. Unmatched IDs are skipped."""
+    if current_user.get("role") != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    now = datetime.now(timezone.utc).isoformat()
+    updated = 0
+    for it in request.items:
+        hsn = (it.hsn_code or "").strip()
+        res = await db.stock_items.update_one(
+            {"id": it.id},
+            {"$set": {"hsn_code": hsn, "hsn_updated_at": now, "hsn_updated_by": current_user.get("email")}},
+        )
+        if res.matched_count:
+            updated += 1
+    return {"message": f"HSN updated on {updated} items", "updated": updated, "total": len(request.items)}
+
+

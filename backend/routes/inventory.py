@@ -11,6 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 import roller_standards as rs
+from hsn_codes import gst_for_hsn
 
 router = APIRouter(prefix="/store")
 
@@ -62,6 +63,7 @@ class StockItemCreate(BaseModel):
     # BOM match key — deterministic link to BOM components
     # Format: "{category}:{spec1}:{spec2}" e.g. "pipe:114.3:4.5", "shaft:25:EN-8", "bearing:6205", "housing:108/52"
     bom_match_key: Optional[str] = None
+    hsn_code: Optional[str] = None  # HSN/SAC code — GST% derived via hsn_codes.gst_for_hsn()
 
 
 class PurchaseOrderCreate(BaseModel):
@@ -129,6 +131,10 @@ async def get_stock_items(category: Optional[str] = None, current_user: dict = D
         it["last_purchase_po"] = lr.get("po_number") if lr else None
         it["last_purchase_date"] = lr.get("date") if lr else None
         it["last_purchase_unit"] = lr.get("unit") if lr else None
+        # HSN → auto-mapped GST rate (single source of truth via hsn_codes.gst_for_hsn)
+        hsn = it.get("hsn_code")
+        it["hsn_code"] = hsn or ""
+        it["gst_rate"] = gst_for_hsn(hsn) if hsn else None
         # Pipe & Shaft: purchased by weight (kg). Pipe stock shown as nos (1 nos = 6 m).
         if it.get("category") == "pipe":
             wpm = _pipe_weight_per_meter(it)
@@ -206,7 +212,13 @@ async def create_purchase_order(po: PurchaseOrderCreate, current_user: dict = De
         stock_item = await db.stock_items.find_one({"id": item.get("stock_item_id")}, {"_id": 0})
         qty = float(item.get("qty", 0) or 0)
         rate = float(item.get("rate", 0) or 0)
-        gst_rate = float(item.get("gst_rate", 18) or 0)   # default 18% (standard capital-goods bracket)
+        # GST derived from stock item's HSN (single source of truth). Client-supplied value is ignored.
+        if stock_item and stock_item.get("hsn_code"):
+            gst_rate = float(gst_for_hsn(stock_item.get("hsn_code")))
+            hsn_code = stock_item.get("hsn_code")
+        else:
+            gst_rate = float(item.get("gst_rate", 18) or 18)   # default 18% when HSN not yet assigned
+            hsn_code = ""
         amount = round(qty * rate, 2)
         gst_amount = round(amount * gst_rate / 100, 2)
         cgst = 0.0
@@ -231,6 +243,7 @@ async def create_purchase_order(po: PurchaseOrderCreate, current_user: dict = De
             "stock_item_id": item.get("stock_item_id"),
             "stock_item_name": stock_item.get("name") if stock_item else "Unknown",
             "category": stock_item.get("category") if stock_item else "",
+            "hsn_code": hsn_code,
             "qty_ordered": qty,
             "rate": rate,
             "unit": line_unit,

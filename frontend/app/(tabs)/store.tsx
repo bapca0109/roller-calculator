@@ -33,7 +33,7 @@ export default function StoreScreen() {
   // Form state
   const [newItem, setNewItem] = useState({ name: '', category: 'pipe', unit_purchase: 'meters', unit_bom: 'kg', reorder_level: '' });
   const [newSupplier, setNewSupplier] = useState({ name: '', contact_person: '', phone: '', gst_number: '', city: '', payment_terms: '' });
-  const [newPO, setNewPO] = useState<{ supplier_id: string; expected_delivery: string; notes: string; interstate: boolean; linked_wo_ids: string[]; items: { stock_item_id: string; qty: string; rate: string; gst_rate: string; prefill_name?: string }[] }>({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] });
+  const [newPO, setNewPO] = useState<{ supplier_id: string; expected_delivery: string; notes: string; interstate: boolean; linked_wo_ids: string[]; items: { stock_item_id: string; qty: string; rate: string; gst_rate: string; prefill_name?: string }[] }>({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '' }] });
   const [woShortageRows, setWoShortageRows] = useState<any[]>([]);
   const [shortageView, setShortageView] = useState<'consolidated' | 'by_wo'>('consolidated');
   const [qcData, setQcData] = useState({ accepted_qty: '', rejected_qty: '', reason: '' });
@@ -93,7 +93,7 @@ export default function StoreScreen() {
     } catch (e: any) { Alert.alert('Error', e.response?.data?.detail || 'Failed'); }
   };
 
-  const resetNewPO = () => { setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] }); };
+  const resetNewPO = () => { setNewPO({ supplier_id: '', expected_delivery: '', notes: '', interstate: false, linked_wo_ids: [], items: [{ stock_item_id: '', qty: '', rate: '', gst_rate: '' }] }); };
 
   const createPO = async () => {
     const validItems = newPO.items.filter(i => i.stock_item_id && parseFloat(i.qty) > 0);
@@ -131,13 +131,16 @@ export default function StoreScreen() {
     const lastRate = short.stock_item_id
       ? (stockItems.find((x: any) => x.id === short.stock_item_id)?.last_purchase_rate ?? '')
       : '';
+    const gstRate = short.stock_item_id
+      ? (stockItems.find((x: any) => x.id === short.stock_item_id)?.gst_rate ?? '')
+      : '';
     setNewPO({
       supplier_id: '',
       expected_delivery: '',
       notes: `Raised to cover shortage on ${Array.isArray(short.wo_numbers) ? short.wo_numbers.join(', ') : short.wo_number || ''}`,
       interstate: false,
       linked_wo_ids: woId ? [woId] : [],
-      items: [{ stock_item_id: short.stock_item_id || '', qty: String(shortQty), rate: lastRate !== '' && lastRate != null ? String(lastRate) : '', gst_rate: '18', prefill_name: displayName }],
+      items: [{ stock_item_id: short.stock_item_id || '', qty: String(shortQty), rate: lastRate !== '' && lastRate != null ? String(lastRate) : '', gst_rate: gstRate !== '' && gstRate != null ? String(gstRate) : '', prefill_name: displayName }],
     });
     setShowAddPO(true);
   };
@@ -148,14 +151,14 @@ export default function StoreScreen() {
       const q = s.shortage_kg != null && s.shortage_kg > 0
         ? Math.round(s.shortage_kg * 100) / 100
         : Math.max(s.shortage || 0, 0);
-      const lastRate = s.stock_item_id
-        ? (stockItems.find((x: any) => x.id === s.stock_item_id)?.last_purchase_rate ?? '')
-        : '';
+      const item = s.stock_item_id ? stockItems.find((x: any) => x.id === s.stock_item_id) : null;
+      const lastRate = item?.last_purchase_rate ?? '';
+      const gstRate = item?.gst_rate ?? '';
       return {
         stock_item_id: s.stock_item_id || '',
         qty: String(q),
         rate: lastRate !== '' && lastRate != null ? String(lastRate) : '',
-        gst_rate: '18',
+        gst_rate: gstRate !== '' && gstRate != null ? String(gstRate) : '',
         prefill_name: s.stock_item_name || s.component || 'Shortage item',
       };
     });
@@ -165,12 +168,12 @@ export default function StoreScreen() {
       notes: `Raised to cover shortages on ${row.wo_number}`,
       interstate: false,
       linked_wo_ids: row.wo_id ? [row.wo_id] : [],
-      items: lines.length > 0 ? lines : [{ stock_item_id: '', qty: '', rate: '', gst_rate: '18' }],
+      items: lines.length > 0 ? lines : [{ stock_item_id: '', qty: '', rate: '', gst_rate: '' }],
     });
     setShowAddPO(true);
   };
 
-  const addPOLine = () => setNewPO(p => ({ ...p, items: [...p.items, { stock_item_id: '', qty: '', rate: '', gst_rate: '18' }] }));
+  const addPOLine = () => setNewPO(p => ({ ...p, items: [...p.items, { stock_item_id: '', qty: '', rate: '', gst_rate: '' }] }));
   const removePOLine = (idx: number) => setNewPO(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }));
   const updatePOLine = (idx: number, field: string, value: string) => setNewPO(p => ({ ...p, items: p.items.map((it, i) => i === idx ? { ...it, [field]: value } : it) }));
 
@@ -604,10 +607,15 @@ export default function StoreScreen() {
                   ) : (
                     <SearchPicker
                       value={line.stock_item_id}
-                      items={stockItems.map((it: any) => ({ id: it.id, label: it.name, sublabel: [it.category, it.last_purchase_rate ? `Last PO: ₹${it.last_purchase_rate}${it.last_purchase_unit ? '/' + it.last_purchase_unit : ''}` : null].filter(Boolean).join(' · '), right: `${it.current_stock ?? 0} ${it.unit_purchase || ''}` }))}
+                      items={stockItems.map((it: any) => ({ id: it.id, label: it.name, sublabel: [it.category, it.hsn_code ? `HSN ${it.hsn_code} · GST ${it.gst_rate}%` : 'HSN not set', it.last_purchase_rate ? `Last PO: ₹${it.last_purchase_rate}${it.last_purchase_unit ? '/' + it.last_purchase_unit : ''}` : null].filter(Boolean).join(' · '), right: `${it.current_stock ?? 0} ${it.unit_purchase || ''}` }))}
                       onSelect={(id) => {
                         const picked = stockItems.find((x: any) => x.id === id);
-                        setNewPO(p => ({ ...p, items: p.items.map((li, i) => i === idx ? { ...li, stock_item_id: id, rate: (li.rate && li.rate !== '') ? li.rate : (picked?.last_purchase_rate != null ? String(picked.last_purchase_rate) : li.rate) } : li) }));
+                        setNewPO(p => ({ ...p, items: p.items.map((li, i) => i === idx ? {
+                          ...li,
+                          stock_item_id: id,
+                          rate: (li.rate && li.rate !== '') ? li.rate : (picked?.last_purchase_rate != null ? String(picked.last_purchase_rate) : li.rate),
+                          gst_rate: picked?.gst_rate != null ? String(picked.gst_rate) : '',
+                        } : li) }));
                       }}
                       placeholder="Search stock items by name or category..."
                       emptyText="No matching items in stock register"
@@ -623,6 +631,8 @@ export default function StoreScreen() {
                         : (picked?.category === 'shaft' && picked?.weight_per_meter_kg
                           ? ` · 1 m = ${picked.weight_per_meter_kg} kg`
                           : '');
+                      const hsn = picked?.hsn_code || '';
+                      const hasHsn = !!hsn;
                       return (
                         <>
                           <View style={{ flex: 1 }}>
@@ -633,21 +643,36 @@ export default function StoreScreen() {
                             <Text style={s.label}>Rate (Rs./{unit})</Text>
                             <TextInput style={s.input} value={line.rate} onChangeText={v => updatePOLine(idx, 'rate', v)} placeholder="75" keyboardType="numeric" testID={`po-rate-${idx}`} />
                           </View>
-                          <View style={{ width: 80 }}>
-                            <Text style={s.label}>GST %</Text>
-                            <TextInput style={s.input} value={line.gst_rate} onChangeText={v => updatePOLine(idx, 'gst_rate', v)} placeholder="18" keyboardType="numeric" testID={`po-gst-${idx}`} />
+                          <View style={{ width: 100 }}>
+                            <Text style={s.label}>GST % {hasHsn ? `(HSN ${hsn})` : ''}</Text>
+                            <TextInput
+                              style={[s.input, { backgroundColor: '#F1F5F9', color: '#0F172A', fontWeight: '700' }]}
+                              value={line.gst_rate}
+                              editable={false}
+                              placeholder={picked ? (hasHsn ? '' : 'Set HSN') : '—'}
+                              testID={`po-gst-${idx}`}
+                            />
                           </View>
                         </>
                       );
                     })()}
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 4, marginTop: 4 }}>
-                    {['5', '12', '18', '28'].map(g => (
-                      <Pressable key={g} style={[s.chip, line.gst_rate === g && s.chipActive, { paddingHorizontal: 8, paddingVertical: 3 }]} onPress={() => updatePOLine(idx, 'gst_rate', g)}>
-                        <Text style={[s.chipText, line.gst_rate === g && s.chipTextActive, { fontSize: 10 }]}>{g}%</Text>
-                      </Pressable>
-                    ))}
-                  </View>
+                  {(() => {
+                    const picked = stockItems.find((x: any) => x.id === line.stock_item_id);
+                    if (!picked) return null;
+                    if (picked.hsn_code) {
+                      return (
+                        <Text style={{ fontSize: 10, color: '#059669', marginTop: 4 }} testID={`po-hsn-info-${idx}`}>
+                          GST auto-set from HSN {picked.hsn_code} → {picked.gst_rate}%
+                        </Text>
+                      );
+                    }
+                    return (
+                      <Text style={{ fontSize: 10, color: '#DC2626', marginTop: 4, fontWeight: '600' }} testID={`po-hsn-warning-${idx}`}>
+                        ⚠ HSN not set for this item — ask Admin to assign HSN in Admin → HSN Codes. GST defaults to 18% on save.
+                      </Text>
+                    );
+                  })()}
                   {amount > 0 && (
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
                       <Text style={{ fontSize: 10, color: '#64748B' }}>Base: <Text style={{ color: '#0F172A', fontWeight: '700' }}>Rs.{amount.toFixed(2)}</Text></Text>

@@ -21,7 +21,7 @@ import api, { cacheEvents } from '../../utils/api';
 import { confirmAction } from '../../components/shared/confirm';
 import { SearchBar } from '../../components/shared/SearchBar';
 
-type MainTab = 'prices' | 'standards' | 'history' | 'users' | 'numbering';
+type MainTab = 'prices' | 'standards' | 'history' | 'users' | 'numbering' | 'hsn';
 type PriceCategory = 'basic' | 'bearing' | 'housing' | 'seal' | 'circlip' | 'rubber' | 'locking';
 
 interface Prices {
@@ -118,6 +118,15 @@ export default function AdminScreen() {
   const [numberingDraft, setNumberingDraft] = useState<any>(null);
   const [numberingSaving, setNumberingSaving] = useState(false);
   const [numberingTokens, setNumberingTokens] = useState<string[]>([]);
+
+  // HSN bulk editor state
+  const [hsnItems, setHsnItems] = useState<any[]>([]);
+  const [hsnDraft, setHsnDraft] = useState<Record<string, string>>({}); // item_id -> hsn_code
+  const [hsnSuggestions, setHsnSuggestions] = useState<{ hsn: string; gst_rate: number }[]>([]);
+  const [hsnLoading, setHsnLoading] = useState(false);
+  const [hsnSaving, setHsnSaving] = useState(false);
+  const [hsnCatFilter, setHsnCatFilter] = useState<string>('all');
+  const [hsnMissingOnly, setHsnMissingOnly] = useState(false);
   
   // Set as Default OTP state
   const [showSetDefaultModal, setShowSetDefaultModal] = useState(false);
@@ -466,6 +475,64 @@ export default function AdminScreen() {
     );
   };
 
+  // ============= HSN (STOCK ITEM) FUNCTIONS =============
+  const fetchHsnItems = async () => {
+    try {
+      setHsnLoading(true);
+      const response = await api.get('/admin/stock-items/hsn');
+      const items = response.data.items || [];
+      setHsnItems(items);
+      setHsnSuggestions(response.data.suggestions || []);
+      // Reset draft to current values
+      const draft: Record<string, string> = {};
+      for (const it of items) draft[it.id] = it.hsn_code || '';
+      setHsnDraft(draft);
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'Failed to fetch HSN codes');
+    } finally {
+      setHsnLoading(false);
+    }
+  };
+
+  const hsnDraftDirtyCount = () => {
+    let n = 0;
+    for (const it of hsnItems) {
+      const cur = it.hsn_code || '';
+      const next = (hsnDraft[it.id] || '').trim();
+      if (cur !== next) n += 1;
+    }
+    return n;
+  };
+
+  const saveHsnDraft = async () => {
+    const changed = hsnItems
+      .filter((it) => (it.hsn_code || '') !== (hsnDraft[it.id] || '').trim())
+      .map((it) => ({ id: it.id, hsn_code: (hsnDraft[it.id] || '').trim() }));
+    if (changed.length === 0) {
+      Alert.alert('Nothing to save', 'No HSN changes detected.');
+      return;
+    }
+    if (!(await confirmAction('Save HSN changes?', `Update HSN codes on ${changed.length} stock item(s). GST% on future POs will be derived automatically.`))) return;
+    try {
+      setHsnSaving(true);
+      await api.put('/admin/stock-items/hsn', { items: changed });
+      await fetchHsnItems();
+      Alert.alert('Saved', `HSN updated on ${changed.length} items.`);
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'Failed to save HSN codes');
+    } finally {
+      setHsnSaving(false);
+    }
+  };
+
+  const applyHsnToCategory = (category: string, hsn: string) => {
+    setHsnDraft((prev) => {
+      const next = { ...prev };
+      for (const it of hsnItems) if (it.category === category) next[it.id] = hsn;
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (mainTab === 'prices') {
       fetchPrices();
@@ -477,6 +544,8 @@ export default function AdminScreen() {
       fetchUsers();
     } else if (mainTab === 'numbering') {
       fetchNumberingConfig();
+    } else if (mainTab === 'hsn') {
+      fetchHsnItems();
     }
     
     // Listen for global refresh events
@@ -1430,6 +1499,20 @@ export default function AdminScreen() {
               Numbering
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.mainTab, mainTab === 'hsn' && styles.mainTabActive]}
+            onPress={() => setMainTab('hsn')}
+            testID="hsn-tab"
+          >
+            <Ionicons
+              name="receipt-outline"
+              size={18}
+              color={mainTab === 'hsn' ? '#960018' : '#fff'}
+            />
+            <Text style={[styles.mainTabText, mainTab === 'hsn' && styles.mainTabTextActive]}>
+              HSN
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -2041,7 +2124,7 @@ export default function AdminScreen() {
             </ScrollView>
           )}
         </View>
-      ) : (
+      ) : mainTab === 'numbering' ? (
         // Numbering tab
         <View style={{ flex: 1 }}>
           <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
@@ -2132,6 +2215,161 @@ export default function AdminScreen() {
                   )}
                 </TouchableOpacity>
               </View>
+            </ScrollView>
+          )}
+        </View>
+      ) : (
+        // HSN tab
+        <View style={{ flex: 1 }} testID="hsn-panel">
+          <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+            <Text style={{ fontSize: 13, color: '#64748B' }}>
+              Assign HSN/SAC codes to stock items. GST% is auto-derived from the HSN lookup table on every PO and invoice.
+            </Text>
+          </View>
+          {/* Filters + actions */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, marginTop: 10, flexWrap: 'wrap' }}>
+            <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '700' }}>Category:</Text>
+            {['all', ...Array.from(new Set(hsnItems.map((i) => i.category || 'other')))].map((c) => (
+              <Pressable
+                key={c}
+                onPress={() => setHsnCatFilter(c)}
+                testID={`hsn-cat-${c}`}
+                style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14, backgroundColor: hsnCatFilter === c ? '#960018' : 'rgba(255,255,255,0.6)', borderWidth: 1, borderColor: hsnCatFilter === c ? '#960018' : '#E5E7EB' }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '700', color: hsnCatFilter === c ? '#fff' : '#475569', textTransform: 'capitalize' }}>{c}</Text>
+              </Pressable>
+            ))}
+            <Pressable
+              onPress={() => setHsnMissingOnly((v) => !v)}
+              testID="hsn-missing-toggle"
+              style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14, backgroundColor: hsnMissingOnly ? '#DC2626' : 'rgba(255,255,255,0.6)', borderWidth: 1, borderColor: hsnMissingOnly ? '#DC2626' : '#E5E7EB', marginLeft: 'auto' }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '700', color: hsnMissingOnly ? '#fff' : '#475569' }}>
+                {hsnMissingOnly ? 'Showing missing only' : 'Missing only'}
+              </Text>
+            </Pressable>
+          </View>
+          {/* Bulk assign by category */}
+          {hsnCatFilter !== 'all' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, marginTop: 8, flexWrap: 'wrap' }}>
+              <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '700' }}>Bulk-assign to "{hsnCatFilter}":</Text>
+              {hsnSuggestions.map((s) => (
+                <Pressable
+                  key={s.hsn}
+                  onPress={() => applyHsnToCategory(hsnCatFilter, s.hsn)}
+                  testID={`hsn-bulk-${hsnCatFilter}-${s.hsn}`}
+                  style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#F59E0B' }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#92400E' }}>{s.hsn} · {s.gst_rate}%</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          {/* Summary strip */}
+          {hsnItems.length > 0 && (() => {
+            const total = hsnItems.length;
+            const withHsn = hsnItems.filter((i) => (hsnDraft[i.id] || '').trim()).length;
+            const dirty = hsnDraftDirtyCount();
+            return (
+              <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginTop: 10 }}>
+                <View style={{ backgroundColor: '#ECFDF5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                  <Text style={{ fontSize: 10, color: '#065F46', fontWeight: '600' }}>With HSN</Text>
+                  <Text style={{ fontSize: 16, color: '#059669', fontWeight: '800' }}>{withHsn} / {total}</Text>
+                </View>
+                <View style={{ backgroundColor: '#FEF2F2', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                  <Text style={{ fontSize: 10, color: '#7F1D1D', fontWeight: '600' }}>Missing</Text>
+                  <Text style={{ fontSize: 16, color: '#DC2626', fontWeight: '800' }}>{total - withHsn}</Text>
+                </View>
+                <View style={{ backgroundColor: '#FEF3C7', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                  <Text style={{ fontSize: 10, color: '#78350F', fontWeight: '600' }}>Unsaved edits</Text>
+                  <Text style={{ fontSize: 16, color: '#92400E', fontWeight: '800' }}>{dirty}</Text>
+                </View>
+                <View style={{ flex: 1 }} />
+                <TouchableOpacity
+                  onPress={saveHsnDraft}
+                  disabled={hsnSaving || dirty === 0}
+                  testID="hsn-save-all"
+                  style={{ backgroundColor: dirty === 0 ? '#CBD5E1' : '#960018', paddingHorizontal: 14, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                >
+                  {hsnSaving ? <ActivityIndicator color="#fff" /> : <Ionicons name="save" size={14} color="#fff" />}
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>Save ({dirty})</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })()}
+          {hsnLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#960018" />
+              <Text style={styles.loadingText}>Loading HSN codes...</Text>
+            </View>
+          ) : (
+            <ScrollView style={{ flex: 1, padding: 16 }}>
+              {(() => {
+                const q = (adminSearchQuery || '').trim().toLowerCase();
+                const rows = hsnItems.filter((it) => {
+                  if (hsnCatFilter !== 'all' && (it.category || 'other') !== hsnCatFilter) return false;
+                  const draftVal = (hsnDraft[it.id] || '').trim();
+                  if (hsnMissingOnly && draftVal) return false;
+                  if (q) {
+                    const hay = `${it.name} ${it.category} ${it.bom_match_key || ''} ${draftVal}`.toLowerCase();
+                    if (!hay.includes(q)) return false;
+                  }
+                  return true;
+                });
+                if (rows.length === 0) {
+                  return (
+                    <View style={{ padding: 30, alignItems: 'center' }}>
+                      <Text style={{ color: '#64748B', fontSize: 13 }}>No stock items match the current filter.</Text>
+                    </View>
+                  );
+                }
+                return rows.map((it) => {
+                  const draftVal = hsnDraft[it.id] ?? '';
+                  // Derive GST preview
+                  let gstPreview: number | null = null;
+                  const clean = (draftVal || '').trim();
+                  if (clean) {
+                    const match = hsnSuggestions.find((s) => clean === s.hsn || clean.startsWith(s.hsn));
+                    gstPreview = match ? match.gst_rate : 18;
+                  }
+                  const isDirty = (it.hsn_code || '') !== clean;
+                  return (
+                    <View
+                      key={it.id}
+                      testID={`hsn-row-${it.id}`}
+                      style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 6, borderLeftWidth: 3, borderLeftColor: clean ? '#059669' : '#DC2626' }}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A' }}>{it.name}</Text>
+                        <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                          <Text style={{ textTransform: 'capitalize' }}>{it.category}</Text>
+                          {it.bom_match_key ? ` · ${it.bom_match_key}` : ''}
+                        </Text>
+                      </View>
+                      <View style={{ width: 130, marginRight: 8 }}>
+                        <TextInput
+                          value={draftVal}
+                          onChangeText={(v) => setHsnDraft((prev) => ({ ...prev, [it.id]: v.replace(/\s+/g, '') }))}
+                          placeholder="e.g. 7306"
+                          keyboardType="numeric"
+                          testID={`hsn-input-${it.id}`}
+                          style={{ borderWidth: 1, borderColor: isDirty ? '#F59E0B' : '#E5E7EB', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, color: '#0F172A', backgroundColor: isDirty ? '#FFFBEB' : '#fff' }}
+                        />
+                      </View>
+                      <View style={{ width: 70, alignItems: 'center' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>GST%</Text>
+                        <Text
+                          testID={`hsn-gst-${it.id}`}
+                          style={{ fontSize: 14, fontWeight: '800', color: gstPreview != null ? '#059669' : '#94A3B8' }}
+                        >
+                          {gstPreview != null ? gstPreview : '—'}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                });
+              })()}
+              <View style={{ height: 100 }} />
             </ScrollView>
           )}
         </View>
