@@ -658,6 +658,15 @@ export default function StoreScreen() {
                                   const n = parseFloat(v) || 0;
                                   updatePOLine(idx, 'qty', n > 0 ? (n * kgPerNos).toFixed(2) : '');
                                 }}
+                                onKeyPress={(e: any) => {
+                                  const k = e?.nativeEvent?.key;
+                                  if (k !== 'ArrowUp' && k !== 'ArrowDown') return;
+                                  e.preventDefault?.();
+                                  const step = e?.shiftKey ? 10 : 1;
+                                  const delta = k === 'ArrowUp' ? step : -step;
+                                  const next = Math.max(0, Math.floor(qtyNos) + delta);
+                                  updatePOLine(idx, 'qty', next > 0 ? (next * kgPerNos).toFixed(2) : '');
+                                }}
                                 placeholder="10"
                                 keyboardType="numeric"
                                 testID={`po-qty-nos-${idx}`}
@@ -666,11 +675,45 @@ export default function StoreScreen() {
                           )}
                           <View style={{ flex: 1 }}>
                             <Text style={s.label}>Qty ({unit}){hint}</Text>
-                            <TextInput style={s.input} value={line.qty} onChangeText={v => updatePOLine(idx, 'qty', v)} placeholder="100" keyboardType="numeric" testID={`po-qty-${idx}`} />
+                            <TextInput
+                              style={s.input}
+                              value={line.qty}
+                              onChangeText={v => updatePOLine(idx, 'qty', v)}
+                              onKeyPress={(e: any) => {
+                                const k = e?.nativeEvent?.key;
+                                if (k !== 'ArrowUp' && k !== 'ArrowDown') return;
+                                e.preventDefault?.();
+                                const step = e?.shiftKey ? 10 : 1;
+                                const delta = k === 'ArrowUp' ? step : -step;
+                                const cur = parseFloat(line.qty) || 0;
+                                const next = Math.max(0, cur + delta);
+                                updatePOLine(idx, 'qty', next > 0 ? (Number.isInteger(next) ? String(next) : next.toFixed(2)) : '');
+                              }}
+                              placeholder="100"
+                              keyboardType="numeric"
+                              testID={`po-qty-${idx}`}
+                            />
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={s.label}>Rate (Rs./{unit})</Text>
-                            <TextInput style={s.input} value={line.rate} onChangeText={v => updatePOLine(idx, 'rate', v)} placeholder="75" keyboardType="numeric" testID={`po-rate-${idx}`} />
+                            <TextInput
+                              style={s.input}
+                              value={line.rate}
+                              onChangeText={v => updatePOLine(idx, 'rate', v)}
+                              onKeyPress={(e: any) => {
+                                const k = e?.nativeEvent?.key;
+                                if (k !== 'ArrowUp' && k !== 'ArrowDown') return;
+                                e.preventDefault?.();
+                                const step = e?.shiftKey ? 10 : 1;
+                                const delta = k === 'ArrowUp' ? step : -step;
+                                const cur = parseFloat(line.rate) || 0;
+                                const next = Math.max(0, cur + delta);
+                                updatePOLine(idx, 'rate', next > 0 ? (Number.isInteger(next) ? String(next) : next.toFixed(2)) : '');
+                              }}
+                              placeholder="75"
+                              keyboardType="numeric"
+                              testID={`po-rate-${idx}`}
+                            />
                           </View>
                           <View style={{ width: 90 }}>
                             <Text style={s.label}>GST % {hasHsn ? `(HSN ${hsn})` : ''}</Text>
