@@ -499,12 +499,34 @@ async def delete_work_order(
     await db.final_inspections.delete_many({"wo_id": wo.get("id")})
     await db.work_orders.delete_one({"_id": wo["_id"]})
 
+    # Clean up parent Sales Order so WO can be re-created for the same items:
+    #  • remove this wo_number from the SO.work_orders list
+    #  • clear products[i].wo_number on every item that was in this WO
+    #  • clear the legacy singleton SO.work_order if it points to this one
+    so_cleanup = {"items_cleared": 0}
+    if wo.get("order_id"):
+        order = await db.sales_orders.find_one({"id": wo.get("order_id")})
+        if order:
+            products = order.get("products", [])
+            cleared = 0
+            for p in products:
+                if p.get("wo_number") == wo.get("wo_number"):
+                    p["wo_number"] = None
+                    cleared += 1
+            update = {"$set": {"products": products, "updated_at": now.isoformat()},
+                      "$pull": {"work_orders": wo.get("wo_number")}}
+            if order.get("work_order") == wo.get("wo_number"):
+                update["$set"]["work_order"] = None
+            await db.sales_orders.update_one({"_id": order["_id"]}, update)
+            so_cleanup["items_cleared"] = cleared
+
     return {
         "message": f"Work Order {wo.get('wo_number')} deleted",
         "cascaded": True,
         "forced": bool(force and blockers),
         "blockers_overridden": blockers if force else [],
         "stock_reverted": reverted,
+        "so_cleanup": so_cleanup,
     }
 
 
